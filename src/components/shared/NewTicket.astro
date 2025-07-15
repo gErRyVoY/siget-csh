@@ -1,0 +1,120 @@
+---
+import XIcon from '@/components/icons/XIcon.astro';
+import AddTicket from '@/components/icons/AddTicket.astro';
+import { campusOptions } from '@/config/form-options';
+
+const paraQuienOptions = ["Alumnos", "Docentes", "Colaboradores"];
+---
+
+<div id="nuevo-ticket-wrapper" class="my-2">
+    <button 
+        id="nuevo-ticket-trigger"
+        type="button"
+        class="w-full flex items-center gap-3 rounded-md px-4 py-2.5 text-sm font-semibold bg-primary text-primary-foreground hover:bg-secondary/90 transition-colors duration-500 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-secondary/90"
+    >
+        <AddTicket class="h-5 w-5" />
+        <span class="group-data-[sidebar-collapsed=true]:hidden">C S H</span>
+    </button>
+
+    <div
+        id="nuevo-ticket-modal"
+        data-state="closed"
+        class=" fixed inset-0 z-50 flex items-start justify-center pt-28
+                transition-opacity duration-300 
+                opacity-0 data-[state=open]:opacity-100
+                pointer-events-none data-[state=open]:pointer-events-auto"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="nuevo-ticket-title"
+    >
+        <div 
+            id="nuevo-ticket-overlay"
+            class="absolute inset-0 bg-gray-900/70 backdrop-blur-sm"
+            aria-hidden="true"
+        ></div>
+        <div 
+            id="nuevo-ticket-dialog"
+            class=" relative bg-card text-card-foreground rounded-lg border shadow-lg p-6 w-full max-w-lg
+                    transition-all duration-300 ease-in-out
+                    -translate-y-10 scale-95 data-[state=open]:translate-y-0 data-[state=open]:scale-100"
+        >
+            <div class="flex items-start justify-between">
+                <h2 id="nuevo-ticket-title" class="text-lg font-semibold">Crear Nuevo Ticket</h2>
+                <button id="nuevo-ticket-close" type="button" class="p-1 rounded-md hover:bg-accent text-muted-foreground">
+                    <span class="sr-only">Cerrar</span>
+                    <XIcon class="h-5 w-5" />
+                </button>
+            </div>
+
+            <form id="nuevo-ticket-form" class="mt-4 space-y-4">
+                <div>
+                    <label for="para-quien" class="block text-sm font-medium text-foreground">Para</label>
+                    <select id="para-quien" name="para-quien" class="mt-1 block w-full rounded-md border-border bg-input p-2 accent-secondary focus:outline-none focus:ring-1 focus:ring-secondary focus:border-secondary">
+                        <option value="" selected disabled>Selecciona una opción</option>
+                        {paraQuienOptions.map(option => <option value={option.toLowerCase()}>{option}</option>)}
+                    </select>
+                </div>
+                <div>
+                    <label for="campus" class="block text-sm font-medium text-foreground">Campus</label>
+                    <select id="campus" name="campus" class="mt-1 block w-full rounded-md border-border bg-input p-2 accent-secondary focus:outline-none focus:ring-1 focus:ring-secondary focus:border-secondary">
+                        <option value="" selected disabled>Selecciona una opción</option>
+                        {campusOptions.map(option => <option value={option.toLowerCase().replace(/\s+/g, '-')}>{option}</option>)}
+                    </select>
+                </div>
+                <div>
+                    <label for="descripcion" class="block text-sm font-medium text-foreground">Descripción</label>
+                    <textarea id="descripcion" name="descripcion" rows="4" class="mt-1 block w-full rounded-md border-border bg-input p-2 accent-secondary focus:outline-none focus:ring-1 focus:ring-secondary focus:border-secondary" placeholder="Describe el problema o solicitud..."></textarea>
+                </div>
+                <div class="flex justify-end pt-2">
+                    <button type="submit" id="nuevo-ticket-submit" class="bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-2 rounded-md text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                        Enviar Ticket
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    import { setupModal } from '@/lib/modal-controller';
+
+    function initNuevoTicketModal() {
+        const form = document.getElementById('nuevo-ticket-form') as HTMLFormElement;
+        const submitButton = document.getElementById('nuevo-ticket-submit') as HTMLButtonElement;
+
+        setupModal({
+            idPrefix: 'nuevo-ticket',
+            storageKey: 'nuevoTicketFormData',
+            validate: () => {
+                if (!form || !submitButton) return false;
+                const paraQuien = (form.elements.namedItem('para-quien') as HTMLSelectElement).value;
+                const campus = (form.elements.namedItem('campus') as HTMLSelectElement).value;
+                const descripcion = (form.elements.namedItem('descripcion') as HTMLTextAreaElement).value.trim();
+                const isValid = paraQuien !== '' && campus !== '' && descripcion !== '';
+                submitButton.disabled = !isValid;
+                return isValid;
+            },
+            getFormData: () => ({
+                'para-quien': (form.elements.namedItem('para-quien') as HTMLSelectElement).value,
+                'campus': (form.elements.namedItem('campus') as HTMLSelectElement).value,
+                'descripcion': (form.elements.namedItem('descripcion') as HTMLTextAreaElement).value,
+            }),
+            loadFormData: (data) => {
+                if (!form) return;
+                (form.elements.namedItem('para-quien') as HTMLSelectElement).value = data['para-quien'] || '';
+                (form.elements.namedItem('campus') as HTMLSelectElement).value = data['campus'] || '';
+                (form.elements.namedItem('descripcion') as HTMLTextAreaElement).value = data['descripcion'] || '';
+            },
+            swalConfig: {
+                title: '¡Ticket Enviado!',
+                text: 'Tu ticket ha sido creado exitosamente.',
+                icon: 'success',
+                timer: 2000,
+                timerProgressBar: true,
+                confirmButtonText: 'Entendido',
+            }
+        });
+    }
+
+    document.addEventListener('astro:page-load', initNuevoTicketModal);
+</script>

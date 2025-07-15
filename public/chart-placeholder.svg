@@ -1,0 +1,13 @@
+<svg width="600" height="300" viewBox="0 0 600 300" xmlns="http://www.w3.org/2000/svg">
+  <rect x="0" y="0" width="600" height="300" fill="#f0f0f0"/>
+  <polyline points="50,250 150,180 250,220 350,150 450,190 550,100"
+            fill="none" stroke="#8884d8" stroke-width="3"/>
+  <circle cx="50" cy="250" r="5" fill="#8884d8"/>
+  <circle cx="150" cy="180" r="5" fill="#8884d8"/>
+  <circle cx="250" cy="220" r="5" fill="#8884d8"/>
+  <circle cx="350" cy="150" r="5" fill="#8884d8"/>
+  <circle cx="450" cy="190" r="5" fill="#8884d8"/>
+  <circle cx="550" cy="100" r="5" fill="#8884d8"/>
+  <text x="20" y="290" font-family="Arial" font-size="14" fill="#666">Tiempo</text>
+  <text x="10" y="30" font-family="Arial" font-size="14" fill="#666" transform="rotate(-90 10 30)">Visitantes</text>
+</svg>

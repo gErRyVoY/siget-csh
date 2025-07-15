@@ -1,0 +1,58 @@
+/* Light Theme Variables */
+:root {
+    --background: #ffffff;
+    --foreground: #0a0a0a;
+    --card: #ffffff;
+    --card-foreground: #0a0a0a;
+    --popover: #ffffff;
+    --popover-foreground: #0a0a0a;
+    --primary: #caab55;
+    --primary-foreground: #ffffff;
+    --secondary: #881912;
+    --secondary-foreground: #ffffff;
+    --muted: #f5f5f5;
+    --muted-foreground: #797979;
+    --accent: #f5f5f5;
+    --accent-foreground: #171717;
+    --destructive: #e7000b;
+    --destructive-foreground: #ffffff;
+    --border: #e5e5e5;
+    --input: #e5e5e5;
+    --ring: #797979;
+    --chart-1: #e8dab2;
+    --chart-2: #dcc98a;
+    --chart-3: #caab55;
+    --chart-4: #a18f47;
+    --chart-5: #8E763C;
+    --sidebar: #fafafa;
+    --sidebar-foreground: #0a0a0a;
+    --sidebar-accent: #f5f5f5;
+    --sidebar-accent-foreground: #171717;
+    --sidebar-border: #e5e5e5;
+    --radius: 0rem;
+    --font-sans: 'Montserrat', sans-serif;
+    --font-serif: 'Open Sans', sans-serif;
+}
+
+/* Dark Theme Variables (Opcional, pero recomendado) */
+.dark {
+    --background: #0a0a0a;
+    --foreground: #fafafa;
+    --card: #171717;
+    --card-foreground: #fafafa;
+    /* ... resto de variables del tema oscuro */
+    --sidebar: #171717;
+    --sidebar-foreground: #fafafa;
+    --sidebar-accent: #262626;
+    --sidebar-accent-foreground: #fafafa;
+    --sidebar-border: #282828;
+}
+
+/* Importar Tailwind AL FINAL */
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:ital@0;1&display=swap');
+@import "tailwindcss";
+
+
+@theme {
+    --font-montse: "Montserrat", sans-serif; 
+}

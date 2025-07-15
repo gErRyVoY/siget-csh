@@ -1,11 +1,43 @@
 ---
-import Welcome from '../components/Welcome.astro';
-import Layout from '../layouts/Layout.astro';
+import StatCard from '@/components/dashboard/StatCard.astro';
+import VisitorsChartCard from '@/components/dashboard/VisitorsChartCard.astro';
+import MainLayout from '@/layouts/MainLayout.astro';
 
-// Welcome to Astro! Wondering what to do next? Check out the Astro documentation at https://docs.astro.build
-// Don't want to use any of this? Delete everything in this file, the `assets`, `components`, and `layouts` directories, and start fresh.
 ---
 
-<Layout>
-	<Welcome />
-</Layout>
+<MainLayout title="Dashboard">
+	<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard 
+            title="Total Revenue" 
+            value="$1,250.00" 
+            change="+12.5%" 
+            changeType="up"
+            description="Trending up this month"
+        />
+        <StatCard 
+            title="New Customers" 
+            value="1,234" 
+            change="-20%" 
+            changeType="down"
+            description="Down 20% this period"
+        />
+        <StatCard 
+            title="Active Accounts" 
+            value="45,678" 
+            change="+12.5%" 
+            changeType="up"
+            description="Strong user retention"
+        />
+		<StatCard 
+            title="Growth Rate" 
+            value="4.5%" 
+            change="+4.5%" 
+            changeType="up"
+            description="Steady performance"
+        />
+    </div>
+
+    <div class="mt-8">
+        <VisitorsChartCard />
+    </div>
+</MainLayout>

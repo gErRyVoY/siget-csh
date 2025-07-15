@@ -1,0 +1,327 @@
+---
+import XIcon from '@/components/icons/XIcon.astro';
+import UserTransferIcon from '@/components/icons/UserTransferIcon.astro';
+import { campusOptions, carreraOptions, bloqueOptions } from '@/config/form-options';
+---
+
+<div 
+    id="nuevo-traslado-wrapper"
+    class="my-2"
+    data-campus-options={JSON.stringify(campusOptions)}
+    data-carrera-options={JSON.stringify(carreraOptions)}
+>
+    <button 
+        id="nuevo-traslado-trigger"
+        type="button"
+        class="w-full flex items-center gap-3 rounded-md px-4 py-2.5 text-sm font-semibold bg-primary text-primary-foreground hover:bg-secondary/90 transition-colors duration-500 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-secondary/90"
+    >
+        <UserTransferIcon class="h-5 w-5" />
+        <span class="group-data-[sidebar-collapsed=true]:hidden">Traslado</span>
+    </button>
+
+    <div
+        id="nuevo-traslado-modal"
+        data-state="closed"
+        class=" fixed inset-0 z-50 flex items-start justify-center pt-28
+                transition-opacity duration-300 
+                opacity-0 data-[state=open]:opacity-100
+                pointer-events-none data-[state=open]:pointer-events-auto"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="nuevo-traslado-title"
+    >
+        <div 
+            id="nuevo-traslado-overlay"
+            class="absolute inset-0 bg-gray-900/70 backdrop-blur-sm"
+            aria-hidden="true"
+        ></div>
+        <div 
+            id="nuevo-traslado-dialog"
+            class=" relative bg-card text-card-foreground rounded-lg border shadow-lg p-6 w-full max-w-lg
+                    transition-all duration-300 ease-in-out
+                    -translate-y-10 scale-95 data-[state=open]:translate-y-0 data-[state=open]:scale-100"
+        >
+            <div class="flex items-start justify-between">
+                <h2 id="nuevo-traslado-title" class="text-lg font-semibold">Solicitud de nuevo traslado</h2>
+                <button id="nuevo-traslado-close" type="button" class="p-1 rounded-md hover:bg-accent text-muted-foreground">
+                    <span class="sr-only">Cerrar</span>
+                    <XIcon class="h-5 w-5" />
+                </button>
+            </div>
+
+            <form id="nuevo-traslado-form" class="mt-4 space-y-4 max-h-[70vh] overflow-y-auto pr-2">
+                <div>
+                    <label for="matricula" class="block text-sm font-medium text-foreground">Matrícula</label>
+                    <input type="text" id="matricula" name="matricula" pattern="[a-zA-Z0-9]+" class="mt-1 block w-full rounded-md border-border bg-input p-2 focus:ring-ring focus:border-ring" aria-describedby="matricula-error">
+                    <div id="matricula-error" class="text-destructive text-sm mt-1 hidden" role="alert"></div>
+                </div>
+                <div>
+                    <label for="nombre-completo" class="block text-sm font-medium text-foreground">Nombre completo</label>
+                    <input type="text" id="nombre-completo" name="nombre-completo" class="mt-1 block w-full rounded-md border-border bg-input p-2 focus:ring-ring focus:border-ring" aria-describedby="nombre-completo-error">
+                    <div id="nombre-completo-error" class="text-destructive text-sm mt-1 hidden" role="alert"></div>
+                </div>
+                <div class="relative">
+                    <label for="campus-origen" class="block text-sm font-medium text-foreground">Campus origen</label>
+                    <input type="text" id="campus-origen" name="campus-origen" autocomplete="off" class="mt-1 block w-full rounded-md border-border bg-input p-2 focus:ring-ring focus:border-ring" aria-describedby="campus-origen-error">
+                    <div id="campus-origen-suggestions" class="absolute z-10 w-full bg-card border border-border rounded-md mt-1 hidden max-h-40 overflow-y-auto"></div>
+                    <div id="campus-origen-error" class="text-destructive text-sm mt-1 hidden" role="alert"></div>
+                </div>
+                <div class="relative">
+                    <label for="campus-destino" class="block text-sm font-medium text-foreground">Campus destino</label>
+                    <input type="text" id="campus-destino" name="campus-destino" autocomplete="off" class="mt-1 block w-full rounded-md border-border bg-input p-2 focus:ring-ring focus:border-ring" aria-describedby="campus-destino-error">
+                    <div id="campus-destino-suggestions" class="absolute z-10 w-full bg-card border border-border rounded-md mt-1 hidden max-h-40 overflow-y-auto"></div>
+                    <div id="campus-destino-error" class="text-destructive text-sm mt-1 hidden" role="alert"></div>
+                </div>
+                <div class="relative">
+                    <div class="flex justify-between items-center">
+                        <label for="carrera" class="block text-sm font-medium text-foreground">Carrera</label>
+                        <div id="escolarizada-container" class="items-center hidden">
+                            <label for="escolarizada" class="mr-2 block text-sm text-foreground">Escolarizada</label>
+                            <input id="escolarizada" name="escolarizada" type="checkbox" class="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary">
+                        </div>
+                    </div>
+                    <input type="text" id="carrera" name="carrera" autocomplete="off" class="mt-1 block w-full rounded-md border-border bg-input p-2 focus:ring-ring focus:border-ring" aria-describedby="carrera-error">
+                    <div id="carrera-suggestions" class="absolute z-10 w-full bg-card border border-border rounded-md mt-1 hidden max-h-48 overflow-y-auto"></div>
+                    <div id="carrera-error" class="text-destructive text-sm mt-1 hidden" role="alert"></div>
+                </div>
+                <div class="flex items-center gap-4">
+                    <div class="flex items-center">
+                        <input id="tiene-descuento" name="tiene-descuento" type="checkbox" class="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary">
+                        <label for="tiene-descuento" class="ml-2 block text-sm text-foreground">Tiene descuento</label>
+                    </div>
+                    <div id="descuento-container" class="items-center hidden">
+                        <input type="number" id="descuento-valor" name="descuento-valor" min="1" max="99" class="block w-20 rounded-md border-border bg-input p-2 focus:ring-ring focus:border-ring" aria-describedby="descuento-valor-error">
+                        <span class="ml-2 text-foreground">%</span>
+                        <div id="descuento-valor-error" class="text-destructive text-sm ml-2 hidden" role="alert"></div>
+                    </div>
+                </div>
+                <div>
+                    <label for="bloque-sugerido" class="block text-sm font-medium text-foreground">Bloque sugerido</label>
+                    <select id="bloque-sugerido" name="bloque-sugerido" class="mt-1 block w-full rounded-md border-border bg-input p-2 focus:ring-ring focus:border-ring">
+                        {bloqueOptions.map(option => <option value={option.toLowerCase().replace(/\s+/g, '-')}>{option}</option>)}
+                    </select>
+                </div>
+                <div class="flex justify-end pt-2">
+                    <button 
+                        type="submit" 
+                        id="nuevo-traslado-submit"
+                        class="bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-2 rounded-md text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                        disabled>
+                        Enviar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    import { setupModal } from '@/lib/modal-controller';
+    
+    function initNuevoTrasladoModal() {
+        const wrapper: HTMLElement | null = document.getElementById('nuevo-traslado-wrapper');
+        if (!wrapper) return;
+
+        // --- Get Elements ---
+        const form = document.getElementById('nuevo-traslado-form') as HTMLFormElement;
+        const submitButton = document.getElementById('nuevo-traslado-submit') as HTMLButtonElement;
+        const dialog = document.getElementById('nuevo-traslado-dialog');
+
+        // --- Specific Logic for this Modal ---
+        const campusOptions: string[] = JSON.parse(wrapper.dataset.campusOptions || '[]');
+        const carreraOptions: string[] = JSON.parse(wrapper.dataset.carreraOptions || '[]');
+
+        const handleEscolarizadaLogic = () => {
+            const carreraInput = document.getElementById('carrera') as HTMLInputElement;
+            const carrera = carreraInput.value;
+            const escolarizadaContainer = document.getElementById('escolarizada-container') as HTMLElement;
+            const escolarizadaCheckbox = document.getElementById('escolarizada') as HTMLInputElement;
+            const groupB = ["Licenciatura en Arquitectura", "Licenciatura en Arte y Teatro", "Licenciatura en Diseño Gráfico"];
+            if (carrera.toLowerCase().includes('licenciatura')) {
+                escolarizadaContainer.classList.remove('hidden');
+                escolarizadaContainer.classList.add('flex');
+                if (groupB.includes(carrera)) {
+                    escolarizadaCheckbox.checked = true;
+                    escolarizadaCheckbox.disabled = true;
+                } else {
+                    escolarizadaCheckbox.disabled = false;
+                }
+            } else {
+                escolarizadaContainer.classList.add('hidden');
+                escolarizadaContainer.classList.remove('flex');
+                escolarizadaCheckbox.checked = false;
+                escolarizadaCheckbox.disabled = false;
+            }
+        };
+
+        const showError = (fieldId: string, message: string) => {
+            const errorDiv = document.getElementById(`${fieldId}-error`);
+            const fieldInput = document.getElementById(fieldId);
+            if (errorDiv) { errorDiv.textContent = message; errorDiv.classList.remove('hidden'); }
+            if (fieldInput) fieldInput.setAttribute('aria-invalid', 'true');
+        };
+
+        const clearError = (fieldId: string) => {
+            const errorDiv = document.getElementById(`${fieldId}-error`);
+            const fieldInput = document.getElementById(fieldId);
+            if (errorDiv) { errorDiv.textContent = ''; errorDiv.classList.add('hidden'); }
+            if (fieldInput) fieldInput.removeAttribute('aria-invalid');
+        };
+
+        function setupAutocomplete(inputId: string, suggestionsId: string, options: string[]) {
+            const input = document.getElementById(inputId) as HTMLInputElement | null;
+            const suggestions = document.getElementById(suggestionsId) as HTMLElement | null;
+            if (!input || !suggestions) return;
+
+            let activeSuggestionIndex = -1;
+
+            input.addEventListener('input', function(this: HTMLInputElement) {
+                const value = this.value.toLowerCase();
+                suggestions.innerHTML = '';
+                if (!value) {
+                    suggestions.classList.add('hidden');
+                    return;
+                }
+
+                const filteredOptions = options.filter(opt => opt.toLowerCase().includes(value));
+                if (filteredOptions.length > 0) {
+                    suggestions.classList.remove('hidden');
+                    filteredOptions.forEach(opt => {
+                        const div: HTMLDivElement = document.createElement('div');
+                        div.textContent = opt;
+                        div.className = 'p-2 hover:bg-accent cursor-pointer';
+                        div.addEventListener('click', function(this: HTMLDivElement) {
+                            input.value = this.textContent || '';
+                            suggestions.classList.add('hidden');
+                            validate(); // Manually trigger validation
+                        });
+                        suggestions.appendChild(div);
+                    });
+                } else {
+                    suggestions.classList.add('hidden');
+                }
+            });
+
+            input.addEventListener('keydown', function(this: HTMLInputElement, e: KeyboardEvent) {
+                const items: NodeListOf<HTMLDivElement> = suggestions.querySelectorAll('div');
+                if (items.length === 0) return;
+
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    activeSuggestionIndex = (activeSuggestionIndex + 1) % items.length;
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    activeSuggestionIndex = (activeSuggestionIndex - 1 + items.length) % items.length;
+                } else if (e.key === 'Enter') {
+                    e.preventDefault(); // Prevent form submission
+                    if (activeSuggestionIndex > -1) {
+                        items[activeSuggestionIndex].click();
+                    }
+                    suggestions.classList.add('hidden');
+                } else if (e.key === 'Escape') {
+                    suggestions.classList.add('hidden');
+                    return;
+                }
+
+                items.forEach((item, index) => {
+                    item.classList.toggle('bg-accent', index === activeSuggestionIndex);
+                });
+            });
+
+            document.addEventListener('click', function(e: Event) {
+                if (e.target !== input) {
+                    suggestions.classList.add('hidden');
+                }
+            });
+        }
+
+        const tieneDescuentoCheckbox = document.getElementById('tiene-descuento') as HTMLInputElement;
+        tieneDescuentoCheckbox.addEventListener('change', (e: Event) => {
+            const isChecked = (e.target as HTMLInputElement).checked;
+            const descuentoContainer = document.getElementById('descuento-container') as HTMLElement;
+            descuentoContainer.classList.toggle('hidden', !isChecked);
+            descuentoContainer.classList.toggle('flex', isChecked);
+        });
+
+        const validate = (showAllErrors = false) => {
+            handleEscolarizadaLogic();
+            let isValid = true;
+            const matricula = (form.elements.namedItem('matricula') as HTMLInputElement).value.trim();
+            const nombre = (form.elements.namedItem('nombre-completo') as HTMLInputElement).value;
+            const nameRegex = /^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/;
+            const campusOrigen = (form.elements.namedItem('campus-origen') as HTMLInputElement).value.trim();
+            const campusDestino = (form.elements.namedItem('campus-destino') as HTMLInputElement).value.trim();
+            const carrera = (form.elements.namedItem('carrera') as HTMLInputElement).value.trim();
+            const tieneDescuento = (form.elements.namedItem('tiene-descuento') as HTMLInputElement).checked;
+            const descuentoValor = (form.elements.namedItem('descuento-valor') as HTMLInputElement).value.trim();
+
+            if (!matricula) { isValid = false; if(showAllErrors) showError('matricula', 'La matrícula es requerida.'); } else { clearError('matricula'); }
+            if (!nombre || !nameRegex.test(nombre)) { isValid = false; if(showAllErrors) showError('nombre-completo', 'Ingrese un nombre válido.'); } else { clearError('nombre-completo'); }
+            if (!campusOptions.includes(campusOrigen)) { isValid = false; if(showAllErrors) showError('campus-origen', 'Seleccione un campus de origen válido.'); } else { clearError('campus-origen'); }
+            if (!campusOptions.includes(campusDestino)) { isValid = false; if(showAllErrors) showError('campus-destino', 'Seleccione un campus de destino válido.'); } else { clearError('campus-destino'); }
+            if (campusOrigen && campusDestino && campusOrigen === campusDestino) { isValid = false; if(showAllErrors) showError('campus-destino', 'El campus de destino no puede ser el mismo que el de origen.'); } else if (campusOptions.includes(campusDestino)) { clearError('campus-destino'); }
+            if (!carreraOptions.includes(carrera)) { isValid = false; if(showAllErrors) showError('carrera', 'Seleccione una carrera válida.'); } else { clearError('carrera'); }
+            if (tieneDescuento) {
+                const descValue = parseInt(descuentoValor, 10);
+                if (isNaN(descValue) || descValue <= 0 || descValue > 99) {
+                    isValid = false; if(showAllErrors) showError('descuento-valor', 'Debe ser > 0.');
+                } else { clearError('descuento-valor'); }
+            } else { clearError('descuento-valor'); }
+            
+            submitButton.disabled = !isValid;
+            return isValid;
+        };
+
+        // --- Setup Common Modal Logic ---
+        setupModal({
+            idPrefix: 'nuevo-traslado',
+            storageKey: 'nuevoTrasladoFormData',
+            validate: (showErrors) => validate(showErrors),
+            getFormData: () => ({
+                matricula: (form.elements.namedItem('matricula') as HTMLInputElement).value,
+                'nombre-completo': (form.elements.namedItem('nombre-completo') as HTMLInputElement).value,
+                'campus-origen': (form.elements.namedItem('campus-origen') as HTMLInputElement).value,
+                'campus-destino': (form.elements.namedItem('campus-destino') as HTMLInputElement).value,
+                carrera: (form.elements.namedItem('carrera') as HTMLInputElement).value,
+                'tiene-descuento': (form.elements.namedItem('tiene-descuento') as HTMLInputElement).checked,
+                'descuento-valor': (form.elements.namedItem('descuento-valor') as HTMLInputElement).value,
+                escolarizada: (form.elements.namedItem('escolarizada') as HTMLInputElement).checked,
+                'bloque-sugerido': (form.elements.namedItem('bloque-sugerido') as HTMLSelectElement).value,
+            }),
+            loadFormData: (data) => {
+                if (!form) return;
+                (form.elements.namedItem('matricula') as HTMLInputElement).value = data.matricula || '';
+                (form.elements.namedItem('nombre-completo') as HTMLInputElement).value = data['nombre-completo'] || '';
+                (form.elements.namedItem('campus-origen') as HTMLInputElement).value = data['campus-origen'] || '';
+                (form.elements.namedItem('campus-destino') as HTMLInputElement).value = data['campus-destino'] || '';
+                (form.elements.namedItem('carrera') as HTMLInputElement).value = data.carrera || '';
+                (form.elements.namedItem('tiene-descuento') as HTMLInputElement).checked = data['tiene-descuento'] || false;
+                (form.elements.namedItem('descuento-valor') as HTMLInputElement).value = data['descuento-valor'] || '';
+                (form.elements.namedItem('escolarizada') as HTMLInputElement).checked = data.escolarizada || false;
+                (form.elements.namedItem('bloque-sugerido') as HTMLSelectElement).value = data['bloque-sugerido'] || '';
+                tieneDescuentoCheckbox.dispatchEvent(new Event('change'));
+            },
+            swalConfig: {
+                title: '¡Éxito!',
+                text: 'Tu solicitud de traslado ha sido enviada.',
+                icon: 'success',
+                timer: 2000,
+                timerProgressBar: true,
+                confirmButtonText: 'Entendido',
+            },
+            onSuccess: () => {
+                form.querySelectorAll('[role="alert"]').forEach(el => {
+                    el.classList.add('hidden');
+                    el.textContent = '';
+                });
+            }
+        });
+
+        // Setup specific features after common setup
+        setupAutocomplete('campus-origen', 'campus-origen-suggestions', campusOptions);
+        setupAutocomplete('campus-destino', 'campus-destino-suggestions', campusOptions);
+        setupAutocomplete('carrera', 'carrera-suggestions', carreraOptions);
+    }
+
+    document.addEventListener('astro:page-load', initNuevoTrasladoModal);
+</script>

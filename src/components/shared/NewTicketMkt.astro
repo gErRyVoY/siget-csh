@@ -1,0 +1,214 @@
+---
+import XIcon from '@/components/icons/XIcon.astro';
+import AddTicketMkt from '@/components/icons/AddTicketMkt.astro';
+
+
+const webOptions = ["Convenios", "Diseño de postal", "Mailings", "Firmas digitales", "Material para redes sociales", "Otros"];
+const designOptions = ["Archivos digitales para impresión", "Artículos promocionales", "Arte para Sistema Humanitas", "Arte para Web Humanitas", "Botargas", "Material de decoración Institucional para campus y cafetería", "Papelería y material de promoción", "Proyectos especiales", "Señalizaciones y etiquetas", "Stands y mueblería publicitaria", "Otros"];
+---
+
+<div 
+    id="nuevo-ticket-mkt-wrapper" 
+    class="my-2"
+    data-web-options={JSON.stringify(webOptions)}
+    data-design-options={JSON.stringify(designOptions)}
+>
+    <button 
+        id="nuevo-ticket-mkt-trigger"
+        type="button"
+        class="w-full flex items-center gap-3 rounded-md px-4 py-2.5 text-sm font-semibold bg-primary text-primary-foreground hover:bg-secondary/90 transition-colors duration-500 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-secondary/90"
+    >
+        <AddTicketMkt class="h-5 w-5" />
+        <span class="group-data-[sidebar-collapsed=true]:hidden">Marketing</span>
+    </button>
+
+    <div
+        id="nuevo-ticket-mkt-modal"
+        data-state="closed"
+        class=" fixed inset-0 z-50 flex items-start justify-center pt-28
+                transition-opacity duration-300 
+                opacity-0 data-[state=open]:opacity-100
+                pointer-events-none data-[state=open]:pointer-events-auto"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="nuevo-ticket-mkt-title"
+    >
+        <div 
+            id="nuevo-ticket-mkt-overlay"
+            class="absolute inset-0 bg-gray-900/70 backdrop-blur-sm"
+            aria-hidden="true"
+        ></div>
+        <div 
+            id="nuevo-ticket-mkt-dialog"
+            class=" relative bg-card text-card-foreground rounded-lg border shadow-lg p-6 w-full max-w-lg
+                    transition-all duration-300 ease-in-out
+                    -translate-y-10 scale-95 data-[state=open]:translate-y-0 data-[state=open]:scale-100"
+        >
+            <div class="flex items-start justify-between">
+                <h2 id="nuevo-ticket-mkt-title" class="text-lg font-semibold">Nueva solicitud para Marketing</h2>
+                <button id="nuevo-ticket-mkt-close" type="button" class="p-1 rounded-md hover:bg-accent text-muted-foreground">
+                    <span class="sr-only">Cerrar</span>
+                    <XIcon class="h-5 w-5" />
+                </button>
+            </div>
+
+            <form id="nuevo-ticket-mkt-form" class="mt-4 space-y-4">
+                <div>
+                    <label for="tipo-requerimiento" class="block text-sm font-medium text-foreground">Tipo de requerimiento</label>
+                    <select id="tipo-requerimiento" name="tipo-requerimiento" class="mt-1 block w-full rounded-md border-border bg-input p-2 focus:ring-ring focus:border-ring">
+                        <option value="" selected disabled>Selecciona una opción</option>
+                        <option value="web">Web</option>
+                        <option value="diseno">Diseño y publicidad</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="sub-requerimiento" class="block text-sm font-medium text-foreground">Sub-requerimiento</label>
+                    <select id="sub-requerimiento" name="sub-requerimiento" class="mt-1 block w-full rounded-md border-border bg-input p-2 focus:ring-ring focus:border-ring disabled:bg-muted/50 disabled:cursor-not-allowed" disabled>
+                        <option value="" selected disabled>Selecciona una opción</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="descripcion-mkt" class="block text-sm font-medium text-foreground">Descripción</label>
+                    <textarea id="descripcion-mkt" name="descripcion-mkt" rows="4" class="mt-1 block w-full rounded-md border-border bg-input p-2 focus:ring-ring focus:border-ring" placeholder="Describe tu solicitud..."></textarea>
+                </div>
+                <div>
+                    <label for="adjuntar-archivo-mkt" class="block text-sm font-medium text-foreground">Adjuntar archivo(s)</label>
+                    <input type="file" id="adjuntar-archivo-mkt" name="adjuntar-archivo-mkt" class="mt-1 block w-full text-sm text-foreground file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-primary-foreground hover:file:bg-primary/90" accept=".pdf,.jpeg,.jpg,.png" multiple>
+                    <p id="archivo-error-mkt" class="text-secondary text-sm mt-1 hidden"></p>
+                </div>
+                <div class="flex justify-end pt-2">
+                    <button 
+                        type="submit" 
+                        id="nuevo-ticket-mkt-submit"
+                        class="bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-2 rounded-md text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                        disabled>
+                        Enviar Solicitud
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    import { setupModal } from '@/lib/modal-controller';
+
+    function initNuevoTicketMktModal() {
+        const wrapper = document.getElementById('nuevo-ticket-mkt-wrapper');
+        if (!wrapper) return;
+
+        // --- Get Elements ---
+        const form = document.getElementById('nuevo-ticket-mkt-form') as HTMLFormElement;
+        const submitButton = document.getElementById('nuevo-ticket-mkt-submit') as HTMLButtonElement;
+        const tipoRequerimientoSelect = document.getElementById('tipo-requerimiento') as HTMLSelectElement;
+        const subRequerimientoSelect = document.getElementById('sub-requerimiento') as HTMLSelectElement;
+        const fileInput = document.getElementById('adjuntar-archivo-mkt') as HTMLInputElement;
+        const fileError = document.getElementById('archivo-error-mkt') as HTMLParagraphElement;
+
+        // --- Specific Logic for this Modal ---
+        const webOptions = JSON.parse(wrapper.dataset.webOptions || '[]');
+        const designOptions = JSON.parse(wrapper.dataset.designOptions || '[]');
+
+        tipoRequerimientoSelect.addEventListener('change', (e) => {
+            const selection = (e.target as HTMLSelectElement).value;
+            subRequerimientoSelect.innerHTML = '<option value="" selected disabled>Selecciona una opción</option>';
+            let options: string[] = [];
+            if (selection === 'web') options = webOptions;
+            else if (selection === 'diseno') options = designOptions;
+            subRequerimientoSelect.disabled = options.length === 0;
+            if (!subRequerimientoSelect.disabled) {
+                options.forEach((opt: string) => {
+                    const optionEl = document.createElement('option');
+                    optionEl.value = opt.toLowerCase().replace(/\s+/g, '-');
+                    optionEl.textContent = opt;
+                    subRequerimientoSelect.appendChild(optionEl);
+                });
+            }
+        });
+
+        fileInput.addEventListener('change', () => {
+            const files = fileInput.files;
+            if (!files) return;
+            const allowedExtensions = ['pdf', 'jpeg', 'jpg', 'png'];
+            const MAX_FILE_SIZE_MB = 5;
+            const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
+            const validFiles: File[] = [];
+            const oversizedFiles: string[] = [];
+            let hasInvalidType = false;
+            for (const file of Array.from(files)) {
+                const fileExtension = file.name.split('.').pop()?.toLowerCase() || '';
+                if (!allowedExtensions.includes(fileExtension)) {
+                    hasInvalidType = true;
+                    continue;
+                }
+                if (file.size > MAX_FILE_SIZE_BYTES) {
+                    oversizedFiles.push(file.name);
+                } else {
+                    validFiles.push(file);
+                }
+            }
+            const dataTransfer = new DataTransfer();
+            validFiles.forEach(file => dataTransfer.items.add(file));
+            fileInput.files = dataTransfer.files;
+            let errorMessages: string[] = [];
+            if (hasInvalidType) errorMessages.push('Se eliminaron archivos con extensión no permitida (solo pdf, jpeg, jpg, png).');
+            if (oversizedFiles.length > 0) {
+                const fileList = oversizedFiles.join(', ');
+                const message = oversizedFiles.length > 1
+                    ? `Los siguientes archivos exceden el límite de ${MAX_FILE_SIZE_MB}MB: ${fileList}.`
+                    : `El archivo "${fileList}" excede el límite de ${MAX_FILE_SIZE_MB}MB.`;
+                errorMessages.push(message);
+            }
+            if (errorMessages.length > 0) {
+                fileError.innerHTML = errorMessages.join('<br>');
+                fileError.classList.remove('hidden');
+            } else {
+                fileError.classList.add('hidden');
+            }
+        });
+
+        // --- Setup Common Modal Logic ---
+        setupModal({
+            idPrefix: 'nuevo-ticket-mkt',
+            storageKey: 'nuevoTicketMktFormData',
+            validate: () => {
+                if (!form || !submitButton) return false;
+                const tipo = (form.elements.namedItem('tipo-requerimiento') as HTMLSelectElement).value;
+                const sub = (form.elements.namedItem('sub-requerimiento') as HTMLSelectElement).value;
+                const desc = (form.elements.namedItem('descripcion-mkt') as HTMLTextAreaElement).value.trim();
+                const isValid = tipo !== '' && sub !== '' && desc !== '';
+                submitButton.disabled = !isValid;
+                return isValid;
+            },
+            getFormData: () => ({
+                'tipo-requerimiento': (form.elements.namedItem('tipo-requerimiento') as HTMLSelectElement).value,
+                'sub-requerimiento': (form.elements.namedItem('sub-requerimiento') as HTMLSelectElement).value,
+                'descripcion-mkt': (form.elements.namedItem('descripcion-mkt') as HTMLTextAreaElement).value,
+            }),
+            loadFormData: (data) => {
+                if (!form) return;
+                const tipoSelect = form.elements.namedItem('tipo-requerimiento') as HTMLSelectElement;
+                tipoSelect.value = data['tipo-requerimiento'] || '';
+                tipoSelect.dispatchEvent(new Event('change'));
+                (form.elements.namedItem('sub-requerimiento') as HTMLSelectElement).value = data['sub-requerimiento'] || '';
+                (form.elements.namedItem('descripcion-mkt') as HTMLTextAreaElement).value = data['descripcion-mkt'] || '';
+            },
+            swalConfig: {
+                title: '¡Éxito!',
+                text: 'Tu solicitud de marketing ha sido enviada.',
+                icon: 'success',
+                timer: 2000,
+                timerProgressBar: true,
+                confirmButtonText: 'Entendido',
+            },
+            onSuccess: () => {
+                if (fileError) {
+                    fileError.classList.add('hidden');
+                    fileError.textContent = '';
+                }
+            }
+        });
+    }
+
+    document.addEventListener('astro:page-load', initNuevoTicketMktModal);
+</script>

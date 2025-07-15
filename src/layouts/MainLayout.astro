@@ -1,0 +1,95 @@
+---
+import Sidebar from '@/components/shared/Sidebar.astro';
+import PanelLeftClose from '@/components/icons/PanelLeftClose.astro';
+import '@/styles/global.css'; 
+import { ClientRouter } from 'astro:transitions';
+
+interface Props {
+	title: string;
+}
+const { title } = Astro.props;
+---
+
+<!doctype html>
+<html lang="es-MX">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width" />
+    <link rel="icon" type="image/svg+xml" href="/logo-h-wine.png" />
+    <meta name="generator" content={Astro.generator} />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <title>{ title } | CSH</title>
+
+    <ClientRouter />
+</head>
+<body>
+    <div id="dashboard-wrapper" class="h-screen w-screen bg-background flex group font-montse">
+        <Sidebar />
+    
+        <div
+            id="main-content"
+            class=" relative flex-1 flex flex-col h-full overflow-y-auto
+                    transition-[margin-left] duration-300 ease-in-out 
+                    ml-0 md:ml-64 group-data-[sidebar-collapsed=false]:ml-64 group-data-[sidebar-collapsed=true]:ml-0"
+        >
+            <header class="h-[var(--header-height)] flex items-center border-b border-border px-6 sticky top-0 bg-background/80 backdrop-blur-lg z-30">
+                <button id="sidebar-toggle-button" class="mr-4 p-2 rounded-md hover:bg-accent">
+                    <PanelLeftClose class="h-5 w-5" />
+                </button>
+                <h1 class="text-xl font-semibold  h-16 flex items-center justify-center">{ title }</h1>
+            </header>
+
+            <main class="p-4 flex-1">
+                <div class="group-data-[sidebar-collapsed=false]:max-md:hidden h-full">
+                    <slot />
+                </div>
+                <div 
+                    id="mobile-overlay-message" 
+                    class=" hidden group-data-[sidebar-collapsed=false]:max-md:flex
+                            absolute inset-0 top-[var(--header-height)] bg-background/80 backdrop-blur-sm cursor-pointer 
+                            items-center justify-center p-8 text-center font-semibold text-foreground z-20"
+                >
+                    Toque aquí para ver el contenido
+                </div>
+            </main>
+        </div>
+    </div>
+</body>
+</html>
+
+<script>
+    function setupSidebar() {
+        const dashboardWrapper = document.getElementById('dashboard-wrapper') as HTMLElement;
+        const toggleButton = document.getElementById('sidebar-toggle-button') as HTMLButtonElement;
+        const mobileOverlay = document.getElementById('mobile-overlay-message') as HTMLElement;
+
+        if (!dashboardWrapper || !toggleButton || !mobileOverlay) return;
+
+        function setSidebarState(isCollapsed: boolean) {
+            dashboardWrapper.setAttribute('data-sidebar-collapsed', String(isCollapsed));
+        }
+
+        function handleSidebarForViewport() {
+            if (window.innerWidth < 768) {
+                setSidebarState(true);
+            } else {
+                setSidebarState(false);
+            }
+        }
+
+        toggleButton.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const isCollapsed = dashboardWrapper.getAttribute('data-sidebar-collapsed') === 'true';
+            setSidebarState(!isCollapsed);
+        });
+
+        mobileOverlay.addEventListener('click', () => setSidebarState(true));
+
+        window.addEventListener('resize', handleSidebarForViewport);
+        handleSidebarForViewport();
+    }
+
+    document.addEventListener('astro:page-load', setupSidebar);
+</script>

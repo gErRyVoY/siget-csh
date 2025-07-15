@@ -1,0 +1,46 @@
+---
+import NavItem from './NavItem.astro';
+import ChevronDownIcon from '../icons/ChevronDownIcon.astro';
+
+interface NavItemProps {
+    href: string;
+    label: string;
+    icon: any;
+}
+
+interface Props {
+    title: string;
+    items: NavItemProps[];
+    pathname: string;
+}
+
+const { title, items, pathname } = Astro.props;
+
+// Determina si algún enlace de esta sección está activo.
+const isSectionActive = items.some(item => item.href === pathname);
+const contentId = `collapsible-content-${title.toLowerCase().replace(/\s+/g, '-')}`;
+---
+
+<div class="collapsible-section group my-1" data-state={isSectionActive ? 'open' : 'closed'}>
+    <button
+        type="button"
+        class:list={[
+            "collapsible-trigger flex items-center w-full p-2 rounded-md group-data-[sidebar-collapsed=true]:justify-center  transition-colors duration-500",
+            isSectionActive ? 'bg-secondary text-secondary-foreground' : 'hover:bg-secondary/90 hover:text-primary-foreground'
+        ]}
+        aria-expanded={isSectionActive ? 'true' : 'false'}
+        aria-controls={contentId}
+    >
+        <span class="font-semibold group-data-[sidebar-collapsed=true]:hidden">{title}</span>
+        <ChevronDownIcon class="ml-auto h-5 w-5 transition-transform duration-300 group-data-[state=open]:rotate-180 group-data-[sidebar-collapsed=true]:hidden" />
+    </button>
+    <div id={contentId} class="collapsible-content grid grid-rows-[0fr] transition-[grid-template-rows] duration-300 ease-in-out group-data-[state=open]:grid-rows-[1fr]">
+        <div class="overflow-hidden">
+            <div class="pt-1 pl-4 space-y-1 group-data-[sidebar-collapsed=true]:pl-0">
+                {items.map(item => (
+                    <NavItem {...item} active={item.href === pathname} />
+                ))}
+            </div>
+        </div>
+    </div>
+</div>

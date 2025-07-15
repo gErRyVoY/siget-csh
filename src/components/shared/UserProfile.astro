@@ -1,0 +1,95 @@
+---
+import MoreHorizontalIcon from '@/components/icons/MoreHorizontalIcon.astro';
+import UserCircleIcon from '@/components/icons/UserCircleIcon.astro';
+import BillingIcon from '@/components/icons/BillingIcon.astro';
+import LogoutIcon from '@/components/icons/LogoutIcon.astro';
+
+const menuItems = [
+    { href: "/account", label: "Account", icon: UserCircleIcon },
+    { href: "/billing", label: "Billing", icon: BillingIcon },
+    { href: "/logout", label: "Log out", icon: LogoutIcon, destructive: true },
+];
+---
+<div id="user-profile-wrapper" class="relative">
+
+    <div 
+        id="user-menu" 
+        data-open="false"
+        class=" absolute bottom-10 left-2 mb-3 w-56 p-1.5 rounded-md
+                bg-popover text-popover-foreground border border-border shadow-lg
+                transition-all duration-200 ease-in-out
+                transform-gpu origin-bottom
+                opacity-0 scale-95 data-[open=true]:opacity-100 data-[open=true]:scale-100
+                pointer-events-none data-[open=true]:pointer-events-auto"
+    >
+        <div class="flex">
+            <div class="w-10 h-10 rounded-full bg-muted flex items-center justify-center font-bold">CN</div>
+            <div class="px-2 py-1.5">
+                <p class="text-sm font-semibold">shadcn</p>
+                <p class="text-xs text-muted-foreground">m@example.com</p>
+            </div>
+        </div>
+        <div class="h-px bg-border my-1"></div>
+        {menuItems.map(item => (
+            <a 
+                href={item.href} 
+                class:list={[
+                    "flex items-center gap-3 w-full px-2 py-1.5 text-sm rounded-sm hover:bg-accent",
+                    item.destructive && "text-destructive hover:bg-destructive/10"
+                ]}
+            >
+                <item.icon class="h-4 w-4" />
+                <span>{item.label}</span>
+            </a>
+        ))}
+    </div>
+
+    <button 
+        id="user-menu-trigger" 
+        type="button"
+        class="group w-full flex items-center gap-3 p-2 rounded-md cursor-pointer"
+    >
+        <div class="w-10 h-10 rounded-full bg-muted flex items-center justify-center font-bold">CN</div>
+        <div class="text-left group-data-[sidebar-collapsed=true]:hidden">
+            <p class="text-sm font-semibold">shadcn</p>
+            <p class="text-xs text-muted-foreground">m@example.com</p>
+        </div>
+        <div class="ml-auto group-data-[sidebar-collapsed=true]:hidden">
+            <MoreHorizontalIcon class="h-5 w-5" />
+        </div>
+    </button>
+</div>
+
+<script>
+    function initUserProfileMenu() {
+        const wrapper = document.getElementById('user-profile-wrapper') as HTMLElement;
+        const trigger = document.getElementById('user-menu-trigger') as HTMLButtonElement;
+        const menu = document.getElementById('user-menu') as HTMLElement;
+
+
+        const toggleMenu = (force?: boolean) => {
+            const isOpen = menu.dataset.open === 'true';
+            const newState = force === undefined ? !isOpen : force;
+            menu.dataset.open = String(newState);
+        };
+
+        trigger.addEventListener('click', (e) => {
+            e.stopPropagation();
+            toggleMenu();
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!wrapper.contains(e.target as Node)) {
+                toggleMenu(false);
+            }
+        });
+        
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                toggleMenu(false);
+            }
+        });
+    }
+
+    document.addEventListener('astro:page-load', initUserProfileMenu);
+</script>

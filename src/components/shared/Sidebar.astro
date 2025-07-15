@@ -1,0 +1,124 @@
+---
+// Icons
+import AllTicketsIcon from '@/components/icons/AllTicketsIcon.astro';
+import CreateMailIcon from '@/components/icons/CreateMailIcon.astro';
+import KnowledgeBaseIcon from '@/components/icons/KnowledgeBaseIcon.astro';
+import ManageTicketsIcon from '@/components/icons/ManageTicketsIcon.astro';
+import ManageUsersIcon from '@/components/icons/ManageUsersIcon.astro';
+import MyTicketsIcon from '@/components/icons/MyTicketsIcon.astro';
+import OfficeHours from '@/components/icons/OfficeHours.astro';
+// import PlatformIcon from '@/components/icons/PlatformIcon.astro';
+import RemoteSupportIcon from '@/components/icons/RemoteSupportIcon.astro';
+import SearchMailIcon from '@/components/icons/SearchMailIcon.astro';
+import UpdateMailIcon from '@/components/icons/UpdateMailIcon.astro';
+
+
+import CollapsibleNavSection from '@/components/shared/CollapsibleNavSection.astro';
+import NavItem from '@/components/shared/NavItem.astro';
+import NewTicket from '@/components/shared/NewTicket.astro';
+import NewTicketMkt from '@/components/shared/NewTicketMkt.astro';
+import NewTransfer from '@/components/shared/NewTransfer.astro';
+import PlataformaHumanitas from './PlataformaHumanitas.astro';
+import UserProfile from '@/components/shared/UserProfile.astro';
+
+
+const { pathname } = Astro.url;
+const { id = 'invitado' } = Astro.params;
+
+
+const mainNavItems = [
+    { href: 'https://my.anydesk.com/download/DftqvrQy/AnyDesk_Universidad_Humanitas.exe', label: 'Asistencia remota', icon: RemoteSupportIcon },
+    { href: '/base-de-conocimientos', label: 'Base de conocimientos', icon: KnowledgeBaseIcon },
+    { href: '/horario-de-atencion', label: 'Horario de atención', icon: OfficeHours },
+];
+
+const ticketSections = [
+    {
+        title: 'Tickets soporte',
+        items: [
+            { href: `/tickets/soporte/${id}`, label: 'Mis tickets', icon: MyTicketsIcon },
+            { href: '/tickets/soporte', label: 'Todos', icon: AllTicketsIcon },
+        ]
+    },
+    {
+        title: 'Tickets marketing',
+        items: [
+            { href: `/tickets/marketing/${id}`, label: 'Mis tickets', icon: MyTicketsIcon },
+            { href: '/tickets/marketing', label: 'Todos', icon: AllTicketsIcon },
+        ]
+    }
+];
+
+const adminSections = [
+    { title: 'Correos institucionales', items: [
+        { href: '/admin/correos/crear', label: 'Crear', icon: CreateMailIcon },
+        { href: '/admin/correos/actualizar', label: 'Actualizar', icon: UpdateMailIcon },
+    ]},
+    { title: 'SiGeT', items: [
+        { href: '/admin/tickets', label: 'Tickets', icon: ManageTicketsIcon },
+        { href: '/admin/usuarios', label: 'Usuarios', icon: ManageUsersIcon },
+    ]}
+];
+---
+
+<aside
+    id="sidebar"
+    class=" bg-sidebar text-sidebar-foreground border-r border-border h-full flex flex-col
+            transition-transform duration-300 ease-in-out
+            w-64 fixed inset-y-0 left-0 z-50
+            group-data-[sidebar-collapsed=true]:-translate-x-full"
+>
+    <div class="h-[var(--header-height)] border-b border-border flex items-center px-6 shrink-0">
+        <a href="/" class="flex items-center gap-2">
+            <img src="/logo-h-wine.png" alt="Humanitas" class="h-8 w-8" />
+            <span class="font-bold text-lg group-data-[sidebar-collapsed=true]:hidden">C S H</span>
+        </a>
+    </div>
+
+    <nav class="flex-1 py-4 px-2 space-y-1 overflow-y-auto">
+        <div class="px-2 mb-2 text-sm font-semibold text-muted-foreground group-data-[sidebar-collapsed=true]:hidden">Abrir ticket</div>
+        <NewTicket />
+        <NewTransfer />
+        <NewTicketMkt />
+
+        <div class="border-t border-border my-3"></div>
+
+        {ticketSections.map(section => (
+            <CollapsibleNavSection title={section.title} items={section.items} pathname={pathname} />
+        ))}
+
+
+        <div class="py-2 border-t border-b border-border">
+            <PlataformaHumanitas />
+            {mainNavItems.map(item => (
+                <NavItem {...item} active={item.href === '/' ? pathname === '/' : pathname.startsWith(item.href)} />
+            ))}
+        </div>
+
+        <div class="px-2 pt-2 text-sm font-semibold text-muted-foreground group-data-[sidebar-collapsed=true]:hidden">Administrador</div>
+        {adminSections.map(section => (
+            <CollapsibleNavSection title={section.title} items={section.items} pathname={pathname} />
+        ))}
+    </nav>
+    
+    <div class="p-2 border-t border-border mt-auto shrink-0">
+        <UserProfile />
+    </div>
+</aside>
+
+<script>
+    function setupCollapsibleSections() {
+        const triggers = document.querySelectorAll('.collapsible-trigger');
+        triggers.forEach(trigger => {
+            trigger.addEventListener('click', () => {
+                const section = trigger.closest('.collapsible-section');
+                if (section) {
+                    const isOpening = section.getAttribute('data-state') === 'closed';
+                    section.setAttribute('data-state', isOpening ? 'open' : 'closed');
+                    trigger.setAttribute('aria-expanded', String(isOpening));
+                }
+            });
+        });
+    }
+    document.addEventListener('astro:page-load', setupCollapsibleSections);
+</script>
