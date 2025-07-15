@@ -1,58 +1,80 @@
 ---
+import type { Session } from "@auth/core/types";
 import MoreHorizontalIcon from '@/components/icons/MoreHorizontalIcon.astro';
-import UserCircleIcon from '@/components/icons/UserCircleIcon.astro';
-import BillingIcon from '@/components/icons/BillingIcon.astro';
 import LogoutIcon from '@/components/icons/LogoutIcon.astro';
 
-const menuItems = [
-    { href: "/account", label: "Account", icon: UserCircleIcon },
-    { href: "/billing", label: "Billing", icon: BillingIcon },
-    { href: "/logout", label: "Log out", icon: LogoutIcon, destructive: true },
-];
+interface Props {
+    session: Session | null;
+}
+
+const { session } = Astro.props;
+const user = session?.user;
+
+// Obtener iniciales del usuario si no hay imagen de perfil
+const initials = user?.name
+    ?.split(' ')
+    .map(n => n[0])
+    .join('')
+    .substring(0, 2)
+    .toUpperCase() || '';
 ---
 <div id="user-profile-wrapper" class="relative">
 
+    <!-- Menú desplegable del usuario -->
     <div 
         id="user-menu" 
         data-open="false"
-        class=" absolute bottom-10 left-2 mb-3 w-56 p-1.5 rounded-md
+        class=" absolute bottom-full left-2 mb-3 w-56 p-1.5 rounded-md
                 bg-popover text-popover-foreground border border-border shadow-lg
                 transition-all duration-200 ease-in-out
                 transform-gpu origin-bottom
                 opacity-0 scale-95 data-[open=true]:opacity-100 data-[open=true]:scale-100
                 pointer-events-none data-[open=true]:pointer-events-auto"
     >
-        <div class="flex">
-            <div class="w-10 h-10 rounded-full bg-muted flex items-center justify-center font-bold">CN</div>
+        <!-- Cabecera del menú con info del usuario -->
+        <div class="flex p-1">
+            {user?.image ? (
+                <img src={user.image} alt={user.name || 'Avatar'} class="w-10 h-10 rounded-full" />
+            ) : (
+                <div class="w-10 h-10 rounded-full bg-muted flex items-center justify-center font-bold text-muted-foreground">
+                    {initials}
+                </div>
+            )}
             <div class="px-2 py-1.5">
-                <p class="text-sm font-semibold">shadcn</p>
-                <p class="text-xs text-muted-foreground">m@example.com</p>
+                <p class="text-sm font-semibold">{user?.name || 'Usuario'}</p>
+                <p class="text-xs text-muted-foreground">{user?.email || ''}</p>
             </div>
         </div>
         <div class="h-px bg-border my-1"></div>
-        {menuItems.map(item => (
-            <a 
-                href={item.href} 
-                class:list={[
-                    "flex items-center gap-3 w-full px-2 py-1.5 text-sm rounded-sm hover:bg-accent",
-                    item.destructive && "text-destructive hover:bg-destructive/10"
-                ]}
+
+        <!-- Formulario para Cerrar Sesión -->
+        <form action="/api/auth/signout" method="post">
+            <button
+                type="submit"
+                class="flex items-center gap-3 w-full px-2 py-1.5 text-sm rounded-sm text-destructive hover:bg-destructive/10"
             >
-                <item.icon class="h-4 w-4" />
-                <span>{item.label}</span>
-            </a>
-        ))}
+                <LogoutIcon class="h-4 w-4" />
+                <span>Cerrar Sesión</span>
+            </button>
+        </form>
     </div>
 
+    <!-- Botón principal que muestra el perfil y activa el menú -->
     <button 
         id="user-menu-trigger" 
         type="button"
-        class="group w-full flex items-center gap-3 p-2 rounded-md cursor-pointer"
+        class="group w-full flex items-center gap-3 p-2 rounded-md hover:bg-accent cursor-pointer"
     >
-        <div class="w-10 h-10 rounded-full bg-muted flex items-center justify-center font-bold">CN</div>
+        {user?.image ? (
+            <img src={user.image} alt={user.name || 'Avatar'} class="w-10 h-10 rounded-full" />
+        ) : (
+            <div class="w-10 h-10 rounded-full bg-muted flex items-center justify-center font-bold text-muted-foreground">
+                {initials}
+            </div>
+        )}
         <div class="text-left group-data-[sidebar-collapsed=true]:hidden">
-            <p class="text-sm font-semibold">shadcn</p>
-            <p class="text-xs text-muted-foreground">m@example.com</p>
+            <p class="text-sm font-semibold">{user?.name || 'Usuario'}</p>
+            <p class="text-xs text-muted-foreground">{user?.email || ''}</p>
         </div>
         <div class="ml-auto group-data-[sidebar-collapsed=true]:hidden">
             <MoreHorizontalIcon class="h-5 w-5" />
@@ -62,10 +84,11 @@ const menuItems = [
 
 <script>
     function initUserProfileMenu() {
-        const wrapper = document.getElementById('user-profile-wrapper') as HTMLElement;
-        const trigger = document.getElementById('user-menu-trigger') as HTMLButtonElement;
-        const menu = document.getElementById('user-menu') as HTMLElement;
+        const wrapper = document.getElementById('user-profile-wrapper');
+        const trigger = document.getElementById('user-menu-trigger');
+        const menu = document.getElementById('user-menu');
 
+        if (!wrapper || !trigger || !menu) return;
 
         const toggleMenu = (force?: boolean) => {
             const isOpen = menu.dataset.open === 'true';
@@ -78,17 +101,15 @@ const menuItems = [
             toggleMenu();
         });
 
-        document.addEventListener('click', (e) => {
-            if (!wrapper.contains(e.target as Node)) {
+        const closeMenu = (e: MouseEvent | KeyboardEvent) => {
+            if (e instanceof KeyboardEvent && e.key !== 'Escape') return;
+            if (wrapper && !wrapper.contains(e.target as Node)) {
                 toggleMenu(false);
             }
-        });
+        };
         
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') {
-                toggleMenu(false);
-            }
-        });
+        document.addEventListener('click', closeMenu);
+        document.addEventListener('keydown', closeMenu);
     }
 
     document.addEventListener('astro:page-load', initUserProfileMenu);

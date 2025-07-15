@@ -1,16 +1,16 @@
 ---
+import type { Session } from "@auth/core/types";
+
 // Icons
 import AllTicketsIcon from '@/components/icons/AllTicketsIcon.astro';
-import CreateMailIcon from '@/components/icons/CreateMailIcon.astro';
 import KnowledgeBaseIcon from '@/components/icons/KnowledgeBaseIcon.astro';
 import ManageTicketsIcon from '@/components/icons/ManageTicketsIcon.astro';
 import ManageUsersIcon from '@/components/icons/ManageUsersIcon.astro';
 import MyTicketsIcon from '@/components/icons/MyTicketsIcon.astro';
 import OfficeHours from '@/components/icons/OfficeHours.astro';
-// import PlatformIcon from '@/components/icons/PlatformIcon.astro';
 import RemoteSupportIcon from '@/components/icons/RemoteSupportIcon.astro';
-import SearchMailIcon from '@/components/icons/SearchMailIcon.astro';
-import UpdateMailIcon from '@/components/icons/UpdateMailIcon.astro';
+import CreateMailIcon from "../icons/CreateMailIcon.astro";
+import UpdateMailIcon from "../icons/UpdateMailIcon.astro";
 
 
 import CollapsibleNavSection from '@/components/shared/CollapsibleNavSection.astro';
@@ -21,7 +21,11 @@ import NewTransfer from '@/components/shared/NewTransfer.astro';
 import PlataformaHumanitas from './PlataformaHumanitas.astro';
 import UserProfile from '@/components/shared/UserProfile.astro';
 
+interface Props {
+    session: Session | null;
+}
 
+const { session } = Astro.props;
 const { pathname } = Astro.url;
 const { id = 'invitado' } = Astro.params;
 
@@ -102,7 +106,7 @@ const adminSections = [
     </nav>
     
     <div class="p-2 border-t border-border mt-auto shrink-0">
-        <UserProfile />
+        <UserProfile session={session} />
     </div>
 </aside>
 

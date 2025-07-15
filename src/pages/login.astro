@@ -1,16 +1,13 @@
 ---
-import { ClientRouter } from 'astro:transitions';
-
 import '@/styles/global.css'; 
 import GoogleIcon from "@/components/icons/GoogleIcon.astro";
 import { Image } from 'astro:assets';
 
+const title = 'Login | CSH';
 
-interface Props {
-	title: string;
-}
-
-const title = 'Login';
+// Detectar si hay un error de login en la URL
+const { searchParams } = Astro.url;
+const error = searchParams.get('error');
 ---
 
 <!doctype html>
@@ -23,24 +20,34 @@ const title = 'Login';
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <title>{ title } | CSH</title>
-
-    <ClientRouter />
+    <title>{title}</title>
 </head>
 <body>
     <main class="container h-screen w-screen bg-background flex justify-center items-center font-montse">
-        <div class="flex flex-col items-center justify-center gap-25 rounded-xl border-2 border-primary/90 p-4">
+        <div class="flex flex-col items-center justify-center gap-8 rounded-xl border-2 border-primary/90 p-6 shadow-lg max-w-md w-full">
             <Image src={'/logotipo-desde-vino.webp'} alt={'Universidad Humanitas'} width={421} height={57} />
-            <div class="flex flex-col justify-center gap-2">
+            
+            <div class="flex flex-col justify-center gap-4 w-full">
                 <h1 class="text-secondary text-lg text-center">
-                    Incia sesión con tu correo institucional<br>
+                    Inicia sesión con tu correo institucional<br>
                     <span class="italic font-bold">@humanitas.edu.mx</span>
                 </h1>
-                <button class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-xl font-medium focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&amp;_svg]:pointer-events-none [&amp;_svg]:size-4 [&amp;_svg]:shrink-0 bg-primary/90 text-primary-foreground shadow-sm hover:bg-secondary/90 transition-colors duration-500 h-15 px-4 py-2">
-                    <GoogleIcon class="h-10 w-10" />Google
-                </button>
+
+                <!-- Mensaje de Error -->
+                {error === 'DominioNoPermitido' && (
+                    <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4" role="alert">
+                        <p class="font-bold">Acceso Denegado</p>
+                        <p>Solo se permite el acceso con un correo institucional verificado.</p>
+                    </div>
+                )}
+
+                <!-- Enlace de Login (reemplaza el formulario) -->
+                <a href="/api/auth/signin/google" class="w-full inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-xl font-medium focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-primary/90 text-primary-foreground shadow-sm hover:bg-secondary/90 transition-colors duration-500 h-15 px-4 py-2">
+                    <GoogleIcon class="h-10 w-10" />Continuar con Google
+                </a>
             </div>
-            <Image src={'/abeja-2025-se-tu-mejor-version.png'} alt={'Se tu merjor versión.'} width={421} height={57}>
+
+            <Image src={'/abeja-2025-se-tu-mejor-version.png'} alt={'Sé tu mejor versión.'} width={421} height={57} />
         </div>
     </main>
 </body>
