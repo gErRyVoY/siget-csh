@@ -1,0 +1,19 @@
+# Git
+.git
+.gitignore
+
+# Dependencias
+node_modules
+
+# Archivos de build
+dist
+.astro
+
+# Variables de entorno y logs
+.env.*
+*.log
+
+# Archivos del editor
+.vscode
+GEMINI.md
+README.md

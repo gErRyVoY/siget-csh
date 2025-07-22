@@ -2,7 +2,7 @@
 import Sidebar from '@/components/shared/Sidebar.astro';
 import PanelLeftClose from '@/components/icons/PanelLeftClose.astro';
 import '@/styles/global.css'; 
-import { ClientRouter } from 'astro:transitions';
+import ClientRouter from 'astro/components/ClientRouter.astro';
 
 // La sesión ahora se obtiene desde Astro.locals, inyectada por el middleware.
 const session = Astro.locals.session;

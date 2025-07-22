@@ -21,9 +21,17 @@ export const onRequest = defineMiddleware(async (context, next) => {
   // Hacemos que la sesión esté disponible en todas las páginas y componentes.
   context.locals.session = session;
 
+  // Verificamos si la ruta actual es pública.
+  const isPublicRoute = publicRoutes.includes(pathname);
+
+  // Si el usuario está autenticado y trata de acceder a una ruta pública (como /login),
+  // lo redirigimos a la página de inicio.
+  if (session && isPublicRoute) {
+    return context.redirect("/");
+  }
+
   // Si la ruta es pública, permitimos el acceso sin importar la sesión.
-  const isPublic = publicRoutes.some(publicRoute => pathname.startsWith(publicRoute));
-  if (isPublic) {
+  if (isPublicRoute) {
     return next();
   }
 

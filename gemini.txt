@@ -1,0 +1,167 @@
+Claro. Obtener la unidad organizativa (OU) de un usuario de Google Workspace con Auth.js no es directo, ya que no viene incluida en la información básica del perfil. Debes solicitar permisos adicionales y hacer una llamada a la API de Google Admin después de que el usuario inicie sesión.
+
+Aquí te explico el proceso completo, paso a paso.
+
+Concepto Clave: El Flujo de Datos
+Login: El usuario inicia sesión con Google.
+
+Callback jwt: Auth.js recibe el perfil básico y un accessToken.
+
+API Call: Usaremos ese accessToken para hacer una llamada a la API de Google Admin SDK y preguntar "¿Cuál es la OU de este usuario?".
+
+Enriquecer Token: Añadimos la OU que obtuvimos al token JWT de la sesión.
+
+Callback session: Pasamos la información del token a la sesión del cliente para que puedas usarla en tus componentes de Astro.
+
+Paso 1: Configurar los Permisos en Google Cloud
+Esto es lo más importante. Sin los permisos correctos, no funcionará.
+
+Ve a tu proyecto en la Consola de Google Cloud.
+
+En el menú, ve a APIs y servicios > Biblioteca. Busca y activa la Admin SDK API.
+
+Ahora ve a APIs y servicios > Pantalla de consentimiento de OAuth.
+
+Haz clic en Editar la app.
+
+Ve a la sección de "Alcances" (Scopes) y haz clic en "Agregar o quitar alcances".
+
+Busca y añade el siguiente alcance (es sensible, por lo que requiere verificación si tu app es pública):
+
+https://www.googleapis.com/auth/admin.directory.user.readonly
+
+Este permiso le permite a tu aplicación leer los datos de los usuarios de tu dominio de Google Workspace, que es donde se encuentra la OU.
+
+Paso 2: Modificar tu Configuración de Auth.js
+Ahora, en tu proyecto de Astro, ajusta tu archivo de configuración de Auth.js (normalmente auth.config.ts).
+
+TypeScript
+
+// src/auth.config.ts
+import Google from "@auth/core/providers/google";
+import type { AuthConfig } from "@auth/core/types";
+
+export const authConfig: AuthConfig = {
+  providers: [
+    Google({
+      // Pide el nuevo permiso que configuraste
+      authorization: {
+        params: {
+          scope:
+            "openid email profile https://www.googleapis.com/auth/admin.directory.user.readonly",
+        },
+      },
+    }),
+  ],
+  callbacks: {
+    // El callback 'jwt' se ejecuta DESPUÉS del inicio de sesión.
+    // Aquí es donde haremos la llamada a la API de Google Admin.
+    async jwt({ token, profile, account }) {
+      // Solo en el primer inicio de sesión, cuando 'profile' y 'account' están disponibles.
+      if (profile && account) {
+        // Verifica que el usuario sea de tu dominio (opcional pero recomendado)
+        if (profile.email && profile.email.endsWith("@humanitas.edu.mx")) {
+          try {
+            const response = await fetch(
+              `https://admin.googleapis.com/admin/directory/v1/users/${profile.email}`,
+              {
+                headers: {
+                  Authorization: `Bearer ${account.access_token}`,
+                },
+              }
+            );
+
+            if (response.ok) {
+              const userData = await response.json();
+              // La OU viene en la propiedad 'orgUnitPath'
+              if (userData.orgUnitPath) {
+                token.ou = userData.orgUnitPath; // Añade la OU al token
+              }
+            }
+          } catch (error) {
+            console.error("Error fetching user OU:", error);
+          }
+        }
+      }
+      return token;
+    },
+
+    // El callback 'session' pasa los datos del token a la sesión del cliente.
+    async session({ session, token }) {
+      // Añade la propiedad 'ou' al objeto 'user' de la sesión
+      if (session.user) {
+        session.user.ou = token.ou as string;
+      }
+      return session;
+    },
+  },
+};
+
+// Necesitas extender los tipos de Auth.js para que TypeScript reconozca la nueva propiedad 'ou'.
+declare module "@auth/core/types" {
+  interface Session {
+    user?: {
+      ou?: string;
+    } & DefaultSession["user"];
+  }
+}
+
+declare module "@auth/core/jwt" {
+  interface JWT {
+    ou?: string;
+  }
+}
+Paso 3: Usar la Unidad Organizativa en tu App de Astro
+Ahora que la sesión contiene la OU, puedes acceder a ella en cualquier componente .astro o página de tu aplicación.
+
+Fragmento de código
+
+---
+// src/pages/perfil.astro
+import { getSession } from "auth-astro/server";
+
+const session = await getSession(Astro.request);
+
+if (!session) {
+  return Astro.redirect("/login");
+}
+
+const user = session.user;
+const userOU = user?.ou; // Aquí tienes la OU
+---
+
+<html lang="es">
+  <head>
+    <title>Perfil de Usuario</title>
+  </head>
+  <body>
+    <h1>Bienvenido, {user?.name}</h1>
+    <p>Tu correo es: {user?.email}</p>
+    
+    {userOU ? (
+      <p>Tu Unidad Organizativa es: <strong>{userOU}</strong></p>
+    ) : (
+      <p>No se pudo obtener tu Unidad Organizativa.</p>
+    )}
+
+    {userOU === "/Alumnos" && (
+      <div>
+        <h2>Panel de Alumno</h2>
+        <p>Aquí va el contenido exclusivo para alumnos.</p>
+      </div>
+    )}
+
+    {userOU === "/Profesores" && (
+      <div>
+        <h2>Panel de Profesor</h2>
+        <p>Aquí va el contenido exclusivo para profesores.</p>
+      </div>
+    )}
+  </body>
+</html>
+Consideraciones Importantes
+Consentimiento del Administrador: Debido a que solicitas un permiso sensible, es posible que el administrador de Google Workspace de tu organización deba autorizar tu aplicación para que los usuarios puedan dar su consentimiento.
+
+Usuarios Externos: El código debe manejar el caso de que un usuario inicie sesión con una cuenta de Gmail personal (que no pertenece a tu Workspace). En ese caso, la llamada a la API de Admin fallará, y la propiedad ou no existirá. El try...catch y las comprobaciones (if (userOU)) son importantes.
+
+Rendimiento: La llamada extra a la API añade una pequeña latencia (un par de cientos de milisegundos) al proceso de inicio de sesión. Es un costo necesario para obtener esta información.
