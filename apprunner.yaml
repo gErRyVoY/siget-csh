@@ -1,28 +1,17 @@
 version: 1.0
-
 build:
   builder: dockerfile
   docker:
     dockerfile: Dockerfile
-
 run:
   command: node dist/server/entry.mjs --host 0.0.0.0
   port: 4321
-  
-  # La sección de secretos debe seguir esta estructura exacta.
   secrets:
-    # Primer secreto
-    - name: AUTH_SECRET # El nombre de la variable de entorno
-      valueFrom: arn:aws:secretsmanager:us-east-1:296326295345:secret:siget-app-secrets-ayWO38:AUTH_SECRET:: # El ARN del secreto, seguido de la clave del JSON a extraer
-
-    # Segundo secreto
+    - name: AUTH_SECRET
+      valueFrom: arn:aws:secretsmanager:us-east-1:296326295345:secret:siget-app-secrets-ayWO38:AUTH_SECRET::
     - name: AUTH_GOOGLE_ID
       valueFrom: arn:aws:secretsmanager:us-east-1:296326295345:secret:siget-app-secrets-ayWO38:AUTH_GOOGLE_ID::
-
-    # Tercer secreto
     - name: AUTH_GOOGLE_SECRET
       valueFrom: arn:aws:secretsmanager:us-east-1:296326295345:secret:siget-app-secrets-ayWO38:AUTH_GOOGLE_SECRET::
-      
-    # Cuarto secreto
     - name: AUTH_TRUST_HOST
       valueFrom: arn:aws:secretsmanager:us-east-1:296326295345:secret:siget-app-secrets-ayWO38:AUTH_TRUST_HOST::
