@@ -1,0 +1,17 @@
+version: 1.0
+build:
+  builder: dockerfile
+  docker:
+    dockerfile: Dockerfile
+run:
+  command: node dist/server/entry.mjs --host 0.0.0.0
+  port: 4321
+  secrets:
+    - name: AUTH_SECRET
+      valueFrom: "arn:aws:secretsmanager:us-east-1:296326295345:secret:siget-app-secrets-ayWO38:AUTH_SECRET::"
+    - name: AUTH_GOOGLE_ID
+      valueFrom: "arn:aws:secretsmanager:us-east-1:296326295345:secret:siget-app-secrets-ayWO38:AUTH_GOOGLE_ID::"
+    - name: AUTH_GOOGLE_SECRET
+      valueFrom: "arn:aws:secretsmanager:us-east-1:296326295345:secret:siget-app-secrets-ayWO38:AUTH_GOOGLE_SECRET::"
+    - name: AUTH_TRUST_HOST
+      valueFrom: "arn:aws:secretsmanager:us-east-1:296326295345:secret:siget-app-secrets-ayWO38:AUTH_TRUST_HOST::"
