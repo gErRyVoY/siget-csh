@@ -3,6 +3,7 @@ build:
   builder: dockerfile
   docker:
     dockerfile: Dockerfile
+  cache: true
 run:
   command: node dist/server/entry.mjs --host 0.0.0.0
   port: 4321
@@ -15,3 +16,16 @@ run:
       valueFrom: "arn:aws:secretsmanager:us-east-1:296326295345:secret:siget-app-secrets-ayWO38:AUTH_GOOGLE_SECRET::"
     - name: AUTH_TRUST_HOST
       valueFrom: "arn:aws:secretsmanager:us-east-1:296326295345:secret:siget-app-secrets-ayWO38:AUTH_TRUST_HOST::"
+resources:
+    cpu: 1
+    memory: 2
+  scaling:
+    minInstances: 1
+    maxInstances: 10
+    maxConcurrency: 100
+  healthcheck:
+    path: /health
+    interval: 5
+    timeout: 2
+    healthyThreshold: 2
+    unhealthyThreshold: 2

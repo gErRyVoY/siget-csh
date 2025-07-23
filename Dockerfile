@@ -1,6 +1,6 @@
 # --- Etapa 1: Construcción (Builder) ---
 # Usamos una imagen completa de Node para tener las herramientas de construcción.
-FROM node:18 AS builder
+FROM node:18-slim AS builder
 
 # [FIX] Actualizar los paquetes del SO base para mitigar vulnerabilidades conocidas.
 RUN apt-get update && apt-get upgrade -y
@@ -26,10 +26,7 @@ RUN pnpm run build
 
 # --- Etapa 2: Producción (Runner) ---
 # Usamos una imagen limpia y ligera para la ejecución.
-FROM node:18 AS runner
-
-# [FIX] Actualizar los paquetes del SO base para mitigar vulnerabilidades conocidas.
-RUN apt-get update && apt-get upgrade -y
+FROM node:18-alpine AS runner
 
 # Instalar pnpm globalmente también aquí.
 RUN npm install -g pnpm
