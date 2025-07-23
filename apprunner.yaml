@@ -1,0 +1,28 @@
+# Versión de la especificación de App Runner
+version: 1.0
+
+# Configuración de la fase de construcción
+build:
+  # Indica que estamos usando un Dockerfile
+  builder: dockerfile
+  # Define la ruta al Dockerfile dentro del repositorio
+  docker:
+    dockerfile: Dockerfile
+
+# Configuración de la fase de ejecución
+run:
+  # El comando para iniciar la aplicación, que ya conocemos
+  command: node dist/server/entry.mjs --host 0.0.0.0
+  # El puerto que la aplicación expone
+  port: 4321
+  # Define las variables de entorno a partir de AWS Secrets Manager
+  # Este es el método seguro y recomendado para manejar credenciales
+  secrets:
+    - name: AUTH_SECRET # Nombre de la variable de entorno en la app
+      value_from: arn:aws:secretsmanager:us-east-1:296326295345:secret:siget-app-secrets-ayWO38:AUTH_SECRET:: # ARN del secreto específico
+    - name: AUTH_GOOGLE_ID
+      value_from: arn:aws:secretsmanager:us-east-1:296326295345:secret:siget-app-secrets-ayWO38:AUTH_GOOGLE_ID::
+    - name: AUTH_GOOGLE_SECRET
+      value_from: arn:aws:secretsmanager:us-east-1:296326295345:secret:siget-app-secrets-ayWO38:AUTH_GOOGLE_SECRET::
+    - name: AUTH_TRUST_HOST
+      value_from: arn:aws:secretsmanager:us-east-1:296326295345:secret:siget-app-secrets-ayWO38:AUTH_TRUST_HOST::
