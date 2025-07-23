@@ -45,8 +45,7 @@ RUN pnpm install --prod --frozen-lockfile
 # Copiar la carpeta 'dist' con la aplicación construida desde la etapa de construcción.
 COPY --from=builder /app/dist ./dist
 
-# Copiar el archivo .env a la imagen final
-COPY .env ./.env
+
 
 # Exponer el puerto que Astro usa por defecto en producción.
 EXPOSE 4321
