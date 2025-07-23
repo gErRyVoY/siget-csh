@@ -19,10 +19,10 @@ run:
   # Este es el método seguro y recomendado para manejar credenciales
   secrets:
     - name: AUTH_SECRET # Nombre de la variable de entorno en la app
-      value_from: arn:aws:secretsmanager:us-east-1:296326295345:secret:siget-app-secrets-ayWO38:AUTH_SECRET:: # ARN del secreto específico
+      value_from: arn:aws:secretsmanager:us-east-1:296326295345:secret:siget-app-secrets-ayWO38
     - name: AUTH_GOOGLE_ID
-      value_from: arn:aws:secretsmanager:us-east-1:296326295345:secret:siget-app-secrets-ayWO38:AUTH_GOOGLE_ID::
+      value_from: arn:aws:secretsmanager:us-east-1:296326295345:secret:siget-app-secrets-ayWO38
     - name: AUTH_GOOGLE_SECRET
-      value_from: arn:aws:secretsmanager:us-east-1:296326295345:secret:siget-app-secrets-ayWO38:AUTH_GOOGLE_SECRET::
+      value_from: arn:aws:secretsmanager:us-east-1:296326295345:secret:siget-app-secrets-ayWO38
     - name: AUTH_TRUST_HOST
-      value_from: arn:aws:secretsmanager:us-east-1:296326295345:secret:siget-app-secrets-ayWO38:AUTH_TRUST_HOST::
+      value_from: arn:aws:secretsmanager:us-east-1:296326295345:secret:siget-app-secrets-ayWO38
