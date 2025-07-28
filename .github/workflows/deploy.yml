@@ -45,4 +45,4 @@ jobs:
       - name: Trigger App Runner deployment
         run: |
           aws apprunner start-deployment \
-            --service-arn arn:aws:apprunner:us-east-1:296326295345:service/siget-csh-atomated/674c6846ce1848b1b05b5cbb0da9a7ed
+            --service-arn ${{ secrets.AWS_APP_RUNNER_SERVICE_ARN }}
