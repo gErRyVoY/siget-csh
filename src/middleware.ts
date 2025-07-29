@@ -10,7 +10,7 @@ const publicRoutes = [
 export const onRequest = defineMiddleware(async (context, next) => {
   
   // VALIDACIÓN DEL SECRETO DE PRUEBA
-  console.log("Mensaje de depuración:", process.env.DEBUG_MESSAGE);
+  console.log("Mensaje de depuración:", process.env.AUTH_TRUST_HOST);
 
   const { pathname } = context.url;
 
