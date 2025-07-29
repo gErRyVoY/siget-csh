@@ -8,9 +8,10 @@ const publicRoutes = [
 ];
 
 export const onRequest = defineMiddleware(async (context, next) => {
+  
   // VALIDACIÓN DEL SECRETO DE PRUEBA
   console.log("Mensaje de depuración:", process.env.DEBUG_MESSAGE);
-  
+
   const { pathname } = context.url;
 
   // El endpoint de la API de autenticación siempre debe ser accesible.
