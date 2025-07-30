@@ -7,8 +7,8 @@ import Google from "@auth/core/providers/google";
 export default defineConfig({
   providers: [
     Google({
-      clientId: process.env.AUTH_GOOGLE_ID,
-      clientSecret: process.env.AUTH_GOOGLE_SECRET,
+      clientId: import.meta.env.AUTH_GOOGLE_ID,
+      clientSecret: import.meta.env.AUTH_GOOGLE_SECRET,
       authorization: {
         params: {
           scope:
@@ -17,7 +17,7 @@ export default defineConfig({
       },
     }), // Auth.js usará las variables de entorno AUTH_GOOGLE_ID y AUTH_GOOGLE_SECRET
   ],
-  secret: process.env.AUTH_SECRET,
+  secret: import.meta.env.AUTH_SECRET,
   callbacks: {
     async signIn({ account, profile }) {
       // Validar que el perfil y el email existan
