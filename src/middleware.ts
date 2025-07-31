@@ -4,6 +4,7 @@ import { getSession } from "auth-astro/server";
 // Rutas que no requieren autenticación. Todas las demás estarán protegidas.
 const publicRoutes = [
   "/login",
+  "/health",
   // Añade aquí otras rutas públicas si las hubiera, ej: /landing, /about
 ];
 
