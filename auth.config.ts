@@ -1,5 +1,6 @@
 import { defineConfig } from "auth-astro";
 import Google from "@auth/core/providers/google";
+import { google } from "googleapis";
 
 // Configuración simplificada para depuración.
 // Se ha eliminado el callback `signIn` temporalmente.
@@ -35,55 +36,78 @@ export default defineConfig({
         return '/login?error=NoToken';
       }
 
-      // Realizar la llamada a la API de Google para verificar la OU
+      // --- INICIO DE LA NUEVA LÓGICA DE AUTENTICACIÓN ---
       try {
-        const response = await fetch(
-          `https://admin.googleapis.com/admin/directory/v1/users/${profile.email}`,
-          {
-            headers: {
-              Authorization: `Bearer ${account.access_token}`,
-            },
-          }
+        // 1. Cargar las credenciales de la cuenta de servicio desde la variable de entorno
+        const serviceAccountCreds = JSON.parse(
+          process.env.GOOGLE_SERVICE_ACCOUNT_KEY || "{}"
         );
 
-        if (response.ok) {
-          const userData = await response.json();
-          // Si existe la OU y no es la raíz, permitir el inicio de sesión
-          if (userData.orgUnitPath && userData.orgUnitPath !== "/") {
-            return true;
-          }
-        } else {
-          // Registrar el error si la respuesta de la API no es exitosa
-          console.error("Error en API de Google (signIn):", response.status);
+        // 2. Crear un cliente JWT autenticado, impersonando SIEMPRE a un administrador
+        const auth = new google.auth.JWT({
+          email: serviceAccountCreds.client_email,
+          key: serviceAccountCreds.private_key,
+          scopes: ["https://www.googleapis.com/auth/admin.directory.user.readonly"],
+          subject: process.env.GOOGLE_ADMIN_EMAIL,
+        });
+
+        // 4. Crear una instancia del cliente de la API de Admin SDK
+        const admin = google.admin({ version: "directory_v1", auth });
+
+        // 5. Realizar la llamada a la API
+        const response = await admin.users.get({
+          userKey: profile.email,
+        });
+
+        const userData = response.data;
+
+        // --- CÓDIGO DE DEPURACIÓN (OPCIONAL PERO RECOMENDADO) ---
+        console.log(`[DEBUG] Datos de Google para ${profile.email}:`, JSON.stringify(userData, null, 2));
+
+        // 6. Misma lógica de validación de OU
+        if (userData.orgUnitPath && userData.orgUnitPath !== "/") {
+          return true; // Permitir inicio de sesión
         }
+        
+        // Si la OU no es válida, denegar
+        return '/login?error=OUNoAsignada';
+
       } catch (error) {
-        console.error("Error al obtener OU (signIn):", error);
+        console.error("Error al obtener OU con cuenta de servicio:", error);
         return '/login?error=ErrorInterno';
       }
-      
-      // Si la OU no se encontró o hubo un error, denegar el acceso
-      return '/login?error=OUNoAsignada';
+      // --- FIN DE LA NUEVA LÓGICA DE AUTENTICACIÓN ---
     },
 
-    async jwt({ token, profile, account }) {
-      // Añadir la OU al token si el usuario acaba de iniciar sesión
-      if (profile && account?.access_token) {
+    async jwt({ token, profile }) {
+      // Si el perfil existe (es decir, el usuario acaba de iniciar sesión),
+      // intentamos obtener y adjuntar la OU al token.
+      if (profile?.email) {
         try {
-          const response = await fetch(
-            `https://admin.googleapis.com/admin/directory/v1/users/${profile.email}`,
-            {
-              headers: { Authorization: `Bearer ${account.access_token}` },
-            }
+          const serviceAccountCreds = JSON.parse(
+            process.env.GOOGLE_SERVICE_ACCOUNT_KEY || "{}"
           );
 
-          if (response.ok) {
-            const userData = await response.json();
-            if (userData.orgUnitPath) {
-              token.ou = userData.orgUnitPath;
-            }
+          const auth = new google.auth.JWT({
+            email: serviceAccountCreds.client_email,
+            key: serviceAccountCreds.private_key,
+            scopes: ["https://www.googleapis.com/auth/admin.directory.user.readonly"],
+            subject: process.env.GOOGLE_ADMIN_EMAIL,
+          });
+
+          const admin = google.admin({ version: "directory_v1", auth });
+
+          const response = await admin.users.get({
+            userKey: profile.email,
+          });
+
+          const userData = response.data;
+          if (userData.orgUnitPath) {
+            token.ou = userData.orgUnitPath;
           }
         } catch (error) {
-          console.error("Error al obtener OU (jwt):", error);
+          console.error("Error al obtener OU para el token JWT:", error);
+          token.ou = undefined; 
         }
       }
       return token;
