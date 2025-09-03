@@ -1,0 +1,37 @@
+---
+import MainLayout from "@/layouts/MainLayout.astro";
+import categoriesData from '@/data/categories.json';
+---
+
+<MainLayout title="Nuevo Ticket para CSH">
+    <div class="max-w-4xl mx-auto">
+        <div id="wizard" class="flex flex-row gap-4 overflow-x-auto pb-4">
+            <!-- Columna 1: Categorías (se llenará dinámicamente en el cliente) -->
+            <div id="col-1" class="p-4 bg-card border rounded-lg hidden">
+                <h3 class="font-semibold mb-2 text-card-foreground">1. Selecciona una Categoría</h3>
+                <ul id="col-1-list" class="space-y-2">
+                    <!-- El contenido se renderizará aquí por el script -->
+                </ul>
+            </div>
+
+            
+        </div>
+
+        <!-- Área de Descripción y Envío (controlada por el cliente) -->
+        <div id="descripcion-area" class="mt-4 p-4 bg-card border rounded-lg hidden">
+            <h3 id="descripcion-title" class="font-semibold mb-2 text-card-foreground">Describe tu solicitud</h3>
+            <form id="ticket-form">
+                <textarea id="descripcion" name="descripcion" rows="4" class="mt-1 block w-full rounded-md border-border bg-input p-2 accent-secondary focus:outline-none focus:ring-1 focus:ring-secondary focus:border-secondary" placeholder="Proporciona todos los detalles posibles..."></textarea>
+                <div class="flex justify-end pt-4">
+                    <button type="submit" id="submit-ticket" class="bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-2 rounded-md text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                        Crear Ticket
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script id="categories-data" type="application/json" is:inline set:html={JSON.stringify(categoriesData)}></script>
+</MainLayout>
+
+<script src="../../../scripts/init-nuevo-ticket-wizard.ts"></script>

@@ -1,0 +1,186 @@
+<!-- REFRESHED: 2025-08-26 -->
+---
+import MainLayout from "@/layouts/MainLayout.astro";
+import { prisma } from "@/lib/db";
+import type { Usuario, Empresa, Rol } from "@prisma/client";
+
+const { id } = Astro.params;
+
+const [user, empresas, roles] = await Promise.all([
+  prisma.usuario.findUnique({
+    where: { id: parseInt(id as string, 10) },
+  }),
+  prisma.empresa.findMany({ orderBy: { nombre: 'asc' } }),
+  prisma.rol.findMany({ orderBy: { rol: 'asc' } }),
+]);
+
+if (!user) {
+  return Astro.redirect('/404');
+}
+
+const concatenatedName = `${user.nombres} ${user.apellidos}`;
+
+const formattedLastLogin = new Date(user.ultimo_login).toLocaleString('es-MX', {
+  weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+  hour: 'numeric', minute: 'numeric', second: 'numeric', hour12: true,
+});
+
+const groupedEmpresas: { [key: string]: Empresa[] } = {
+  'Oficina': [], 'Social': [], 'Campus': [],
+};
+empresas.forEach(empresa => {
+  if (empresa.tipo === 'Oficina') groupedEmpresas['Oficina'].push(empresa);
+  else if (empresa.tipo === 'Social') groupedEmpresas['Social'].push(empresa);
+  else groupedEmpresas['Campus'].push(empresa);
+});
+const groupOrder = ['Oficina', 'Social', 'Campus'];
+---
+
+<MainLayout title={`Editar Usuario: ${concatenatedName}`}>
+  <div class="max-w-4xl mx-auto">
+    <h1 class="text-2xl font-bold mb-6">Editar usuario</h1>
+    <form id="edit-user-form" class="bg-card border rounded-lg p-8 space-y-6">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div>
+          <label class="block text-sm font-medium text-muted-foreground">Nombre completo</label>
+          <p class="mt-1 text-lg">{concatenatedName}</p>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-muted-foreground">Email</label>
+          <p class="mt-1 text-lg">{user.mail}</p>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-muted-foreground">Último inicio de sesión</label>
+          <p class="mt-1 text-lg">{formattedLastLogin}</p>
+        </div>
+      </div>
+      <div class="border-t border-border"></div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div>
+          <label for="empresaId" class="block text-sm font-medium">Empresa</label>
+          <select id="empresaId" name="empresaId" class="mt-1 block w-full rounded-md border-border bg-input p-2 accent-secondary focus:outline-none focus:ring-1 focus:ring-secondary">
+            {groupOrder.map(groupName => (
+              <optgroup label={groupName}>
+                {groupedEmpresas[groupName].map(empresa => (
+                  <option value={empresa.id} selected={empresa.id === user.empresaId}>{empresa.nombre}</option>
+                ))}
+              </optgroup>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label for="rolId" class="block text-sm font-medium">Rol</label>
+          <select id="rolId" name="rolId" class="mt-1 block w-full rounded-md border-border bg-input p-2 accent-secondary focus:outline-none focus:ring-1 focus:ring-secondary">
+            {roles.map(rol => (
+              <option value={rol.id} selected={rol.id === user.rolId}>{rol.rol}</option>
+            ))}
+          </select>
+        </div>
+        <div class="space-y-4 pt-2">
+            <div class="flex items-center">
+                <input type="checkbox" id="activo" name="activo" class="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary" checked={user.activo}>
+                <label for="activo" class="ml-3 block text-sm font-medium">Activo</label>
+            </div>
+            <div class="flex items-center">
+                <input type="checkbox" id="vacaciones" name="vacaciones" class="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary" checked={user.vacaciones}>
+                <label for="vacaciones" class="ml-3 block text-sm font-medium">De vacaciones</label>
+            </div>
+        </div>
+        <div>
+            <label for="horario_disponibilidad" class="block text-sm font-medium">Horario de disponibilidad (JSON)</label>
+            <textarea id="horario_disponibilidad" name="horario_disponibilidad" rows="4" class="mt-1 block w-full rounded-md border-border bg-input p-2 font-mono text-sm focus:outline-none focus:ring-1 focus:ring-secondary">
+                {user.horario_disponibilidad ? JSON.stringify(user.horario_disponibilidad, null, 2) : 'Sin horario programado'}
+            </textarea>
+        </div>
+      </div>
+      <div class="flex justify-end pt-4 gap-4">
+        <button type="button" id="back-button" class="bg-[#797979] text-black hover:bg-gray-500 px-6 py-2 rounded-md text-sm font-semibold">
+          Volver
+        </button>
+        <button type="submit" class="bg-primary text-primary-foreground hover:bg-primary/90 px-6 py-2 rounded-md text-sm font-semibold">
+          Guardar cambios
+        </button>
+      </div>
+    </form>
+  </div>
+</MainLayout>
+
+<script define:vars={{ userId: user.id }}>
+  function initUserEditForm() {
+    const form = document.getElementById('edit-user-form');
+    if (!form) return;
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const formData = new FormData(form);
+      const horarioText = formData.get('horario_disponibilidad');
+      let horarioData = null;
+
+      try {
+        if (horarioText && horarioText.toString().trim() && horarioText.toString().trim() !== 'Sin horario programado') {
+          horarioData = JSON.parse(horarioText.toString());
+        }
+      } catch (error) {
+        Swal.fire({ title: 'Error en el JSON', text: 'El formato del Horario de Disponibilidad no es un JSON válido.', icon: 'error' });
+        return;
+      }
+
+      const data = {
+        id: userId,
+        empresaId: parseInt(formData.get('empresaId')),
+        rolId: parseInt(formData.get('rolId')),
+        activo: (form.elements.namedItem('activo')).checked,
+        vacaciones: (form.elements.namedItem('vacaciones')).checked,
+        horario_disponibilidad: horarioData,
+      };
+
+      try {
+        const response = await fetch(`/api/admin/usuarios`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}))
+          throw new Error(errorData.message || 'Error al actualizar el usuario');
+        }
+
+        const Toast = Swal.mixin({
+          toast: true,
+          position: 'bottom',
+          showConfirmButton: false,
+          timer: 3000,
+          timerProgressBar: true,
+          background: '#881912',
+          color: '#FFFFFF',
+          iconColor: '#caab55',
+          didOpen: (toast) => {
+            toast.addEventListener('mouseenter', Swal.stopTimer)
+            toast.addEventListener('mouseleave', Swal.resumeTimer)
+          }
+        });
+
+        Toast.fire({ icon: 'success', title: 'Usuario actualizado correctamente' });
+
+      } catch (error) {
+        console.error('Submit error:', error);
+        Swal.fire({ title: 'Error', text: error.message, icon: 'error' });
+      }
+    });
+  }
+
+  function initBackButton() {
+    const backButton = document.getElementById('back-button');
+    if (backButton) {
+      backButton.addEventListener('click', () => {
+        window.history.back();
+      });
+    }
+  }
+
+  document.addEventListener('astro:page-load', () => {
+    initUserEditForm();
+    initBackButton();
+  });
+</script>

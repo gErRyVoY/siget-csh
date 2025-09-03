@@ -1,9 +1,9 @@
 import { defineConfig } from "auth-astro";
 import Google from "@auth/core/providers/google";
 import { google } from "googleapis";
-
-// Configuración simplificada para depuración.
-// Se ha eliminado el callback `signIn` temporalmente.
+import { prisma } from "./src/lib/db";
+import type { Rol, Empresa } from "@prisma/client"; // Importar tipos
+import type { DefaultSession } from "@auth/core/types"; // Importar DefaultSession
 
 export default defineConfig({
   providers: [
@@ -16,34 +16,28 @@ export default defineConfig({
             "openid email profile https://www.googleapis.com/auth/admin.directory.user.readonly",
         },
       },
-    }), // Auth.js usará las variables de entorno AUTH_GOOGLE_ID y AUTH_GOOGLE_SECRET
+    }),
   ],
   secret: process.env.AUTH_SECRET,
   callbacks: {
     async signIn({ account, profile }) {
-      // Validar que el perfil y el email existan
       if (!profile?.email) {
         return '/login?error=NoProfile';
       }
 
-      // Validar el dominio del correo
       if (!profile.email.endsWith("@humanitas.edu.mx")) {
         return '/login?error=DominioNoPermitido';
       }
 
-      // Validar que la cuenta y el token de acceso existan
       if (!account?.access_token) {
         return '/login?error=NoToken';
       }
 
-      // --- INICIO DE LA NUEVA LÓGICA DE AUTENTICACIÓN ---
       try {
-        // 1. Cargar las credenciales de la cuenta de servicio desde la variable de entorno
         const serviceAccountCreds = JSON.parse(
           process.env.GOOGLE_SERVICE_ACCOUNT_KEY || "{}"
         );
 
-        // 2. Crear un cliente JWT autenticado, impersonando SIEMPRE a un administrador
         const auth = new google.auth.JWT({
           email: serviceAccountCreds.client_email,
           key: serviceAccountCreds.private_key,
@@ -51,90 +45,129 @@ export default defineConfig({
           subject: process.env.GOOGLE_ADMIN_EMAIL,
         });
 
-        // 4. Crear una instancia del cliente de la API de Admin SDK
         const admin = google.admin({ version: "directory_v1", auth });
 
-        // 5. Realizar la llamada a la API
         const response = await admin.users.get({
           userKey: profile.email,
         });
 
         const userData = response.data;
 
-        // --- CÓDIGO DE DEPURACIÓN (OPCIONAL PERO RECOMENDADO) ---
-        console.log(`[DEBUG] Datos de Google para ${profile.email}:`, JSON.stringify(userData, null, 2));
-
-        // 6. Misma lógica de validación de OU
-        if (userData.orgUnitPath && userData.orgUnitPath !== "/") {
-          return true; // Permitir inicio de sesión
+        if (!userData.orgUnitPath || userData.orgUnitPath === "/") {
+            return '/login?error=OUNoAsignada';
         }
-        
-        // Si la OU no es válida, denegar
-        return '/login?error=OUNoAsignada';
+
+        const dbUser = await prisma.usuario.findUnique({
+            where: { mail: profile.email },
+        });
+
+        if (!dbUser) {
+            const ouParts = userData.orgUnitPath.split('/').filter(part => part);
+            const firstLevelOU = ouParts[0];
+
+            if (!firstLevelOU) {
+                console.error(`No se pudo extraer el primer nivel de la OU: ${userData.orgUnitPath}`);
+                return '/login?error=ErrorOU';
+            }
+
+            const slug = firstLevelOU
+                .toLowerCase()
+                .replace(/^campus\s+/, '')
+                .normalize('NFD').replace(/[̀-ͯ]/g, '')
+                .replace(/\s+/g, '-');
+
+            const empresa = await prisma.empresa.findUnique({
+                where: { slug: slug },
+            });
+
+            if (!empresa) {
+                console.error(`El slug '${slug}' derivado de la OU no corresponde a ninguna empresa en la BD.`);
+                return '/login?error=EmpresaNoMapeada';
+            }
+
+            const defaultRoleId = 14;
+
+            await prisma.usuario.create({
+                data: {
+                    mail: profile.email,
+                    nombres: profile.given_name || 'Usuario',
+                    apellidos: profile.family_name || 'Humanitas',
+                    image: userData.thumbnailPhotoUrl,
+                    empresaId: empresa.id,
+                    rolId: defaultRoleId,
+                    activo: true,
+                    vacaciones: false,
+                }
+            });
+            console.log(`Usuario ${profile.email} creado exitosamente.`);
+        } else {
+            await prisma.usuario.update({
+                where: { mail: profile.email },
+                data: {
+                    nombres: profile.given_name ?? dbUser.nombres,
+                    apellidos: profile.family_name ?? dbUser.apellidos,
+                    image: userData.thumbnailPhotoUrl ?? dbUser.image,
+                    ultimo_login: new Date(),
+                }
+            });
+        }
+
+        return true;
 
       } catch (error) {
-        console.error("Error al obtener OU con cuenta de servicio:", error);
+        console.error("Error en el proceso de signIn:", error);
         return '/login?error=ErrorInterno';
       }
-      // --- FIN DE LA NUEVA LÓGICA DE AUTENTICACIÓN ---
     },
 
     async jwt({ token, profile }) {
-      // Si el perfil existe (es decir, el usuario acaba de iniciar sesión),
-      // intentamos obtener y adjuntar la OU al token.
-      if (profile?.email) {
-        try {
-          const serviceAccountCreds = JSON.parse(
-            process.env.GOOGLE_SERVICE_ACCOUNT_KEY || "{}"
-          );
+      if (token.email) {
+        const dbUser = await prisma.usuario.findUnique({
+          where: { mail: token.email },
+          include: {
+            rol: true,
+            empresa: true,
+          },
+        });
 
-          const auth = new google.auth.JWT({
-            email: serviceAccountCreds.client_email,
-            key: serviceAccountCreds.private_key,
-            scopes: ["https://www.googleapis.com/auth/admin.directory.user.readonly"],
-            subject: process.env.GOOGLE_ADMIN_EMAIL,
-          });
-
-          const admin = google.admin({ version: "directory_v1", auth });
-
-          const response = await admin.users.get({
-            userKey: profile.email,
-          });
-
-          const userData = response.data;
-          if (userData.orgUnitPath) {
-            token.ou = userData.orgUnitPath;
-          }
-        } catch (error) {
-          console.error("Error al obtener OU para el token JWT:", error);
-          token.ou = undefined; 
+        if (dbUser) {
+          token.id = dbUser.id;
+          token.rol = dbUser.rol;
+          token.empresa = dbUser.empresa;
+          token.image = dbUser.image;
         }
       }
       return token;
     },
 
     async session({ session, token }) {
-      // Pasar la OU del token a la sesión del cliente
       if (session.user) {
-        session.user.ou = token.ou as string;
+        session.user.id = token.id as number;
+        session.user.rol = token.rol as Rol;
+        session.user.empresa = token.empresa as Empresa;
+        session.user.image = token.image as string | null;
       }
       return session;
     },
   },
 });
 
-// Necesitas extender los tipos de Auth.js para que TypeScript reconozca la nueva propiedad 'ou'.
 declare module "@auth/core/types" {
   interface Session {
-    user?: {
-      ou?: string;
-    } & DefaultSession["user"];
+    user: Omit<DefaultSession["user"], "id" | "image"> & {
+      id: number;
+      rol?: Rol;
+      empresa?: Empresa;
+      image?: string | null;
+    };
   }
 }
 
 declare module "@auth/core/jwt" {
   interface JWT {
-    ou?: string;
+    id?: number;
+    rol?: Rol;
+    empresa?: Empresa;
+    image?: string | null;
   }
 }
-

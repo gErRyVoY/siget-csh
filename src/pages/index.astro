@@ -1,43 +1,245 @@
 ---
-import StatCard from '@/components/dashboard/StatCard.astro';
-import VisitorsChartCard from '@/components/dashboard/VisitorsChartCard.astro';
-import MainLayout from '@/layouts/MainLayout.astro';
+import MainLayout from "@/layouts/MainLayout.astro";
+import { getSession } from "auth-astro/server";
+import { prisma } from "@/lib/db";
+import type { Estatus, Categoria, Empresa, Usuario } from "@prisma/client";
 
+const session = await getSession(Astro.request);
+if (!session || !session.user) {
+    return Astro.redirect("/login");
+}
+
+const PRIVILEGED_ROLES = [1, 2, 3, 4, 5, 6, 15];
+const isPrivileged = PRIVILEGED_ROLES.includes(session.user.rol?.id ?? -1);
+
+// Fetch data for filters
+const [statuses, categories, companies, agents] = await Promise.all([
+    prisma.estatus.findMany({ orderBy: { nombre: 'asc' } }),
+    prisma.categoria.findMany({ where: { activo: true }, orderBy: { nombre: 'asc' } }),
+    isPrivileged ? prisma.empresa.findMany({ orderBy: { nombre: 'asc' } }) : Promise.resolve([]),
+    isPrivileged ? prisma.usuario.findMany({
+        where: { rolId: { in: PRIVILEGED_ROLES }, activo: true },
+        orderBy: { nombres: 'asc' },
+    }) : Promise.resolve([]),
+]);
 ---
 
-<MainLayout title="Dashboard">
-	<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard 
-            title="Total Revenue" 
-            value="$1,250.00" 
-            change="+12.5%" 
-            changeType="up"
-            description="Trending up this month"
-        />
-        <StatCard 
-            title="New Customers" 
-            value="1,234" 
-            change="-20%" 
-            changeType="down"
-            description="Down 20% this period"
-        />
-        <StatCard 
-            title="Active Accounts" 
-            value="45,678" 
-            change="+12.5%" 
-            changeType="up"
-            description="Strong user retention"
-        />
-		<StatCard 
-            title="Growth Rate" 
-            value="4.5%" 
-            change="+4.5%" 
-            changeType="up"
-            description="Steady performance"
-        />
-    </div>
+<MainLayout title="Mis Tickets">
+    <div class="max-w-full mx-auto">
+        <div class="flex justify-between items-center mb-6">
+            <h1 class="text-2xl font-bold">Tickets de Soporte</h1>
+        </div>
 
-    <div class="mt-8">
-        <VisitorsChartCard />
+        <!-- Filters -->
+        <div class="flex justify-start items-center mb-4 gap-4 flex-wrap">
+            <div>
+                <label for="estatus-select" class="mr-2 text-sm font-medium">Estatus:</label>
+                <select id="estatus-select" class="bg-card border rounded-md p-2 text-sm">
+                    <option value="all">Todos</option>
+                    {statuses.map((status: Estatus) => <option value={status.id}>{status.nombre}</option>)}
+                </select>
+            </div>
+            <div>
+                <label for="categoria-select" class="mr-2 text-sm font-medium">Categoría:</label>
+                <select id="categoria-select" class="bg-card border rounded-md p-2 text-sm">
+                    <option value="all">Todas</option>
+                    {categories.map((cat: Categoria) => <option value={cat.id}>{cat.nombre}</option>)}
+                </select>
+            </div>
+            {isPrivileged && (
+                <>
+                    <div>
+                        <label for="empresa-select" class="mr-2 text-sm font-medium">Empresa:</label>
+                        <select id="empresa-select" class="bg-card border rounded-md p-2 text-sm">
+                            <option value="all">Todas</option>
+                            {companies.map((comp: Empresa) => <option value={comp.id}>{comp.nombre}</option>)}
+                        </select>
+                    </div>
+                    <div>
+                        <label for="atiende-select" class="mr-2 text-sm font-medium">Atiende:</label>
+                        <select id="atiende-select" class="bg-card border rounded-md p-2 text-sm">
+                            <option value="all">Todos</option>
+                            {agents.map((agent: Usuario) => <option value={agent.id}>{`${agent.nombres} ${agent.apellidos}`}</option>)}
+                        </select>
+                    </div>
+                </>
+            )}
+        </div>
+
+        <!-- Tickets Table -->
+        <div class="bg-card border rounded-lg overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm text-left">
+                    <thead class="bg-muted/50">
+                        <tr>
+                            <th class="p-4">Folio</th>
+                            {isPrivileged ? <th class="p-4">Solicita</th> : <th class="p-4">Atiende</th>}
+                            <th class="p-4">Descripción</th>
+                            {isPrivileged && <th class="p-4">Empresa</th>}
+                            <th class="p-4">Estatus</th>
+                            <th class="p-4">Fecha Alta</th>
+                            <th class="p-4"><span class="sr-only">Acciones</span></th>
+                        </tr>
+                    </thead>
+                    <tbody id="tickets-table-body"></tbody>
+                </table>
+            </div>
+            <div id="no-tickets-message" class="hidden p-8 text-center text-muted-foreground">
+                No se encontraron tickets con los filtros seleccionados.
+            </div>
+        </div>
+
+        <!-- Pagination -->
+        <div class="flex justify-between items-center mt-4">
+            <span id="pagination-info" class="text-sm text-muted-foreground"></span>
+            <div id="pagination-controls" class="flex gap-2"></div>
+        </div>
+
     </div>
 </MainLayout>
+
+<script define:vars={{ isPrivileged }}>
+    function initTicketList() {
+        const tableBody = document.getElementById('tickets-table-body');
+        const noTicketsMessage = document.getElementById('no-tickets-message');
+        const paginationInfo = document.getElementById('pagination-info');
+        const paginationControls = document.getElementById('pagination-controls');
+        
+        const estatusSelect = document.getElementById('estatus-select');
+        const categoriaSelect = document.getElementById('categoria-select');
+        const empresaSelect = document.getElementById('empresa-select');
+        const atiendeSelect = document.getElementById('atiende-select');
+
+        if (!tableBody || !paginationControls) return;
+
+        let currentPage = 1;
+        let currentLimit = '15';
+
+        function getStatusColor(statusName) {
+            const colors = {
+                'Nuevo': 'bg-gray-500',
+                'En espera': 'bg-sky-500',
+                'Solucionado': 'bg-lime-500',
+                'Cancelado': 'bg-red-700',
+                'Duplicado': 'bg-black',
+            };
+            return colors[statusName] || 'bg-gray-400';
+        }
+
+        function getDateColor(dateString) {
+            const today = new Date();
+            const ticketDate = new Date(dateString);
+            // Reset time part to compare dates only
+            today.setHours(0, 0, 0, 0);
+            ticketDate.setHours(0, 0, 0, 0);
+            const diffTime = today.getTime() - ticketDate.getTime();
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+            if (diffDays > 7) return 'text-red-500';
+            if (diffDays >= 3) return 'text-yellow-500';
+            if (diffDays >= 1) return 'text-green-600';
+            return '';
+        }
+
+        async function fetchAndRenderTickets() {
+            let url = `/api/tickets/list?page=${currentPage}&limit=${currentLimit}`;
+            
+            url += `&estatus=${estatusSelect.value}`;
+            url += `&categoria=${categoriaSelect.value}`;
+
+            if (isPrivileged) {
+                url += `&empresa=${empresaSelect.value}`;
+                url += `&atiende=${atiendeSelect.value}`;
+            }
+
+            try {
+                const response = await fetch(url, { cache: 'no-store' });
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                const { tickets, pagination } = await response.json();
+
+                tableBody.innerHTML = '';
+                if (tickets.length === 0) {
+                    noTicketsMessage.classList.remove('hidden');
+                    tableBody.classList.add('hidden');
+                } else {
+                    noTicketsMessage.classList.add('hidden');
+                    tableBody.classList.remove('hidden');
+                    tickets.forEach(ticket => {
+                        const row = document.createElement('tr');
+                        row.className = 'border-b';
+                        
+                        const statusColor = getStatusColor(ticket.estatus.nombre);
+                        const dateColor = isPrivileged ? getDateColor(ticket.fechaalta) : '';
+                        const formattedDate = new Date(ticket.fechaalta).toLocaleDateString('es-MX');
+
+                        let columns = '';
+                        if (isPrivileged) {
+                            columns = `
+                                <td class="p-4 font-medium">${ticket.id}</td>
+                                <td class="p-4">${ticket.solicitante.nombres} ${ticket.solicitante.apellidos}</td>
+                                <td class="p-4">${ticket.descripcion ? ticket.descripcion.substring(0, 50) : ''}...</td>
+                                <td class="p-4">${ticket.empresa.nombre}</td>
+                                <td class="p-4"><span class="px-2 py-1 text-xs font-semibold text-white ${statusColor} rounded-full">${ticket.estatus.nombre}</span></td>
+                                <td class="p-4 ${dateColor}">${formattedDate}</td>
+                            `;
+                        } else {
+                            columns = `
+                                <td class="p-4 font-medium">${ticket.id}</td>
+                                <td class="p-4">${ticket.atiende.nombres} ${ticket.atiende.apellidos}</td>
+                                <td class="p-4">${ticket.descripcion ? ticket.descripcion.substring(0, 50) : ''}...</td>
+                                <td class="p-4"><span class="px-2 py-1 text-xs font-semibold text-white ${statusColor} rounded-full">${ticket.estatus.nombre}</span></td>
+                                <td class="p-4">${formattedDate}</td>
+                            `;
+                        }
+
+                        row.innerHTML = `
+                            ${columns}
+                            <td class="p-4 text-right">
+                                <a href="/tickets/view/${ticket.id}" class="font-medium text-primary hover:underline">Ver</a>
+                            </td>
+                        `;
+                        tableBody.appendChild(row);
+                    });
+                }
+                renderPagination(pagination);
+            } catch (error) {
+                console.error('Fetch Error:', error);
+                tableBody.innerHTML = `<tr><td colspan="8" class="p-8 text-center text-destructive">Error al cargar los tickets.</td></tr>`;
+            }
+        }
+
+        function renderPagination(pagination) {
+            if (!paginationInfo || !paginationControls) return;
+            const { page, totalTickets, totalPages } = pagination;
+            paginationInfo.textContent = `Mostrando ${tableBody.rows.length} de ${totalTickets} tickets`;
+            paginationControls.innerHTML = '';
+            if (totalPages <= 1) return;
+
+            const prevButton = document.createElement('button');
+            prevButton.textContent = 'Anterior';
+            prevButton.disabled = page === 1;
+            prevButton.className = 'px-4 py-2 text-sm border rounded-md disabled:opacity-50';
+            prevButton.addEventListener('click', () => { currentPage--; fetchAndRenderTickets(); });
+            paginationControls.appendChild(prevButton);
+
+            const nextButton = document.createElement('button');
+            nextButton.textContent = 'Siguiente';
+            nextButton.disabled = page === totalPages;
+            nextButton.className = 'px-4 py-2 text-sm border rounded-md disabled:opacity-50';
+            nextButton.addEventListener('click', () => { currentPage++; fetchAndRenderTickets(); });
+            paginationControls.appendChild(nextButton);
+        }
+
+        // Event Listeners
+        estatusSelect.addEventListener('change', () => { currentPage = 1; fetchAndRenderTickets(); });
+        categoriaSelect.addEventListener('change', () => { currentPage = 1; fetchAndRenderTickets(); });
+        if (isPrivileged) {
+            empresaSelect.addEventListener('change', () => { currentPage = 1; fetchAndRenderTickets(); });
+            atiendeSelect.addEventListener('change', () => { currentPage = 1; fetchAndRenderTickets(); });
+        }
+
+        fetchAndRenderTickets();
+    }
+
+    document.addEventListener('astro:page-load', initTicketList);
+</script>

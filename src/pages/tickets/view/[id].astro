@@ -1,0 +1,243 @@
+---
+import MainLayout from "@/layouts/MainLayout.astro";
+import { getSession } from "auth-astro/server";
+import { prisma } from "@/lib/db";
+import { type Ticket, type Estatus, type Usuario, Prioridad, type HistorialSolicitud, type Subcategoria } from "@prisma/client";
+
+const { id } = Astro.params;
+if (!id) {
+    return Astro.redirect("/404");
+}
+
+const ticketId = parseInt(id, 10);
+
+// Fetch all data in parallel
+const [ticket, ticketHistory] = await Promise.all([
+    prisma.ticket.findUnique({
+        where: { id: ticketId },
+        include: {
+            estatus: true,
+            categoria: true,
+            subcategoria: true,
+            solicitante: { include: { empresa: true } },
+            atiende: true,
+            empresa: true,
+        },
+    }),
+    prisma.historialSolicitud.findMany({
+        where: { ticketId: ticketId },
+        include: {
+            usuario: { select: { nombres: true, apellidos: true } },
+            estatus: { select: { nombre: true } },
+        },
+        orderBy: { fecha_cambio: 'desc' },
+    })
+]);
+
+if (!ticket) {
+    return Astro.redirect("/404");
+}
+
+const session = await getSession(Astro.request);
+const PRIVILEGED_ROLES = [1, 2, 3, 4, 5, 6, 15];
+const isPrivileged = session?.user ? PRIVILEGED_ROLES.includes(session.user.rol?.id ?? -1) : false;
+
+// Reconstruct breadcrumb path
+const breadcrumbPath = [ticket.categoria.nombre];
+if (ticket.subcategoria) {
+    let currentSub: Subcategoria | null = ticket.subcategoria;
+    const subPath = [];
+    while (currentSub) {
+        subPath.unshift(currentSub.nombre);
+        if (currentSub.parent_subcategoriaId) {
+            currentSub = await prisma.subcategoria.findUnique({ where: { id: currentSub.parent_subcategoriaId } });
+        } else {
+            currentSub = null;
+        }
+    }
+    breadcrumbPath.push(...subPath);
+}
+
+// Fetch data for the edit form if user is privileged
+let statuses: Estatus[] = [];
+let agents: Usuario[] = [];
+let companyUsers: Usuario[] = [];
+const priorities = Object.values(Prioridad);
+
+if (isPrivileged) {
+    [statuses, agents, companyUsers] = await Promise.all([
+        prisma.estatus.findMany(),
+        prisma.usuario.findMany({ where: { rolId: { in: PRIVILEGED_ROLES }, activo: true } }),
+        prisma.usuario.findMany({ where: { empresaId: ticket.solicitante.empresaId, activo: true } })
+    ]);
+}
+---
+
+<MainLayout title={`Ticket #${ticket.id}`}>
+    <div class="max-w-4xl mx-auto">
+        <!-- Breadcrumb -->
+        <div class="mb-4 text-sm text-muted-foreground">
+            {breadcrumbPath.join(' > ')}
+        </div>
+
+        <form id="edit-ticket-form">
+            <div class="bg-card border rounded-lg p-4 mb-6">
+                <!-- Row 1: Requester and Back Button -->
+                <div class="flex justify-between items-center mb-4">
+                    <p class="text-lg font-semibold">{ticket.solicitante.nombres} {ticket.solicitante.apellidos}</p>
+                    <a href="/" class="bg-gray-200 text-gray-800 hover:bg-gray-300 px-6 py-2 rounded-md text-sm font-semibold">Volver a la Lista</a>
+                </div>
+
+                <div class="space-y-4">
+                    <!-- Row 2: Empresa, Prioridad, Estatus -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <label class="block text-xs font-medium text-muted-foreground">Empresa</label>
+                            <p class="mt-1">{ticket.empresa.nombre}</p>
+                        </div>
+                        <div>
+                            <label for="prioridad" class="block text-xs font-medium text-muted-foreground">Prioridad</label>
+                            {isPrivileged ? (
+                                <select id="prioridad" name="prioridad" class="mt-1 block w-full rounded-md border-border bg-input p-2 text-sm">
+                                    {priorities.map(p => <option value={p} selected={p === ticket.prioridad}>{p}</option>)}
+                                </select>
+                            ) : (
+                                <p class="mt-1">{ticket.prioridad}</p>
+                            )}
+                        </div>
+                        <div>
+                            <label for="estatusId" class="block text-xs font-medium text-muted-foreground">Estatus</label>
+                            {isPrivileged ? (
+                                <select id="estatusId" name="estatusId" class="mt-1 block w-full rounded-md border-border bg-input p-2 text-sm">
+                                    {statuses.map(status => <option value={status.id} selected={status.id === ticket.estatusId}>{status.nombre}</option>)}
+                                </select>
+                            ) : (
+                                <p class="mt-1">{ticket.estatus.nombre}</p>
+                            )}
+                        </div>
+                    </div>
+
+                    <!-- Row 3: Atiende, Archivado -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                         <div>
+                            <label for="atiendeId" class="block text-xs font-medium text-muted-foreground">Atiende</label>
+                            {isPrivileged ? (
+                                <select id="atiendeId" name="atiendeId" class="mt-1 block w-full rounded-md border-border bg-input p-2 text-sm">
+                                    {agents.map(agent => <option value={agent.id} selected={agent.id === ticket.atiendeId}>{`${agent.nombres} ${agent.apellidos}`}</option>)}
+                                </select>
+                            ) : (
+                                <p class="mt-1">{ticket.atiende.nombres} {ticket.atiende.apellidos}</p>
+                            )}
+                        </div>
+                        <div class="pt-4">
+                             {isPrivileged && (
+                                <div class="flex items-center gap-2">
+                                    <input type="checkbox" id="archivado" name="archivado" class="h-4 w-4 rounded" checked={ticket.archivado} />
+                                    <label for="archivado" class="text-sm font-medium">Archivado</label>
+                                </div>
+                             )}
+                        </div>
+                    </div>
+
+                    <!-- Row 4: Description -->
+                    <div>
+                        <label class="block text-xs font-medium text-muted-foreground">Descripción</label>
+                        <p class="mt-1 whitespace-pre-wrap p-2 border rounded-md bg-input/50">{ticket.descripcion}</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Row 5: Save Button -->
+            {isPrivileged && (
+                <div class="flex justify-end mb-8">
+                    <button type="submit" class="bg-primary text-primary-foreground hover:bg-primary/90 px-8 py-2 rounded-md text-sm font-semibold">
+                        Guardar Cambios
+                    </button>
+                </div>
+            )}
+        </form>
+
+        <!-- History Section -->
+        <div class="bg-card border rounded-lg p-8">
+            <h2 class="text-xl font-semibold mb-6 border-b pb-2">Historial de Cambios</h2>
+            <ul class="space-y-6">
+                {ticketHistory.map((entry: HistorialSolicitud) => (
+                    <li class="flex gap-4">
+                        <div class="flex-shrink-0">
+                            <div class="bg-muted rounded-full h-10 w-10 flex items-center justify-center font-semibold">
+                                {entry.usuario.nombres.charAt(0)}{entry.usuario.apellidos.charAt(0)}
+                            </div>
+                        </div>
+                        <div class="flex-grow">
+                            <p class="font-semibold">{entry.usuario.nombres} {entry.usuario.apellidos}</p>
+                            <p class="text-sm text-muted-foreground">
+                                {new Date(entry.fecha_cambio).toLocaleString('es-MX')}
+                            </p>
+                            <div class="mt-2 text-sm">
+                                <p>Cambió el estatus a: <span class="font-semibold">{entry.estatus.nombre}</span></p>
+                                {entry.comentario && Array.isArray(entry.comentario.changes) && entry.comentario.changes.map(change => (
+                                    <p>• <span class="font-semibold capitalize">{change.field.replace(/Id$/, '')}:</span> '{String(change.oldValue)}' → '{String(change.newValue)}'</p>
+                                ))}
+                            </div>
+                        </div>
+                    </li>
+                ))}
+                {ticketHistory.length === 0 && (
+                    <p class="text-center text-muted-foreground">No hay historial de cambios para este ticket.</p>
+                )}
+            </ul>
+        </div>
+    </div>
+</MainLayout>
+
+<script define:vars={{ ticketId }}>
+    function initEditForm() {
+        const form = document.getElementById('edit-ticket-form');
+        if (!form) return;
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const Swal = (await import('sweetalert2')).default;
+            
+            const formData = new FormData(form);
+            const data = {
+                ticketId: ticketId,
+                estatusId: formData.get('estatusId'),
+                prioridad: formData.get('prioridad'),
+                atiendeId: formData.get('atiendeId'),
+                solicitanteId: formData.get('solicitanteId'),
+                archivado: (form.elements.namedItem('archivado')).checked,
+            };
+
+            try {
+                const response = await fetch(`/api/tickets/update`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data),
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.message || 'Error al actualizar el ticket');
+                }
+
+                Swal.fire({
+                    title: '¡Actualizado!',
+                    text: 'El ticket ha sido actualizado correctamente.',
+                    icon: 'success',
+                    timer: 2000,
+                    showConfirmButton: false,
+                }).then(() => {
+                    window.location.reload();
+                });
+
+            } catch (error) {
+                console.error('Submit error:', error);
+                Swal.fire({ title: 'Error', text: error.message, icon: 'error' });
+            }
+        });
+    }
+
+    document.addEventListener('astro:page-load', initEditForm);
+</script>

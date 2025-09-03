@@ -10,7 +10,7 @@ interface Props {
 
 const { session } = Astro.props;
 const user = session?.user;
-const userOU = user?.ou;
+const userEmpresa = user?.empresa?.nombre;
 
 // Obtener iniciales del usuario si no hay imagen de perfil
 const initials = user?.name
@@ -66,13 +66,13 @@ const [username, domain] = user?.email?.split('@') || ['', ''];
                 <p class="text-sm font-semibold">{formattedName}</p>
                 <p class="text-xs text-muted-foreground">{username}</p>
                 <p class="text-xs text-muted-foreground">@{domain}</p>
-                {userOU ? (
-                    <p class="text-xs font-semibold text-muted-foreground">
-                        {userOU}
+                {userEmpresa ? (
+                    <p class="text-xs font-semibold text-muted-foreground capitalize">
+                        {userEmpresa.toLowerCase()}
                     </p>
                 ) : (
                     <p class="text-xs text-muted-foreground">
-                        OU no disponible
+                        Empresa no disponible
                     </p>
                 )}
             </div>

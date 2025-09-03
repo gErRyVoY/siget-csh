@@ -1,0 +1,170 @@
+---
+import MainLayout from "@/layouts/MainLayout.astro";
+import { prisma } from "@/lib/db";
+
+const { campus } = Astro.params;
+
+const empresa = await prisma.empresa.findUnique({
+  where: { slug: campus },
+});
+
+if (!empresa) {
+  return Astro.redirect('/404');
+}
+
+let title = empresa.nombre;
+if (['Magno', 'Ejecutivo'].includes(empresa.tipo)) {
+  title = `Campus ${empresa.nombre}`;
+}
+---
+
+<MainLayout title={title}>
+  <div class="max-w-7xl mx-auto">
+    <div class="flex justify-between items-center mb-6">
+      <h1 class="text-2xl font-bold">{title}</h1>
+    </div>
+
+    <div class="flex justify-between items-center mb-4 gap-4 flex-wrap">
+      <a href="/admin/usuarios" class="bg-[#797979] text-black hover:bg-gray-500 px-6 py-2 rounded-md text-sm font-semibold">
+        Volver
+      </a>
+      <div class="flex items-center gap-4 flex-wrap">
+        <div>
+          <label for="status-select" class="mr-2 text-sm font-medium">Estado:</label>
+          <select id="status-select" class="bg-card border rounded-md p-2 text-sm">
+            <option value="active">Activos</option>
+            <option value="inactive">Inactivos</option>
+            <option value="all">Todos</option>
+          </select>
+        </div>
+        <div>
+          <label for="vacation-select" class="mr-2 text-sm font-medium">Vacaciones:</label>
+          <select id="vacation-select" class="bg-card border rounded-md p-2 text-sm">
+            <option value="all">Todos</option>
+            <option value="on">Sí</option>
+            <option value="off">No</option>
+          </select>
+        </div>
+        <div>
+          <label for="limit-select" class="mr-2 text-sm font-medium">Por página:</label>
+          <select id="limit-select" class="bg-card border rounded-md p-2 text-sm">
+            <option value="10">10</option>
+            <option value="5">5</option>
+            <option value="15">15</option>
+            <option value="20">20</option>
+            <option value="all">Todos</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="bg-card border rounded-lg overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm text-left">
+          <thead class="bg-muted/50">
+            <tr>
+              <th class="p-4">Nombre</th>
+              <th class="p-4">Estado</th>
+              <th class="p-4">Vacaciones</th>
+              <th class="p-4"><span class="sr-only">Acciones</span></th>
+            </tr>
+          </thead>
+          <tbody id="users-table-body"></tbody>
+        </table>
+      </div>
+      <div id="no-users-message" class="hidden p-8 text-center text-muted-foreground">
+        No se encontraron usuarios con los filtros seleccionados.
+      </div>
+    </div>
+
+    <div class="flex justify-between items-center mt-4">
+      <span id="pagination-info" class="text-sm text-muted-foreground"></span>
+      <div id="pagination-controls" class="flex gap-2"></div>
+    </div>
+
+  </div>
+</MainLayout>
+
+<script define:vars={{ campusSlug: campus }}>
+  function initUserList() {
+    const tableBody = document.getElementById('users-table-body');
+    const noUsersMessage = document.getElementById('no-users-message');
+    const paginationInfo = document.getElementById('pagination-info');
+    const paginationControls = document.getElementById('pagination-controls');
+    const limitSelect = document.getElementById('limit-select');
+    const statusSelect = document.getElementById('status-select');
+    const vacationSelect = document.getElementById('vacation-select');
+
+    if (!tableBody || !paginationControls) return; // Exit if essential elements aren't there
+
+    let currentPage = 1;
+    let currentLimit = '10';
+    let currentStatus = 'active';
+    let currentVacation = 'all';
+
+    async function fetchAndRenderUsers() {
+        const url = `/api/admin/usuarios?campus=${campusSlug}&page=${currentPage}&limit=${currentLimit}&status=${currentStatus}&vacation=${currentVacation}`;
+        try {
+            const response = await fetch(url, { cache: 'no-store' });
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            const { users, pagination } = await response.json();
+
+            tableBody.innerHTML = '';
+            if (users.length === 0) {
+                noUsersMessage.classList.remove('hidden');
+                tableBody.classList.add('hidden');
+            } else {
+                noUsersMessage.classList.add('hidden');
+                tableBody.classList.remove('hidden');
+                users.forEach(user => {
+                    const row = document.createElement('tr');
+                    row.className = 'border-b';
+                    row.innerHTML = `
+                        <td class="p-4 font-medium">${user.nombres} ${user.apellidos}</td>
+                        <td class="p-4">${user.activo ? '<span class="px-2 py-1 text-xs font-semibold text-green-800 bg-green-100 rounded-full">Activo</span>' : '<span class="px-2 py-1 text-xs font-semibold text-red-800 bg-red-100 rounded-full">Inactivo</span>'}</td>
+                        <td class="p-4">${user.vacaciones ? '<span class="px-2 py-1 text-xs font-semibold text-red-800 bg-red-100 rounded-full">Sí</span>' : '<span class="px-2 py-1 text-xs font-semibold text-green-800 bg-green-100 rounded-full">No</span>'}</td>
+                        <td class="p-4 text-right">
+                            <a href="/admin/usuarios/editar/${user.id}" class="font-medium text-primary hover:underline">Editar</a>
+                        </td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+            }
+            renderPagination(pagination);
+        } catch (error) {
+            console.error('Fetch Error:', error);
+            tableBody.innerHTML = `<tr><td colspan="4" class="p-8 text-center text-destructive">Error al cargar los usuarios.</td></tr>`;
+        }
+    }
+
+    function renderPagination(pagination) {
+        if (!paginationInfo || !paginationControls) return;
+        const { page, totalUsers, totalPages } = pagination;
+        paginationInfo.textContent = `Mostrando ${tableBody.rows.length} de ${totalUsers} usuarios`;
+        paginationControls.innerHTML = '';
+        if (totalPages <= 1) return;
+
+        const prevButton = document.createElement('button');
+        prevButton.textContent = 'Anterior';
+        prevButton.disabled = page === 1;
+        prevButton.className = 'px-4 py-2 text-sm border rounded-md disabled:opacity-50';
+        prevButton.addEventListener('click', () => { currentPage--; fetchAndRenderUsers(); });
+        paginationControls.appendChild(prevButton);
+
+        const nextButton = document.createElement('button');
+        nextButton.textContent = 'Siguiente';
+        nextButton.disabled = page === totalPages;
+        nextButton.className = 'px-4 py-2 text-sm border rounded-md disabled:opacity-50';
+        nextButton.addEventListener('click', () => { currentPage++; fetchAndRenderUsers(); });
+        paginationControls.appendChild(nextButton);
+    }
+
+    limitSelect.addEventListener('change', (e) => { currentLimit = e.target.value; currentPage = 1; fetchAndRenderUsers(); });
+    statusSelect.addEventListener('change', (e) => { currentStatus = e.target.value; currentPage = 1; fetchAndRenderUsers(); });
+    vacationSelect.addEventListener('change', (e) => { currentVacation = e.target.value; currentPage = 1; fetchAndRenderUsers(); });
+
+    fetchAndRenderUsers();
+  }
+
+  document.addEventListener('astro:page-load', initUserList);
+</script>

@@ -1,0 +1,356 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Empresa {
+  id                Int        @id @default(autoincrement())
+  nombre            String     @db.VarChar(50)
+  slug              String     @db.VarChar(50) @unique
+  tipo              TipoEmpresa
+  usuarios          Usuario[]
+  tickets           Ticket[]
+  traslados_origen  Traslado[] @relation("Origen")
+  traslados_destino Traslado[] @relation("Destino")
+  bloques           Bloque[]
+
+  @@map("empresa")
+}
+
+model Rol {
+  id            Int          @id @default(autoincrement())
+  rol           String       @db.VarChar(50)
+  descripcion   String?      @db.Text
+  nivel_soporte NivelSoporte
+  usuarios      Usuario[]
+
+  @@map("rol")
+}
+
+model Oferta {
+  id          Int       @id @default(autoincrement())
+  descripcion String    @db.VarChar(50)
+  carreras    Carrera[]
+
+  @@map("oferta")
+}
+
+model Carrera {
+  id          Int        @id @default(autoincrement())
+  clave       String     @db.VarChar(10)
+  descripcion String     @db.VarChar(150)
+  ofertaId    Int
+  activo      Boolean    @default(true)
+  oferta      Oferta     @relation(fields: [ofertaId], references: [id])
+  traslados   Traslado[]
+  bloques     Bloque[]
+
+  @@map("carrera")
+}
+
+model Usuario {
+  id                       Int                      @id @default(autoincrement())
+  mail                     String                   @db.VarChar(60) @unique
+  nombres                  String                   @db.VarChar(50)
+  apellidos                String                   @db.VarChar(50)
+  image                    String?                  @db.Text
+  empresaId                Int
+  rolId                    Int
+  activo                   Boolean                  @default(true)
+  vacaciones               Boolean                  @default(false)
+  ultimo_login             DateTime                 @default(now()) @db.Timestamp(6)
+  horario_disponibilidad   Json?                    @db.JsonB
+  carga_actual             Int                      @default(0)
+  empresa                  Empresa                  @relation(fields: [empresaId], references: [id])
+  rol                      Rol                      @relation(fields: [rolId], references: [id])
+  asignaciones_categorias  AsignacionesCategorias[]
+  tickets_solicitados      Ticket[]                 @relation("Solicitante")
+  tickets_atendidos        Ticket[]                 @relation("Atiende")
+  historial_solicitudes    HistorialSolicitud[]
+  traslados_auditor_docs   Traslado[]               @relation("AuditorDocs")
+  traslados_auditor_req    Traslado[]               @relation("AuditorReq")
+  notificaciones_correo    NotificacionesCorreo[]
+  logs                     Logs[]
+
+  @@map("usuario")
+}
+
+model Logs {
+  id        Int      @id @default(autoincrement())
+  accion    String   @db.VarChar(50)
+  fecha     DateTime @default(now()) @db.Timestamp(6)
+  detalles  Json?    @db.JsonB
+  usuarioId Int
+  usuario   Usuario  @relation(fields: [usuarioId], references: [id])
+
+  @@map("logs")
+}
+
+model Ciclo {
+  id           Int      @id @default(autoincrement())
+  ciclo        String   @db.VarChar(10)
+  fecha_inicio DateTime @db.Timestamp(6)
+  fecha_fin    DateTime @db.Timestamp(6)
+  activo       Boolean  @default(false)
+  bloques      Bloque[]
+
+  @@map("ciclo")
+}
+
+model Bloque {
+  id          Int      @id @default(autoincrement())
+  clave       String   @db.VarChar(60) @unique
+  grado       Grado
+  carreraId   Int
+  descripcion String   @db.VarChar(120)
+  dias        String   @db.VarChar(50)
+  hora        String   @db.VarChar(50)
+  cicloId     Int
+  campusId    Int
+  carrera     Carrera  @relation(fields: [carreraId], references: [id])
+  ciclo       Ciclo    @relation(fields: [cicloId], references: [id])
+  campus      Empresa  @relation(fields: [campusId], references: [id])
+  traslados   Traslado[]
+
+  @@map("bloque")
+}
+
+model Descuento {
+  id          Int        @id @default(autoincrement())
+  descripcion String     @db.VarChar(50)
+  monto       Int
+  activo      Boolean    @default(true)
+  traslados   Traslado[]
+
+  @@map("descuento")
+}
+
+model Estatus {
+  id                    Int                  @id @default(autoincrement())
+  nombre                String               @db.VarChar(50)
+  descripcion           String?              @db.Text
+  tickets               Ticket[]
+  historial_solicitudes HistorialSolicitud[]
+
+  @@map("estatus")
+}
+
+model Categoria {
+  id                      Int                        @id @default(autoincrement())
+  nombre                  String                     @db.VarChar(100)
+  nivel_soporte_requerido NivelSoporte?
+  activo                  Boolean                    @default(true)
+  tickets                 Ticket[]
+  subcategoria_categorias SubcategoriaCategorias[]
+  asignaciones_categorias AsignacionesCategorias[]
+
+  @@map("categoria")
+}
+
+model Subcategoria {
+  id                        Int                         @id @default(autoincrement())
+  nombre                    String                      @db.VarChar(100)
+  parent_subcategoriaId     Int?
+  nivel_soporte_requerido   NivelSoporte?
+  activo                    Boolean                     @default(true)
+  parent_subcategoria       Subcategoria?               @relation("SubcategoriaHierarchy", fields: [parent_subcategoriaId], references: [id])
+  subcategorias             Subcategoria[]              @relation("SubcategoriaHierarchy")
+  tickets                   Ticket[]
+  subcategoria_categorias   SubcategoriaCategorias[]
+  asignaciones_categorias   AsignacionesCategorias[]
+
+  @@map("subcategoria")
+}
+
+model SubcategoriaCategorias {
+  categoriaId    Int
+  subcategoriaId Int
+  activo         Boolean      @default(true)
+  categoria      Categoria    @relation(fields: [categoriaId], references: [id])
+  subcategoria   Subcategoria @relation(fields: [subcategoriaId], references: [id])
+
+  @@id([categoriaId, subcategoriaId])
+  @@map("subcategoria_categorias")
+}
+
+model AsignacionesCategorias {
+  id             Int          @id @default(autoincrement())
+  atiendeId      Int
+  categoriaId    Int?
+  subcategoriaId Int
+  activo         Boolean      @default(false)
+  atiende        Usuario      @relation(fields: [atiendeId], references: [id])
+  categoria      Categoria?   @relation(fields: [categoriaId], references: [id])
+  subcategoria   Subcategoria @relation(fields: [subcategoriaId], references: [id])
+
+  @@map("asignaciones_categorias")
+}
+
+model Ticket {
+  id                    Int                    @id @default(autoincrement())
+  fechaalta             DateTime               @default(now()) @db.Timestamp(6)
+  fechaact              DateTime               @default(now()) @db.Timestamp(6)
+  estatusId             Int
+  categoriaId           Int
+  subcategoriaId        Int?
+  solicitanteId         Int
+  atiendeId             Int
+  prioridad             Prioridad
+  descripcion           String?                @db.Text
+  empresaId             Int
+  archivado             Boolean                @default(false)
+  estatus               Estatus                @relation(fields: [estatusId], references: [id])
+  categoria             Categoria              @relation(fields: [categoriaId], references: [id])
+  subcategoria          Subcategoria?          @relation(fields: [subcategoriaId], references: [id])
+  solicitante           Usuario                @relation("Solicitante", fields: [solicitanteId], references: [id])
+  atiende               Usuario                @relation("Atiende", fields: [atiendeId], references: [id])
+  empresa               Empresa                @relation(fields: [empresaId], references: [id])
+  traslados             Traslado[]
+  historial_solicitudes HistorialSolicitud[]
+  notificaciones_correo NotificacionesCorreo[]
+
+  @@map("ticket")
+}
+
+model PlanPago {
+  id          Int        @id @default(autoincrement())
+  nombre      String     @db.VarChar(50)
+  descripcion String?    @db.Text
+  activo      Boolean    @default(true)
+  traslados   Traslado[]
+
+  @@map("plan_pago")
+}
+
+model Traslado {
+  id             Int       @id @default(autoincrement())
+  ticketId       Int       @unique
+  folio          String    @db.VarChar(10) @unique
+  matricula      String    @db.VarChar(10) @unique
+  alumno         String    @db.VarChar(100)
+  origenId       Int
+  destinoId      Int
+  carreraId      Int
+  descuentoId    Int
+  bloqueId       Int
+  actualizacion  Boolean   @default(false)
+  planpagoId     Int?
+  auditor_docsId Int?
+  auditor_reqId  Int?
+  especial       Boolean   @default(false)
+  ticket         Ticket    @relation(fields: [ticketId], references: [id])
+  origen         Empresa   @relation("Origen", fields: [origenId], references: [id])
+  destino        Empresa   @relation("Destino", fields: [destinoId], references: [id])
+  carrera        Carrera   @relation(fields: [carreraId], references: [id])
+  descuento      Descuento @relation(fields: [descuentoId], references: [id])
+  bloque         Bloque    @relation(fields: [bloqueId], references: [id])
+  planpago       PlanPago? @relation(fields: [planpagoId], references: [id])
+  auditor_docs   Usuario?  @relation("AuditorDocs", fields: [auditor_docsId], references: [id])
+  auditor_req    Usuario?  @relation("AuditorReq", fields: [auditor_reqId], references: [id])
+
+  @@map("traslado")
+}
+
+model HistorialSolicitud {
+  id           Int      @id @default(autoincrement())
+  ticketId     Int
+  estatusId    Int
+  usuarioId    Int
+  fecha_cambio DateTime @default(now()) @db.Timestamp(6)
+  comentario   Json?    @db.JsonB
+  ticket       Ticket   @relation(fields: [ticketId], references: [id])
+  estatus      Estatus  @relation(fields: [estatusId], references: [id])
+  usuario      Usuario  @relation(fields: [usuarioId], references: [id])
+
+  @@map("historial_solicitud")
+}
+
+model PlantillaCorreo {
+  id                    Int                    @id @default(autoincrement())
+  nombre                String                 @db.VarChar(100)
+  contenido             String?                @db.Text
+  tipo                  TipoPlantillaCorreo
+  activo                Boolean                @default(false)
+  notificaciones_correo NotificacionesCorreo[]
+
+  @@map("plantilla_correo")
+}
+
+model NotificacionesCorreo {
+  id             Int             @id @default(autoincrement())
+  ticketId       Int
+  destinatarioId Int
+  fecha_envio    DateTime        @default(now()) @db.Timestamp(6)
+  plantillaId    Int
+  estatus        EstatusCorreo
+  mensaje_error  String?         @db.Text
+  ticket         Ticket          @relation(fields: [ticketId], references: [id])
+  destinatario   Usuario         @relation(fields: [destinatarioId], references: [id])
+  plantilla      PlantillaCorreo @relation(fields: [plantillaId], references: [id])
+
+  @@map("notificaciones_correo")
+}
+
+enum TipoEmpresa {
+  Ejecutivo
+  Magno
+  Oficina
+  Social
+}
+
+enum NivelSoporte {
+  S_1 @map("S-1")
+  S_2 @map("S-2")
+  S_3 @map("S-3")
+  Desarrollador
+  Marketing
+  Contador
+}
+
+enum Grado {
+  G_1 @map("1")
+  G_2 @map("2")
+  G_3 @map("3")
+  G_4 @map("4")
+  G_5 @map("5")
+  G_6 @map("6")
+  G_7 @map("7")
+  G_8 @map("8")
+  G_9 @map("9")
+  G_10 @map("10")
+  G_11 @map("11")
+  G_12 @map("12")
+  G_13 @map("13")
+  G_14 @map("14")
+  G_15 @map("15")
+  G_16 @map("16")
+  Seminario
+}
+
+enum Prioridad {
+  Baja
+  Media
+  Alta
+  Urgente
+}
+
+enum TipoPlantillaCorreo {
+  Alumno
+  Colaborador
+  Notificacion_sistema @map("Notificación sistema")
+  Automatico
+  Vacaciones
+}
+
+enum EstatusCorreo {
+  Enviado
+  Pendiente
+  Fallido
+}

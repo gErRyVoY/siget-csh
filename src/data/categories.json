@@ -1,0 +1,1561 @@
+[
+  {
+    "id": 1,
+    "nombre": "Alumno",
+    "nivel_soporte_requerido": "S_1",
+    "activo": true,
+    "subcategorias": [
+      {
+        "id": 1,
+        "nombre": "Académico",
+        "parent_subcategoriaId": null,
+        "nivel_soporte_requerido": null,
+        "activo": true,
+        "children": [
+          {
+            "id": 93,
+            "nombre": "Aprovechamiento",
+            "parent_subcategoriaId": 1,
+            "nivel_soporte_requerido": null,
+            "activo": true,
+            "children": []
+          },
+          {
+            "id": 94,
+            "nombre": "Aulas",
+            "parent_subcategoriaId": 1,
+            "nivel_soporte_requerido": null,
+            "activo": true,
+            "children": []
+          },
+          {
+            "id": 2,
+            "nombre": "Calificaciones",
+            "parent_subcategoriaId": 1,
+            "nivel_soporte_requerido": null,
+            "activo": true,
+            "children": [
+              {
+                "id": 3,
+                "nombre": "Histórico",
+                "parent_subcategoriaId": 2,
+                "nivel_soporte_requerido": null,
+                "activo": true,
+                "children": []
+              },
+              {
+                "id": 4,
+                "nombre": "Kardex",
+                "parent_subcategoriaId": 2,
+                "nivel_soporte_requerido": null,
+                "activo": true,
+                "children": []
+              },
+              {
+                "id": 5,
+                "nombre": "Replicar calificaciones",
+                "parent_subcategoriaId": 2,
+                "nivel_soporte_requerido": null,
+                "activo": true,
+                "children": []
+              }
+            ]
+          },
+          {
+            "id": 95,
+            "nombre": "Catálogo de carreras",
+            "parent_subcategoriaId": 1,
+            "nivel_soporte_requerido": null,
+            "activo": true,
+            "children": []
+          },
+          {
+            "id": 96,
+            "nombre": "Encuestas",
+            "parent_subcategoriaId": 1,
+            "nivel_soporte_requerido": null,
+            "activo": true,
+            "children": []
+          },
+          {
+            "id": 6,
+            "nombre": "Horario",
+            "parent_subcategoriaId": 1,
+            "nivel_soporte_requerido": null,
+            "activo": true,
+            "children": []
+          },
+          {
+            "id": 97,
+            "nombre": "Materias",
+            "parent_subcategoriaId": 1,
+            "nivel_soporte_requerido": null,
+            "activo": true,
+            "children": []
+          },
+          {
+            "id": 7,
+            "nombre": "Selección de materias",
+            "parent_subcategoriaId": 1,
+            "nivel_soporte_requerido": null,
+            "activo": true,
+            "children": []
+          },
+          {
+            "id": 98,
+            "nombre": "Trámites",
+            "parent_subcategoriaId": 1,
+            "nivel_soporte_requerido": null,
+            "activo": true,
+            "children": []
+          }
+        ]
+      },
+      {
+        "id": 8,
+        "nombre": "Aplicación móvil",
+        "parent_subcategoriaId": null,
+        "nivel_soporte_requerido": null,
+        "activo": true,
+        "children": [
+          {
+            "id": 76,
+            "nombre": "Registro de asistencia",
+            "parent_subcategoriaId": 8,
+            "nivel_soporte_requerido": null,
+            "activo": true,
+            "children": []
+          },
+          {
+            "id": 77,
+            "nombre": "Reset de dispositivo",
+            "parent_subcategoriaId": 8,
+            "nivel_soporte_requerido": null,
+            "activo": true,
+            "children": []
+          }
+        ]
+      },
+      {
+        "id": 9,
+        "nombre": "Correo institucional",
+        "parent_subcategoriaId": null,
+        "nivel_soporte_requerido": null,
+        "activo": true,
+        "children": [
+          {
+            "id": 10,
+            "nombre": "Actualizar",
+            "parent_subcategoriaId": 9,
+            "nivel_soporte_requerido": null,
+            "activo": true,
+            "children": []
+          },
+          {
+            "id": 11,
+            "nombre": "Desbloqueo / reactivar",
+            "parent_subcategoriaId": 9,
+            "nivel_soporte_requerido": null,
+            "activo": true,
+            "children": []
+          },
+          {
+            "id": 12,
+            "nombre": "Generar correo",
+            "parent_subcategoriaId": 9,
+            "nivel_soporte_requerido": null,
+            "activo": true,
+            "children": []
+          },
+          {
+            "id": 13,
+            "nombre": "Redireccionar",
+            "parent_subcategoriaId": 9,
+            "nivel_soporte_requerido": null,
+            "activo": true,
+            "children": []
+          },
+          {
+            "id": 14,
+            "nombre": "Restablecer contraseña",
+            "parent_subcategoriaId": 9,
+            "nivel_soporte_requerido": null,
+            "activo": true,
+            "children": []
+          }
+        ]
+      },
+      {
+        "id": 15,
+        "nombre": "Datos fiscales",
+        "parent_subcategoriaId": null,
+        "nivel_soporte_requerido": null,
+        "activo": true,
+        "children": []
+      },
+      {
+        "id": 16,
+        "nombre": "Documentos",
+        "parent_subcategoriaId": null,
+        "nivel_soporte_requerido": null,
+        "activo": true,
+        "children": []
+      },
+      {
+        "id": 17,
+        "nombre": "Expediente",
+        "parent_subcategoriaId": null,
+        "nivel_soporte_requerido": null,
+        "activo": true,
+        "children": [
+          {
+            "id": 92,
+            "nombre": "Correo personal",
+            "parent_subcategoriaId": 17,
+            "nivel_soporte_requerido": null,
+            "activo": true,
+            "children": []
+          },
+          {
+            "id": 18,
+            "nombre": "Nacionalidad",
+            "parent_subcategoriaId": 17,
+            "nivel_soporte_requerido": null,
+            "activo": true,
+            "children": []
+          },
+          {
+            "id": 21,
+            "nombre": "Otro",
+            "parent_subcategoriaId": 17,
+            "nivel_soporte_requerido": null,
+            "activo": true,
+            "children": []
+          },
+          {
+            "id": 19,
+            "nombre": "Situación",
+            "parent_subcategoriaId": 17,
+            "nivel_soporte_requerido": null,
+            "activo": true,
+            "children": []
+          },
+          {
+            "id": 20,
+            "nombre": "Turno",
+            "parent_subcategoriaId": 17,
+            "nivel_soporte_requerido": null,
+            "activo": true,
+            "children": []
+          }
+        ]
+      },
+      {
+        "id": 22,
+        "nombre": "Finanzas (estado de cuenta)",
+        "parent_subcategoriaId": null,
+        "nivel_soporte_requerido": null,
+        "activo": true,
+        "children": [
+          {
+            "id": 23,
+            "nombre": "Becas",
+            "parent_subcategoriaId": 22,
+            "nivel_soporte_requerido": null,
+            "activo": true,
+            "children": [
+              {
+                "id": 90,
+                "nombre": "Colaboradores",
+                "parent_subcategoriaId": 23,
+                "nivel_soporte_requerido": null,
+                "activo": true,
+                "children": []
+              },
+              {
+                "id": 89,
+                "nombre": "Docentes",
+                "parent_subcategoriaId": 23,
+                "nivel_soporte_requerido": null,
+                "activo": true,
+                "children": []
+              }
+            ]
+          },
+          {
+            "id": 24,
+            "nombre": "Cobros",
+            "parent_subcategoriaId": 22,
+            "nivel_soporte_requerido": null,
+            "activo": true,
+            "children": [
+              {
+                "id": 25,
+                "nombre": "BBVA",
+                "parent_subcategoriaId": 24,
+                "nivel_soporte_requerido": null,
+                "activo": true,
+                "children": []
+              },
+              {
+                "id": 26,
+                "nombre": "CoDi",
+                "parent_subcategoriaId": 24,
+                "nivel_soporte_requerido": null,
+                "activo": true,
+                "children": []
+              },
+              {
+                "id": 27,
+                "nombre": "En campus",
+                "parent_subcategoriaId": 24,
+                "nivel_soporte_requerido": null,
+                "activo": true,
+                "children": [
+                  {
+                    "id": 29,
+                    "nombre": "Aplicación TPV",
+                    "parent_subcategoriaId": 27,
+                    "nivel_soporte_requerido": null,
+                    "activo": true,
+                    "children": []
+                  },
+                  {
+                    "id": 28,
+                    "nombre": "TPV (pin pad)",
+                    "parent_subcategoriaId": 27,
+                    "nivel_soporte_requerido": null,
+                    "activo": true,
+                    "children": []
+                  }
+                ]
+              },
+              {
+                "id": 30,
+                "nombre": "Flywire",
+                "parent_subcategoriaId": 24,
+                "nivel_soporte_requerido": null,
+                "activo": true,
+                "children": []
+              },
+              {
+                "id": 32,
+                "nombre": "OXXO",
+                "parent_subcategoriaId": 24,
+                "nivel_soporte_requerido": null,
+                "activo": true,
+                "children": []
+              },
+              {
+                "id": 31,
+                "nombre": "PayPal",
+                "parent_subcategoriaId": 24,
+                "nivel_soporte_requerido": null,
+                "activo": true,
+                "children": []
+              }
+            ]
+          },
+          {
+            "id": 33,
+            "nombre": "Descuentos",
+            "parent_subcategoriaId": 22,
+            "nivel_soporte_requerido": null,
+            "activo": true,
+            "children": [
+              {
+                "id": 34,
+                "nombre": "Convenios",
+                "parent_subcategoriaId": 33,
+                "nivel_soporte_requerido": null,
+                "activo": true,
+                "children": []
+              },
+              {
+                "id": 35,
+                "nombre": "Inscripción",
+                "parent_subcategoriaId": 33,
+                "nivel_soporte_requerido": null,
+                "activo": true,
+                "children": []
+              },
+              {
+                "id": 36,
+                "nombre": "Personales",
+                "parent_subcategoriaId": 33,
+                "nivel_soporte_requerido": null,
+                "activo": true,
+                "children": []
+              },
+              {
+                "id": 37,
+                "nombre": "Referidos",
+                "parent_subcategoriaId": 33,
+                "nivel_soporte_requerido": null,
+                "activo": true,
+                "children": []
+              },
+              {
+                "id": 38,
+                "nombre": "Retiro de cargos",
+                "parent_subcategoriaId": 33,
+                "nivel_soporte_requerido": null,
+                "activo": true,
+                "children": []
+              }
+            ]
+          },
+          {
+            "id": 39,
+            "nombre": "Facturas",
+            "parent_subcategoriaId": 22,
+            "nivel_soporte_requerido": null,
+            "activo": true,
+            "children": []
+          },
+          {
+            "id": 40,
+            "nombre": "Notas aclaratorias",
+            "parent_subcategoriaId": 22,
+            "nivel_soporte_requerido": null,
+            "activo": true,
+            "children": []
+          },
+          {
+            "id": 41,
+            "nombre": "Plan de pagos",
+            "parent_subcategoriaId": 22,
+            "nivel_soporte_requerido": null,
+            "activo": true,
+            "children": []
+          },
+          {
+            "id": 42,
+            "nombre": "Registro de Pagos",
+            "parent_subcategoriaId": 22,
+            "nivel_soporte_requerido": null,
+            "activo": true,
+            "children": [
+              {
+                "id": 44,
+                "nombre": "Ceremonia de graduación",
+                "parent_subcategoriaId": 42,
+                "nivel_soporte_requerido": null,
+                "activo": true,
+                "children": []
+              },
+              {
+                "id": 43,
+                "nombre": "Colegiatura",
+                "parent_subcategoriaId": 42,
+                "nivel_soporte_requerido": null,
+                "activo": true,
+                "children": []
+              },
+              {
+                "id": 52,
+                "nombre": "Otros",
+                "parent_subcategoriaId": 42,
+                "nivel_soporte_requerido": null,
+                "activo": true,
+                "children": []
+              },
+              {
+                "id": 45,
+                "nombre": "Trámites escolares",
+                "parent_subcategoriaId": 42,
+                "nivel_soporte_requerido": null,
+                "activo": true,
+                "children": [
+                  {
+                    "id": 46,
+                    "nombre": "4ta. materia",
+                    "parent_subcategoriaId": 45,
+                    "nivel_soporte_requerido": null,
+                    "activo": true,
+                    "children": []
+                  },
+                  {
+                    "id": 47,
+                    "nombre": "Certificado",
+                    "parent_subcategoriaId": 45,
+                    "nivel_soporte_requerido": null,
+                    "activo": true,
+                    "children": []
+                  },
+                  {
+                    "id": 48,
+                    "nombre": "Constancia",
+                    "parent_subcategoriaId": 45,
+                    "nivel_soporte_requerido": null,
+                    "activo": true,
+                    "children": []
+                  },
+                  {
+                    "id": 49,
+                    "nombre": "Credencial",
+                    "parent_subcategoriaId": 45,
+                    "nivel_soporte_requerido": null,
+                    "activo": true,
+                    "children": []
+                  },
+                  {
+                    "id": 50,
+                    "nombre": "Derecho de titulación",
+                    "parent_subcategoriaId": 45,
+                    "nivel_soporte_requerido": null,
+                    "activo": true,
+                    "children": []
+                  },
+                  {
+                    "id": 51,
+                    "nombre": "Dictamen de equivalencias",
+                    "parent_subcategoriaId": 45,
+                    "nivel_soporte_requerido": null,
+                    "activo": true,
+                    "children": []
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": 53,
+        "nombre": "Foto",
+        "parent_subcategoriaId": null,
+        "nivel_soporte_requerido": null,
+        "activo": true,
+        "children": []
+      },
+      {
+        "id": 54,
+        "nombre": "Historial de estados",
+        "parent_subcategoriaId": null,
+        "nivel_soporte_requerido": null,
+        "activo": true,
+        "children": []
+      },
+      {
+        "id": 55,
+        "nombre": "Plataforma Humanitas",
+        "parent_subcategoriaId": null,
+        "nivel_soporte_requerido": null,
+        "activo": true,
+        "children": [
+          {
+            "id": 74,
+            "nombre": "Permisos",
+            "parent_subcategoriaId": 55,
+            "nivel_soporte_requerido": null,
+            "activo": true,
+            "children": []
+          },
+          {
+            "id": 56,
+            "nombre": "Restablecer acceso",
+            "parent_subcategoriaId": 55,
+            "nivel_soporte_requerido": null,
+            "activo": true,
+            "children": []
+          }
+        ]
+      },
+      {
+        "id": 57,
+        "nombre": "Servicio social",
+        "parent_subcategoriaId": null,
+        "nivel_soporte_requerido": null,
+        "activo": true,
+        "children": []
+      },
+      {
+        "id": 58,
+        "nombre": "Traslado",
+        "parent_subcategoriaId": null,
+        "nivel_soporte_requerido": null,
+        "activo": true,
+        "children": []
+      }
+    ]
+  },
+  {
+    "id": 6,
+    "nombre": "App Humanitas",
+    "nivel_soporte_requerido": "S_2",
+    "activo": true,
+    "subcategorias": []
+  },
+  {
+    "id": 2,
+    "nombre": "Aspirante",
+    "nivel_soporte_requerido": "S_1",
+    "activo": true,
+    "subcategorias": [
+      {
+        "id": 59,
+        "nombre": "Asignación",
+        "parent_subcategoriaId": null,
+        "nivel_soporte_requerido": null,
+        "activo": true,
+        "children": []
+      },
+      {
+        "id": 60,
+        "nombre": "Estatus asignados",
+        "parent_subcategoriaId": null,
+        "nivel_soporte_requerido": null,
+        "activo": true,
+        "children": []
+      },
+      {
+        "id": 61,
+        "nombre": "Finanzas",
+        "parent_subcategoriaId": null,
+        "nivel_soporte_requerido": null,
+        "activo": true,
+        "children": [
+          {
+            "id": 88,
+            "nombre": "Activar descuentos",
+            "parent_subcategoriaId": 61,
+            "nivel_soporte_requerido": null,
+            "activo": true,
+            "children": []
+          },
+          {
+            "id": 62,
+            "nombre": "Generar fichas",
+            "parent_subcategoriaId": 61,
+            "nivel_soporte_requerido": null,
+            "activo": true,
+            "children": []
+          }
+        ]
+      },
+      {
+        "id": 63,
+        "nombre": "Generar matrícula",
+        "parent_subcategoriaId": null,
+        "nivel_soporte_requerido": null,
+        "activo": true,
+        "children": []
+      },
+      {
+        "id": 64,
+        "nombre": "Perfil",
+        "parent_subcategoriaId": null,
+        "nivel_soporte_requerido": null,
+        "activo": true,
+        "children": [
+          {
+            "id": 65,
+            "nombre": "Actualizar información",
+            "parent_subcategoriaId": 64,
+            "nivel_soporte_requerido": null,
+            "activo": true,
+            "children": []
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": 9,
+    "nombre": "Atom",
+    "nivel_soporte_requerido": "S_2",
+    "activo": true,
+    "subcategorias": [
+      {
+        "id": 124,
+        "nombre": "Actualización",
+        "parent_subcategoriaId": null,
+        "nivel_soporte_requerido": null,
+        "activo": true,
+        "children": []
+      },
+      {
+        "id": 121,
+        "nombre": "Alta",
+        "parent_subcategoriaId": null,
+        "nivel_soporte_requerido": null,
+        "activo": true,
+        "children": [
+          {
+            "id": 123,
+            "nombre": "Plantilla",
+            "parent_subcategoriaId": 121,
+            "nivel_soporte_requerido": null,
+            "activo": true,
+            "children": []
+          },
+          {
+            "id": 122,
+            "nombre": "Usuarios",
+            "parent_subcategoriaId": 121,
+            "nivel_soporte_requerido": null,
+            "activo": true,
+            "children": []
+          }
+        ]
+      },
+      {
+        "id": 126,
+        "nombre": "Bot",
+        "parent_subcategoriaId": null,
+        "nivel_soporte_requerido": null,
+        "activo": true,
+        "children": []
+      },
+      {
+        "id": 125,
+        "nombre": "Flujo",
+        "parent_subcategoriaId": null,
+        "nivel_soporte_requerido": null,
+        "activo": true,
+        "children": []
+      }
+    ]
+  },
+  {
+    "id": 7,
+    "nombre": "Canvas",
+    "nivel_soporte_requerido": "S_2",
+    "activo": true,
+    "subcategorias": [
+      {
+        "id": 99,
+        "nombre": "Brindar acceso",
+        "parent_subcategoriaId": null,
+        "nivel_soporte_requerido": null,
+        "activo": true,
+        "children": [
+          {
+            "id": 100,
+            "nombre": "Alumno",
+            "parent_subcategoriaId": 99,
+            "nivel_soporte_requerido": null,
+            "activo": true,
+            "children": []
+          },
+          {
+            "id": 102,
+            "nombre": "Colaborador",
+            "parent_subcategoriaId": 99,
+            "nivel_soporte_requerido": null,
+            "activo": true,
+            "children": []
+          },
+          {
+            "id": 101,
+            "nombre": "Docente",
+            "parent_subcategoriaId": 99,
+            "nivel_soporte_requerido": null,
+            "activo": true,
+            "children": []
+          }
+        ]
+      },
+      {
+        "id": 103,
+        "nombre": "Entrega de trabajos",
+        "parent_subcategoriaId": null,
+        "nivel_soporte_requerido": null,
+        "activo": true,
+        "children": []
+      },
+      {
+        "id": 104,
+        "nombre": "Material faltante",
+        "parent_subcategoriaId": null,
+        "nivel_soporte_requerido": null,
+        "activo": true,
+        "children": []
+      },
+      {
+        "id": 105,
+        "nombre": "Material incorrecto",
+        "parent_subcategoriaId": null,
+        "nivel_soporte_requerido": null,
+        "activo": true,
+        "children": []
+      },
+      {
+        "id": 106,
+        "nombre": "Plataforma caída",
+        "parent_subcategoriaId": null,
+        "nivel_soporte_requerido": null,
+        "activo": true,
+        "children": []
+      },
+      {
+        "id": 107,
+        "nombre": "Visualización de contenido",
+        "parent_subcategoriaId": null,
+        "nivel_soporte_requerido": null,
+        "activo": true,
+        "children": []
+      }
+    ]
+  },
+  {
+    "id": 3,
+    "nombre": "Colaborador",
+    "nivel_soporte_requerido": "S_2",
+    "activo": true,
+    "subcategorias": [
+      {
+        "id": 91,
+        "nombre": "Actualizar perfil",
+        "parent_subcategoriaId": null,
+        "nivel_soporte_requerido": null,
+        "activo": true,
+        "children": []
+      },
+      {
+        "id": 66,
+        "nombre": "Altas (nuevo ingreso)",
+        "parent_subcategoriaId": null,
+        "nivel_soporte_requerido": null,
+        "activo": true,
+        "children": [
+          {
+            "id": 69,
+            "nombre": "Acceso a Teambook",
+            "parent_subcategoriaId": 66,
+            "nivel_soporte_requerido": null,
+            "activo": true,
+            "children": []
+          },
+          {
+            "id": 68,
+            "nombre": "Acceso a plataforma",
+            "parent_subcategoriaId": 66,
+            "nivel_soporte_requerido": null,
+            "activo": true,
+            "children": []
+          },
+          {
+            "id": 67,
+            "nombre": "Creación de correo institucional",
+            "parent_subcategoriaId": 66,
+            "nivel_soporte_requerido": null,
+            "activo": true,
+            "children": []
+          },
+          {
+            "id": 70,
+            "nombre": "Replicar permisos",
+            "parent_subcategoriaId": 66,
+            "nivel_soporte_requerido": null,
+            "activo": true,
+            "children": []
+          }
+        ]
+      },
+      {
+        "id": 8,
+        "nombre": "Aplicación móvil",
+        "parent_subcategoriaId": null,
+        "nivel_soporte_requerido": null,
+        "activo": true,
+        "children": [
+          {
+            "id": 76,
+            "nombre": "Registro de asistencia",
+            "parent_subcategoriaId": 8,
+            "nivel_soporte_requerido": null,
+            "activo": true,
+            "children": []
+          },
+          {
+            "id": 77,
+            "nombre": "Reset de dispositivo",
+            "parent_subcategoriaId": 8,
+            "nivel_soporte_requerido": null,
+            "activo": true,
+            "children": []
+          }
+        ]
+      },
+      {
+        "id": 71,
+        "nombre": "Bajas",
+        "parent_subcategoriaId": null,
+        "nivel_soporte_requerido": null,
+        "activo": true,
+        "children": [
+          {
+            "id": 72,
+            "nombre": "Redireccionar correo institucional",
+            "parent_subcategoriaId": 71,
+            "nivel_soporte_requerido": null,
+            "activo": true,
+            "children": []
+          }
+        ]
+      },
+      {
+        "id": 73,
+        "nombre": "Configuración APP TPV",
+        "parent_subcategoriaId": null,
+        "nivel_soporte_requerido": null,
+        "activo": true,
+        "children": []
+      },
+      {
+        "id": 9,
+        "nombre": "Correo institucional",
+        "parent_subcategoriaId": null,
+        "nivel_soporte_requerido": null,
+        "activo": true,
+        "children": [
+          {
+            "id": 10,
+            "nombre": "Actualizar",
+            "parent_subcategoriaId": 9,
+            "nivel_soporte_requerido": null,
+            "activo": true,
+            "children": []
+          },
+          {
+            "id": 11,
+            "nombre": "Desbloqueo / reactivar",
+            "parent_subcategoriaId": 9,
+            "nivel_soporte_requerido": null,
+            "activo": true,
+            "children": []
+          },
+          {
+            "id": 12,
+            "nombre": "Generar correo",
+            "parent_subcategoriaId": 9,
+            "nivel_soporte_requerido": null,
+            "activo": true,
+            "children": []
+          },
+          {
+            "id": 13,
+            "nombre": "Redireccionar",
+            "parent_subcategoriaId": 9,
+            "nivel_soporte_requerido": null,
+            "activo": true,
+            "children": []
+          },
+          {
+            "id": 14,
+            "nombre": "Restablecer contraseña",
+            "parent_subcategoriaId": 9,
+            "nivel_soporte_requerido": null,
+            "activo": true,
+            "children": []
+          }
+        ]
+      },
+      {
+        "id": 55,
+        "nombre": "Plataforma Humanitas",
+        "parent_subcategoriaId": null,
+        "nivel_soporte_requerido": null,
+        "activo": true,
+        "children": [
+          {
+            "id": 74,
+            "nombre": "Permisos",
+            "parent_subcategoriaId": 55,
+            "nivel_soporte_requerido": null,
+            "activo": true,
+            "children": []
+          },
+          {
+            "id": 56,
+            "nombre": "Restablecer acceso",
+            "parent_subcategoriaId": 55,
+            "nivel_soporte_requerido": null,
+            "activo": true,
+            "children": []
+          }
+        ]
+      },
+      {
+        "id": 75,
+        "nombre": "Teambook",
+        "parent_subcategoriaId": null,
+        "nivel_soporte_requerido": null,
+        "activo": true,
+        "children": []
+      }
+    ]
+  },
+  {
+    "id": 4,
+    "nombre": "Docente",
+    "nivel_soporte_requerido": "S_2",
+    "activo": true,
+    "subcategorias": [
+      {
+        "id": 8,
+        "nombre": "Aplicación móvil",
+        "parent_subcategoriaId": null,
+        "nivel_soporte_requerido": null,
+        "activo": true,
+        "children": [
+          {
+            "id": 76,
+            "nombre": "Registro de asistencia",
+            "parent_subcategoriaId": 8,
+            "nivel_soporte_requerido": null,
+            "activo": true,
+            "children": []
+          },
+          {
+            "id": 77,
+            "nombre": "Reset de dispositivo",
+            "parent_subcategoriaId": 8,
+            "nivel_soporte_requerido": null,
+            "activo": true,
+            "children": []
+          }
+        ]
+      },
+      {
+        "id": 78,
+        "nombre": "Consultas",
+        "parent_subcategoriaId": null,
+        "nivel_soporte_requerido": null,
+        "activo": true,
+        "children": []
+      },
+      {
+        "id": 9,
+        "nombre": "Correo institucional",
+        "parent_subcategoriaId": null,
+        "nivel_soporte_requerido": null,
+        "activo": true,
+        "children": [
+          {
+            "id": 10,
+            "nombre": "Actualizar",
+            "parent_subcategoriaId": 9,
+            "nivel_soporte_requerido": null,
+            "activo": true,
+            "children": []
+          },
+          {
+            "id": 11,
+            "nombre": "Desbloqueo / reactivar",
+            "parent_subcategoriaId": 9,
+            "nivel_soporte_requerido": null,
+            "activo": true,
+            "children": []
+          },
+          {
+            "id": 12,
+            "nombre": "Generar correo",
+            "parent_subcategoriaId": 9,
+            "nivel_soporte_requerido": null,
+            "activo": true,
+            "children": []
+          },
+          {
+            "id": 13,
+            "nombre": "Redireccionar",
+            "parent_subcategoriaId": 9,
+            "nivel_soporte_requerido": null,
+            "activo": true,
+            "children": []
+          },
+          {
+            "id": 14,
+            "nombre": "Restablecer contraseña",
+            "parent_subcategoriaId": 9,
+            "nivel_soporte_requerido": null,
+            "activo": true,
+            "children": []
+          }
+        ]
+      },
+      {
+        "id": 16,
+        "nombre": "Documentos",
+        "parent_subcategoriaId": null,
+        "nivel_soporte_requerido": null,
+        "activo": true,
+        "children": []
+      },
+      {
+        "id": 17,
+        "nombre": "Expediente",
+        "parent_subcategoriaId": null,
+        "nivel_soporte_requerido": null,
+        "activo": true,
+        "children": [
+          {
+            "id": 92,
+            "nombre": "Correo personal",
+            "parent_subcategoriaId": 17,
+            "nivel_soporte_requerido": null,
+            "activo": true,
+            "children": []
+          },
+          {
+            "id": 18,
+            "nombre": "Nacionalidad",
+            "parent_subcategoriaId": 17,
+            "nivel_soporte_requerido": null,
+            "activo": true,
+            "children": []
+          },
+          {
+            "id": 21,
+            "nombre": "Otro",
+            "parent_subcategoriaId": 17,
+            "nivel_soporte_requerido": null,
+            "activo": true,
+            "children": []
+          },
+          {
+            "id": 19,
+            "nombre": "Situación",
+            "parent_subcategoriaId": 17,
+            "nivel_soporte_requerido": null,
+            "activo": true,
+            "children": []
+          },
+          {
+            "id": 20,
+            "nombre": "Turno",
+            "parent_subcategoriaId": 17,
+            "nivel_soporte_requerido": null,
+            "activo": true,
+            "children": []
+          }
+        ]
+      },
+      {
+        "id": 53,
+        "nombre": "Foto",
+        "parent_subcategoriaId": null,
+        "nivel_soporte_requerido": null,
+        "activo": true,
+        "children": []
+      },
+      {
+        "id": 87,
+        "nombre": "Google Meet: licencia para grabar",
+        "parent_subcategoriaId": null,
+        "nivel_soporte_requerido": null,
+        "activo": true,
+        "children": []
+      },
+      {
+        "id": 79,
+        "nombre": "Grupos",
+        "parent_subcategoriaId": null,
+        "nivel_soporte_requerido": null,
+        "activo": true,
+        "children": [
+          {
+            "id": 80,
+            "nombre": "Actividades",
+            "parent_subcategoriaId": 79,
+            "nivel_soporte_requerido": null,
+            "activo": true,
+            "children": []
+          },
+          {
+            "id": 83,
+            "nombre": "Clases",
+            "parent_subcategoriaId": 79,
+            "nivel_soporte_requerido": null,
+            "activo": true,
+            "children": []
+          },
+          {
+            "id": 85,
+            "nombre": "Contratos",
+            "parent_subcategoriaId": 79,
+            "nivel_soporte_requerido": null,
+            "activo": true,
+            "children": []
+          },
+          {
+            "id": 81,
+            "nombre": "Cuestionarios",
+            "parent_subcategoriaId": 79,
+            "nivel_soporte_requerido": null,
+            "activo": true,
+            "children": []
+          },
+          {
+            "id": 84,
+            "nombre": "Foros",
+            "parent_subcategoriaId": 79,
+            "nivel_soporte_requerido": null,
+            "activo": true,
+            "children": []
+          },
+          {
+            "id": 82,
+            "nombre": "Listas",
+            "parent_subcategoriaId": 79,
+            "nivel_soporte_requerido": null,
+            "activo": true,
+            "children": []
+          }
+        ]
+      },
+      {
+        "id": 86,
+        "nombre": "Lista negra",
+        "parent_subcategoriaId": null,
+        "nivel_soporte_requerido": null,
+        "activo": true,
+        "children": []
+      },
+      {
+        "id": 55,
+        "nombre": "Plataforma Humanitas",
+        "parent_subcategoriaId": null,
+        "nivel_soporte_requerido": null,
+        "activo": true,
+        "children": [
+          {
+            "id": 74,
+            "nombre": "Permisos",
+            "parent_subcategoriaId": 55,
+            "nivel_soporte_requerido": null,
+            "activo": true,
+            "children": []
+          },
+          {
+            "id": 56,
+            "nombre": "Restablecer acceso",
+            "parent_subcategoriaId": 55,
+            "nivel_soporte_requerido": null,
+            "activo": true,
+            "children": []
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": 8,
+    "nombre": "Hubspot",
+    "nivel_soporte_requerido": "S_2",
+    "activo": true,
+    "subcategorias": [
+      {
+        "id": 108,
+        "nombre": "Altas",
+        "parent_subcategoriaId": null,
+        "nivel_soporte_requerido": null,
+        "activo": true,
+        "children": [
+          {
+            "id": 110,
+            "nombre": "Marketing",
+            "parent_subcategoriaId": 108,
+            "nivel_soporte_requerido": null,
+            "activo": true,
+            "children": []
+          },
+          {
+            "id": 111,
+            "nombre": "Otro perfil",
+            "parent_subcategoriaId": 108,
+            "nivel_soporte_requerido": null,
+            "activo": true,
+            "children": []
+          },
+          {
+            "id": 109,
+            "nombre": "RRPP",
+            "parent_subcategoriaId": 108,
+            "nivel_soporte_requerido": null,
+            "activo": true,
+            "children": []
+          }
+        ]
+      },
+      {
+        "id": 112,
+        "nombre": "Cookies",
+        "parent_subcategoriaId": null,
+        "nivel_soporte_requerido": null,
+        "activo": true,
+        "children": []
+      },
+      {
+        "id": 113,
+        "nombre": "Dashboards",
+        "parent_subcategoriaId": null,
+        "nivel_soporte_requerido": null,
+        "activo": true,
+        "children": []
+      },
+      {
+        "id": 114,
+        "nombre": "Dominios",
+        "parent_subcategoriaId": null,
+        "nivel_soporte_requerido": null,
+        "activo": true,
+        "children": []
+      },
+      {
+        "id": 115,
+        "nombre": "Landing",
+        "parent_subcategoriaId": null,
+        "nivel_soporte_requerido": null,
+        "activo": true,
+        "children": [
+          {
+            "id": 116,
+            "nombre": "Diseño",
+            "parent_subcategoriaId": 115,
+            "nivel_soporte_requerido": null,
+            "activo": true,
+            "children": []
+          },
+          {
+            "id": 117,
+            "nombre": "Formularios",
+            "parent_subcategoriaId": 115,
+            "nivel_soporte_requerido": null,
+            "activo": true,
+            "children": []
+          }
+        ]
+      },
+      {
+        "id": 118,
+        "nombre": "Leads",
+        "parent_subcategoriaId": null,
+        "nivel_soporte_requerido": null,
+        "activo": true,
+        "children": []
+      },
+      {
+        "id": 119,
+        "nombre": "Mailing",
+        "parent_subcategoriaId": null,
+        "nivel_soporte_requerido": null,
+        "activo": true,
+        "children": []
+      },
+      {
+        "id": 120,
+        "nombre": "Negocios (comprador)",
+        "parent_subcategoriaId": null,
+        "nivel_soporte_requerido": null,
+        "activo": true,
+        "children": []
+      }
+    ]
+  },
+  {
+    "id": 11,
+    "nombre": "Otro",
+    "nivel_soporte_requerido": "S_1",
+    "activo": true,
+    "subcategorias": []
+  },
+  {
+    "id": 5,
+    "nombre": "Plataforma Humanitas",
+    "nivel_soporte_requerido": "S_2",
+    "activo": true,
+    "subcategorias": [
+      {
+        "id": 1,
+        "nombre": "Académico",
+        "parent_subcategoriaId": null,
+        "nivel_soporte_requerido": null,
+        "activo": true,
+        "children": [
+          {
+            "id": 93,
+            "nombre": "Aprovechamiento",
+            "parent_subcategoriaId": 1,
+            "nivel_soporte_requerido": null,
+            "activo": true,
+            "children": []
+          },
+          {
+            "id": 94,
+            "nombre": "Aulas",
+            "parent_subcategoriaId": 1,
+            "nivel_soporte_requerido": null,
+            "activo": true,
+            "children": []
+          },
+          {
+            "id": 2,
+            "nombre": "Calificaciones",
+            "parent_subcategoriaId": 1,
+            "nivel_soporte_requerido": null,
+            "activo": true,
+            "children": [
+              {
+                "id": 3,
+                "nombre": "Histórico",
+                "parent_subcategoriaId": 2,
+                "nivel_soporte_requerido": null,
+                "activo": true,
+                "children": []
+              },
+              {
+                "id": 4,
+                "nombre": "Kardex",
+                "parent_subcategoriaId": 2,
+                "nivel_soporte_requerido": null,
+                "activo": true,
+                "children": []
+              },
+              {
+                "id": 5,
+                "nombre": "Replicar calificaciones",
+                "parent_subcategoriaId": 2,
+                "nivel_soporte_requerido": null,
+                "activo": true,
+                "children": []
+              }
+            ]
+          },
+          {
+            "id": 95,
+            "nombre": "Catálogo de carreras",
+            "parent_subcategoriaId": 1,
+            "nivel_soporte_requerido": null,
+            "activo": true,
+            "children": []
+          },
+          {
+            "id": 96,
+            "nombre": "Encuestas",
+            "parent_subcategoriaId": 1,
+            "nivel_soporte_requerido": null,
+            "activo": true,
+            "children": []
+          },
+          {
+            "id": 6,
+            "nombre": "Horario",
+            "parent_subcategoriaId": 1,
+            "nivel_soporte_requerido": null,
+            "activo": true,
+            "children": []
+          },
+          {
+            "id": 97,
+            "nombre": "Materias",
+            "parent_subcategoriaId": 1,
+            "nivel_soporte_requerido": null,
+            "activo": true,
+            "children": []
+          },
+          {
+            "id": 7,
+            "nombre": "Selección de materias",
+            "parent_subcategoriaId": 1,
+            "nivel_soporte_requerido": null,
+            "activo": true,
+            "children": []
+          },
+          {
+            "id": 98,
+            "nombre": "Trámites",
+            "parent_subcategoriaId": 1,
+            "nivel_soporte_requerido": null,
+            "activo": true,
+            "children": []
+          }
+        ]
+      },
+      {
+        "id": 78,
+        "nombre": "Consultas",
+        "parent_subcategoriaId": null,
+        "nivel_soporte_requerido": null,
+        "activo": true,
+        "children": []
+      },
+      {
+        "id": 61,
+        "nombre": "Finanzas",
+        "parent_subcategoriaId": null,
+        "nivel_soporte_requerido": null,
+        "activo": true,
+        "children": [
+          {
+            "id": 88,
+            "nombre": "Activar descuentos",
+            "parent_subcategoriaId": 61,
+            "nivel_soporte_requerido": null,
+            "activo": true,
+            "children": []
+          },
+          {
+            "id": 62,
+            "nombre": "Generar fichas",
+            "parent_subcategoriaId": 61,
+            "nivel_soporte_requerido": null,
+            "activo": true,
+            "children": []
+          }
+        ]
+      },
+      {
+        "id": 55,
+        "nombre": "Plataforma Humanitas",
+        "parent_subcategoriaId": null,
+        "nivel_soporte_requerido": null,
+        "activo": true,
+        "children": [
+          {
+            "id": 74,
+            "nombre": "Permisos",
+            "parent_subcategoriaId": 55,
+            "nivel_soporte_requerido": null,
+            "activo": true,
+            "children": []
+          },
+          {
+            "id": 56,
+            "nombre": "Restablecer acceso",
+            "parent_subcategoriaId": 55,
+            "nivel_soporte_requerido": null,
+            "activo": true,
+            "children": []
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": 10,
+    "nombre": "Página web",
+    "nivel_soporte_requerido": "Desarrollador",
+    "activo": true,
+    "subcategorias": [
+      {
+        "id": 127,
+        "nombre": "Formulario de contacto",
+        "parent_subcategoriaId": null,
+        "nivel_soporte_requerido": null,
+        "activo": true,
+        "children": []
+      },
+      {
+        "id": 128,
+        "nombre": "Página caída",
+        "parent_subcategoriaId": null,
+        "nivel_soporte_requerido": null,
+        "activo": true,
+        "children": []
+      }
+    ]
+  }
+]

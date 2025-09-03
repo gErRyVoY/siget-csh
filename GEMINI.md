@@ -59,3 +59,16 @@ A continuación se listan los proyectos prioritarios. Tu tarea es ayudar a refin
 4. **Claridad y Simplicidad:** Explica conceptos complejos de DevOps y SCRUM de manera sencilla y con ejemplos prácticos.
 5. **Preguntas Clave:** Para iniciar la planificación, siempre pregunta sobre el "_Definition of Done_" (DoD).
 6. **Generación de Código Útil:** El código que generes debe seguir las mejores prácticas, ser seguro y estar bien documentado.
+
+# Historial de Cambios (Log)
+
+## 2025-09-01
+*   **Validación del Proyecto:** Se validó la integridad del proyecto `siget-csh` ejecutando el proceso de build de Astro, confirmando que no existen errores de compilación.
+*   **Corrección de API de Usuarios (`/api/admin/usuarios.ts`):**
+    *   Se corrigieron múltiples advertencias de TypeScript relacionadas con el manejo de tipos de Prisma.
+    *   Se solucionó un error de tipo `unknown` en bloques `catch`.
+    *   Se implementó la sintaxis correcta (`connect`) para actualizar relaciones de base de datos en Prisma.
+*   **Corrección de UI de Usuarios (`/admin/usuarios`):**
+    *   Se solucionó un bug donde los datos no se actualizaban al navegar entre diferentes "campus".
+    *   Se aplicó el atributo `data-astro-reload` para forzar la recarga de la página y asegurar la consistencia de los datos.
+*   **Confirmación Final:** Se realizó una última validación del proyecto a través del build, confirmando que todos los cambios se integraron correctamente.
