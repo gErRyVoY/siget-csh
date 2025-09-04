@@ -33,6 +33,12 @@ export const PATCH: APIRoute = async ({ request }) => {
         if (updateDataInput.prioridad) updateData.prioridad = updateDataInput.prioridad as Prioridad;
         if (typeof updateDataInput.archivado === 'boolean') updateData.archivado = updateDataInput.archivado;
 
+        // Handle appending new files to the existing list
+        if (Array.isArray(updateDataInput.archivos) && updateDataInput.archivos.length > 0) {
+            const existingArchivos = (ticketBeforeUpdate.archivos as any[]) || [];
+            updateData.archivos = [...existingArchivos, ...updateDataInput.archivos];
+        }
+
         // Use a transaction to update and log changes
         const updatedTicket = await prisma.$transaction(async (tx) => {
             const ticketAfterUpdate = await tx.ticket.update({

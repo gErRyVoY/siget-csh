@@ -11,6 +11,16 @@ if (!id) {
 
 const ticketId = parseInt(id, 10);
 
+// Allowed statuses for the dropdown
+const ALLOWED_STATUSES = ['Nuevo', 'En espera', 'Solucionado', 'Cancelado', 'Duplicado'];
+const statusColors = {
+    'Nuevo': '#a1a1aa', // zinc-400
+    'En espera': '#38bdf8', // sky-400
+    'Solucionado': '#84cc16', // lime-500
+    'Cancelado': '#dc2626', // red-600
+    'Duplicado': '#171717', // neutral-900
+};
+
 // Fetch all data in parallel
 const [ticket, ticketHistory] = await Promise.all([
     prisma.ticket.findUnique({
@@ -66,7 +76,7 @@ const priorities = Object.values(Prioridad);
 
 if (isPrivileged) {
     [statuses, agents, companyUsers] = await Promise.all([
-        prisma.estatus.findMany(),
+        prisma.estatus.findMany({ where: { nombre: { in: ALLOWED_STATUSES } } }),
         prisma.usuario.findMany({ where: { rolId: { in: PRIVILEGED_ROLES }, activo: true } }),
         prisma.usuario.findMany({ where: { empresaId: ticket.solicitante.empresaId, activo: true } })
     ]);
@@ -81,11 +91,11 @@ if (isPrivileged) {
         </div>
 
         <form id="edit-ticket-form">
-            <div class="bg-card border rounded-lg p-4 mb-6">
+            <div class="bg-card border border-[#881912] rounded-lg p-4 mb-6">
                 <!-- Row 1: Requester and Back Button -->
                 <div class="flex justify-between items-center mb-4">
                     <p class="text-lg font-semibold">{ticket.solicitante.nombres} {ticket.solicitante.apellidos}</p>
-                    <a href="/" class="bg-gray-200 text-gray-800 hover:bg-gray-300 px-6 py-2 rounded-md text-sm font-semibold">Volver a la Lista</a>
+                    <a href="/" class="bg-gray-200 text-gray-800 hover:bg-gray-300 px-6 py-2 rounded-md text-sm font-semibold">Volver a la lista</a>
                 </div>
 
                 <div class="space-y-4">
@@ -98,7 +108,7 @@ if (isPrivileged) {
                         <div>
                             <label for="prioridad" class="block text-xs font-medium text-muted-foreground">Prioridad</label>
                             {isPrivileged ? (
-                                <select id="prioridad" name="prioridad" class="mt-1 block w-full rounded-md border-border bg-input p-2 text-sm">
+                                <select id="prioridad" name="prioridad" class="mt-1 block w-full rounded-md border-border bg-gray-200 p-2 text-sm">
                                     {priorities.map(p => <option value={p} selected={p === ticket.prioridad}>{p}</option>)}
                                 </select>
                             ) : (
@@ -108,8 +118,12 @@ if (isPrivileged) {
                         <div>
                             <label for="estatusId" class="block text-xs font-medium text-muted-foreground">Estatus</label>
                             {isPrivileged ? (
-                                <select id="estatusId" name="estatusId" class="mt-1 block w-full rounded-md border-border bg-input p-2 text-sm">
-                                    {statuses.map(status => <option value={status.id} selected={status.id === ticket.estatusId}>{status.nombre}</option>)}
+                                <select id="estatusId" name="estatusId" class="mt-1 block w-full rounded-md border-border bg-gray-200 p-2 text-sm">
+                                    {statuses.map(status => 
+                                        <option value={status.id} selected={status.id === ticket.estatusId} style={`background-color: ${statusColors[status.nombre as keyof typeof statusColors]}; color: white;`}>
+                                            {status.nombre}
+                                        </option>)
+                                    }
                                 </select>
                             ) : (
                                 <p class="mt-1">{ticket.estatus.nombre}</p>
@@ -119,10 +133,10 @@ if (isPrivileged) {
 
                     <!-- Row 3: Atiende, Archivado -->
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                         <div>
+                        <div>
                             <label for="atiendeId" class="block text-xs font-medium text-muted-foreground">Atiende</label>
                             {isPrivileged ? (
-                                <select id="atiendeId" name="atiendeId" class="mt-1 block w-full rounded-md border-border bg-input p-2 text-sm">
+                                <select id="atiendeId" name="atiendeId" class="mt-1 block w-full rounded-md border-border bg-gray-200 p-2 text-sm">
                                     {agents.map(agent => <option value={agent.id} selected={agent.id === ticket.atiendeId}>{`${agent.nombres} ${agent.apellidos}`}</option>)}
                                 </select>
                             ) : (
@@ -130,12 +144,12 @@ if (isPrivileged) {
                             )}
                         </div>
                         <div class="pt-4">
-                             {isPrivileged && (
+                            {isPrivileged && (
                                 <div class="flex items-center gap-2">
                                     <input type="checkbox" id="archivado" name="archivado" class="h-4 w-4 rounded" checked={ticket.archivado} />
                                     <label for="archivado" class="text-sm font-medium">Archivado</label>
                                 </div>
-                             )}
+                            )}
                         </div>
                     </div>
 
@@ -147,35 +161,42 @@ if (isPrivileged) {
                 </div>
             </div>
             
-            <!-- Row 5: Save Button -->
+            <!-- Action Buttons -->
             {isPrivileged && (
-                <div class="flex justify-end mb-8">
+                <div class="flex justify-end items-center gap-4 mb-8">
+                    <button type="button" id="upload-files-button" class="bg-gray-200 text-gray-800 hover:bg-gray-300 px-8 py-2 rounded-md text-sm font-semibold">
+                        Adjuntar archivos
+                    </button>
                     <button type="submit" class="bg-primary text-primary-foreground hover:bg-primary/90 px-8 py-2 rounded-md text-sm font-semibold">
-                        Guardar Cambios
+                        Guardar cambios
                     </button>
                 </div>
             )}
         </form>
+        <input type="file" id="file-input" multiple class="hidden" />
+        <div id="file-upload-list" class="space-y-2 mb-8"></div>
 
         <!-- History Section -->
-        <div class="bg-card border rounded-lg p-8">
-            <h2 class="text-xl font-semibold mb-6 border-b pb-2">Historial de Cambios</h2>
+        <div class="bg-card border border-[#881912] rounded-lg p-8">
+            <div class="mb-6">
+                <label for="new-comment" class="block text-sm font-medium text-muted-foreground mb-2">Añadir comentario</label>
+                <textarea id="new-comment" name="new-comment" rows="3" class="w-full rounded-md border-border bg-input p-2 text-sm" placeholder="Escribe un comentario..."></textarea>
+            </div>
             <ul class="space-y-6">
-                {ticketHistory.map((entry: HistorialSolicitud) => (
-                    <li class="flex gap-4">
-                        <div class="flex-shrink-0">
-                            <div class="bg-muted rounded-full h-10 w-10 flex items-center justify-center font-semibold">
-                                {entry.usuario.nombres.charAt(0)}{entry.usuario.apellidos.charAt(0)}
-                            </div>
+                {ticketHistory.map((entry) => (
+                    <li class="flex gap-4 border-t border-border pt-4 first:pt-0 first:border-t-0">
+                        <div class="flex-shrink-0 w-6 text-muted-foreground pt-1">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.59a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
                         </div>
                         <div class="flex-grow">
-                            <p class="font-semibold">{entry.usuario.nombres} {entry.usuario.apellidos}</p>
-                            <p class="text-sm text-muted-foreground">
-                                {new Date(entry.fecha_cambio).toLocaleString('es-MX')}
-                            </p>
-                            <div class="mt-2 text-sm">
-                                <p>Cambió el estatus a: <span class="font-semibold">{entry.estatus.nombre}</span></p>
-                                {entry.comentario && Array.isArray(entry.comentario.changes) && entry.comentario.changes.map(change => (
+                            <div class="flex justify-between items-center mb-2">
+                                <span class={`px-2 py-1 text-xs font-semibold text-white rounded-full`} style={`background-color: ${statusColors[entry.estatus.nombre as keyof typeof statusColors]};`}>{entry.estatus.nombre}</span>
+                                <p class="text-sm text-muted-foreground">
+                                    {new Date(entry.fecha_cambio).toLocaleString('es-MX', { dateStyle: 'full', timeStyle: 'short' })}
+                                </p>
+                            </div>
+                            <div class="mt-1 text-sm p-3 bg-muted/50 rounded-md">
+                                {(entry.comentario as any)?.changes?.map((change: {field: string, oldValue: any, newValue: any}) => (
                                     <p>• <span class="font-semibold capitalize">{change.field.replace(/Id$/, '')}:</span> '{String(change.oldValue)}' → '{String(change.newValue)}'</p>
                                 ))}
                             </div>
@@ -239,5 +260,99 @@ if (isPrivileged) {
         });
     }
 
-    document.addEventListener('astro:page-load', initEditForm);
+    function initFileUploads() {
+        const uploadButton = document.getElementById('upload-files-button');
+        const fileInput = document.getElementById('file-input');
+        const fileListContainer = document.getElementById('file-upload-list');
+
+        if (!uploadButton || !fileInput || !fileListContainer) return;
+
+        const MAX_FILES = 10;
+        const MAX_SIZE_MB = 5;
+        const ALLOWED_TYPES = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'png', 'jpeg', 'jpg', 'webp', 'svg', 'mp3', 'mp4'];
+
+        uploadButton.addEventListener('click', () => fileInput.click());
+
+        fileInput.addEventListener('change', async (e) => {
+            const files = e.target.files;
+            const Swal = (await import('sweetalert2')).default;
+
+            if (files.length > MAX_FILES) {
+                Swal.fire('Error', `No puedes subir más de ${MAX_FILES} archivos a la vez.`, 'error');
+                return;
+            }
+
+            const validFiles = Array.from(files).filter(file => {
+                const extension = file.name.split('.').pop().toLowerCase();
+                if (!ALLOWED_TYPES.includes(extension)) {
+                    Swal.fire('Archivo no permitido', `El tipo de archivo .${extension} no está permitido.`, 'error');
+                    return false;
+                }
+                if (file.size > MAX_SIZE_MB * 1024 * 1024) {
+                    Swal.fire('Archivo demasiado grande', `El archivo ${file.name} supera el límite de ${MAX_SIZE_MB}MB.`, 'error');
+                    return false;
+                }
+                return true;
+            });
+
+            if (validFiles.length === 0) return;
+
+            fileListContainer.innerHTML = '';
+            const uploadPromises = validFiles.map(async file => {
+                const listItem = document.createElement('div');
+                listItem.className = 'text-sm p-2 border rounded-md flex justify-between items-center';
+                listItem.innerHTML = `<span>${file.name}</span><span class="status">Pendiente...</span>`;
+                fileListContainer.appendChild(listItem);
+
+                try {
+                    // 1. Get pre-signed URL
+                    const presignedResponse = await fetch('/api/tickets/generate-upload-url', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ fileName: file.name, fileType: file.type, ticketId: ticketId })
+                    });
+                    if (!presignedResponse.ok) throw new Error('Error al obtener URL segura.');
+                    const { uploadUrl, key } = await presignedResponse.json();
+
+                    // 2. Upload file to S3
+                    listItem.querySelector('.status').textContent = 'Subiendo...';
+                    const uploadResponse = await fetch(uploadUrl, { method: 'PUT', body: file, headers: { 'Content-Type': file.type } });
+                    if (!uploadResponse.ok) throw new Error('Error al subir el archivo a S3.');
+
+                    listItem.querySelector('.status').textContent = '¡Éxito!';
+                    listItem.classList.add('bg-green-100');
+                    return key;
+                } catch (error) {
+                    console.error('Upload failed for', file.name, error);
+                    listItem.querySelector('.status').textContent = 'Error';
+                    listItem.classList.add('bg-red-100');
+                    return null;
+                }
+            });
+
+            const results = await Promise.all(uploadPromises);
+            const successfulUploads = results.filter(key => key !== null);
+
+            if (successfulUploads.length > 0) {
+                // 3. Update ticket with file keys
+                try {
+                    const updateResponse = await fetch('/api/tickets/update', {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ ticketId: ticketId, archivos: successfulUploads })
+                    });
+                    if (!updateResponse.ok) throw new Error('Error al guardar las referencias de los archivos.');
+                    
+                    Swal.fire('Éxito', `${successfulUploads.length} archivo(s) subido(s) y guardado(s) correctamente.`, 'success').then(() => window.location.reload());
+                } catch (error) {
+                    Swal.fire('Error', error.message, 'error');
+                }
+            }
+        });
+    }
+
+    document.addEventListener('astro:page-load', () => {
+        initEditForm();
+        initFileUploads();
+    });
 </script>

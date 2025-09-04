@@ -206,6 +206,7 @@ model Ticket {
   descripcion           String?                @db.Text
   empresaId             Int
   archivado             Boolean                @default(false)
+  archivos              Json?                  @db.JsonB
   estatus               Estatus                @relation(fields: [estatusId], references: [id])
   categoria             Categoria              @relation(fields: [categoriaId], references: [id])
   subcategoria          Subcategoria?          @relation(fields: [subcategoriaId], references: [id])
