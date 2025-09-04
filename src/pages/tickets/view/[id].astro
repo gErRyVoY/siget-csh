@@ -230,14 +230,14 @@ const parseFileName = (key: string) => {
 </MainLayout>
 
 <script define:vars={{ ticketId }}>
+    // Note: The global `Swal` object is used here, loaded from the CDN in MainLayout.astro
     function initEditForm() {
         const form = document.getElementById('edit-ticket-form');
         if (!form) return;
 
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
-            const Swal = (await import('sweetalert2')).default;
-
+            
             const formData = new FormData(form);
             const data = {
                 ticketId: ticketId,
@@ -292,7 +292,6 @@ const parseFileName = (key: string) => {
 
         fileInput.addEventListener('change', async (e) => {
             const files = e.target.files;
-            const Swal = (await import('sweetalert2')).default;
 
             if (files.length > MAX_FILES) {
                 Swal.fire('Error', `No puedes subir más de ${MAX_FILES} archivos a la vez.`, 'error');
@@ -314,7 +313,6 @@ const parseFileName = (key: string) => {
 
             if (validFiles.length === 0) return;
 
-            // Clear previous upload statuses, but not existing files
             const uploadStatusDiv = document.createElement('div');
             fileListContainer.appendChild(uploadStatusDiv);
 
