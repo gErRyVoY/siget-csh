@@ -265,7 +265,9 @@ model HistorialSolicitud {
   estatusId    Int
   usuarioId    Int
   fecha_cambio DateTime @default(now()) @db.Timestamp(6)
-  comentario   Json?    @db.JsonB
+  comentario   String?  @db.Text
+  cambios      Json?    @db.JsonB
+  archivos     Json?    @db.JsonB
   ticket       Ticket   @relation(fields: [ticketId], references: [id])
   estatus      Estatus  @relation(fields: [estatusId], references: [id])
   usuario      Usuario  @relation(fields: [usuarioId], references: [id])

@@ -11,17 +11,17 @@ if (!id) {
 
 const ticketId = parseInt(id, 10);
 
-// Allowed statuses for the dropdown
+const S3_BUCKET_URL = `https://${import.meta.env.S3_BUCKET_NAME}.s3.${import.meta.env.S3_REGION}.amazonaws.com`;
+
 const ALLOWED_STATUSES = ['Nuevo', 'En espera', 'Solucionado', 'Cancelado', 'Duplicado'];
 const statusColors = {
-    'Nuevo': '#a1a1aa', // zinc-400
-    'En espera': '#38bdf8', // sky-400
-    'Solucionado': '#84cc16', // lime-500
-    'Cancelado': '#dc2626', // red-600
-    'Duplicado': '#171717', // neutral-900
+    'Nuevo': '#a1a1aa',
+    'En espera': '#38bdf8',
+    'Solucionado': '#84cc16',
+    'Cancelado': '#dc2626',
+    'Duplicado': '#171717',
 };
 
-// Fetch all data in parallel
 const [ticket, ticketHistory] = await Promise.all([
     prisma.ticket.findUnique({
         where: { id: ticketId },
@@ -52,7 +52,6 @@ const session = await getSession(Astro.request);
 const PRIVILEGED_ROLES = [1, 2, 3, 4, 5, 6, 15];
 const isPrivileged = session?.user ? PRIVILEGED_ROLES.includes(session.user.rol?.id ?? -1) : false;
 
-// Reconstruct breadcrumb path
 const breadcrumbPath = [ticket.categoria.nombre];
 if (ticket.subcategoria) {
     let currentSub: Subcategoria | null = ticket.subcategoria;
@@ -68,7 +67,6 @@ if (ticket.subcategoria) {
     breadcrumbPath.push(...subPath);
 }
 
-// Fetch data for the edit form if user is privileged
 let statuses: Estatus[] = [];
 let agents: Usuario[] = [];
 let companyUsers: Usuario[] = [];
@@ -90,21 +88,17 @@ const parseFileName = (key: string) => {
 
 <MainLayout title={`Ticket #${ticket.id}`}>
     <div class="max-w-4xl mx-auto">
-        <!-- Breadcrumb -->
         <div class="mb-4 text-sm text-muted-foreground">
             {breadcrumbPath.join(' > ')}
         </div>
 
         <form id="edit-ticket-form">
-            <div class="bg-card border border-[#881912] rounded-lg p-4 mb-6">
-                <!-- Row 1: Requester and Back Button -->
+            <div class="bg-card border border-[var(--secondary)] rounded-lg p-4 mb-6">
                 <div class="flex justify-between items-center mb-4">
                     <p class="text-lg font-semibold">{ticket.solicitante.nombres} {ticket.solicitante.apellidos}</p>
                     <a href="/" class="bg-gray-200 text-gray-800 hover:bg-gray-300 px-6 py-2 rounded-md text-sm font-semibold">Volver a la lista</a>
                 </div>
-
                 <div class="space-y-4">
-                    <!-- Row 2: Empresa, Prioridad, Estatus -->
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
                             <label class="block text-xs font-medium text-muted-foreground">Empresa</label>
@@ -125,7 +119,7 @@ const parseFileName = (key: string) => {
                             {isPrivileged ? (
                                 <select id="estatusId" name="estatusId" class="mt-1 block w-full rounded-md border-border bg-gray-200 p-2 text-sm">
                                     {statuses.map(status => 
-                                        <option value={status.id} selected={status.id === ticket.estatusId} style={`background-color: ${statusColors[status.nombre as keyof typeof statusColors]}; color: white;`}>
+                                        <option value={status.id} data-color={statusColors[status.nombre as keyof typeof statusColors]} selected={status.id === ticket.estatusId}>
                                             {status.nombre}
                                         </option>)
                                     }
@@ -135,10 +129,8 @@ const parseFileName = (key: string) => {
                             )}
                         </div>
                     </div>
-
-                    <!-- Row 3: Atiende, Archivado -->
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                         <div>
+                        <div>
                             <label for="atiendeId" class="block text-xs font-medium text-muted-foreground">Atiende</label>
                             {isPrivileged ? (
                                 <select id="atiendeId" name="atiendeId" class="mt-1 block w-full rounded-md border-border bg-gray-200 p-2 text-sm">
@@ -149,16 +141,14 @@ const parseFileName = (key: string) => {
                             )}
                         </div>
                         <div class="pt-4">
-                             {isPrivileged && (
+                            {isPrivileged && (
                                 <div class="flex items-center gap-2">
                                     <input type="checkbox" id="archivado" name="archivado" class="h-4 w-4 rounded" checked={ticket.archivado} />
                                     <label for="archivado" class="text-sm font-medium">Archivado</label>
                                 </div>
-                             )}
+                            )}
                         </div>
                     </div>
-
-                    <!-- Row 4: Description -->
                     <div>
                         <label class="block text-xs font-medium text-muted-foreground">Descripción</label>
                         <p class="mt-1 whitespace-pre-wrap p-2 border rounded-md bg-input/50">{ticket.descripcion}</p>
@@ -166,86 +156,183 @@ const parseFileName = (key: string) => {
                 </div>
             </div>
             
-            <!-- Action Buttons -->
             {isPrivileged && (
-                <div class="flex justify-end items-center gap-4 mb-8">
-                    <button type="button" id="upload-files-button" class="bg-gray-200 text-gray-800 hover:bg-gray-300 px-8 py-2 rounded-md text-sm font-semibold">
-                        Adjuntar archivos
-                    </button>
-                    <button type="submit" class="bg-primary text-primary-foreground hover:bg-primary/90 px-8 py-2 rounded-md text-sm font-semibold">
-                        Guardar cambios
-                    </button>
+                <div class="flex justify-between items-start gap-4 mb-8">
+                    <div id="attachment-area" class="space-y-2 flex-grow"></div>
+                    <div class="flex items-center gap-4 flex-shrink-0">
+                        <button type="button" id="upload-files-button" class="bg-gray-200 text-gray-800 hover:bg-gray-300 px-8 py-2 rounded-md text-sm font-semibold">
+                            Adjuntar archivos
+                        </button>
+                        <button type="submit" class="bg-primary text-primary-foreground hover:bg-primary/90 px-8 py-2 rounded-md text-sm font-semibold">
+                            Guardar cambios
+                        </button>
+                    </div>
                 </div>
             )}
         </form>
         <input type="file" id="file-input" multiple class="hidden" />
-        
-        <!-- Attachment Display and Upload Progress -->
-        <div id="attachment-area" class="space-y-2 mb-8">
-            {(ticket.archivos && (ticket.archivos as any[]).length > 0) ? (
-                <div class="p-4 border rounded-lg bg-card border-[#881912]">
-                    <h3 class="text-sm font-medium mb-2">Archivos adjuntos</h3>
-                    <p class="text-sm text-muted-foreground">
-                        {(ticket.archivos as any[]).map(key => parseFileName(key).substring(0, 15)).join('; ')}
-                    </p>
-                </div>
-            ) : (
-                <p class="text-sm text-muted-foreground px-4">Sin archivos adjuntos.</p>
-            )}
-        </div>
 
-        <!-- History Section -->
-        <div class="bg-card border border-[#881912] rounded-lg p-8">
+        <div class="bg-card border border-[var(--secondary)] rounded-lg p-8">
             <div class="mb-6">
                 <label for="new-comment" class="block text-sm font-medium text-muted-foreground mb-2">Añadir comentario</label>
                 <textarea id="new-comment" name="new-comment" rows="3" class="w-full rounded-md border-border bg-input p-2 text-sm" placeholder="Escribe un comentario..."></textarea>
             </div>
             <ul class="space-y-6">
-                {ticketHistory.map((entry) => (
+                {ticketHistory.length > 0 ? ticketHistory.map((entry) => {
+                    const hasFiles = entry.archivos && (entry.archivos as any).newFiles && (entry.archivos as any).newFiles.length > 0;
+                    return (
                     <li class="flex gap-4 border-t border-border pt-4 first:pt-0 first:border-t-0">
-                        <div class="flex-shrink-0 w-6 text-muted-foreground pt-1">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.59a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
-                        </div>
                         <div class="flex-grow">
                             <div class="flex justify-between items-center mb-2">
-                                <span class={`px-2 py-1 text-xs font-semibold text-white rounded-full`} style={`background-color: ${statusColors[entry.estatus.nombre as keyof typeof statusColors]};`}>{entry.estatus.nombre}</span>
+                                <p class="font-semibold text-sm">{entry.usuario.nombres} {entry.usuario.apellidos}</p>
                                 <p class="text-sm text-muted-foreground">
                                     {new Date(entry.fecha_cambio).toLocaleString('es-MX', { dateStyle: 'full', timeStyle: 'short' })}
                                 </p>
                             </div>
-                            <div class="mt-1 text-sm p-3 bg-muted/50 rounded-md">
-                                {(entry.comentario as any)?.changes?.map((change: {field: string, oldValue: any, newValue: any}) => (
-                                    <p>• <span class="font-semibold capitalize">{change.field.replace(/Id$/, '')}:</span> '{String(change.oldValue)}' → '{String(change.newValue)}'</p>
-                                ))}
-                            </div>
+                            {entry.comentario && <p class="mt-2 text-sm p-3 bg-muted/50 rounded-md">{entry.comentario}</p>}
+                            {(entry.cambios as any)?.fieldChanges?.length > 0 && (
+                                <div class="mt-2 text-xs p-2 bg-blue-50 border border-blue-200 rounded-md">
+                                    <p class="font-semibold mb-1">Cambios de campos:</p>
+                                    {(entry.cambios as any).fieldChanges.map((change: any) => (
+                                        <p>• <span class="font-semibold capitalize">{change.field.replace(/Id$/, '')}:</span> '{String(change.oldValue)}' → '{String(change.newValue)}'</p>
+                                    ))}
+                                </div>
+                            )}
+                            {hasFiles && (
+                                <div class="mt-2 relative">
+                                    <button type="button" class="attachment-clip" aria-expanded="false">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.59a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+                                    </button>
+                                    <div class="attachment-dropdown hidden absolute z-10 bg-card border rounded-md shadow-lg mt-1 py-1">
+                                        {(entry.archivos as any).newFiles.map((key: string) => (
+                                            <a href={`${S3_BUCKET_URL}/${key}`} target="_blank" class="block px-4 py-2 text-sm text-card-foreground hover:bg-accent">{parseFileName(key)}</a>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </li>
-                ))}
-                {ticketHistory.length === 0 && (
-                    <p class="text-center text-muted-foreground">No hay historial de cambios para este ticket.</p>
-                )}
+                )})
+                : <p class="text-center text-muted-foreground">No hay historial de cambios para este ticket.</p>}
             </ul>
         </div>
     </div>
 </MainLayout>
 
-<script define:vars={{ ticketId }}>
-    // Note: The global `Swal` object is used here, loaded from the CDN in MainLayout.astro
+<script define:vars={{ ticketId, statusColors, S3_BUCKET_URL }}>
+    let stagedFiles = [];
+
+    const Toast = Swal.mixin({
+        toast: true,
+        position: 'bottom',
+        showConfirmButton: false,
+        timer: 3000,
+        timerProgressBar: true,
+        background: '#881912',
+        color: '#FFFFFF',
+        iconColor: '#caab55',
+        didOpen: (toast) => {
+            toast.addEventListener('mouseenter', Swal.stopTimer)
+            toast.addEventListener('mouseleave', Swal.resumeTimer)
+        }
+    });
+
+    function initStatusColorizer() {
+        const statusSelect = document.getElementById('estatusId');
+        if (!statusSelect) return;
+
+        const setColor = () => {
+            const selectedOption = statusSelect.options[statusSelect.selectedIndex];
+            if (!selectedOption) return;
+            const color = selectedOption.dataset.color;
+            statusSelect.style.backgroundColor = color || '#f3f4f6';
+            statusSelect.style.color = color ? 'white' : 'black';
+        };
+
+        statusSelect.addEventListener('change', setColor);
+        setColor();
+    }
+
+    function initFileUploads() {
+        const uploadButton = document.getElementById('upload-files-button');
+        const fileInput = document.getElementById('file-input');
+        const attachmentArea = document.getElementById('attachment-area');
+
+        if (!uploadButton || !fileInput || !attachmentArea) return;
+
+        uploadButton.addEventListener('click', () => fileInput.click());
+
+        fileInput.addEventListener('change', (e) => {
+            const target = e.target;
+            if (!target || !target.files) return;
+            const files = target.files;
+            
+            stagedFiles = Array.from(files);
+
+            const stagedFilesHtml = '<h3 class="text-sm font-medium mb-2">Archivos listos para subir:</h3>' +
+                '<ul class="list-disc pl-5 text-sm text-muted-foreground">' +
+                stagedFiles.map(file => `<li>${file.name}</li>`).join('') +
+                '</ul>';
+            attachmentArea.innerHTML = stagedFilesHtml;
+        });
+    }
+
     function initEditForm() {
         const form = document.getElementById('edit-ticket-form');
         if (!form) return;
 
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
-            
+            const submitButton = form.querySelector('button[type="submit"]');
+            submitButton.disabled = true;
+            submitButton.textContent = 'Guardando...';
+
+            let uploadedFileKeys = [];
+
+            if (stagedFiles.length > 0) {
+                const attachmentArea = document.getElementById('attachment-area');
+                attachmentArea.innerHTML = '<h3 class="text-sm font-medium mb-2">Subiendo archivos...</h3>';
+                
+                const uploadPromises = stagedFiles.map(async file => {
+                    try {
+                        const presignedResponse = await fetch('/api/tickets/generate-upload-url', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ fileName: file.name, fileType: file.type, ticketId: ticketId })
+                        });
+                        if (!presignedResponse.ok) throw new Error('Error al obtener URL segura.');
+                        const { uploadUrl, key } = await presignedResponse.json();
+
+                        await fetch(uploadUrl, { method: 'PUT', body: file, headers: { 'Content-Type': file.type } });
+                        return key;
+                    } catch (error) {
+                        console.error(`Upload failed for ${file.name}:`, error);
+                        return null;
+                    }
+                });
+
+                const results = await Promise.all(uploadPromises);
+                uploadedFileKeys = results.filter(key => key !== null);
+
+                if (uploadedFileKeys.length !== stagedFiles.length) {
+                    Swal.fire('Error', 'Algunos archivos no se pudieron subir. Por favor, inténtalo de nuevo.', 'error');
+                    submitButton.disabled = false;
+                    submitButton.textContent = 'Guardar cambios';
+                    return;
+                }
+            }
+
             const formData = new FormData(form);
+            const newCommentElement = document.getElementById('new-comment');
             const data = {
                 ticketId: ticketId,
                 estatusId: formData.get('estatusId'),
                 prioridad: formData.get('prioridad'),
                 atiendeId: formData.get('atiendeId'),
                 solicitanteId: formData.get('solicitanteId'),
-                archivado: (form.elements.namedItem('archivado')).checked,
+                archivado: form.elements.archivado.checked,
+                newComment: newCommentElement.value,
+                newFiles: uploadedFileKeys,
             };
 
             try {
@@ -254,120 +341,32 @@ const parseFileName = (key: string) => {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(data),
                 });
+                if (!response.ok) throw new Error('Error al actualizar el ticket');
 
-                if (!response.ok) {
-                    const errorData = await response.json().catch(() => ({}));
-                    throw new Error(errorData.message || 'Error al actualizar el ticket');
-                }
-
-                Swal.fire({
-                    title: '¡Actualizado!',
-                    text: 'El ticket ha sido actualizado correctamente.',
-                    icon: 'success',
-                    timer: 2000,
-                    showConfirmButton: false,
-                }).then(() => {
+                Toast.fire({ icon: 'success', title: 'Ticket actualizado correctamente' }).then(() => {
                     window.location.reload();
                 });
-
             } catch (error) {
-                console.error('Submit error:', error);
                 Swal.fire({ title: 'Error', text: error.message, icon: 'error' });
+                submitButton.disabled = false;
+                submitButton.textContent = 'Guardar cambios';
             }
         });
     }
 
-    function initFileUploads() {
-        const uploadButton = document.getElementById('upload-files-button');
-        const fileInput = document.getElementById('file-input');
-        const fileListContainer = document.getElementById('attachment-area');
-
-        if (!uploadButton || !fileInput || !fileListContainer) return;
-
-        const MAX_FILES = 10;
-        const MAX_SIZE_MB = 5;
-        const ALLOWED_TYPES = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'png', 'jpeg', 'jpg', 'webp', 'svg', 'mp3', 'mp4'];
-
-        uploadButton.addEventListener('click', () => fileInput.click());
-
-        fileInput.addEventListener('change', async (e) => {
-            const files = e.target.files;
-
-            if (files.length > MAX_FILES) {
-                Swal.fire('Error', `No puedes subir más de ${MAX_FILES} archivos a la vez.`, 'error');
-                return;
-            }
-
-            const validFiles = Array.from(files).filter(file => {
-                const extension = file.name.split('.').pop().toLowerCase();
-                if (!ALLOWED_TYPES.includes(extension)) {
-                    Swal.fire('Archivo no permitido', `El tipo de archivo .${extension} no está permitido.`, 'error');
-                    return false;
-                }
-                if (file.size > MAX_SIZE_MB * 1024 * 1024) {
-                    Swal.fire('Archivo demasiado grande', `El archivo ${file.name} supera el límite de ${MAX_SIZE_MB}MB.`, 'error');
-                    return false;
-                }
-                return true;
+    function initHistoryToggles() {
+        document.querySelectorAll('.attachment-clip').forEach(button => {
+            button.addEventListener('click', (e) => {
+                const dropdown = e.currentTarget.nextElementSibling;
+                if (dropdown) dropdown.classList.toggle('hidden');
             });
-
-            if (validFiles.length === 0) return;
-
-            const uploadStatusDiv = document.createElement('div');
-            fileListContainer.appendChild(uploadStatusDiv);
-
-            const uploadPromises = validFiles.map(async file => {
-                const listItem = document.createElement('div');
-                listItem.className = 'text-sm p-2 border rounded-md flex justify-between items-center';
-                listItem.innerHTML = `<span>${file.name}</span><span class="status">Pendiente...</span>`;
-                uploadStatusDiv.appendChild(listItem);
-
-                try {
-                    const presignedResponse = await fetch('/api/tickets/generate-upload-url', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ fileName: file.name, fileType: file.type, ticketId: ticketId })
-                    });
-                    if (!presignedResponse.ok) throw new Error('Error al obtener URL segura.');
-                    const { uploadUrl, key } = await presignedResponse.json();
-
-                    listItem.querySelector('.status').textContent = 'Subiendo...';
-                    const uploadResponse = await fetch(uploadUrl, { method: 'PUT', body: file, headers: { 'Content-Type': file.type } });
-                    if (!uploadResponse.ok) throw new Error('Error al subir el archivo a S3.');
-
-                    listItem.querySelector('.status').textContent = '¡Éxito!';
-                    listItem.classList.add('bg-green-100');
-                    return key;
-                } catch (error) {
-                    console.error('Upload failed for', file.name, error);
-                    listItem.querySelector('.status').textContent = 'Error';
-                    listItem.classList.add('bg-red-100');
-                    return null;
-                }
-            });
-
-            const results = await Promise.all(uploadPromises);
-            const successfulUploads = results.filter(key => key !== null);
-
-            if (successfulUploads.length > 0) {
-                try {
-                    const updateResponse = await fetch('/api/tickets/update', {
-                        method: 'PATCH',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ ticketId: ticketId, archivos: successfulUploads })
-                    });
-                    if (!updateResponse.ok) throw new Error('Error al guardar las referencias de los archivos.');
-                    
-                    Swal.fire('Éxito', `${successfulUploads.length} archivo(s) subido(s) y guardado(s) correctamente.`, 'success').then(() => window.location.reload());
-                } catch (error) {
-                    Swal.fire('Error', error.message, 'error');
-                }
-            }
         });
     }
 
     document.addEventListener('astro:page-load', () => {
         initEditForm();
         initFileUploads();
+        initHistoryToggles();
+        initStatusColorizer();
     });
 </script>
