@@ -81,6 +81,11 @@ if (isPrivileged) {
         prisma.usuario.findMany({ where: { empresaId: ticket.solicitante.empresaId, activo: true } })
     ]);
 }
+
+const parseFileName = (key: string) => {
+    if (!key) return 'archivo-desconocido';
+    return key.split('/').pop()?.split('-').slice(1).join('-') || key;
+};
 ---
 
 <MainLayout title={`Ticket #${ticket.id}`}>
@@ -133,7 +138,7 @@ if (isPrivileged) {
 
                     <!-- Row 3: Atiende, Archivado -->
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div>
+                         <div>
                             <label for="atiendeId" class="block text-xs font-medium text-muted-foreground">Atiende</label>
                             {isPrivileged ? (
                                 <select id="atiendeId" name="atiendeId" class="mt-1 block w-full rounded-md border-border bg-gray-200 p-2 text-sm">
@@ -144,12 +149,12 @@ if (isPrivileged) {
                             )}
                         </div>
                         <div class="pt-4">
-                            {isPrivileged && (
+                             {isPrivileged && (
                                 <div class="flex items-center gap-2">
                                     <input type="checkbox" id="archivado" name="archivado" class="h-4 w-4 rounded" checked={ticket.archivado} />
                                     <label for="archivado" class="text-sm font-medium">Archivado</label>
                                 </div>
-                            )}
+                             )}
                         </div>
                     </div>
 
@@ -174,7 +179,20 @@ if (isPrivileged) {
             )}
         </form>
         <input type="file" id="file-input" multiple class="hidden" />
-        <div id="file-upload-list" class="space-y-2 mb-8"></div>
+        
+        <!-- Attachment Display and Upload Progress -->
+        <div id="attachment-area" class="space-y-2 mb-8">
+            {(ticket.archivos && (ticket.archivos as any[]).length > 0) ? (
+                <div class="p-4 border rounded-lg bg-card border-[#881912]">
+                    <h3 class="text-sm font-medium mb-2">Archivos adjuntos</h3>
+                    <p class="text-sm text-muted-foreground">
+                        {(ticket.archivos as any[]).map(key => parseFileName(key).substring(0, 15)).join('; ')}
+                    </p>
+                </div>
+            ) : (
+                <p class="text-sm text-muted-foreground px-4">Sin archivos adjuntos.</p>
+            )}
+        </div>
 
         <!-- History Section -->
         <div class="bg-card border border-[#881912] rounded-lg p-8">
@@ -218,9 +236,8 @@ if (isPrivileged) {
 
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
-
             const Swal = (await import('sweetalert2')).default;
-            
+
             const formData = new FormData(form);
             const data = {
                 ticketId: ticketId,
@@ -263,7 +280,7 @@ if (isPrivileged) {
     function initFileUploads() {
         const uploadButton = document.getElementById('upload-files-button');
         const fileInput = document.getElementById('file-input');
-        const fileListContainer = document.getElementById('file-upload-list');
+        const fileListContainer = document.getElementById('attachment-area');
 
         if (!uploadButton || !fileInput || !fileListContainer) return;
 
@@ -297,15 +314,17 @@ if (isPrivileged) {
 
             if (validFiles.length === 0) return;
 
-            fileListContainer.innerHTML = '';
+            // Clear previous upload statuses, but not existing files
+            const uploadStatusDiv = document.createElement('div');
+            fileListContainer.appendChild(uploadStatusDiv);
+
             const uploadPromises = validFiles.map(async file => {
                 const listItem = document.createElement('div');
                 listItem.className = 'text-sm p-2 border rounded-md flex justify-between items-center';
                 listItem.innerHTML = `<span>${file.name}</span><span class="status">Pendiente...</span>`;
-                fileListContainer.appendChild(listItem);
+                uploadStatusDiv.appendChild(listItem);
 
                 try {
-                    // 1. Get pre-signed URL
                     const presignedResponse = await fetch('/api/tickets/generate-upload-url', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
@@ -314,7 +333,6 @@ if (isPrivileged) {
                     if (!presignedResponse.ok) throw new Error('Error al obtener URL segura.');
                     const { uploadUrl, key } = await presignedResponse.json();
 
-                    // 2. Upload file to S3
                     listItem.querySelector('.status').textContent = 'Subiendo...';
                     const uploadResponse = await fetch(uploadUrl, { method: 'PUT', body: file, headers: { 'Content-Type': file.type } });
                     if (!uploadResponse.ok) throw new Error('Error al subir el archivo a S3.');
@@ -334,7 +352,6 @@ if (isPrivileged) {
             const successfulUploads = results.filter(key => key !== null);
 
             if (successfulUploads.length > 0) {
-                // 3. Update ticket with file keys
                 try {
                     const updateResponse = await fetch('/api/tickets/update', {
                         method: 'PATCH',
