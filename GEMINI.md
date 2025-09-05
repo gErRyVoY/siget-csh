@@ -72,3 +72,20 @@ A continuación se listan los proyectos prioritarios. Tu tarea es ayudar a refin
     *   Se solucionó un bug donde los datos no se actualizaban al navegar entre diferentes "campus".
     *   Se aplicó el atributo `data-astro-reload` para forzar la recarga de la página y asegurar la consistencia de los datos.
 *   **Confirmación Final:** Se realizó una última validación del proyecto a través del build, confirmando que todos los cambios se integraron correctamente.
+
+## 2025-09-04
+*   **Implementación de Gestión de Tickets (Fase Completa):**
+    *   **Lista de Tickets (`/`):** Implementación de la vista de lista de tickets con columnas dinámicas según el rol, semáforo de fechas y colores de estatus.
+    *   **Vista de Detalle y Edición (`/tickets/view/[id]`):**
+        *   Rediseño completo de la interfaz de usuario para optimizar espacios y hacerla responsiva.
+        *   Implementación de la sección de historial de cambios, mostrando usuario, comentario, cambios de campos y archivos adjuntos.
+        *   Funcionalidad de edición para roles privilegiados (estatus, prioridad, solicitante, atiende, archivado).
+    *   **Sistema de Subida de Archivos (S3):**
+        *   Integración con AWS S3 para el almacenamiento seguro de archivos.
+        *   Implementación de API para generación de URLs pre-firmadas.
+        *   Lógica de frontend para selección, validación y subida de archivos, consolidada con el guardado de cambios del ticket.
+        *   Actualización del modelo `Ticket` y `HistorialSolicitud` para almacenar referencias a los archivos.
+    *   **Correcciones y Mejoras:**
+        *   Resolución de múltiples `warnings` de TypeScript y errores de ejecución (incluyendo problemas de carga de `sweetalert2` y acceso a propiedades de objetos).
+        *   Refactorización de la lógica de guardado para un proceso más atómico y robusto.
+        *   Ajustes de estilos y usabilidad en selectores y visualización de archivos.
