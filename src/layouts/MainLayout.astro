@@ -75,11 +75,11 @@ const { title } = Astro.props;
             </main>
         </div>
     </div>
-    <script is:inline>
+    <script>
         // This is a hack to get the socket.io client to work with Astro
         if (typeof window !== "undefined") {
             (async () => {
-                const { io } = await import("/node_modules/socket.io-client/dist/socket.io.esm.min.js");
+                const { io } = await import("https://cdn.socket.io/4.7.5/socket.io.esm.min.js");
 
                 const socket = io();
 
