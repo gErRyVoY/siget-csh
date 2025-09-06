@@ -2,16 +2,15 @@ import type { APIRoute } from 'astro';
 import { getSession } from 'auth-astro/server';
 import { prisma } from '@/lib/db';
 import type { Prisma, Prioridad } from '@prisma/client';
+import { sendNotification } from '../notifications';
 
 const PRIVILEGED_ROLES = [1, 2, 3, 4, 5, 6, 15];
 
-export const PATCH: APIRoute = async ({ request }) => {
+export const PATCH: APIRoute = async ({ request, locals }) => {
     const session = await getSession(request);
     if (!session || !session.user || !PRIVILEGED_ROLES.includes(session.user.rol?.id ?? -1)) {
         return new Response(JSON.stringify({ message: 'No autorizado' }), { status: 403 });
     }
-
-    const { io, users } = request as any;
 
     try {
         const data = await request.json();
@@ -79,23 +78,12 @@ export const PATCH: APIRoute = async ({ request }) => {
         });
 
         // Notify users
-        if (io) {
-            const newAtiendeId = updatedTicket.atiendeId;
-            const solicitanteId = updatedTicket.solicitanteId;
-
-            if (newAtiendeId && users[newAtiendeId]) {
-                io.to(users[newAtiendeId]).emit('notification', { message: `Se te ha asignado el ticket #${ticketId}` });
-            }
-
-            if (solicitanteId && users[solicitanteId]) {
-                io.to(users[solicitanteId]).emit('notification', { message: `El ticket #${ticketId} ha sido actualizado` });
-            }
-        }
+        sendNotification({ message: `El ticket #${ticketId} ha sido actualizado` });
 
         return new Response(JSON.stringify(updatedTicket), { status: 200 });
 
-    } catch (error) {
-        console.error('Error updating ticket:', error);
-        return new Response(JSON.stringify({ message: 'Error interno del servidor' }), { status: 500 });
+    } catch (error: any) {
+        console.error('Error updating ticket:', error.message, error.stack);
+        return new Response(JSON.stringify({ message: 'Error interno del servidor', error: error.message }), { status: 500 });
     }
 };

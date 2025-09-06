@@ -1,6 +1,7 @@
 import type { APIRoute } from 'astro';
 import { prisma } from '../../../lib/db';
 import { getSession } from 'auth-astro/server';
+import { sendNotification } from '../notifications';
 
 /**
  * Finds the best-suited agent based on availability and workload.
@@ -28,14 +29,12 @@ async function findBestAgent(): Promise<number> {
   return availableAgents[0].id;
 }
 
-export const POST: APIRoute = async ({ request }) => {
+export const POST: APIRoute = async ({ request, locals }) => {
   const session = await getSession(request);
 
   if (!session || !session.user || !session.user.id) {
     return new Response(JSON.stringify({ message: 'No autorizado' }), { status: 401 });
   }
-
-  const { io, users } = request as any;
 
   try {
     const data = await request.json();
@@ -79,9 +78,7 @@ export const POST: APIRoute = async ({ request }) => {
     ]);
 
     // Notify user
-    if (io && users[atiendeId]) {
-      io.to(users[atiendeId]).emit('notification', { message: `Se te ha asignado un nuevo ticket #${nuevoTicket.id}` });
-    }
+    sendNotification({ message: `Se ha creado un nuevo ticket #${nuevoTicket.id}` });
 
     return new Response(JSON.stringify(nuevoTicket), {
       status: 201, // 201 Created

@@ -71,14 +71,14 @@ const [statuses, categories, companies, agents] = await Promise.all([
             <div class="overflow-x-auto">
                 <table class="w-full text-sm text-left">
                     <thead class="bg-muted/50">
-                        <tr>
-                            <th class="p-4">Folio</th>
-                            {isPrivileged ? <th class="p-4">Solicita</th> : <th class="p-4">Atiende</th>}
-                            <th class="p-4">Descripción</th>
-                            {isPrivileged && <th class="p-4">Empresa</th>}
-                            <th class="p-4">Estatus</th>
-                            <th class="p-4">Fecha Alta</th>
-                            <th class="p-4"><span class="sr-only">Acciones</span></th>
+                        <tr class="text-center">
+                            <th class="p-2">Folio</th>
+                            {isPrivileged ? <th class="p-2">Solicita</th> : <th class="p-2">Atiende</th>}
+                            <th class="p-2">Prioridad</th>
+                            {isPrivileged && <th class="p-2">Empresa</th>}
+                            <th class="p-2">Estatus</th>
+                            <th class="p-2">Fecha Alta</th>
+                            <th class="p-2"><span class="sr-only">Acciones</span></th>
                         </tr>
                     </thead>
                     <tbody id="tickets-table-body"></tbody>
@@ -146,6 +146,7 @@ const [statuses, categories, companies, agents] = await Promise.all([
             
             url += `&estatus=${estatusSelect.value}`;
             url += `&categoria=${categoriaSelect.value}`;
+            url += `&exclude_statuses=Cancelado,Duplicado,Solucionado`;
 
             if (isPrivileged) {
                 url += `&empresa=${empresaSelect.value}`;
@@ -175,26 +176,28 @@ const [statuses, categories, companies, agents] = await Promise.all([
                         let columns = '';
                         if (isPrivileged) {
                             columns = `
-                                <td class="p-4 font-medium">${ticket.id}</td>
-                                <td class="p-4">${ticket.solicitante.nombres} ${ticket.solicitante.apellidos}</td>
-                                <td class="p-4">${ticket.descripcion ? ticket.descripcion.substring(0, 50) : ''}...</td>
-                                <td class="p-4">${ticket.empresa.nombre}</td>
-                                <td class="p-4"><span class="px-2 py-1 text-xs font-semibold text-white ${statusColor} rounded-full">${ticket.estatus.nombre}</span></td>
-                                <td class="p-4 ${dateColor}">${formattedDate}</td>
+                                <td class="p-2 font-medium text-center">${ticket.id}</td>
+                                <td class="p-2">${ticket.solicitante.nombres} ${ticket.solicitante.apellidos}</td>
+                                <td class="p-2 text-center">${ticket.prioridad}</td>
+                                <!--<td class="p-2">${ticket.descripcion ? ticket.descripcion.substring(0, 50) : ''}...</td>-->
+                                <td class="p-2 text-center">${ticket.empresa.nombre}</td>
+                                <td class="p-2 text-center"><span class="px-2 py-1 text-xs font-semibold text-white ${statusColor} rounded-full">${ticket.estatus.nombre}</span></td>
+                                <td class="p-2 text-center ${dateColor}">${formattedDate}</td>
                             `;
                         } else {
                             columns = `
-                                <td class="p-4 font-medium">${ticket.id}</td>
-                                <td class="p-4">${ticket.atiende.nombres} ${ticket.atiende.apellidos}</td>
-                                <td class="p-4">${ticket.descripcion ? ticket.descripcion.substring(0, 50) : ''}...</td>
-                                <td class="p-4"><span class="px-2 py-1 text-xs font-semibold text-white ${statusColor} rounded-full">${ticket.estatus.nombre}</span></td>
-                                <td class="p-4">${formattedDate}</td>
+                                <td class="p-2 font-medium text-center">${ticket.id}</td>
+                                <td class="p-2">${ticket.atiende.nombres} ${ticket.atiende.apellidos}</td>
+                                <td class="p-2 text-center">${ticket.prioridad}</td>
+                                <!--<td class="p-2">${ticket.descripcion ? ticket.descripcion.substring(0, 50) : ''}...</td>-->
+                                <td class="p-2 text-center"><span class="px-2 py-1 text-xs font-semibold text-white ${statusColor} rounded-full">${ticket.estatus.nombre}</span></td>
+                                <td class="p-2 text-center">${formattedDate}</td>
                             `;
                         }
 
                         row.innerHTML = `
                             ${columns}
-                            <td class="p-4 text-right">
+                            <td class="p-2 text-center">
                                 <a href="/tickets/view/${ticket.id}" class="font-medium text-primary hover:underline">Ver</a>
                             </td>
                         `;

@@ -38,6 +38,18 @@ export const GET: APIRoute = async ({ request }) => {
       where.estatusId = parseInt(estatusId, 10);
     }
 
+    const excludeStatuses = params.get('exclude_statuses');
+    if (excludeStatuses) {
+      const statusNamesToExclude = excludeStatuses.split(',');
+      where.estatus = {
+        isNot: {
+          nombre: {
+            in: statusNamesToExclude,
+          },
+        },
+      };
+    }
+
     const categoriaId = params.get('categoria');
     if (categoriaId && categoriaId !== 'all') {
       where.categoriaId = parseInt(categoriaId, 10);

@@ -1,6 +1,5 @@
 ---
 import Sidebar from '@/components/shared/Sidebar.astro';
-import UserProfile from '@/components/shared/UserProfile.astro';
 import NotificationEmpty from '@/components/icons/NotificationEmpty.astro';
 import NotificationFull from '@/components/icons/NotificationFull.astro';
 import PanelLeftClose from '@/components/icons/PanelLeftClose.astro';
@@ -16,6 +15,20 @@ interface Props {
 	title: string;
 }
 const { title } = Astro.props;
+
+const NOTIFICATION_EMPTY_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-bell">
+    <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+    <path d="M10 5a2 2 0 1 1 4 0a7 7 0 0 1 4 6v3a4 4 0 0 0 2 -3v-3a7 7 0 0 1 4 -6" />
+    <path d="M9 17v1a3 3 0 0 0 6 0v-1" />
+</svg>`;
+
+const NOTIFICATION_FULL_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-bell-ringing">
+    <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+    <path d="M10 5a2 2 0 1 1 4 0a7 7 0 0 1 4 6v3a4 4 0 0 0 2 -3v-3a7 7 0 0 1 4 -6" />
+    <path d="M9 17v1a3 3 0 0 0 6 0v-1" />
+    <path d="M21 6.727a11.05 11.05 0 0 0 -2.794 -3.727" />
+    <path d="M3 6.727a11.05 11.05 0 0 1 2.792 -3.727" />
+</svg>`;
 ---
 
 <!doctype html>
@@ -53,10 +66,10 @@ const { title } = Astro.props;
                     <h1 class="text-xl font-semibold h-16 flex items-center justify-center">{ title }</h1>
                 </div>
                 <div class="flex items-center gap-4">
-                    <div id="notification-bell">
+                    <div id="notification-bell" class="relative cursor-pointer">
                         <NotificationEmpty />
+                        <span id="notification-count" class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center" style="display: none;"></span>
                     </div>
-                    <UserProfile session={session} />
                 </div>
             </header>
 
@@ -76,51 +89,48 @@ const { title } = Astro.props;
         </div>
     </div>
     <script>
-        // This is a hack to get the socket.io client to work with Astro
         if (typeof window !== "undefined") {
-            (async () => {
-                const { io } = await import("https://cdn.socket.io/4.7.5/socket.io.esm.min.js");
+            const notificationBell = document.getElementById('notification-bell');
+            const notificationCount = document.getElementById('notification-count');
+            let count = 0;
 
-                const socket = io();
+            const NOTIFICATION_EMPTY_SVG = `
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-bell">
+    <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+    <path d="M10 5a2 2 0 1 1 4 0a7 7 0 0 1 4 6v3a4 4 0 0 0 2 -3v-3a7 7 0 0 1 4 -6" />
+    <path d="M9 17v1a3 3 0 0 0 6 0v-1" />
+</svg>
+`;
 
-                const notificationBell = document.getElementById('notification-bell');
-
-                socket.on('connect', () => {
-                    console.log(`[Socket.IO] Connected to server with id: ${socket.id}`);
-                    const userId = document.body.dataset.userId;
-                    if (userId) {
-                        socket.emit('register', userId);
-                    }
-                });
-
-                socket.on('notification', (data) => {
-                    console.log('[Socket.IO] Notification received:', data);
-                    if (notificationBell) {
-                        notificationBell.innerHTML = `
+            const NOTIFICATION_FULL_SVG = `
 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-bell-ringing">
     <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-    <path d="M10 5a2 2 0 1 1 4 0a7 7 0 0 1 4 6v3a4 4 0 0 0 2 3h-16a4 4 0 0 0 2 -3v-3a7 7 0 0 1 4 -6" />
+    <path d="M10 5a2 2 0 1 1 4 0a7 7 0 0 1 4 6v3a4 4 0 0 0 2 -3v-3a7 7 0 0 1 4 -6" />
     <path d="M9 17v1a3 3 0 0 0 6 0v-1" />
     <path d="M21 6.727a11.05 11.05 0 0 0 -2.794 -3.727" />
     <path d="M3 6.727a11.05 11.05 0 0 1 2.792 -3.727" />
 </svg>
 `;
-                    }
+
+            if (notificationBell && notificationCount) {
+                notificationBell.addEventListener('click', () => {
+                    count = 0;
+                    notificationCount.textContent = '';
+                    notificationCount.style.display = 'none';
+                    notificationBell.innerHTML = NOTIFICATION_EMPTY_SVG;
                 });
 
-                socket.on('no-notification', (data) => {
-                    console.log('[Socket.IO] No notification received:', data);
-                    if (notificationBell) {
-                        notificationBell.innerHTML = `
-<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-bell">
-    <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-    <path d="M10 5a2 2 0 1 1 4 0a7 7 0 0 1 4 6v3a4 4 0 0 0 2 3h-16a4 4 0 0 0 2 -3v-3a7 7 0 0 1 4 -6" />
-    <path d="M9 17v1a3 3 0 0 0 6 0v-1" />
-</svg>
-`;
-                    }
-                });
-            })();
+                const eventSource = new EventSource("/api/notifications");
+
+                eventSource.onmessage = (event) => {
+                    const data = JSON.parse(event.data);
+                    console.log('[SSE] Notification received:', data);
+                    count++;
+                    notificationCount.textContent = count.toString();
+                    notificationCount.style.display = 'flex';
+                    notificationBell.innerHTML = NOTIFICATION_FULL_SVG;
+                };
+            }
         }
     </script>
     <script>

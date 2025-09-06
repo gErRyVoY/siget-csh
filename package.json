@@ -4,9 +4,8 @@
   "version": "0.0.1",
   "scripts": {
     "dev": "astro dev",
-    "start": "node ./server.mjs",
     "build": "astro build",
-    "preview": "npm run build && npm run start",
+    "preview": "astro preview",
     "astro": "astro",
     "seed": "tsx prisma/seed.ts",
     "generate:data": "dotenv -- tsx prisma/generate-categories-json.ts"

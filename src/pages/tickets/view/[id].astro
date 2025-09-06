@@ -51,6 +51,8 @@ if (!ticket) {
 const session = await getSession(Astro.request);
 const PRIVILEGED_ROLES = [1, 2, 3, 4, 5, 6, 15];
 const isPrivileged = session?.user ? PRIVILEGED_ROLES.includes(session.user.rol?.id ?? -1) : false;
+const READ_ONLY_STATUSES = ['Solucionado', 'Cancelado', 'Duplicado'];
+const isReadOnly = READ_ONLY_STATUSES.includes(ticket.estatus.nombre);
 
 const breadcrumbPath = [ticket.categoria.nombre];
 if (ticket.subcategoria) {
@@ -116,7 +118,7 @@ const parseFileName = (key: string) => {
                         </div>
                         <div>
                             <label for="prioridad" class="block text-xs font-medium text-muted-foreground">Prioridad</label>
-                            {isPrivileged ? (
+                            {isPrivileged && !isReadOnly ? (
                                 <select id="prioridad" name="prioridad" class="mt-1 block w-full rounded-md border-border bg-gray-200 p-2 text-sm">
                                     {priorities.map(p => <option value={p} selected={p === ticket.prioridad}>{p}</option>)}
                                 </select>
@@ -126,7 +128,7 @@ const parseFileName = (key: string) => {
                         </div>
                         <div>
                             <label for="estatusId" class="block text-xs font-medium text-muted-foreground">Estatus</label>
-                            {isPrivileged ? (
+                            {isPrivileged && !isReadOnly ? (
                                 <select id="estatusId" name="estatusId" class="mt-1 block w-full rounded-md border-border p-2 text-sm">
                                     {statuses.map(status => 
                                         <option 
@@ -146,7 +148,7 @@ const parseFileName = (key: string) => {
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
                             <label for="atiendeId" class="block text-xs font-medium text-muted-foreground">Atiende</label>
-                            {isPrivileged ? (
+                            {isPrivileged && !isReadOnly ? (
                                 <select id="atiendeId" name="atiendeId" class="mt-1 block w-full rounded-md border-border bg-gray-200 p-2 text-sm">
                                     {agents.map(agent => <option value={agent.id} selected={agent.id === ticket.atiendeId}>{`${agent.nombres} ${agent.apellidos}`}</option>)}
                                 </select>
@@ -172,11 +174,15 @@ const parseFileName = (key: string) => {
             
             {isPrivileged && (
                 <div class="flex justify-between items-start gap-4 mb-8">
-                    <div id="attachment-area" class="space-y-2 flex-grow"></div>
+                    {!isReadOnly && (
+                        <div id="attachment-area" class="space-y-2 flex-grow"></div>
+                    )}
                     <div class="flex items-center gap-4 flex-shrink-0">
-                        <button type="button" id="upload-files-button" class="bg-gray-200 text-gray-800 hover:bg-gray-300 px-8 py-2 rounded-md text-sm font-semibold">
-                            Adjuntar archivos
-                        </button>
+                        {!isReadOnly && (
+                            <button type="button" id="upload-files-button" class="bg-gray-200 text-gray-800 hover:bg-gray-300 px-8 py-2 rounded-md text-sm font-semibold">
+                                Adjuntar archivos
+                            </button>
+                        )}
                         <button type="submit" class="bg-primary text-primary-foreground hover:bg-primary/90 px-8 py-2 rounded-md text-sm font-semibold">
                             Guardar cambios
                         </button>
@@ -188,8 +194,12 @@ const parseFileName = (key: string) => {
 
         <div class="bg-card border border-[var(--secondary)] rounded-lg p-8">
             <div class="mb-6">
-                <label for="new-comment" class="block text-sm font-medium text-muted-foreground mb-2">Añadir comentario</label>
-                <textarea id="new-comment" name="new-comment" rows="3" class="w-full rounded-md border-border bg-input p-2 text-sm" placeholder="Escribe un comentario..."></textarea>
+                {!isReadOnly && (
+                    <>
+                        <label for="new-comment" class="block text-sm font-medium text-muted-foreground mb-2">Añadir comentario</label>
+                        <textarea id="new-comment" name="new-comment" rows="3" class="w-full rounded-md border-border bg-input p-2 text-sm" placeholder="Escribe un comentario..."></textarea>
+                    </>
+                )}
             </div>
             <ul class="space-y-6">
                 {ticketHistory.length > 0 ? ticketHistory.map((entry, index) => {
@@ -241,7 +251,7 @@ const parseFileName = (key: string) => {
     </div>
 </MainLayout>
 
-<script define:vars={{ ticketId, statusColors }}>
+<script define:vars={{ ticketId, statusColors, isReadOnly }}>
     let stagedFiles = [];
 
     const Toast = Swal.mixin({
@@ -308,14 +318,18 @@ const parseFileName = (key: string) => {
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
             const submitButton = form.querySelector('button[type="submit"]');
-            submitButton.disabled = true;
-            submitButton.textContent = 'Guardando...';
+            if (submitButton) {
+                submitButton.disabled = true;
+                submitButton.textContent = 'Guardando...';
+            }
 
             let uploadedFileKeys = [];
 
             if (stagedFiles.length > 0) {
                 const attachmentArea = document.getElementById('attachment-area');
-                attachmentArea.innerHTML = '<h3 class="text-sm font-medium mb-2">Subiendo archivos...</h3>';
+                if (attachmentArea) {
+                    attachmentArea.innerHTML = '<h3 class="text-sm font-medium mb-2">Subiendo archivos...</h3>';
+                }
                 
                 const uploadPromises = stagedFiles.map(async file => {
                     try {
@@ -340,8 +354,10 @@ const parseFileName = (key: string) => {
 
                 if (uploadedFileKeys.length !== stagedFiles.length) {
                     Swal.fire('Error', 'Algunos archivos no se pudieron subir. Por favor, inténtalo de nuevo.', 'error');
-                    submitButton.disabled = false;
-                    submitButton.textContent = 'Guardar cambios';
+                    if (submitButton) {
+                        submitButton.disabled = false;
+                        submitButton.textContent = 'Guardar cambios';
+                    }
                     return;
                 }
             }
@@ -355,7 +371,7 @@ const parseFileName = (key: string) => {
                 atiendeId: formData.get('atiendeId'),
                 solicitanteId: formData.get('solicitanteId'),
                 archivado: form.elements.archivado.checked,
-                newComment: newCommentElement.value,
+                newComment: newCommentElement ? newCommentElement.value : null,
                 newFiles: uploadedFileKeys,
             };
 
@@ -370,10 +386,12 @@ const parseFileName = (key: string) => {
                 Toast.fire({ icon: 'success', title: 'Ticket actualizado correctamente' }).then(() => {
                     window.location.href = `${window.location.pathname}?new_entry=true`;
                 });
-            } catch (error) {
+            } catch (error: any) {
                 Swal.fire({ title: 'Error', text: error.message, icon: 'error' });
-                submitButton.disabled = false;
-                submitButton.textContent = 'Guardar cambios';
+                if (submitButton) {
+                    submitButton.disabled = false;
+                    submitButton.textContent = 'Guardar cambios';
+                }
             }
         });
     }

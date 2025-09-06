@@ -89,3 +89,31 @@ A continuación se listan los proyectos prioritarios. Tu tarea es ayudar a refin
         *   Resolución de múltiples `warnings` de TypeScript y errores de ejecución (incluyendo problemas de carga de `sweetalert2` y acceso a propiedades de objetos).
         *   Refactorización de la lógica de guardado para un proceso más atómico y robusto.
         *   Ajustes de estilos y usabilidad en selectores y visualización de archivos.
+
+## 2025-09-05
+*   **Mejoras en la Página de Detalle de Tickets (`src/pages/tickets/view/[id].astro`):**
+    *   Implementación de URLs pre-firmadas para archivos adjuntos.
+    *   Mejora del comportamiento del popup de la lista de archivos adjuntos (cierre al hacer clic fuera, al presionar Esc, después de abrir el archivo).
+    *   Filtrado de "Cambios de campos" para mostrar solo "Prioridad" y "Asignado a".
+    *   Adición del estatus del ticket en las entradas del historial.
+    *   Corrección del color del estatus en el formulario de edición.
+    *   Implementación de scroll a la nueva entrada del historial con animación de parpadeo.
+    *   Reubicación del ícono de clip de archivos adjuntos.
+    *   Implementación de restricciones de edición para tickets "Cancelados", "Duplicados" o "Solucionados".
+    *   Cambios en la UI para tickets de solo lectura (mostrar valores en etiquetas `<p>`, solo el campo "Archivado" es editable, se eliminó el textarea).
+
+*   **Sistema de Notificaciones en Tiempo Real (SSE):**
+    *   Eliminación de la integración de Socket.io.
+    *   Implementación de Server-Sent Events (SSE) para notificaciones en tiempo real.
+    *   Creación de un nuevo endpoint SSE (`src/pages/api/notifications.ts`).
+    *   Modificación de las rutas de la API (`create.ts` y `update.ts`) para enviar notificaciones a través de SSE.
+    *   Modificación de `MainLayout.astro` para conectar al endpoint SSE y mostrar el contador de notificaciones.
+    *   Eliminación del componente `UserProfile` del encabezado de `MainLayout.astro`.
+
+*   **Página de Listado de Tickets (`src/pages/index.astro`):**
+    *   Adición de la columna "Prioridad".
+    *   Implementación de filtrado para tickets "Cancelados", "Duplicados" o "Solucionados".
+
+*   **Correcciones Adicionales:**
+    *   Corrección de advertencias de TypeScript en `MainLayout.astro` relacionadas con la manipulación del DOM y el uso de componentes Astro en el cliente.
+    *   Ajuste del script `dev` en `package.json` para asegurar que el servidor personalizado de Node.js se ejecute correctamente en desarrollo.
