@@ -11,6 +11,8 @@ export const PATCH: APIRoute = async ({ request }) => {
         return new Response(JSON.stringify({ message: 'No autorizado' }), { status: 403 });
     }
 
+    const { io, users } = request as any;
+
     try {
         const data = await request.json();
         const { ticketId, newComment, newFiles, ...updateDataInput } = data;
@@ -75,6 +77,20 @@ export const PATCH: APIRoute = async ({ request }) => {
 
             return ticketAfterUpdate;
         });
+
+        // Notify users
+        if (io) {
+            const newAtiendeId = updatedTicket.atiendeId;
+            const solicitanteId = updatedTicket.solicitanteId;
+
+            if (newAtiendeId && users[newAtiendeId]) {
+                io.to(users[newAtiendeId]).emit('notification', { message: `Se te ha asignado el ticket #${ticketId}` });
+            }
+
+            if (solicitanteId && users[solicitanteId]) {
+                io.to(users[solicitanteId]).emit('notification', { message: `El ticket #${ticketId} ha sido actualizado` });
+            }
+        }
 
         return new Response(JSON.stringify(updatedTicket), { status: 200 });
 

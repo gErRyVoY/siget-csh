@@ -4,8 +4,9 @@
   "version": "0.0.1",
   "scripts": {
     "dev": "astro dev",
+    "start": "node ./server.mjs",
     "build": "astro build",
-    "preview": "astro preview",
+    "preview": "npm run build && npm run start",
     "astro": "astro",
     "seed": "tsx prisma/seed.ts",
     "generate:data": "dotenv -- tsx prisma/generate-categories-json.ts"
@@ -20,8 +21,11 @@
     "astro": "^5.10.1",
     "auth-astro": "^4.2.0",
     "dotenv": "^17.2.0",
+    "express": "^5.1.0",
     "google-auth-library": "^10.2.0",
     "googleapis": "^154.1.0",
+    "socket.io": "^4.8.1",
+    "socket.io-client": "^4.8.1",
     "sweetalert2": "^11.22.2",
     "tailwindcss": "^4.1.10"
   },

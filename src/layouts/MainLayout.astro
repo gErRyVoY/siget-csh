@@ -1,5 +1,8 @@
 ---
 import Sidebar from '@/components/shared/Sidebar.astro';
+import UserProfile from '@/components/shared/UserProfile.astro';
+import NotificationEmpty from '@/components/icons/NotificationEmpty.astro';
+import NotificationFull from '@/components/icons/NotificationFull.astro';
 import PanelLeftClose from '@/components/icons/PanelLeftClose.astro';
 import '@/styles/global.css'; 
 import ClientRouter from 'astro/components/ClientRouter.astro';
@@ -32,7 +35,7 @@ const { title } = Astro.props;
 
     <ClientRouter />
 </head>
-<body>
+<body data-user-id={session?.user?.id}>
     <div id="dashboard-wrapper" class="h-screen w-screen bg-background flex group font-montse">
         <Sidebar session={session} />
     
@@ -42,11 +45,19 @@ const { title } = Astro.props;
                     transition-[margin-left] duration-300 ease-in-out 
                     ml-0 md:ml-64 group-data-[sidebar-collapsed=false]:ml-64 group-data-[sidebar-collapsed=true]:ml-0"
         >
-            <header class="h-[var(--header-height)] flex items-center border-b border-border px-6 sticky top-0 bg-background/80 backdrop-blur-lg z-30">
-                <button id="sidebar-toggle-button" class="mr-4 p-2 rounded-md hover:bg-accent">
-                    <PanelLeftClose class="h-5 w-5" />
-                </button>
-                <h1 class="text-xl font-semibold  h-16 flex items-center justify-center">{ title }</h1>
+            <header class="h-[var(--header-height)] flex items-center justify-between border-b border-border px-6 sticky top-0 bg-background/80 backdrop-blur-lg z-30">
+                <div class="flex items-center">
+                    <button id="sidebar-toggle-button" class="mr-4 p-2 rounded-md hover:bg-accent">
+                        <PanelLeftClose class="h-5 w-5" />
+                    </button>
+                    <h1 class="text-xl font-semibold h-16 flex items-center justify-center">{ title }</h1>
+                </div>
+                <div class="flex items-center gap-4">
+                    <div id="notification-bell">
+                        <NotificationEmpty />
+                    </div>
+                    <UserProfile session={session} />
+                </div>
             </header>
 
             <main class="p-4 flex-1">
@@ -64,10 +75,55 @@ const { title } = Astro.props;
             </main>
         </div>
     </div>
-</body>
-</html>
+    <script is:inline>
+        // This is a hack to get the socket.io client to work with Astro
+        if (typeof window !== "undefined") {
+            (async () => {
+                const { io } = await import("/node_modules/socket.io-client/dist/socket.io.esm.min.js");
 
-<script>
+                const socket = io();
+
+                const notificationBell = document.getElementById('notification-bell');
+
+                socket.on('connect', () => {
+                    console.log(`[Socket.IO] Connected to server with id: ${socket.id}`);
+                    const userId = document.body.dataset.userId;
+                    if (userId) {
+                        socket.emit('register', userId);
+                    }
+                });
+
+                socket.on('notification', (data) => {
+                    console.log('[Socket.IO] Notification received:', data);
+                    if (notificationBell) {
+                        notificationBell.innerHTML = `
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-bell-ringing">
+    <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+    <path d="M10 5a2 2 0 1 1 4 0a7 7 0 0 1 4 6v3a4 4 0 0 0 2 3h-16a4 4 0 0 0 2 -3v-3a7 7 0 0 1 4 -6" />
+    <path d="M9 17v1a3 3 0 0 0 6 0v-1" />
+    <path d="M21 6.727a11.05 11.05 0 0 0 -2.794 -3.727" />
+    <path d="M3 6.727a11.05 11.05 0 0 1 2.792 -3.727" />
+</svg>
+`;
+                    }
+                });
+
+                socket.on('no-notification', (data) => {
+                    console.log('[Socket.IO] No notification received:', data);
+                    if (notificationBell) {
+                        notificationBell.innerHTML = `
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-bell">
+    <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+    <path d="M10 5a2 2 0 1 1 4 0a7 7 0 0 1 4 6v3a4 4 0 0 0 2 3h-16a4 4 0 0 0 2 -3v-3a7 7 0 0 1 4 -6" />
+    <path d="M9 17v1a3 3 0 0 0 6 0v-1" />
+</svg>
+`;
+                    }
+                });
+            })();
+        }
+    </script>
+    <script>
     function setupSidebar() {
         const dashboardWrapper = document.getElementById('dashboard-wrapper') as HTMLElement;
         const toggleButton = document.getElementById('sidebar-toggle-button') as HTMLButtonElement;
@@ -101,3 +157,5 @@ const { title } = Astro.props;
 
     document.addEventListener('astro:page-load', setupSidebar);
 </script>
+</body>
+</html>

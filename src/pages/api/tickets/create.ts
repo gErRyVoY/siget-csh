@@ -35,6 +35,8 @@ export const POST: APIRoute = async ({ request }) => {
     return new Response(JSON.stringify({ message: 'No autorizado' }), { status: 401 });
   }
 
+  const { io, users } = request as any;
+
   try {
     const data = await request.json();
     const { categoriaId, subcategoriaId, descripcion } = data;
@@ -75,6 +77,11 @@ export const POST: APIRoute = async ({ request }) => {
         data: { carga_actual: { increment: 1 } },
       }),
     ]);
+
+    // Notify user
+    if (io && users[atiendeId]) {
+      io.to(users[atiendeId]).emit('notification', { message: `Se te ha asignado un nuevo ticket #${nuevoTicket.id}` });
+    }
 
     return new Response(JSON.stringify(nuevoTicket), {
       status: 201, // 201 Created
