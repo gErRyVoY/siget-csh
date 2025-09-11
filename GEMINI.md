@@ -62,33 +62,17 @@ A continuación se listan los proyectos prioritarios. Tu tarea es ayudar a refin
 
 # Historial de Cambios (Log)
 
-## 2025-09-01
-*   **Validación del Proyecto:** Se validó la integridad del proyecto `siget-csh` ejecutando el proceso de build de Astro, confirmando que no existen errores de compilación.
-*   **Corrección de API de Usuarios (`/api/admin/usuarios.ts`):**
-    *   Se corrigieron múltiples advertencias de TypeScript relacionadas con el manejo de tipos de Prisma.
-    *   Se solucionó un error de tipo `unknown` en bloques `catch`.
-    *   Se implementó la sintaxis correcta (`connect`) para actualizar relaciones de base de datos en Prisma.
-*   **Corrección de UI de Usuarios (`/admin/usuarios`):**
-    *   Se solucionó un bug donde los datos no se actualizaban al navegar entre diferentes "campus".
-    *   Se aplicó el atributo `data-astro-reload` para forzar la recarga de la página y asegurar la consistencia de los datos.
-*   **Confirmación Final:** Se realizó una última validación del proyecto a través del build, confirmando que todos los cambios se integraron correctamente.
-
-## 2025-09-04
-*   **Implementación de Gestión de Tickets (Fase Completa):**
-    *   **Lista de Tickets (`/`):** Implementación de la vista de lista de tickets con columnas dinámicas según el rol, semáforo de fechas y colores de estatus.
-    *   **Vista de Detalle y Edición (`/tickets/view/[id]`):**
-        *   Rediseño completo de la interfaz de usuario para optimizar espacios y hacerla responsiva.
-        *   Implementación de la sección de historial de cambios, mostrando usuario, comentario, cambios de campos y archivos adjuntos.
-        *   Funcionalidad de edición para roles privilegiados (estatus, prioridad, solicitante, atiende, archivado).
-    *   **Sistema de Subida de Archivos (S3):**
-        *   Integración con AWS S3 para el almacenamiento seguro de archivos.
-        *   Implementación de API para generación de URLs pre-firmadas.
-        *   Lógica de frontend para selección, validación y subida de archivos, consolidada con el guardado de cambios del ticket.
-        *   Actualización del modelo `Ticket` y `HistorialSolicitud` para almacenar referencias a los archivos.
-    *   **Correcciones y Mejoras:**
-        *   Resolución de múltiples `warnings` de TypeScript y errores de ejecución (incluyendo problemas de carga de `sweetalert2` y acceso a propiedades de objetos).
-        *   Refactorización de la lógica de guardado para un proceso más atómico y robusto.
-        *   Ajustes de estilos y usabilidad en selectores y visualización de archivos.
+## 2025-09-10
+*   **Mejoras en Listado de Tickets (`src/pages/index.astro`):**
+    *   Se ajustó el filtro de "Estatus" para mostrar solo los valores permitidos (`Nuevo`, `En espera`, `Solucionado`, `Cancelado`, `Duplicado`), eliminando los relacionados con traslados.
+    *   Para usuarios con roles privilegiados, la vista de tickets ahora muestra por defecto solo los tickets asignados a ellos, eliminando el filtro manual de "Atiende".
+    *   Se mejoró la usabilidad de la tabla de tickets, haciendo que toda la fila sea un enlace clickeable hacia la vista de detalle del ticket, con un efecto `hover` (fondo gris) para mayor claridad.
+*   **Corrección de Notificaciones y UI (`src/layouts/MainLayout.astro`):**
+    *   Se solucionó un bug visual que causaba que el ícono de la campana de notificaciones se deformara al hacer clic, asignándole un tamaño fijo.
+    *   Se mejoró la lógica del sistema de notificaciones (SSE) para evitar que los usuarios reciban notificaciones por acciones que ellos mismos realizan. Se añadió un `originatorId` al payload del evento para su exclusión en el cliente.
+*   **Correcciones Menores:**
+    *   Se corrigió una advertencia de TypeScript en `src/pages/tickets/view/[id].astro` dentro de un bloque `catch`.
+    *   Se validó la integridad del proyecto con múltiples `builds` exitosos después de los cambios.
 
 ## 2025-09-05
 *   **Mejoras en la Página de Detalle de Tickets (`src/pages/tickets/view/[id].astro`):**
@@ -117,3 +101,31 @@ A continuación se listan los proyectos prioritarios. Tu tarea es ayudar a refin
 *   **Correcciones Adicionales:**
     *   Corrección de advertencias de TypeScript en `MainLayout.astro` relacionadas con la manipulación del DOM y el uso de componentes Astro en el cliente.
     *   Ajuste del script `dev` en `package.json` para asegurar que el servidor personalizado de Node.js se ejecute correctamente en desarrollo.
+
+## 2025-09-04
+*   **Implementación de Gestión de Tickets (Fase Completa):**
+    *   **Lista de Tickets (`/`):** Implementación de la vista de lista de tickets con columnas dinámicas según el rol, semáforo de fechas y colores de estatus.
+    *   **Vista de Detalle y Edición (`/tickets/view/[id]`):**
+        *   Rediseño completo de la interfaz de usuario para optimizar espacios y hacerla responsiva.
+        *   Implementación de la sección de historial de cambios, mostrando usuario, comentario, cambios de campos y archivos adjuntos.
+        *   Funcionalidad de edición para roles privilegiados (estatus, prioridad, solicitante, atiende, archivado).
+    *   **Sistema de Subida de Archivos (S3):**
+        *   Integración con AWS S3 para el almacenamiento seguro de archivos.
+        *   Implementación de API para generación de URLs pre-firmadas.
+        *   Lógica de frontend para selección, validación y subida de archivos, consolidada con el guardado de cambios del ticket.
+        *   Actualización del modelo `Ticket` y `HistorialSolicitud` para almacenar referencias a los archivos.
+    *   **Correcciones y Mejoras:**
+        *   Resolución de múltiples `warnings` de TypeScript y errores de ejecución (incluyendo problemas de carga de `sweetalert2` y acceso a propiedades de objetos).
+        *   Refactorización de la lógica de guardado para un proceso más atómico y robusto.
+        *   Ajustes de estilos y usabilidad en selectores y visualización de archivos.
+
+## 2025-09-01
+*   **Validación del Proyecto:** Se validó la integridad del proyecto `siget-csh` ejecutando el proceso de build de Astro, confirmando que no existen errores de compilación.
+*   **Corrección de API de Usuarios (`/api/admin/usuarios.ts`):**
+    *   Se corrigieron múltiples advertencias de TypeScript relacionadas con el manejo de tipos de Prisma.
+    *   Se solucionó un error de tipo `unknown` en bloques `catch`.
+    *   Se implementó la sintaxis correcta (`connect`) para actualizar relaciones de base de datos en Prisma.
+*   **Corrección de UI de Usuarios (`/admin/usuarios`):**
+    *   Se solucionó un bug donde los datos no se actualizaban al navegar entre diferentes "campus".
+    *   Se aplicó el atributo `data-astro-reload` para forzar la recarga de la página y asegurar la consistencia de los datos.
+*   **Confirmación Final:** Se realizó una última validación del proyecto a través del build, confirmando que todos los cambios se integraron correctamente.

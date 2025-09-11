@@ -57,6 +57,10 @@ export default defineConfig({
             return '/login?error=OUNoAsignada';
         }
 
+        if (!userData.orgUnitPath.toLowerCase().includes('Colaboradores')) {
+            return '/login?error=NoEsColaborador';
+        }
+
         const dbUser = await prisma.usuario.findUnique({
             where: { mail: profile.email },
         });
@@ -131,7 +135,7 @@ export default defineConfig({
         });
 
         if (dbUser) {
-          token.id = dbUser.id;
+          token.userId = dbUser.id;
           token.rol = dbUser.rol;
           token.empresa = dbUser.empresa;
           token.image = dbUser.image;
@@ -142,7 +146,7 @@ export default defineConfig({
 
     async session({ session, token }) {
       if (session.user) {
-        session.user.id = token.id as number;
+        (session.user as any).id = token.userId as number;
         session.user.rol = token.rol as Rol;
         session.user.empresa = token.empresa as Empresa;
         session.user.image = token.image as string | null;
@@ -165,7 +169,7 @@ declare module "@auth/core/types" {
 
 declare module "@auth/core/jwt" {
   interface JWT {
-    id?: number;
+    userId?: number;
     rol?: Rol;
     empresa?: Empresa;
     image?: string | null;
