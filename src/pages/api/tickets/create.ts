@@ -78,7 +78,10 @@ export const POST: APIRoute = async ({ request, locals }) => {
     ]);
 
     // Notify user
-    sendNotification({ message: `Se ha creado un nuevo ticket #${nuevoTicket.id}` });
+    sendNotification({ 
+        message: `Se ha creado un nuevo ticket #${nuevoTicket.id}`,
+        originatorId: session.user.id
+    });
 
     return new Response(JSON.stringify(nuevoTicket), {
       status: 201, // 201 Created

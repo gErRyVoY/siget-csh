@@ -78,7 +78,10 @@ export const PATCH: APIRoute = async ({ request, locals }) => {
         });
 
         // Notify users
-        sendNotification({ message: `El ticket #${ticketId} ha sido actualizado` });
+        sendNotification({ 
+            message: `El ticket #${ticketId} ha sido actualizado`,
+            originatorId: session.user.id
+        });
 
         return new Response(JSON.stringify(updatedTicket), { status: 200 });
 

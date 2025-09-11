@@ -66,7 +66,7 @@ const NOTIFICATION_FULL_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="24
                     <h1 class="text-xl font-semibold h-16 flex items-center justify-center">{ title }</h1>
                 </div>
                 <div class="flex items-center gap-4">
-                    <div id="notification-bell" class="relative cursor-pointer">
+                    <div id="notification-bell" class="relative cursor-pointer w-6 h-6 flex items-center justify-center">
                         <NotificationEmpty />
                         <span id="notification-count" class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center" style="display: none;"></span>
                     </div>
@@ -92,6 +92,7 @@ const NOTIFICATION_FULL_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="24
         if (typeof window !== "undefined") {
             const notificationBell = document.getElementById('notification-bell');
             const notificationCount = document.getElementById('notification-count');
+            const currentUserId = document.body.dataset.userId;
             let count = 0;
 
             const NOTIFICATION_EMPTY_SVG = `
@@ -125,6 +126,13 @@ const NOTIFICATION_FULL_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="24
                 eventSource.onmessage = (event) => {
                     const data = JSON.parse(event.data);
                     console.log('[SSE] Notification received:', data);
+
+                    // Ignore notification if it was triggered by the current user
+                    if (data.originatorId && data.originatorId.toString() === currentUserId) {
+                        console.log('[SSE] Ignoring self-triggered notification.');
+                        return;
+                    }
+
                     count++;
                     notificationCount.textContent = count.toString();
                     notificationCount.style.display = 'flex';

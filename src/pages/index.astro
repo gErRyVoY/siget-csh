@@ -2,7 +2,7 @@
 import MainLayout from "@/layouts/MainLayout.astro";
 import { getSession } from "auth-astro/server";
 import { prisma } from "@/lib/db";
-import type { Estatus, Categoria, Empresa, Usuario } from "@prisma/client";
+import type { Estatus, Categoria, Empresa } from "@prisma/client";
 
 const session = await getSession(Astro.request);
 if (!session || !session.user) {
@@ -13,15 +13,14 @@ const PRIVILEGED_ROLES = [1, 2, 3, 4, 5, 6, 15];
 const isPrivileged = PRIVILEGED_ROLES.includes(session.user.rol?.id ?? -1);
 
 // Fetch data for filters
-const [statuses, categories, companies, agents] = await Promise.all([
+const [statuses, categories, companies] = await Promise.all([
     prisma.estatus.findMany({ orderBy: { nombre: 'asc' } }),
     prisma.categoria.findMany({ where: { activo: true }, orderBy: { nombre: 'asc' } }),
     isPrivileged ? prisma.empresa.findMany({ orderBy: { nombre: 'asc' } }) : Promise.resolve([]),
-    isPrivileged ? prisma.usuario.findMany({
-        where: { rolId: { in: PRIVILEGED_ROLES }, activo: true },
-        orderBy: { nombres: 'asc' },
-    }) : Promise.resolve([]),
 ]);
+
+const ALLOWED_STATUSES = ['Nuevo', 'En espera', 'Solucionado', 'Cancelado', 'Duplicado'];
+const filteredStatuses = statuses.filter(status => ALLOWED_STATUSES.includes(status.nombre));
 ---
 
 <MainLayout title="Mis Tickets">
@@ -36,7 +35,7 @@ const [statuses, categories, companies, agents] = await Promise.all([
                 <label for="estatus-select" class="mr-2 text-sm font-medium">Estatus:</label>
                 <select id="estatus-select" class="bg-card border rounded-md p-2 text-sm">
                     <option value="all">Todos</option>
-                    {statuses.map((status: Estatus) => <option value={status.id}>{status.nombre}</option>)}
+                    {filteredStatuses.map((status: Estatus) => <option value={status.id}>{status.nombre}</option>)}
                 </select>
             </div>
             <div>
@@ -47,22 +46,13 @@ const [statuses, categories, companies, agents] = await Promise.all([
                 </select>
             </div>
             {isPrivileged && (
-                <>
-                    <div>
-                        <label for="empresa-select" class="mr-2 text-sm font-medium">Empresa:</label>
-                        <select id="empresa-select" class="bg-card border rounded-md p-2 text-sm">
-                            <option value="all">Todas</option>
-                            {companies.map((comp: Empresa) => <option value={comp.id}>{comp.nombre}</option>)}
-                        </select>
-                    </div>
-                    <div>
-                        <label for="atiende-select" class="mr-2 text-sm font-medium">Atiende:</label>
-                        <select id="atiende-select" class="bg-card border rounded-md p-2 text-sm">
-                            <option value="all">Todos</option>
-                            {agents.map((agent: Usuario) => <option value={agent.id}>{`${agent.nombres} ${agent.apellidos}`}</option>)}
-                        </select>
-                    </div>
-                </>
+                <div>
+                    <label for="empresa-select" class="mr-2 text-sm font-medium">Empresa:</label>
+                    <select id="empresa-select" class="bg-card border rounded-md p-2 text-sm">
+                        <option value="all">Todas</option>
+                        {companies.map((comp: Empresa) => <option value={comp.id}>{comp.nombre}</option>)}
+                    </select>
+                </div>
             )}
         </div>
 
@@ -78,7 +68,6 @@ const [statuses, categories, companies, agents] = await Promise.all([
                             {isPrivileged && <th class="p-2">Empresa</th>}
                             <th class="p-2">Estatus</th>
                             <th class="p-2">Fecha Alta</th>
-                            <th class="p-2"><span class="sr-only">Acciones</span></th>
                         </tr>
                     </thead>
                     <tbody id="tickets-table-body"></tbody>
@@ -98,7 +87,7 @@ const [statuses, categories, companies, agents] = await Promise.all([
     </div>
 </MainLayout>
 
-<script define:vars={{ isPrivileged }}>
+<script define:vars={{ isPrivileged, currentUser: session.user }}>
     function initTicketList() {
         const tableBody = document.getElementById('tickets-table-body');
         const noTicketsMessage = document.getElementById('no-tickets-message');
@@ -108,7 +97,6 @@ const [statuses, categories, companies, agents] = await Promise.all([
         const estatusSelect = document.getElementById('estatus-select');
         const categoriaSelect = document.getElementById('categoria-select');
         const empresaSelect = document.getElementById('empresa-select');
-        const atiendeSelect = document.getElementById('atiende-select');
 
         if (!tableBody || !paginationControls) return;
 
@@ -149,8 +137,10 @@ const [statuses, categories, companies, agents] = await Promise.all([
             url += `&exclude_statuses=Cancelado,Duplicado,Solucionado`;
 
             if (isPrivileged) {
-                url += `&empresa=${empresaSelect.value}`;
-                url += `&atiende=${atiendeSelect.value}`;
+                if (empresaSelect) url += `&empresa=${empresaSelect.value}`;
+                url += `&atiende=${currentUser.id}`; // Always filter by current user
+            } else {
+                // Logic for non-privileged users can go here if needed
             }
 
             try {
@@ -167,7 +157,8 @@ const [statuses, categories, companies, agents] = await Promise.all([
                     tableBody.classList.remove('hidden');
                     tickets.forEach(ticket => {
                         const row = document.createElement('tr');
-                        row.className = 'border-b';
+                        row.className = 'border-b hover:bg-gray-200 cursor-pointer';
+                        row.onclick = () => { window.location.href = `/tickets/view/${ticket.id}`; };
                         
                         const statusColor = getStatusColor(ticket.estatus.nombre);
                         const dateColor = isPrivileged ? getDateColor(ticket.fechaalta) : '';
@@ -179,7 +170,6 @@ const [statuses, categories, companies, agents] = await Promise.all([
                                 <td class="p-2 font-medium text-center">${ticket.id}</td>
                                 <td class="p-2">${ticket.solicitante.nombres} ${ticket.solicitante.apellidos}</td>
                                 <td class="p-2 text-center">${ticket.prioridad}</td>
-                                <!--<td class="p-2">${ticket.descripcion ? ticket.descripcion.substring(0, 50) : ''}...</td>-->
                                 <td class="p-2 text-center">${ticket.empresa.nombre}</td>
                                 <td class="p-2 text-center"><span class="px-2 py-1 text-xs font-semibold text-white ${statusColor} rounded-full">${ticket.estatus.nombre}</span></td>
                                 <td class="p-2 text-center ${dateColor}">${formattedDate}</td>
@@ -189,25 +179,19 @@ const [statuses, categories, companies, agents] = await Promise.all([
                                 <td class="p-2 font-medium text-center">${ticket.id}</td>
                                 <td class="p-2">${ticket.atiende.nombres} ${ticket.atiende.apellidos}</td>
                                 <td class="p-2 text-center">${ticket.prioridad}</td>
-                                <!--<td class="p-2">${ticket.descripcion ? ticket.descripcion.substring(0, 50) : ''}...</td>-->
                                 <td class="p-2 text-center"><span class="px-2 py-1 text-xs font-semibold text-white ${statusColor} rounded-full">${ticket.estatus.nombre}</span></td>
                                 <td class="p-2 text-center">${formattedDate}</td>
                             `;
                         }
 
-                        row.innerHTML = `
-                            ${columns}
-                            <td class="p-2 text-center">
-                                <a href="/tickets/view/${ticket.id}" class="font-medium text-primary hover:underline">Ver</a>
-                            </td>
-                        `;
+                        row.innerHTML = columns;
                         tableBody.appendChild(row);
                     });
                 }
                 renderPagination(pagination);
             } catch (error) {
                 console.error('Fetch Error:', error);
-                tableBody.innerHTML = `<tr><td colspan="8" class="p-8 text-center text-destructive">Error al cargar los tickets.</td></tr>`;
+                tableBody.innerHTML = `<tr><td colspan="6" class="p-8 text-center text-destructive">Error al cargar los tickets.</td></tr>`;
             }
         }
 
@@ -237,8 +221,7 @@ const [statuses, categories, companies, agents] = await Promise.all([
         estatusSelect.addEventListener('change', () => { currentPage = 1; fetchAndRenderTickets(); });
         categoriaSelect.addEventListener('change', () => { currentPage = 1; fetchAndRenderTickets(); });
         if (isPrivileged) {
-            empresaSelect.addEventListener('change', () => { currentPage = 1; fetchAndRenderTickets(); });
-            atiendeSelect.addEventListener('change', () => { currentPage = 1; fetchAndRenderTickets(); });
+            if (empresaSelect) empresaSelect.addEventListener('change', () => { currentPage = 1; fetchAndRenderTickets(); });
         }
 
         fetchAndRenderTickets();

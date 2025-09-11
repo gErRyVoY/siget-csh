@@ -386,8 +386,8 @@ const parseFileName = (key: string) => {
                 Toast.fire({ icon: 'success', title: 'Ticket actualizado correctamente' }).then(() => {
                     window.location.href = `${window.location.pathname}?new_entry=true`;
                 });
-            } catch (error: any) {
-                Swal.fire({ title: 'Error', text: error.message, icon: 'error' });
+            } catch (error) {
+                Swal.fire({ title: 'Error', text: 'Ocurrió un error al actualizar el ticket.', icon: 'error' });
                 if (submitButton) {
                     submitButton.disabled = false;
                     submitButton.textContent = 'Guardar cambios';
