@@ -57,7 +57,7 @@ export default defineConfig({
             return '/login?error=OUNoAsignada';
         }
 
-        if (!userData.orgUnitPath.toLowerCase().includes('Colaboradores')) {
+        if (!userData.orgUnitPath.toLowerCase().includes('colaboradores')) {
             return '/login?error=NoEsColaborador';
         }
 
