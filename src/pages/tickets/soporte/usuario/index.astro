@@ -23,10 +23,10 @@ const ALLOWED_STATUSES = ['Nuevo', 'En espera', 'Solucionado', 'Cancelado', 'Dup
 const filteredStatuses = statuses.filter(status => ALLOWED_STATUSES.includes(status.nombre));
 ---
 
-<MainLayout title="Todos los Tickets de Soporte">
+<MainLayout title="Mis Tickets">
     <div class="max-w-full mx-auto">
         <div class="flex justify-between items-center mb-6">
-            <h1 class="text-2xl font-bold">Todos los Tickets de Soporte</h1>
+            <h1 class="text-2xl font-bold">Tickets de Soporte</h1>
         </div>
 
         <!-- Filters -->
@@ -63,8 +63,7 @@ const filteredStatuses = statuses.filter(status => ALLOWED_STATUSES.includes(sta
                     <thead class="bg-muted/50">
                         <tr class="text-center">
                             <th class="p-2">Folio</th>
-                            <th class="p-2">Solicita</th>
-                            {isPrivileged && <th class="p-2">Atiende</th>}
+                            {isPrivileged ? <th class="p-2">Solicita</th> : <th class="p-2">Atiende</th>}
                             <th class="p-2">Prioridad</th>
                             {isPrivileged && <th class="p-2">Empresa</th>}
                             <th class="p-2">Estatus</th>
@@ -139,6 +138,9 @@ const filteredStatuses = statuses.filter(status => ALLOWED_STATUSES.includes(sta
 
             if (isPrivileged) {
                 if (empresaSelect) url += `&empresa=${empresaSelect.value}`;
+                url += `&atiende=${currentUser.id}`; // Always filter by current user
+            } else {
+                // Logic for non-privileged users can go here if needed
             }
 
             try {
@@ -167,7 +169,6 @@ const filteredStatuses = statuses.filter(status => ALLOWED_STATUSES.includes(sta
                             columns = `
                                 <td class="p-2 font-medium text-center">${ticket.id}</td>
                                 <td class="p-2">${ticket.solicitante.nombres} ${ticket.solicitante.apellidos}</td>
-                                <td class="p-2">${ticket.atiende ? ticket.atiende.nombres + ' ' + ticket.atiende.apellidos : 'Sin Asignar'}</td>
                                 <td class="p-2 text-center">${ticket.prioridad}</td>
                                 <td class="p-2 text-center">${ticket.empresa.nombre}</td>
                                 <td class="p-2 text-center"><span class="px-2 py-1 text-xs font-semibold text-white ${statusColor} rounded-full">${ticket.estatus.nombre}</span></td>
@@ -176,7 +177,7 @@ const filteredStatuses = statuses.filter(status => ALLOWED_STATUSES.includes(sta
                         } else {
                             columns = `
                                 <td class="p-2 font-medium text-center">${ticket.id}</td>
-                                <td class="p-2">${ticket.solicitante.nombres} ${ticket.solicitante.apellidos}</td>
+                                <td class="p-2">${ticket.atiende.nombres} ${ticket.atiende.apellidos}</td>
                                 <td class="p-2 text-center">${ticket.prioridad}</td>
                                 <td class="p-2 text-center"><span class="px-2 py-1 text-xs font-semibold text-white ${statusColor} rounded-full">${ticket.estatus.nombre}</span></td>
                                 <td class="p-2 text-center">${formattedDate}</td>
@@ -190,7 +191,7 @@ const filteredStatuses = statuses.filter(status => ALLOWED_STATUSES.includes(sta
                 renderPagination(pagination);
             } catch (error) {
                 console.error('Fetch Error:', error);
-                tableBody.innerHTML = `<tr><td colspan="7" class="p-8 text-center text-destructive">Error al cargar los tickets.</td></tr>`;
+                tableBody.innerHTML = `<tr><td colspan="6" class="p-8 text-center text-destructive">Error al cargar los tickets.</td></tr>`;
             }
         }
 

@@ -5,9 +5,9 @@ import ArrowDown from '../icons/ArrowDown.astro'; // Crea este icono
 interface Props {
     title: string;
     value: string;
-    change: string;
-    changeType: 'up' | 'down';
     description: string;
+    change?: string;
+    changeType?: 'up' | 'down';
     descriptionIcon?: any;
 }
 
@@ -16,13 +16,15 @@ const { title, value, change, changeType, description, descriptionIcon: DescIcon
 <div class="bg-card text-card-foreground p-6 border border-border rounded-lg">
     <div class="flex justify-between items-start">
         <span class="text-sm text-muted-foreground">{title}</span>
-        <div class:list={[
-            "flex items-center gap-1 text-xs font-semibold",
-            changeType === 'up' ? 'text-green-600' : 'text-red-600'
-        ]}>
-            {changeType === 'up' ? <ArrowUp class="h-3 w-3" /> : <ArrowDown class="h-3 w-3" />}
-            {change}
-        </div>
+        {change && changeType && (
+            <div class:list={[
+                "flex items-center gap-1 text-xs font-semibold",
+                changeType === 'up' ? 'text-green-600' : 'text-red-600'
+            ]}>
+                {changeType === 'up' ? <ArrowUp class="h-3 w-3" /> : <ArrowDown class="h-3 w-3" />}
+                {change}
+            </div>
+        )}
     </div>
     <p class="text-3xl font-bold mt-2">{value}</p>
     <p class="text-sm text-muted-foreground mt-2">{description}</p>

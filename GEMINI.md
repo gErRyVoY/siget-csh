@@ -62,6 +62,15 @@ A continuación se listan los proyectos prioritarios. Tu tarea es ayudar a refin
 
 # Historial de Cambios (Log)
 
+## 2025-09-11
+*   **Mejoras en Autenticación (`auth.config.ts`):**
+    *   Se implementó una restricción para permitir el inicio de sesión únicamente a usuarios pertenecientes a una Unidad Organizativa (OU) de Google que contenga "colaboradores".
+    *   Se corrigió una advertencia de TypeScript (`type 'number' is not assignable to type 'never'`) en el callback de `session` de Auth.js, asegurando la correcta asignación de un ID numérico a la sesión del usuario.
+    *   Se ajustó la lógica de validación de la OU para que no sea sensible a mayúsculas y minúsculas, solucionando un bug que impedía el acceso.
+*   **Gestión del Repositorio:**
+    *   Se realizaron múltiples commits para separar lógicamente los cambios en la autenticación de otras actualizaciones de archivos.
+    *   Se actualizó el archivo `.gitignore` para excluir `Mejoras.txt`.
+
 ## 2025-09-10
 *   **Mejoras en Listado de Tickets (`src/pages/index.astro`):**
     *   Se ajustó el filtro de "Estatus" para mostrar solo los valores permitidos (`Nuevo`, `En espera`, `Solucionado`, `Cancelado`, `Duplicado`), eliminando los relacionados con traslados.
@@ -83,7 +92,7 @@ A continuación se listan los proyectos prioritarios. Tu tarea es ayudar a refin
     *   Corrección del color del estatus en el formulario de edición.
     *   Implementación de scroll a la nueva entrada del historial con animación de parpadeo.
     *   Reubicación del ícono de clip de archivos adjuntos.
-    *   Implementación de restricciones de edición para tickets "Cancelados", "Duplicados" o "Solucionados".
+    *   Implementación de restricciones de edición para tickets "Cancelados", "Duplicado" o "Solucionados".
     *   Cambios en la UI para tickets de solo lectura (mostrar valores en etiquetas `<p>`, solo el campo "Archivado" es editable, se eliminó el textarea).
 
 *   **Sistema de Notificaciones en Tiempo Real (SSE):**

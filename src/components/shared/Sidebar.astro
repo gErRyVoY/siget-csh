@@ -15,12 +15,12 @@ import UpdateMailIcon from "../icons/UpdateMailIcon.astro";
 
 import CollapsibleNavSection from '@/components/shared/CollapsibleNavSection.astro';
 import NavItem from '@/components/shared/NavItem.astro';
-import NewTicket from '@/components/shared/NewTicket.astro';
 import NewTicketMkt from '@/components/shared/NewTicketMkt.astro';
 import NewTransfer from '@/components/shared/NewTransfer.astro';
 import PlataformaHumanitas from './PlataformaHumanitas.astro';
 import UserProfile from '@/components/shared/UserProfile.astro';
 import AddTicket from '@/components/icons/AddTicket.astro';
+import DashboardIcon from "../icons/DashboardIcon.astro";
 
 interface Props {
     session: Session | null;
@@ -43,7 +43,8 @@ const ticketSections = [
     {
         title: 'Tickets soporte',
         items: [
-            { href: `/tickets/soporte/${id}`, label: 'Mis tickets', icon: MyTicketsIcon },
+            { href: `/tickets/soporte/usuario`, label: 'Mis tickets', icon: MyTicketsIcon },
+            { href: `/`, label: 'Dashboard', icon: DashboardIcon },
             { href: '/tickets/soporte', label: 'Todos', icon: AllTicketsIcon },
         ]
     },
@@ -75,12 +76,12 @@ const adminSections = [
             w-64 fixed inset-y-0 left-0 z-50
             group-data-[sidebar-collapsed=true]:-translate-x-full"
 >
-    <div class="h-[var(--header-height)] border-b border-border flex items-center px-6 shrink-0">
-        <a href="/" class="flex items-center gap-2">
+    <a href="/" class="h-[var(--header-height)] border-b border-border flex items-center px-6 shrink-0">
+        <div class="flex items-center gap-2">
             <img src="/logo-h-wine.png" alt="Humanitas" class="h-8 w-8" />
             <span class="font-bold text-lg group-data-[sidebar-collapsed=true]:hidden">C S H</span>
-        </a>
-    </div>
+        </div>
+    </a>
 
     <nav class="flex-1 py-4 px-2 space-y-1 overflow-y-auto">
         <div class="px-2 mb-2 text-sm font-semibold text-muted-foreground group-data-[sidebar-collapsed=true]:hidden">Abrir ticket</div>
@@ -96,7 +97,6 @@ const adminSections = [
             <AddTicket class="h-5 w-5" />
             <span class="group-data-[sidebar-collapsed=true]:hidden">C S H</span>
         </a>
-        <!-- <NewTicket /> -->
         <NewTransfer />
         <NewTicketMkt />
 
