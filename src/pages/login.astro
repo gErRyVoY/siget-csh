@@ -16,13 +16,14 @@ if (error) {
     switch (error) {
         case 'DominioNoPermitido':
             errorMessage = {
-                title: 'Acceso Denegado',
+                title: 'Acceso denegado',
                 message: 'Solo se permite el acceso con un correo institucional verificado.'
             };
             break;
         case 'OUNoAsignada':
+        case 'NoEsColaborador':
             errorMessage = {
-                title: 'Acceso Denegado',
+                title: 'Acceso denegado',
                 message: 'Su correo no puede ser usado para usar éste servicio.'
             };
             break;
@@ -30,7 +31,7 @@ if (error) {
         case 'NoProfile':
         case 'ErrorInterno':
             errorMessage = {
-                title: 'Error de Autenticación',
+                title: 'Error de autenticación',
                 message: 'No se pudo verificar tu identidad. Por favor, intenta de nuevo.'
             };
             break;
@@ -52,34 +53,44 @@ if (error) {
 </head>
 <body>
     <main class="container h-screen w-screen bg-background flex justify-center items-center font-montse">
-        <div class="flex flex-col items-center justify-center gap-8 rounded-xl border-2 border-primary/90 p-6 shadow-lg max-w-md w-full">
+        <div id="login-box" class="flex flex-col items-center justify-center gap-8 rounded-xl border-2 border-primary/90 p-6 shadow-lg max-w-md w-full">
             <Image src={'/logotipo-desde-vino.webp'} alt={'Universidad Humanitas'} width={421} height={57} />
             
             <div class="flex flex-col justify-center gap-4 w-full">
-                <h1 class="text-secondary text-lg text-center">
-                    Inicia sesión con tu correo institucional<br>
-                    <span class="italic font-bold">@humanitas.edu.mx</span>
-                </h1>
-
-                <!-- Mensaje de Error Dinámico -->
-                {errorMessage && (
+                
+                <!-- --- Mensaje de Bienvenida o de Error --- -->
+                {!errorMessage ? (
+                    <h1 class="text-secondary text-lg text-center">
+                        Estimado colaborador<br />
+                        inicia sesión con tu correo institucional<br />
+                        <span class="italic font-bold">@humanitas.edu.mx</span>
+                    </h1>
+                ) : (
                     <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded-md" role="alert">
                         <p class="font-bold">{errorMessage.title}</p>
                         <p>{errorMessage.message}</p>
                     </div>
                 )}
 
-                <!-- Enlace de Login (reemplaza el formulario) -->
-                <!-- <a href="/api/auth/signin/google" class="w-full inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-xl font-medium focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-primary/90 text-primary-foreground shadow-sm hover:bg-secondary/90 transition-colors duration-500 h-15 px-4 py-2">
-                    <GoogleIcon class="h-10 w-10" />Continuar con Google
-                    </a> -->
-                <SignIn provider="google" class="w-full inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-xl font-medium focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-primary/90 text-primary-foreground shadow-sm hover:bg-secondary/90 transition-colors duration-500 h-15 px-4 py-2">
-                    <GoogleIcon class="h-10 w-10" />Continuar con Google
-                </SignIn>
+                <div id="google-signin-button">
+                    <SignIn provider="google" class="w-full inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-xl font-medium focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-primary/90 text-primary-foreground shadow-sm hover:bg-secondary/90 transition-colors duration-500 h-15 px-4 py-2">
+                        <GoogleIcon class="h-10 w-10" />Continuar con Google
+                    </SignIn>
+                </div>
             </div>
 
             <Image src={'/querer-es-poder-oscuro.png'} alt={'Sé tu mejor versión.'} width={210.5} height={28.5} />
         </div>
     </main>
+    <script>
+        const signInButton = document.getElementById('google-signin-button');
+        const loginBox = document.getElementById('login-box');
+
+        if (signInButton && loginBox) {
+            signInButton.addEventListener('click', () => {
+                loginBox.classList.add('animate-pulse');
+            });
+        }
+    </script>
 </body>
 </html>

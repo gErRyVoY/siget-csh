@@ -1,0 +1,1 @@
+INSERT INTO "estatus" ("id", "nombre", "descripcion") VALUES (7, 'En progreso', 'El ticket está siendo atendido por un ingeniero de soporte.');

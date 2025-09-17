@@ -62,6 +62,25 @@ A continuación se listan los proyectos prioritarios. Tu tarea es ayudar a refin
 
 # Historial de Cambios (Log)
 
+## 2025-09-17
+*   **Mejoras en Login (`src/pages/login.astro`):**
+    *   Se añadió un indicador visual de carga (efecto `pulse`) al hacer clic en el botón de inicio de sesión.
+    *   Se mejoró el manejo de errores para mostrar un mensaje específico para usuarios no colaboradores (`NoEsColaborador`).
+    *   Se ajustó la lógica para que los mensajes de error reemplacen el texto de bienvenida, mejorando la claridad.
+    *   Se proveyó guía sobre cómo modificar la configuración de la app en Google Cloud (de "Interna" a "Externa") para permitir que la aplicación maneje internamente la validación de dominios.
+*   **Rediseño del Dashboard (`src/pages/index.astro`):**
+    *   Se rediseñó la página principal para mostrar un dashboard con tarjetas de estadísticas (`StatCard`).
+    *   Se implementó la lógica para calcular y mostrar métricas clave: "Tickets Nuevos", "En progreso", "En espera" y "Traslados del ciclo".
+    *   Se añadió un botón "Ver todo" / "Ver menos" que muestra/oculta estadísticas secundarias ("Total", "Solucionados", "Duplicados", "Cancelados").
+    *   Se actualizó el componente `StatCard` para aceptar un color de fondo dinámico, mejorando la visualización de datos.
+    *   Se corrigió una advertencia de CSS (`cssConflict`) entre las clases `grid` y `hidden` de Tailwind CSS.
+*   **Base de Datos y Seeding (`prisma/seed.ts`):**
+    *   Se añadió el estatus "En progreso" a la base de datos a través de una migración de Prisma.
+    *   Se actualizó el script de `seed` para incluir el nuevo estatus y asegurar su persistencia.
+    *   Se robusteció el script de `seed` corrigiendo el orden de borrado de las tablas para respetar las `foreign key constraints`, solucionando múltiples errores de ejecución.
+    *   Se poblaron las tablas `subcategoria` y `subcategoria_categorias` con datos de un archivo SQL, integrándolos en el `seed.ts`.
+    *   Se añadió la categoría "Marketing" con su jerarquía completa de subcategorías al script de `seed`.
+
 ## 2025-09-11
 *   **Mejoras en Autenticación (`auth.config.ts`):**
     *   Se implementó una restricción para permitir el inicio de sesión únicamente a usuarios pertenecientes a una Unidad Organizativa (OU) de Google que contenga "colaboradores".
