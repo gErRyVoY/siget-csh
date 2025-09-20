@@ -35,5 +35,20 @@ export function sendNotification(data: any) {
 
 `;
   console.log(`[SSE] Sending notification to ${clients.length} clients: ${JSON.stringify(data)}`);
-  clients.forEach((client) => client.controller.enqueue(message));
+
+  const clientsToRemove: number[] = [];
+
+  clients.forEach((client) => {
+    try {
+      client.controller.enqueue(message);
+    } catch (error) {
+      console.log(`[SSE] Failed to send to client ${client.id}, marking for removal.`);
+      clientsToRemove.push(client.id);
+    }
+  });
+
+  if (clientsToRemove.length > 0) {
+    clients = clients.filter(client => !clientsToRemove.includes(client.id));
+    console.log(`[SSE] Pruned ${clientsToRemove.length} dead clients. Total clients: ${clients.length}`);
+  }
 }

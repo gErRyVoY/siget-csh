@@ -201,7 +201,7 @@ model Ticket {
   categoriaId           Int
   subcategoriaId        Int?
   solicitanteId         Int
-  atiendeId             Int
+  atiendeId             Int?
   prioridad             Prioridad
   descripcion           String?                @db.Text
   empresaId             Int
@@ -211,7 +211,7 @@ model Ticket {
   categoria             Categoria              @relation(fields: [categoriaId], references: [id])
   subcategoria          Subcategoria?          @relation(fields: [subcategoriaId], references: [id])
   solicitante           Usuario                @relation("Solicitante", fields: [solicitanteId], references: [id])
-  atiende               Usuario                @relation("Atiende", fields: [atiendeId], references: [id])
+  atiende               Usuario?               @relation("Atiende", fields: [atiendeId], references: [id])
   empresa               Empresa                @relation(fields: [empresaId], references: [id])
   traslados             Traslado[]
   historial_solicitudes HistorialSolicitud[]

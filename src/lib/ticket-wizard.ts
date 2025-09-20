@@ -1,5 +1,4 @@
-import Swal from 'sweetalert2';
-import 'sweetalert2/dist/sweetalert2.min.css';
+import { toast } from "sonner";
 
 // --- Type Definitions ---
 interface SubcategoriaNode {
@@ -190,12 +189,31 @@ export function initTicketWizard(treeData: CategoriesTreeData) {
                 throw new Error(errorData.message);
             }
 
-            await Swal.fire({ title: '¡Ticket Enviado!', text: 'Tu solicitud ha sido creada exitosamente.', icon: 'success', timer: 2000, timerProgressBar: true, showConfirmButton: false });
-            window.location.href = '/tickets/soporte';
+            toast.success('¡Ticket Enviado!', {
+                description: 'Tu solicitud ha sido creada exitosamente.',
+                style: {
+                    background: 'var(--primary)',
+                    color: 'var(--primary-foreground)',
+                    border: 'none',
+                    fontFamily: 'var(--font-sans)'
+                }
+            });
+            
+            setTimeout(() => {
+                window.location.href = '/tickets/soporte';
+            }, 1500);
 
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'No se pudo crear el ticket.';
-            await Swal.fire({ title: 'Error', text: errorMessage, icon: 'error' });
+            toast.error('Error al crear el ticket', {
+                description: errorMessage,
+                style: {
+                    background: 'var(--muted-foreground)',
+                    color: 'var(--card)',
+                    border: 'none',
+                    fontFamily: 'var(--font-sans)'
+                }
+            });
             submitButton.disabled = false;
             submitButton.textContent = 'Crear Ticket';
         }

@@ -62,6 +62,24 @@ A continuación se listan los proyectos prioritarios. Tu tarea es ayudar a refin
 
 # Historial de Cambios (Log)
 
+## 2025-09-18
+*   **Lógica de Asignación de Tickets Mejorada (`/api/tickets/create.ts`):**
+    *   Se implementó una restricción para evitar la auto-asignación de tickets (el solicitante no puede ser el agente asignado).
+    *   Se añadió el estatus "Sin asignar" (ID 11) y se hizo opcional el campo `atiendeId` en la base de datos para permitir tickets en cola.
+    *   La API ahora asigna automáticamente un ticket como "Sin asignar" si no hay agentes disponibles o si el único disponible es el propio solicitante.
+
+*   **Modernización de Notificaciones (UI/UX):**
+    *   Se reemplazó la librería `SweetAlert2` por `sonner` (a través de `shadcn/ui`) para mostrar notificaciones tipo "toast", mejorando la experiencia de usuario.
+    *   Se instaló y configuró la integración de React en Astro (`@astrojs/react`) como requisito para `shadcn/ui`.
+    *   Se personalizaron las notificaciones para usar los colores corporativos y la fuente Montserrat.
+    *   Se actualizaron los formularios de nuevo ticket y la vista de detalle para usar el nuevo sistema de notificaciones.
+
+*   **Corrección de Bugs y Refactorización:**
+    *   Se solucionó un error crítico (`ERR_INVALID_STATE`) en el sistema de notificaciones en tiempo real (SSE) que ocurría al intentar enviar mensajes a clientes desconectados.
+    *   Se corrigió un `SyntaxError` en la página de detalle del ticket (`view/[id].astro`) refactorizando el script en línea a un módulo externo (`ticket-view-logic.ts`).
+    *   Esta refactorización también solucionó el bug que impedía el funcionamiento del botón para adjuntar archivos.
+    *   Se corrigió una advertencia de TypeScript (`'ticket.atiende' is possibly 'null'`) derivada de los cambios en el esquema de la base de datos.
+
 ## 2025-09-17
 *   **Mejoras en Login (`src/pages/login.astro`):**
     *   Se añadió un indicador visual de carga (efecto `pulse`) al hacer clic en el botón de inicio de sesión.

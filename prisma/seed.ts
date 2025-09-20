@@ -109,6 +109,7 @@ async function main() {
         { id: 7, nombre: 'Revisión campus origen', descripcion: 'Traslado en revisión por campus origen' },
         { id: 8, nombre: 'Información campus destino', descripcion: 'Traslado en espera de información de campus destino' },
         { id: 9, nombre: 'Confirmación alumno', descripcion: 'Traslado en espera de confirmación del alumno' },
+        { id: 11, nombre: 'Sin asignar', descripcion: 'Ticket nuevo sin agente asignado.' },
     ],
   });
 

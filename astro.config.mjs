@@ -3,6 +3,7 @@ import { defineConfig } from 'astro/config';
 import tailwindcss from '@tailwindcss/vite';
 import node from '@astrojs/node';
 import auth from 'auth-astro';
+import react from '@astrojs/react';
 import dotenv from 'dotenv';
 
 // Cargar variables de entorno al inicio de todo
@@ -24,5 +25,5 @@ export default defineConfig({
       mode: 'middleware'
 	}),
 
-  integrations: [auth()]
+  integrations: [auth(), react()]
 });

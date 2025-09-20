@@ -145,8 +145,9 @@ export default defineConfig({
     },
 
     async session({ session, token }) {
-      if (session.user) {
-        (session.user as any).id = token.userId as number;
+      // Asegurarse de que el token y el id del usuario existan
+      if (token.userId && session.user) {
+        session.user.id = token.userId; // El 'any' cast no es necesario gracias a la declaración de tipos
         session.user.rol = token.rol as Rol;
         session.user.empresa = token.empresa as Empresa;
         session.user.image = token.image as string | null;

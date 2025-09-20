@@ -3,26 +3,34 @@ import { prisma } from '../../../lib/db';
 import { getSession } from 'auth-astro/server';
 import { sendNotification } from '../notifications';
 
+const ESTATUS_NUEVO = 1;
+const ESTATUS_SIN_ASIGNAR = 11;
+
 /**
- * Finds the best-suited agent based on availability and workload.
- * @returns The ID of the selected agent.
+ * Finds the best-suited agent based on availability and workload, excluding the requester.
+ * @param solicitanteId The ID of the user creating the ticket, to exclude from assignment.
+ * @returns The ID of the selected agent, or null if no suitable agent is found.
  */
-async function findBestAgent(): Promise<number> {
-  // 1. Find all available agents
+async function findBestAgent(solicitanteId: number): Promise<number | null> {
+  // Find all available agents who are not the person creating the ticket
   const availableAgents = await prisma.usuario.findMany({
     where: {
+      id: {
+        not: solicitanteId, // Exclude the requester
+      },
       activo: true,
       vacaciones: false,
+      // TODO: Add role/permission check here in the future
     },
   });
 
-  // 3. Fallback Assignment
+  // If no agents are available, return null
   if (availableAgents.length === 0) {
-    console.warn(`No available agents found. Falling back to default agent ID 1.`);
-    return 1; // Fallback agent ID
+    console.warn(`No available agents found (excluding solicitante ${solicitanteId}).`);
+    return null;
   }
 
-  // 2. Load Balancing: Sort agents by their current workload
+  // Load Balancing: Sort agents by their current workload
   availableAgents.sort((a, b) => a.carga_actual - b.carga_actual);
 
   // Return the ID of the agent with the least workload
@@ -47,22 +55,45 @@ export const POST: APIRoute = async ({ request, locals }) => {
       );
     }
 
+    const solicitanteId = session.user.id;
+
     // --- Dynamic Ticket Assignment ---
-    const atiendeId = await findBestAgent();
+    const atiendeId = await findBestAgent(solicitanteId);
 
     // --- Ticket Creation ---
-    const solicitanteId = session.user.id;
     const empresaId = session.user.empresa.id;
-    const estatusId = 1; // 1 = "Nuevo"
     const prioridad = 'Baja'; // Default priority
 
-    // Use a transaction to create the ticket and update the agent's workload atomically
-    const [nuevoTicket] = await prisma.$transaction([
-      prisma.ticket.create({
+    let nuevoTicket;
+
+    if (atiendeId) {
+      // Agent found, create ticket and update workload in a transaction
+      [nuevoTicket] = await prisma.$transaction([
+        prisma.ticket.create({
+          data: {
+            solicitanteId,
+            atiendeId,
+            estatusId: ESTATUS_NUEVO,
+            empresaId,
+            prioridad,
+            archivado: false,
+            categoriaId: parseInt(categoriaId, 10),
+            subcategoriaId: parseInt(subcategoriaId, 10),
+            descripcion: descripcion,
+          },
+        }),
+        prisma.usuario.update({
+          where: { id: atiendeId },
+          data: { carga_actual: { increment: 1 } },
+        }),
+      ]);
+    } else {
+      // No agent found, create ticket as "Sin asignar"
+      nuevoTicket = await prisma.ticket.create({
         data: {
           solicitanteId,
-          atiendeId,
-          estatusId,
+          atiendeId: null, // No agent assigned
+          estatusId: ESTATUS_SIN_ASIGNAR,
           empresaId,
           prioridad,
           archivado: false,
@@ -70,12 +101,8 @@ export const POST: APIRoute = async ({ request, locals }) => {
           subcategoriaId: parseInt(subcategoriaId, 10),
           descripcion: descripcion,
         },
-      }),
-      prisma.usuario.update({
-        where: { id: atiendeId },
-        data: { carga_actual: { increment: 1 } },
-      }),
-    ]);
+      });
+    }
 
     // Notify user
     sendNotification({ 
