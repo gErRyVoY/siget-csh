@@ -13,13 +13,42 @@ const PRIVILEGED_ROLES = [1, 2, 3, 4, 5, 6, 15];
 const isPrivileged = PRIVILEGED_ROLES.includes(session.user.rol?.id ?? -1);
 
 // Fetch data for filters
+const userId = session.user.id;
+const excludedStatusNames = ['Cancelado', 'Duplicado', 'Solucionado'];
+const excludedStatuses = await prisma.estatus.findMany({
+    where: { nombre: { in: excludedStatusNames } },
+    select: { id: true },
+});
+const excludedStatusIds = excludedStatuses.map(s => s.id);
+
+const userTicketFilter = {
+    OR: [
+        { solicitanteId: userId },
+        { atiendeId: userId },
+    ],
+    estatusId: { notIn: excludedStatusIds }
+};
+
 const [statuses, categories, companies] = await Promise.all([
     prisma.estatus.findMany({ orderBy: { nombre: 'asc' } }),
-    prisma.categoria.findMany({ where: { activo: true }, orderBy: { nombre: 'asc' } }),
-    isPrivileged ? prisma.empresa.findMany({ orderBy: { nombre: 'asc' } }) : Promise.resolve([]),
+    prisma.categoria.findMany({
+        where: { 
+            activo: true,
+            tickets: { some: userTicketFilter }
+        },
+        orderBy: { nombre: 'asc' }
+    }),
+    isPrivileged 
+        ? prisma.empresa.findMany({
+            where: {
+                tickets: { some: userTicketFilter }
+            },
+            orderBy: { nombre: 'asc' }
+        })
+        : Promise.resolve([]),
 ]);
 
-const ALLOWED_STATUSES = ['Nuevo', 'En espera', 'Solucionado', 'Cancelado', 'Duplicado'];
+const ALLOWED_STATUSES = ['Nuevo', 'En progreso', 'En espera', 'Solucionado', 'Cancelado', 'Duplicado'];
 const filteredStatuses = statuses.filter(status => ALLOWED_STATUSES.includes(status.nombre));
 ---
 
@@ -132,9 +161,18 @@ const filteredStatuses = statuses.filter(status => ALLOWED_STATUSES.includes(sta
         async function fetchAndRenderTickets() {
             let url = `/api/tickets/list?page=${currentPage}&limit=${currentLimit}`;
             
-            url += `&estatus=${estatusSelect.value}`;
+            const selectedStatusId = estatusSelect.value;
+            const selectedStatusOption = estatusSelect.querySelector(`option[value="${selectedStatusId}"]`);
+            const selectedStatusName = selectedStatusOption ? selectedStatusOption.textContent : '';
+
+            url += `&estatus=${selectedStatusId}`;
             url += `&categoria=${categoriaSelect.value}`;
-            url += `&exclude_statuses=Cancelado,Duplicado,Solucionado`;
+
+            // Only exclude closed statuses if the user is NOT specifically asking for them.
+            const closedStatuses = ['Cancelado', 'Duplicado', 'Solucionado'];
+            if (selectedStatusId === 'all' || !closedStatuses.includes(selectedStatusName)) {
+                url += `&exclude_statuses=Cancelado,Duplicado,Solucionado`;
+            }
 
             if (isPrivileged) {
                 if (empresaSelect) url += `&empresa=${empresaSelect.value}`;

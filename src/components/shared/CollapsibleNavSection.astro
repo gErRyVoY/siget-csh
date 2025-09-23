@@ -6,6 +6,7 @@ interface NavItemProps {
     href: string;
     label: string;
     icon: any;
+    reload?: boolean;
 }
 
 interface Props {
@@ -20,6 +21,10 @@ const { title, items, pathname, matchMode = 'prefix' } = Astro.props;
 // Un enlace está activo según el modo de coincidencia (matchMode)
 const isLinkActive = (href: string) => {
     if (matchMode === 'exact') {
+        // Special case to keep parent active for ticket detail pages
+        if (href === '/tickets/soporte' && pathname.startsWith('/tickets/view')) {
+            return true;
+        }
         return pathname === href;
     }
     // Por defecto, se usa la coincidencia de prefijo para las rutas padre

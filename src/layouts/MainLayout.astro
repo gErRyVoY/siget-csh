@@ -4,7 +4,6 @@ import NotificationEmpty from '@/components/icons/NotificationEmpty.astro';
 import NotificationFull from '@/components/icons/NotificationFull.astro';
 import PanelLeftClose from '@/components/icons/PanelLeftClose.astro';
 import '@/styles/global.css'; 
-import { Toaster } from "@/components/ui/sonner";
 import ClientRouter from 'astro/components/ClientRouter.astro';
 
 // La sesión ahora se obtiene desde Astro.locals, inyectada por el middleware.
@@ -44,10 +43,12 @@ const NOTIFICATION_FULL_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="24
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
     <title>{ title } | CSH</title>
 
+    <!-- SweetAlert2 -->
+    <script is:inline src="//cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
     <ClientRouter />
 </head>
 <body data-user-id={session?.user?.id}>
-    <Toaster position="bottom-center" client:load />
     <div id="dashboard-wrapper" class="h-screen w-screen bg-background flex group font-montse">
         <Sidebar session={session} />
     

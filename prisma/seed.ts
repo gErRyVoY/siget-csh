@@ -99,17 +99,17 @@ async function main() {
   console.log('Seeding estatus...');
   await prisma.estatus.createMany({
     data: [
-        { id: 1, nombre: 'Nuevo', descripcion: 'Ticket nuevo en el sistema y asignado' },
-        { id: 2, nombre: 'En espera', descripcion: 'El ticket está siendo atendido' },
-        { id: 3, nombre: 'Solucionado', descripcion: 'Ticket cerrado' },
-        { id: 4, nombre: 'Cancelado', descripcion: 'Ticket cancelado' },
-        { id: 5, nombre: 'Duplicado', descripcion: 'Solicitud duplicada' },
-        { id: 10, nombre: 'En progreso', descripcion: 'El ticket está siendo atendido por un ingeniero de soporte.' },
-        { id: 6, nombre: 'Revisión CSH', descripcion: 'Traslado: Revisión CSH' },
-        { id: 7, nombre: 'Revisión campus origen', descripcion: 'Traslado en revisión por campus origen' },
-        { id: 8, nombre: 'Información campus destino', descripcion: 'Traslado en espera de información de campus destino' },
-        { id: 9, nombre: 'Confirmación alumno', descripcion: 'Traslado en espera de confirmación del alumno' },
-        { id: 11, nombre: 'Sin asignar', descripcion: 'Ticket nuevo sin agente asignado.' },
+        { id: 1, nombre: 'Sin asignar', descripcion: 'Ticket nuevo sin agente asignado.' },
+        { id: 2, nombre: 'Nuevo', descripcion: 'Ticket nuevo en el sistema y asignado' },
+        { id: 3, nombre: 'En progreso', descripcion: 'El ticket está siendo atendido por un ingeniero de soporte.' },
+        { id: 4, nombre: 'En espera', descripcion: 'El ticket está siendo atendido' },
+        { id: 5, nombre: 'Solucionado', descripcion: 'Ticket cerrado' },
+        { id: 6, nombre: 'Cancelado', descripcion: 'Ticket cancelado' },
+        { id: 7, nombre: 'Duplicado', descripcion: 'Solicitud duplicada' },
+        { id: 8, nombre: 'Revisión CSH', descripcion: 'Traslado: Revisión CSH' },
+        { id: 9, nombre: 'Revisión campus origen', descripcion: 'Traslado en revisión por campus origen' },
+        { id: 10, nombre: 'Información campus destino', descripcion: 'Traslado en espera de información de campus destino' },
+        { id: 11, nombre: 'Confirmación alumno', descripcion: 'Traslado en espera de confirmación del alumno' },
     ],
   });
 

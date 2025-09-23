@@ -62,6 +62,23 @@ A continuación se listan los proyectos prioritarios. Tu tarea es ayudar a refin
 
 # Historial de Cambios (Log)
 
+## 2025-09-19
+*   **Mejoras en Carga de Archivos (`/tickets/view/[id].astro`):**
+    *   Se implementó una validación completa de archivos en el cliente, incluyendo un límite de tamaño (5MB) y formatos permitidos (imágenes, PDF, documentos de Office).
+    *   La interfaz ahora muestra el tamaño de cada archivo y marca en rojo aquellos que no son válidos, especificando la razón.
+    *   Se añadió un flujo de eliminación de archivos con un nuevo botón "Borrar archivos", confirmación mediante `SweetAlert2` y un modo de selección para borrado específico.
+    *   Se implementó una regla de negocio que obliga a escribir un comentario descriptivo (>10 caracteres) si se adjuntan archivos.
+
+*   **Lógica de Tickets Mejorada:**
+    *   **Acción Automática:** Al comentar en un ticket con estatus "Cancelado", "Duplicado" o "Solucionado", el estatus cambia automáticamente a "En progreso", reabriendo el ticket de forma efectiva.
+    *   **Filtros Dinámicos:** Los filtros de "Categoría", "Empresa" y "Atiende" en las páginas de listado ahora solo muestran opciones que tienen tickets relevantes en la vista por defecto, mejorando la usabilidad.
+    *   **Corrección de Filtros:** Se solucionó un bug que impedía que el filtro por estatus mostrara correctamente los tickets "Cancelados", "Duplicados" y "Solucionados".
+    *   Se revirtió la restricción que impedía editar tickets con estatus cerrados.
+
+*   **Mejoras de UI/UX:**
+    *   Se añadió una animación de fundido a las transiciones entre páginas para suavizar la experiencia de navegación.
+    *   Se aseguró que el menú lateral mantenga la selección en la sección correcta al ver el detalle de un ticket.
+
 ## 2025-09-18
 *   **Lógica de Asignación de Tickets Mejorada (`/api/tickets/create.ts`):**
     *   Se implementó una restricción para evitar la auto-asignación de tickets (el solicitante no puede ser el agente asignado).

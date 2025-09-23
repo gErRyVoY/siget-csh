@@ -6,13 +6,15 @@ interface Props {
     label: string;
     icon: AstroComponentFactory;
     active?: boolean;
+    reload?: boolean;
 }
 
-const { href, label, icon: Icon, active = false } = Astro.props;
+const { href, label, icon: Icon, active = false, reload = false } = Astro.props;
 ---
 
 <a
     href={href}
+    data-astro-reload={reload}
     class:list={[
         "flex items-center gap-3 rounded-md px-4 py-2 text-sm font-medium transition-colors",
         active

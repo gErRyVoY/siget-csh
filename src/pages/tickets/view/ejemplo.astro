@@ -11,18 +11,6 @@ if (!id) {
 
 const ticketId = parseInt(id, 10);
 
-const S3_BUCKET_URL = `https://${import.meta.env.S3_BUCKET_NAME}.s3.${import.meta.env.S3_REGION}.amazonaws.com`;
-
-const ALLOWED_STATUSES = ['Nuevo', 'En progreso', 'En espera', 'Solucionado', 'Cancelado', 'Duplicado'];
-const statusColors = {
-    'Nuevo': '#a1a1aa',
-    'En progreso': '#3b82f6',
-    'En espera': '#38bdf8',
-    'Solucionado': '#84cc16',
-    'Cancelado': '#dc2626',
-    'Duplicado': '#171717',
-};
-
 const [ticket, ticketHistory] = await Promise.all([
     prisma.ticket.findUnique({
         where: { id: ticketId },
@@ -52,7 +40,17 @@ if (!ticket) {
 const session = await getSession(Astro.request);
 const PRIVILEGED_ROLES = [1, 2, 3, 4, 5, 6, 15];
 const isPrivileged = session?.user ? PRIVILEGED_ROLES.includes(session.user.rol?.id ?? -1) : false;
-const isReadOnly = false; // Reverted: Allow editing for all statuses
+const isReadOnly = false; 
+
+const ALLOWED_STATUSES = ['Nuevo', 'En progreso', 'En espera', 'Solucionado', 'Cancelado', 'Duplicado'];
+const statusColors = {
+    'Nuevo': '#a1a1aa',
+    'En progreso': '#3b82f6',
+    'En espera': '#38bdf8',
+    'Solucionado': '#84cc16',
+    'Cancelado': '#dc2626',
+    'Duplicado': '#171717',
+};
 
 const breadcrumbPath = [ticket.categoria.nombre];
 if (ticket.subcategoria) {
@@ -226,20 +224,22 @@ const parseFileName = (key: string) => {
                             )}
                         </div>
                     </li>
-                )})
-                : <p class="text-center text-muted-foreground">No hay historial de cambios para este ticket.</p>}
+                )})}
             </ul>
         </div>
     </div>
 </MainLayout>
 
 <script define:vars={{ ticketId, isReadOnly, ticket, statuses }}>
+    // --- Constants & State ---
     const MAX_FILE_SIZE_MB = 5;
     const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
     const ALLOWED_FORMATS = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'];
 
     let stagedFiles: { file: File; id: number; isValid: boolean; reason: string | null; }[] = [];
     let isDeleteSelectionMode = false;
+
+    // --- Core Functions ---
 
     function validateFile(file: File) {
         if (file.size > MAX_FILE_SIZE_BYTES) {
@@ -494,7 +494,7 @@ const parseFileName = (key: string) => {
                     const response = await fetch('/api/tickets/get-download-url', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key }) });
                     if (!response.ok) throw new Error('No se pudo obtener el enlace de descarga.');
                     const { downloadUrl } = await response.json();
-                    window.open(downloadUrl, '_blank');
+                    window.open(downloadUrl, \'_blank\');
                     closeActiveDropdown();
                 } catch (error) {
                     const message = error instanceof Error ? error.message : 'Error desconocido';
@@ -503,7 +503,7 @@ const parseFileName = (key: string) => {
                 }
             });
         });
-        document.addEventListener('click', closeActiveDropdown);
+        document.addEventListener('click\', closeActiveDropdown);
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') closeActiveDropdown();
         });
