@@ -2,7 +2,7 @@
 import MainLayout from "@/layouts/MainLayout.astro";
 import { getSession } from "auth-astro/server";
 import { prisma } from "@/lib/db";
-import type { Estatus, Categoria, Empresa } from "@prisma/client";
+import type { Estatus, Categoria, Empresa, Usuario } from "@prisma/client";
 
 const session = await getSession(Astro.request);
 if (!session || !session.user) {
@@ -22,14 +22,11 @@ const excludedStatuses = await prisma.estatus.findMany({
 const excludedStatusIds = excludedStatuses.map(s => s.id);
 
 const userTicketFilter = {
-    OR: [
-        { solicitanteId: userId },
-        { atiendeId: userId },
-    ],
+    solicitanteId: userId,
     estatusId: { notIn: excludedStatusIds }
 };
 
-const [statuses, categories, companies] = await Promise.all([
+const [statuses, categories, companies, agents] = await Promise.all([
     prisma.estatus.findMany({ orderBy: { nombre: 'asc' } }),
     prisma.categoria.findMany({
         where: { 
@@ -46,6 +43,10 @@ const [statuses, categories, companies] = await Promise.all([
             orderBy: { nombre: 'asc' }
         })
         : Promise.resolve([]),
+    prisma.usuario.findMany({
+        where: { rolId: { in: PRIVILEGED_ROLES }, activo: true },
+        orderBy: { nombres: 'asc' }
+    }),
 ]);
 
 const ALLOWED_STATUSES = ['Nuevo', 'En progreso', 'En espera', 'Solucionado', 'Cancelado', 'Duplicado'];
@@ -55,7 +56,7 @@ const filteredStatuses = statuses.filter(status => ALLOWED_STATUSES.includes(sta
 <MainLayout title="Mis Tickets">
     <div class="max-w-full mx-auto">
         <div class="flex justify-between items-center mb-6">
-            <h1 class="text-2xl font-bold">Tickets de Soporte</h1>
+            <h1 class="text-2xl font-bold">Mis Tickets de Soporte</h1>
         </div>
 
         <!-- Filters -->
@@ -74,6 +75,15 @@ const filteredStatuses = statuses.filter(status => ALLOWED_STATUSES.includes(sta
                     {categories.map((cat: Categoria) => <option value={cat.id}>{cat.nombre}</option>)}
                 </select>
             </div>
+            {!isPrivileged && (
+                <div>
+                    <label for="atiende-select" class="mr-2 text-sm font-medium">Atiende:</label>
+                    <select id="atiende-select" class="bg-card border rounded-md p-2 text-sm">
+                        <option value="all">Todos</option>
+                        {agents.map((agent: Usuario) => <option value={agent.id}>{`${agent.nombres} ${agent.apellidos}`}</option>)}
+                    </select>
+                </div>
+            )}
             {isPrivileged && (
                 <div>
                     <label for="empresa-select" class="mr-2 text-sm font-medium">Empresa:</label>
@@ -92,9 +102,8 @@ const filteredStatuses = statuses.filter(status => ALLOWED_STATUSES.includes(sta
                     <thead class="bg-muted/50">
                         <tr class="text-center">
                             <th class="p-2">Folio</th>
-                            {isPrivileged ? <th class="p-2">Solicita</th> : <th class="p-2">Atiende</th>}
+                            <th class="p-2">Atiende</th>
                             <th class="p-2">Prioridad</th>
-                            {isPrivileged && <th class="p-2">Empresa</th>}
                             <th class="p-2">Estatus</th>
                             <th class="p-2">Fecha Alta</th>
                         </tr>
@@ -125,6 +134,7 @@ const filteredStatuses = statuses.filter(status => ALLOWED_STATUSES.includes(sta
         
         const estatusSelect = document.getElementById('estatus-select');
         const categoriaSelect = document.getElementById('categoria-select');
+        const atiendeSelect = document.getElementById('atiende-select');
         const empresaSelect = document.getElementById('empresa-select');
 
         if (!tableBody || !paginationControls) return;
@@ -139,47 +149,30 @@ const filteredStatuses = statuses.filter(status => ALLOWED_STATUSES.includes(sta
                 'Solucionado': 'bg-lime-500',
                 'Cancelado': 'bg-red-700',
                 'Duplicado': 'bg-black',
+                'En progreso': 'bg-blue-500',
             };
             return colors[statusName] || 'bg-gray-400';
-        }
-
-        function getDateColor(dateString) {
-            const today = new Date();
-            const ticketDate = new Date(dateString);
-            // Reset time part to compare dates only
-            today.setHours(0, 0, 0, 0);
-            ticketDate.setHours(0, 0, 0, 0);
-            const diffTime = today.getTime() - ticketDate.getTime();
-            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-            if (diffDays > 7) return 'text-red-500';
-            if (diffDays >= 3) return 'text-yellow-500';
-            if (diffDays >= 1) return 'text-green-600';
-            return '';
         }
 
         async function fetchAndRenderTickets() {
             let url = `/api/tickets/list?page=${currentPage}&limit=${currentLimit}`;
             
             const selectedStatusId = estatusSelect.value;
-            const selectedStatusOption = estatusSelect.querySelector(`option[value="${selectedStatusId}"]`);
-            const selectedStatusName = selectedStatusOption ? selectedStatusOption.textContent : '';
-
             url += `&estatus=${selectedStatusId}`;
             url += `&categoria=${categoriaSelect.value}`;
+            if (atiendeSelect) {
+                url += `&atiendeId=${atiendeSelect.value}`;
+            }
 
-            // Only exclude closed statuses if the user is NOT specifically asking for them.
             const closedStatuses = ['Cancelado', 'Duplicado', 'Solucionado'];
+            const selectedStatusOption = estatusSelect.querySelector(`option[value="${selectedStatusId}"]`);
+            const selectedStatusName = selectedStatusOption ? selectedStatusOption.textContent : '';
             if (selectedStatusId === 'all' || !closedStatuses.includes(selectedStatusName)) {
                 url += `&exclude_statuses=Cancelado,Duplicado,Solucionado`;
             }
 
-            if (isPrivileged) {
-                if (empresaSelect) url += `&empresa=${empresaSelect.value}`;
-                url += `&atiende=${currentUser.id}`; // Always filter by current user
-            } else {
-                // Logic for non-privileged users can go here if needed
-            }
+            // For this page, always filter by the logged-in user as the requester
+            url += `&solicitanteId=${currentUser.id}`;
 
             try {
                 const response = await fetch(url, { cache: 'no-store' });
@@ -199,28 +192,17 @@ const filteredStatuses = statuses.filter(status => ALLOWED_STATUSES.includes(sta
                         row.onclick = () => { window.location.href = `/tickets/view/${ticket.id}`; };
                         
                         const statusColor = getStatusColor(ticket.estatus.nombre);
-                        const dateColor = isPrivileged ? getDateColor(ticket.fechaalta) : '';
                         const formattedDate = new Date(ticket.fechaalta).toLocaleDateString('es-MX');
 
-                        let columns = '';
-                        if (isPrivileged) {
-                            columns = `
-                                <td class="p-2 font-medium text-center">${ticket.id}</td>
-                                <td class="p-2">${ticket.solicitante.nombres} ${ticket.solicitante.apellidos}</td>
-                                <td class="p-2 text-center">${ticket.prioridad}</td>
-                                <td class="p-2 text-center">${ticket.empresa.nombre}</td>
-                                <td class="p-2 text-center"><span class="px-2 py-1 text-xs font-semibold text-white ${statusColor} rounded-full">${ticket.estatus.nombre}</span></td>
-                                <td class="p-2 text-center ${dateColor}">${formattedDate}</td>
-                            `;
-                        } else {
-                            columns = `
-                                <td class="p-2 font-medium text-center">${ticket.id}</td>
-                                <td class="p-2">${ticket.atiende.nombres} ${ticket.atiende.apellidos}</td>
-                                <td class="p-2 text-center">${ticket.prioridad}</td>
-                                <td class="p-2 text-center"><span class="px-2 py-1 text-xs font-semibold text-white ${statusColor} rounded-full">${ticket.estatus.nombre}</span></td>
-                                <td class="p-2 text-center">${formattedDate}</td>
-                            `;
-                        }
+                        const atiendeName = ticket.atiende ? `${ticket.atiende.nombres} ${ticket.atiende.apellidos}` : 'Sin asignar';
+
+                        const columns = `
+                            <td class="p-2 font-medium text-center">${ticket.id}</td>
+                            <td class="p-2">${atiendeName}</td>
+                            <td class="p-2 text-center">${ticket.prioridad}</td>
+                            <td class="p-2 text-center"><span class="px-2 py-1 text-xs font-semibold text-white ${statusColor} rounded-full">${ticket.estatus.nombre}</span></td>
+                            <td class="p-2 text-center">${formattedDate}</td>
+                        `;
 
                         row.innerHTML = columns;
                         tableBody.appendChild(row);
@@ -229,7 +211,7 @@ const filteredStatuses = statuses.filter(status => ALLOWED_STATUSES.includes(sta
                 renderPagination(pagination);
             } catch (error) {
                 console.error('Fetch Error:', error);
-                tableBody.innerHTML = `<tr><td colspan="6" class="p-8 text-center text-destructive">Error al cargar los tickets.</td></tr>`;
+                tableBody.innerHTML = `<tr><td colspan="5" class="p-8 text-center text-destructive">Error al cargar los tickets.</td></tr>`;
             }
         }
 
@@ -258,8 +240,11 @@ const filteredStatuses = statuses.filter(status => ALLOWED_STATUSES.includes(sta
         // Event Listeners
         estatusSelect.addEventListener('change', () => { currentPage = 1; fetchAndRenderTickets(); });
         categoriaSelect.addEventListener('change', () => { currentPage = 1; fetchAndRenderTickets(); });
-        if (isPrivileged) {
-            if (empresaSelect) empresaSelect.addEventListener('change', () => { currentPage = 1; fetchAndRenderTickets(); });
+        if (atiendeSelect) {
+            atiendeSelect.addEventListener('change', () => { currentPage = 1; fetchAndRenderTickets(); });
+        }
+        if (isPrivileged && empresaSelect) {
+            empresaSelect.addEventListener('change', () => { currentPage = 1; fetchAndRenderTickets(); });
         }
 
         fetchAndRenderTickets();

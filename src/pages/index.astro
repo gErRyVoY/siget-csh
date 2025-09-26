@@ -9,6 +9,10 @@ if (!session || !session.user) {
     return Astro.redirect("/login");
 }
 
+if (session.user.rol?.nivel_soporte === 'Usuario') {
+    return Astro.redirect('/tickets/soporte/usuario');
+}
+
 const statusColors = {
     'Total de Tickets': '#6b7280', // gray-500
     'Tickets Nuevos': '#a1a1aa', // zinc-400

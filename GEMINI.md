@@ -62,6 +62,17 @@ A continuación se listan los proyectos prioritarios. Tu tarea es ayudar a refin
 
 # Historial de Cambios (Log)
 
+## 2025-09-25
+*   **Roles y Base de Datos:**
+    *   Se ha ampliado el `enum NivelSoporte` en `schema.prisma` para incluir los roles `Usuario`, `Coordinador` y `Director`.
+    *   Se actualizó el archivo `seed.ts` para asignar los nuevos niveles de soporte y para añadir un usuario administrador por defecto.
+    *   Se corrigió un warning de tipo en `seed.ts` usando `Prisma.JsonNull`.
+    *   Se regeneró el cliente de Prisma para solucionar un error de `enum` durante el login.
+*   **Permisos y Experiencia de Usuario (Rol "Usuario"):**
+    *   Se implementó una redirección en la página principal (`index.astro`) para que los usuarios con `nivel_soporte: 'Usuario'` vean su lista de tickets en lugar del dashboard.
+    *   Se restringió la visibilidad de elementos en el `Sidebar` (menús de Marketing, Administrador, y vistas de Dashboard/Todos los tickets) para el rol `Usuario`.
+    *   Se ajustó la página de "Mis Tickets" (`.../usuario/index.astro`) para que el filtro "Atiende" solo sea visible para los usuarios no privilegiados.
+
 ## 2025-09-19
 *   **Mejoras en Carga de Archivos (`/tickets/view/[id].astro`):**
     *   Se implementó una validación completa de archivos en el cliente, incluyendo un límite de tamaño (5MB) y formatos permitidos (imágenes, PDF, documentos de Office).

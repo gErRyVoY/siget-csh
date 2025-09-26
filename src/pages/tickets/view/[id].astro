@@ -14,7 +14,7 @@ const ticketId = parseInt(id, 10);
 const S3_BUCKET_URL = `https://${import.meta.env.S3_BUCKET_NAME}.s3.${import.meta.env.S3_REGION}.amazonaws.com`;
 
 const ALLOWED_STATUSES = ['Nuevo', 'En progreso', 'En espera', 'Solucionado', 'Cancelado', 'Duplicado'];
-const statusColors = {
+const statusColors: { [key: string]: string } = {
     'Nuevo': '#a1a1aa',
     'En progreso': '#3b82f6',
     'En espera': '#38bdf8',
@@ -96,6 +96,17 @@ const parseFileName = (key: string) => {
         .flash-animation {
             animation: flash 1s ease-in-out;
         }
+        @media (max-width: 1119px) {
+            #action-buttons-container.has-files {
+                flex-direction: column;
+                align-items: end;
+                width: calc(2/5 * 100%);
+            }
+            #action-buttons-container.has-files #submit-button { order: 1; }
+            #action-buttons-container.has-files #upload-files-button { order: 2; }
+            #action-buttons-container.has-files #delete-files-button { order: 3; }
+            #action-buttons-container.has-files #help-text { order: 4; text-align: right; }
+        }
     </style>
     <div class="max-w-4xl mx-auto">
         <div class="mb-4 text-sm text-muted-foreground">
@@ -106,7 +117,7 @@ const parseFileName = (key: string) => {
             <div class="bg-card border border-[var(--secondary)] rounded-lg p-4 mb-6">
                 <div class="flex justify-between items-center mb-4">
                     <p class="text-lg font-semibold">{ticket.solicitante.nombres} {ticket.solicitante.apellidos}</p>
-                    <a href="/tickets/soporte" class="bg-gray-200 text-gray-800 hover:bg-gray-300 px-6 py-2 rounded-md text-sm font-semibold">Volver a la lista</a>
+                    <a href="/tickets/soporte" class="bg-muted-foreground text-white hover:bg-muted-foreground/80 px-6 py-2 rounded-md text-sm font-semibold">Volver a la lista</a>
                 </div>
                 <div class="space-y-4">
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -117,21 +128,27 @@ const parseFileName = (key: string) => {
                         <div>
                             <label for="prioridad" class="block text-xs font-medium text-muted-foreground">Prioridad</label>
                             <select id="prioridad" name="prioridad" class="mt-1 block w-full rounded-md border-border bg-gray-200 p-2 text-sm">
-                                {priorities.map(p => <option value={p} selected={p === ticket.prioridad}>{p}</option>)}
+                                {priorities.map(p => {
+                                    return (
+                                        <option value={p} selected={p === ticket.prioridad}>{p}</option>
+                                    );
+                                })}
                             </select>
                         </div>
                         <div>
                             <label for="estatusId" class="block text-xs font-medium text-muted-foreground">Estatus</label>
                             <select id="estatusId" name="estatusId" class="mt-1 block w-full rounded-md border-border p-2 text-sm">
-                                {statuses.map(status => 
-                                    <option 
-                                        value={status.id} 
-                                        selected={status.id === ticket.estatusId}
-                                        style={`background-color: ${statusColors[status.nombre as keyof typeof statusColors]}; color: white;`}
-                                    >
-                                        {status.nombre}
-                                    </option>)
-                                }
+                                {statuses.map(status => {
+                                    return (
+                                        <option 
+                                            value={status.id} 
+                                            selected={status.id === ticket.estatusId}
+                                            style={`background-color: ${statusColors[status.nombre] || '#a1a1aa'}; color: white;`}
+                                        >
+                                            {status.nombre}
+                                        </option>
+                                    );
+                                })}
                             </select>
                         </div>
                     </div>
@@ -139,7 +156,11 @@ const parseFileName = (key: string) => {
                         <div>
                             <label for="atiendeId" class="block text-xs font-medium text-muted-foreground">Atiende</label>
                             <select id="atiendeId" name="atiendeId" class="mt-1 block w-full rounded-md border-border bg-gray-200 p-2 text-sm">
-                                {agents.map(agent => <option value={agent.id} selected={agent.id === ticket.atiendeId}>{`${agent.nombres} ${agent.apellidos}`}</option>)}
+                                {agents.map(agent => {
+                                    return (
+                                        <option value={agent.id} selected={agent.id === ticket.atiendeId}>{`${agent.nombres} ${agent.apellidos}`}</option>
+                                    );
+                                })}
                             </select>
                         </div>
                         <div class="pt-4">
@@ -156,25 +177,23 @@ const parseFileName = (key: string) => {
                 </div>
             </div>
             
-            <div class="flex justify-between items-start gap-4 mb-8">
+            <div class="flex justify-between items-start gap-4 mb-4 w-full">
                 <div id="attachment-area" class="space-y-2 flex-grow"></div>
-                <div class="flex items-center gap-4 flex-shrink-0">
-                    <div class="flex flex-col items-end gap-2">
-                        <button type="button" id="upload-files-button" class="bg-gray-200 text-gray-800 hover:bg-gray-300 px-8 py-2 rounded-md text-sm font-semibold">
-                            Adjuntar archivos
-                        </button>
-                        <button type="button" id="delete-files-button" class="hidden bg-red-100 text-red-700 hover:bg-red-200 px-4 py-1 rounded-md text-xs font-semibold">
-                            Borrar archivos
-                        </button>
-                        <p class="text-sm text-secondary">
-                            (Max 5MB. Formatos: jpg, png, pdf, docx, xlsx)
-                        </p>
-                    </div>
-                    <button type="submit" class="bg-primary text-primary-foreground hover:bg-primary/90 px-8 py-2 rounded-md text-sm font-semibold">
+                <div id="action-buttons-container" class="flex flex-wrap justify-between items-center gap-4 flex-shrink-0 w-3/5">
+                    <button type="button" id="upload-files-button" class="bg-muted-foreground text-white hover:bg-muted-foreground/80 px-8 py-2 rounded-md text-sm font-semibold w-[176px]">
+                        Adjuntar archivos
+                    </button>
+                    <button type="submit" id="submit-button" class="bg-primary text-white hover:bg-primary/80 px-8 py-2 rounded-md text-sm font-semibold w-[176px]">
                         Guardar cambios
+                    </button>
+                    <button type="button" id="delete-files-button" class="hidden bg-secondary text-white hover:bg-secondary/80 px-8 py-2 rounded-md text-sm font-semibold w-[176px]">
+                        Borrar archivos
                     </button>
                 </div>
             </div>
+            <p id="help-text" class="text-sm text-secondary w-full text-right mb-8">
+                * Máximo 5MB cada uno. Formatos permitidos: jpg, png, pdf, docx, xlsx
+            </p>
         </form>
         <input type="file" id="file-input" multiple class="hidden" />
 
@@ -184,7 +203,7 @@ const parseFileName = (key: string) => {
                 <textarea id="new-comment" name="new-comment" rows="3" class="w-full rounded-md border-border bg-input p-2 text-sm" placeholder="Escribe un comentario..."></textarea>
             </div>
             <ul class="space-y-6">
-                {ticketHistory.map((entry, index) => {
+                {ticketHistory.length > 0 ? ticketHistory.map((entry, index) => {
                     const hasFiles = entry.archivos && (entry.archivos as any).newFiles && (entry.archivos as any).newFiles.length > 0;
                     const fieldChanges = (entry.cambios as any)?.fieldChanges?.filter((c: any) => ['prioridad', 'atiendeId'].includes(c.field)) || [];
                     return (
@@ -198,7 +217,7 @@ const parseFileName = (key: string) => {
                             </div>
                             <div class="flex items-center gap-4 mt-1">
                                 {entry.estatus && (
-                                    <span style={`background-color: ${statusColors[entry.estatus.nombre as keyof typeof statusColors] || '#a1a1aa'};`} class="px-2 py-1 text-xs font-bold text-white rounded-full">
+                                    <span style={`background-color: ${statusColors[entry.estatus.nombre] || '#a1a1aa'};`} class="px-2 py-1 text-xs font-bold text-white rounded-full">
                                         {entry.estatus.nombre}
                                     </span>
                                 )}
@@ -233,310 +252,21 @@ const parseFileName = (key: string) => {
     </div>
 </MainLayout>
 
-<script define:vars={{ ticketId, isReadOnly, ticket, statuses }}>
-    const MAX_FILE_SIZE_MB = 5;
-    const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
-    const ALLOWED_FORMATS = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'];
-
-    let stagedFiles: { file: File; id: number; isValid: boolean; reason: string | null; }[] = [];
-    let isDeleteSelectionMode = false;
-
-    function validateFile(file: File) {
-        if (file.size > MAX_FILE_SIZE_BYTES) {
-            return { isValid: false, reason: `supera el límite de ${MAX_FILE_SIZE_MB}MB` };
-        }
-        if (!ALLOWED_FORMATS.includes(file.type)) {
-            return { isValid: false, reason: 'formato no permitido' };
-        }
-        return { isValid: true, reason: null };
-    }
-
-    function formatBytes(bytes: number, decimals = 2) {
-        if (bytes === 0) return '0 Bytes';
-        const k = 1024;
-        const dm = decimals < 0 ? 0 : decimals;
-        const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
-        const i = Math.floor(Math.log(bytes) / Math.log(k));
-        return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
-    }
-
-    function renderStagedFiles() {
-        const attachmentArea = document.getElementById('attachment-area');
-        const deleteFilesButton = document.getElementById('delete-files-button');
-        if (!attachmentArea || !deleteFilesButton) return;
-
-        if (stagedFiles.length === 0) {
-            attachmentArea.innerHTML = '';
-            deleteFilesButton.classList.add('hidden');
-            isDeleteSelectionMode = false;
-            deleteFilesButton.textContent = 'Borrar archivos';
-            return;
-        }
-
-        let listHtml = '';
-        if (isDeleteSelectionMode) {
-            listHtml = '<h3 class="text-sm font-medium mb-2">Seleccione los archivos a eliminar:</h3><ul class="space-y-1">' +
-                stagedFiles.map(fileWrapper => `
-                    <li>
-                        <label class="flex items-center cursor-pointer">
-                            <input type="checkbox" class="file-delete-checkbox h-4 w-4 rounded" data-file-id="${fileWrapper.id}">
-                            <span class="ml-2 text-sm ${!fileWrapper.isValid ? 'text-red-500' : 'text-muted-foreground'}">
-                                ${fileWrapper.file.name} (${formatBytes(fileWrapper.file.size)})
-                                ${!fileWrapper.isValid ? `(${fileWrapper.reason})` : ''}
-                            </span>
-                        </label>
-                    </li>
-                `).join('') + '</ul>';
-        } else {
-            listHtml = '<h3 class="text-sm font-medium mb-2">Archivos listos para subir:</h3><ul class="list-disc pl-5 space-y-1">' +
-                stagedFiles.map(fileWrapper => `
-                    <li class="text-sm ${!fileWrapper.isValid ? 'text-red-500' : 'text-muted-foreground'}">
-                        ${fileWrapper.file.name} (${formatBytes(fileWrapper.file.size)})
-                        ${!fileWrapper.isValid ? `(${fileWrapper.reason})` : ''}
-                    </li>
-                `).join('') + '</ul>';
-        }
-        
-        attachmentArea.innerHTML = listHtml;
-        deleteFilesButton.classList.remove('hidden');
-    }
-
-    function initFileUploads() {
-        const uploadButton = document.getElementById('upload-files-button');
-        const fileInput = document.getElementById('file-input');
-        const deleteFilesButton = document.getElementById('delete-files-button');
-
-        if (!uploadButton || !fileInput || !deleteFilesButton) return;
-
-        uploadButton.addEventListener('click', () => fileInput.click());
-
-        fileInput.addEventListener('change', (e) => {
-            const target = e.target as HTMLInputElement;
-            if (!target.files) return;
-
-            let hasInvalidFiles = false;
-            stagedFiles = Array.from(target.files).map((file, index) => {
-                const validation = validateFile(file);
-                if (!validation.isValid) hasInvalidFiles = true;
-                return { file, id: index, ...validation };
-            });
-
-            if (hasInvalidFiles) {
-                Swal.fire({
-                    toast: true, position: 'bottom', showConfirmButton: false, timer: 4000, timerProgressBar: true, 
-                    icon: 'warning', title: 'Valide sus archivos', text: 'Algunos no cumplen con los requisitos y no serán adjuntados.', color: '#FFFFFF', background: 'var(--secondary)'
-                });
-            }
-
-            isDeleteSelectionMode = false;
-            deleteFilesButton.textContent = 'Borrar archivos';
-            renderStagedFiles();
-            target.value = '';
-        });
-
-        deleteFilesButton.addEventListener('click', () => {
-            if (isDeleteSelectionMode) {
-                const selectedIds = Array.from(document.querySelectorAll('.file-delete-checkbox:checked')).map(cb => parseInt((cb as HTMLInputElement).dataset.fileId!));
-                stagedFiles = stagedFiles.filter(fw => !selectedIds.includes(fw.id));
-                isDeleteSelectionMode = false;
-                deleteFilesButton.textContent = 'Borrar archivos';
-                renderStagedFiles();
-            } else {
-                Swal.fire({
-                    title: '¿Borrar todos los archivos en la lista?',
-                    icon: 'warning',
-                    showCancelButton: true,
-                    confirmButtonColor: '#d33',
-                    cancelButtonColor: '#3085d6',
-                    confirmButtonText: 'Sí, borrar todos',
-                    cancelButtonText: 'No, quiero seleccionar'
-                }).then((result) => {
-                    if (result.isConfirmed) {
-                        stagedFiles = [];
-                        renderStagedFiles();
-                    } else if (result.dismiss === Swal.DismissReason.cancel) {
-                        stagedFiles = stagedFiles.filter(fw => fw.isValid);
-                        if (stagedFiles.length > 0) {
-                            isDeleteSelectionMode = true;
-                            deleteFilesButton.textContent = 'Borrar selección';
-                            renderStagedFiles();
-                        } else {
-                            renderStagedFiles();
-                        }
-                    }
-                });
-            }
-        });
-    }
-
-    function initEditForm() {
-        const form = document.getElementById('edit-ticket-form');
-        if (!form) return;
-
-        form.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const submitButton = form.querySelector('button[type="submit"]') as HTMLButtonElement;
-            const newCommentElement = document.getElementById('new-comment') as HTMLTextAreaElement;
-            const estatusSelect = document.getElementById('estatusId') as HTMLSelectElement;
-
-            const validFilesToUpload = stagedFiles.filter(fw => fw.isValid);
-            const newComment = newCommentElement ? newCommentElement.value.trim() : '';
-
-            if (validFilesToUpload.length > 0 && newComment.length < 10) {
-                Swal.fire('Comentario requerido', 'Si desea adjuntar archivos, por favor inserte un comentario descriptivo (mínimo 10 caracteres).', 'warning');
-                return;
-            }
-
-            if (submitButton) {
-                submitButton.disabled = true;
-                submitButton.textContent = 'Guardando...';
-            }
-
-            const initialStatus = ticket.estatus.nombre;
-            const closedStatuses = ['Cancelado', 'Duplicado', 'Solucionado'];
-            let finalStatusId = estatusSelect.value;
-
-            if (closedStatuses.includes(initialStatus) && newComment.length >= 10 && estatusSelect.value === String(ticket.estatusId)) {
-                const enProgresoStatus = statuses.find(s => s.nombre === 'En progreso');
-                if (enProgresoStatus) {
-                    finalStatusId = String(enProgresoStatus.id);
-                }
-            }
-
-            let uploadedFileKeys: string[] = [];
-            if (validFilesToUpload.length > 0) {
-                const uploadPromises = validFilesToUpload.map(async fileWrapper => {
-                    try {
-                        const presignedResponse = await fetch('/api/tickets/generate-upload-url', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ fileName: fileWrapper.file.name, fileType: fileWrapper.file.type, ticketId: ticketId })
-                        });
-                        if (!presignedResponse.ok) throw new Error('Error al obtener URL segura.');
-                        const { uploadUrl, key } = await presignedResponse.json();
-                        await fetch(uploadUrl, { method: 'PUT', body: fileWrapper.file, headers: { 'Content-Type': fileWrapper.file.type } });
-                        return key;
-                    } catch (error) {
-                        console.error(`Upload failed for ${fileWrapper.file.name}:`, error);
-                        return null;
-                    }
-                });
-                const results = await Promise.all(uploadPromises);
-                uploadedFileKeys = results.filter((key): key is string => key !== null);
-                if (uploadedFileKeys.length !== validFilesToUpload.length) {
-                    Swal.fire('Error de subida', 'Algunos archivos no se pudieron subir. Por favor, inténtalo de nuevo.', 'error');
-                    if (submitButton) { submitButton.disabled = false; submitButton.textContent = 'Guardar cambios'; }
-                    return;
-                }
-            }
-
-            const formData = new FormData(form);
-            const data = {
-                ticketId: ticketId,
-                estatusId: finalStatusId,
-                prioridad: formData.get('prioridad'),
-                atiendeId: formData.get('atiendeId'),
-                archivado: (form.elements.namedItem('archivado') as HTMLInputElement).checked,
-                newComment: newComment,
-                newFiles: uploadedFileKeys,
-            };
-
-            try {
-                const response = await fetch(`/api/tickets/update`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(errorData.message || 'Error al actualizar el ticket');
-                }
-                Swal.fire({ icon: 'success', title: 'Ticket actualizado', text: 'Los cambios han sido guardados.', showConfirmButton: false, timer: 1500 }).then(() => {
-                    window.location.href = `${window.location.pathname}?new_entry=true`;
-                });
-            } catch (error) {
-                const message = error instanceof Error ? error.message : 'Ocurrió un error desconocido.';
-                Swal.fire({ title: 'Error', text: message, icon: 'error' });
-                if (submitButton) { submitButton.disabled = false; submitButton.textContent = 'Guardar cambios'; }
-            }
-        });
-    }
-
-    function initHistoryToggles() {
-        let activeDropdown: HTMLElement | null = null;
-        const closeActiveDropdown = () => {
-            if (activeDropdown) {
-                activeDropdown.classList.add('hidden');
-                activeDropdown = null;
-            }
-        };
-        document.querySelectorAll('.attachment-clip').forEach(button => {
-            button.addEventListener('click', (e) => {
-                e.stopPropagation();
-                const target = e.currentTarget as HTMLElement;
-                if (!target) return;
-                const dropdown = target.nextElementSibling as HTMLElement | null;
-                if (dropdown) {
-                    if (dropdown === activeDropdown) {
-                        closeActiveDropdown();
-                    } else {
-                        closeActiveDropdown();
-                        dropdown.classList.remove('hidden');
-                        activeDropdown = dropdown;
-                    }
-                }
-            });
-        });
-        document.querySelectorAll('.attachment-link').forEach(link => {
-            link.addEventListener('click', async (e) => {
-                e.preventDefault();
-                const target = e.currentTarget as HTMLElement;
-                if (!target) return;
-                const key = target.dataset.key;
-                if (!key) return;
-                try {
-                    const response = await fetch('/api/tickets/get-download-url', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key }) });
-                    if (!response.ok) throw new Error('No se pudo obtener el enlace de descarga.');
-                    const { downloadUrl } = await response.json();
-                    window.open(downloadUrl, '_blank');
-                    closeActiveDropdown();
-                } catch (error) {
-                    const message = error instanceof Error ? error.message : 'Error desconocido';
-                    console.error('Error fetching download URL:', error);
-                    Swal.fire('Error', message, 'error');
-                }
-            });
-        });
-        document.addEventListener('click', closeActiveDropdown);
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') closeActiveDropdown();
-        });
-    }
-
-    function handleNewHistoryEntry() {
-        const urlParams = new URLSearchParams(window.location.search);
-        if (urlParams.get('new_entry')) {
-            const newEntry = document.querySelector('[data-history-entry="true"]');
-            if (newEntry) {
-                newEntry.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                newEntry.classList.add('flash-animation');
-            }
-        }
-    }
-
-    function setElementColor(selectElement: HTMLSelectElement) {
-        const selectedOption = selectElement.options[selectElement.selectedIndex];
-        if (!selectedOption) return;
-        const color = selectedOption.style.backgroundColor;
-        selectElement.style.backgroundColor = color || '#f3f4f6';
-        selectElement.style.color = color ? 'white' : 'black';
-    }
-
-    function initStatusColorizer() {
-        const statusSelect = document.getElementById('estatusId') as HTMLSelectElement;
-        if (statusSelect) {
-            statusSelect.addEventListener('change', () => setElementColor(statusSelect));
-            setElementColor(statusSelect);
-        }
-    }
+<script define:vars={{ ticketId, ticket, statuses }}>
+    window.ticketViewData = { ticketId, ticket, statuses };
+</script>
+<script>
+    import {
+        init,
+        initEditForm,
+        initFileUploads,
+        initHistoryToggles,
+        initStatusColorizer,
+        handleNewHistoryEntry
+    } from '@/scripts/ticket-view-logic.ts';
 
     document.addEventListener('astro:page-load', () => {
+        init();
         initEditForm();
         initFileUploads();
         initHistoryToggles();

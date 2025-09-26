@@ -1,4 +1,4 @@
-import { PrismaClient, TipoEmpresa, NivelSoporte, Prioridad } from '@prisma/client';
+import { PrismaClient, TipoEmpresa, NivelSoporte, Prioridad, Prisma } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
@@ -59,15 +59,23 @@ async function main() {
       { id: 4, rol: 'Ingeniero soporte 3', descripcion: 'Ingeniero de soporte nivel 3', nivel_soporte: 'S_3' },
       { id: 5, rol: 'Auditor CSH', descripcion: 'Auditor del centro de soporte', nivel_soporte: 'S_1' },
       { id: 6, rol: 'Desarrollador', descripcion: 'Desarrollador de aplicaciones', nivel_soporte: 'Desarrollador' },
-      { id: 7, rol: 'Director campus', descripcion: 'Director de campus', nivel_soporte: 'S_1' },
-      { id: 8, rol: 'Coordinador RR.PP.', descripcion: 'Coordinador de relaciones públicas', nivel_soporte: 'S_1' },
-      { id: 9, rol: 'Ejecutivo RR.PP.', descripcion: 'Ejecutivo de relaciones públicas', nivel_soporte: 'S_1' },
+      { id: 7, rol: 'Director campus', descripcion: 'Director de campus', nivel_soporte: 'Director' },
+      { id: 8, rol: 'Coordinador RR.PP.', descripcion: 'Coordinador de relaciones públicas', nivel_soporte: 'Coordinador' },
+      { id: 9, rol: 'Ejecutivo RR.PP.', descripcion: 'Ejecutivo de relaciones públicas', nivel_soporte: 'Usuario' },
       { id: 10, rol: 'Contador', descripcion: 'Contador', nivel_soporte: 'Contador' },
-      { id: 11, rol: 'Director Marketing', descripcion: 'Director de Marketing', nivel_soporte: 'Marketing' },
+      { id: 11, rol: 'Director Marketing', descripcion: 'Director de Marketing', nivel_soporte: 'Director' },
       { id: 12, rol: 'Diseñador', descripcion: 'Diseñador gráfico (Marketing)', nivel_soporte: 'Marketing' },
       { id: 13, rol: 'Community manager', descripcion: 'Ejecutivo de atención en redes sociales', nivel_soporte: 'Marketing' },
-      { id: 14, rol: 'Visitante', descripcion: 'Visitante', nivel_soporte: 'S_1' },
+      { id: 14, rol: 'Visitante', descripcion: 'Visitante', nivel_soporte: 'Usuario' },
       { id: 15, rol: 'Visitante administrador', descripcion: 'Visitante administrador', nivel_soporte: 'S_1' },
+    ],
+  });
+
+  // --- Insertar Usuario ---
+  console.log('Seeding usuario...');
+  await prisma.usuario.createMany({
+    data: [
+      { id:1, mail: 'gerardo.omana@humanitas.edu.mx', nombres: 'Gerardo', apellidos: 'Omaña Vazquez', empresaId: 15, rolId: 6, horario_disponibilidad: Prisma.JsonNull, image: "https://lh3.googleusercontent.com/a-/ALV-UjXmcvhEi7AXSnIHJP2pJTizD0lzlhMwNQeR7HM3kVKj0i85LV4Q=s96-c" }
     ],
   });
 

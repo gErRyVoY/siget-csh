@@ -315,6 +315,9 @@ enum NivelSoporte {
   Desarrollador
   Marketing
   Contador
+  Usuario
+  Coordinador
+  Director
 }
 
 enum Grado {

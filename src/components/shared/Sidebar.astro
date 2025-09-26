@@ -30,6 +30,8 @@ const { session } = Astro.props;
 const { pathname } = Astro.url;
 const { id = 'invitado' } = Astro.params;
 
+const isUsuario = session?.user?.rol?.nivel_soporte === 'Usuario';
+
 const cshHref = "/tickets/soporte/nuevo-ticket-csh";
 const isCshActive = pathname === cshHref;
 
@@ -39,7 +41,7 @@ const mainNavItems = [
     { href: '/horario-de-atencion', label: 'Horario de atención', icon: OfficeHours },
 ];
 
-const ticketSections = [
+let ticketSections = [
     {
         title: 'Tickets soporte',
         items: [
@@ -56,6 +58,18 @@ const ticketSections = [
         ]
     }
 ];
+
+if (isUsuario) {
+    // Ocultar la sección de marketing
+    ticketSections = ticketSections.filter(section => section.title !== 'Tickets marketing');
+    // En la sección de soporte, dejar solo "Mis tickets"
+    ticketSections = ticketSections.map(section => {
+        if (section.title === 'Tickets soporte') {
+            section.items = section.items.filter(item => item.label === 'Mis tickets');
+        }
+        return section;
+    });
+}
 
 const adminSections = [
     { title: 'Correos institucionales', items: [
@@ -98,7 +112,7 @@ const adminSections = [
             <span class="group-data-[sidebar-collapsed=true]:hidden">C S H</span>
         </a>
         <NewTransfer />
-        <NewTicketMkt />
+        { !isUsuario && <NewTicketMkt /> }
 
         <div class="border-t border-border my-3"></div>
 
@@ -114,10 +128,14 @@ const adminSections = [
             ))}
         </div>
 
-        <div class="px-2 pt-2 text-sm font-semibold text-muted-foreground group-data-[sidebar-collapsed=true]:hidden">Administrador</div>
-        {adminSections.map(section => (
-            <CollapsibleNavSection title={section.title} items={section.items} pathname={pathname} matchMode="prefix" />
-        ))}
+        { !isUsuario && (
+            <>
+                <div class="px-2 pt-2 text-sm font-semibold text-muted-foreground group-data-[sidebar-collapsed=true]:hidden">Administrador</div>
+                {adminSections.map(section => (
+                    <CollapsibleNavSection title={section.title} items={section.items} pathname={pathname} matchMode="prefix" />
+                ))}
+            </>
+        )}
     </nav>
     
     <div class="p-2 border-t border-border mt-auto shrink-0">
