@@ -174,6 +174,21 @@ export function initTicketWizard(treeData: CategoriesTreeData) {
 
         const lastSelectedNode = selection.nodes[selection.nodes.length - 1];
 
+        const Toast = Swal.mixin({
+            toast: true,
+            position: 'bottom',
+            showConfirmButton: false,
+            timer: 3000,
+            timerProgressBar: true,
+            background: '#881912',
+            color: '#FFFFFF',
+            iconColor: '#caab55',
+            didOpen: (toast) => {
+                toast.addEventListener('mouseenter', Swal.stopTimer)
+                toast.addEventListener('mouseleave', Swal.resumeTimer)
+            }
+        });
+
         try {
             const response = await fetch('/api/tickets/create', {
                 method: 'POST',
@@ -190,12 +205,15 @@ export function initTicketWizard(treeData: CategoriesTreeData) {
                 throw new Error(errorData.message);
             }
 
-            await Swal.fire({ title: '¡Ticket Enviado!', text: 'Tu solicitud ha sido creada exitosamente.', icon: 'success', timer: 2000, timerProgressBar: true, showConfirmButton: false });
-            window.location.href = '/tickets/soporte';
+            await Toast.fire({ icon: 'success', title: '¡Ticket Enviado!' });
+            
+            setTimeout(() => {
+                window.location.href = '/tickets/soporte';
+            }, 1500);
 
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'No se pudo crear el ticket.';
-            await Swal.fire({ title: 'Error', text: errorMessage, icon: 'error' });
+            Toast.fire({ icon: 'error', title: 'Error', text: errorMessage });
             submitButton.disabled = false;
             submitButton.textContent = 'Crear Ticket';
         }

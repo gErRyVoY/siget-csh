@@ -2,8 +2,8 @@ import { defineConfig } from "auth-astro";
 import Google from "@auth/core/providers/google";
 import { google } from "googleapis";
 import { prisma } from "./src/lib/db";
-import type { Rol, Empresa } from "@prisma/client"; // Importar tipos
-import type { DefaultSession } from "@auth/core/types"; // Importar DefaultSession
+import type { Rol, Empresa, Permiso } from "@prisma/client";
+import type { DefaultSession } from "@auth/core/types";
 
 export default defineConfig({
   providers: [
@@ -19,6 +19,10 @@ export default defineConfig({
     }),
   ],
   secret: process.env.AUTH_SECRET,
+  session: {
+    strategy: "jwt",
+    maxAge: 12 * 60 * 60, // 12 horas en segundos
+  },
   callbacks: {
     async signIn({ account, profile }) {
       if (!profile?.email) {
@@ -77,7 +81,7 @@ export default defineConfig({
             const slug = firstLevelOU
                 .toLowerCase()
                 .replace(/^campus\s+/, '')
-                .normalize('NFD').replace(/[̀-ͯ]/g, '')
+                .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
                 .replace(/\s+/g, '-');
 
             const empresa = await prisma.empresa.findUnique({
@@ -124,13 +128,17 @@ export default defineConfig({
       }
     },
 
-    async jwt({ token, profile }) {
+    async jwt({ token }) {
       if (token.email) {
         const dbUser = await prisma.usuario.findUnique({
           where: { mail: token.email },
           include: {
-            rol: true,
             empresa: true,
+            rol: {
+              include: {
+                permisos: true, // Incluir los permisos del rol
+              },
+            },
           },
         });
 
@@ -139,18 +147,21 @@ export default defineConfig({
           token.rol = dbUser.rol;
           token.empresa = dbUser.empresa;
           token.image = dbUser.image;
+          // Guardar solo los nombres de los permisos en el token
+          token.permisos = dbUser.rol.permisos.map(p => p.nombre);
         }
       }
       return token;
     },
 
     async session({ session, token }) {
-      // Asegurarse de que el token y el id del usuario existan
       if (token.userId && session.user) {
-        session.user.id = token.userId; // El 'any' cast no es necesario gracias a la declaración de tipos
+        session.user.id = String(token.userId); // Convertir a string para cumplir el tipo
         session.user.rol = token.rol as Rol;
         session.user.empresa = token.empresa as Empresa;
         session.user.image = token.image as string | null;
+        // Asignar los permisos a la sesión
+        session.user.permisos = token.permisos as string[];
       }
       return session;
     },
@@ -160,10 +171,11 @@ export default defineConfig({
 declare module "@auth/core/types" {
   interface Session {
     user: Omit<DefaultSession["user"], "id" | "image"> & {
-      id: number;
+      id?: string | number;
       rol?: Rol;
       empresa?: Empresa;
       image?: string | null;
+      permisos?: string[]; // Añadir permisos a la sesión
     };
   }
 }
@@ -174,5 +186,6 @@ declare module "@auth/core/jwt" {
     rol?: Rol;
     empresa?: Empresa;
     image?: string | null;
+    permisos?: string[]; // Añadir permisos al token
   }
 }

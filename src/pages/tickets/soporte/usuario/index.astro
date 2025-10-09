@@ -22,7 +22,7 @@ const excludedStatuses = await prisma.estatus.findMany({
 const excludedStatusIds = excludedStatuses.map(s => s.id);
 
 const userTicketFilter = {
-    solicitanteId: userId,
+    solicitanteId: parseInt(userId as string, 10),
     estatusId: { notIn: excludedStatusIds }
 };
 

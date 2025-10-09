@@ -87,7 +87,11 @@ export const PATCH: APIRoute = async ({ request }) => {
   try {
     const data = await request.json();
     const { id, ...updateDataInput } = data;
-    const adminUserId = session.user.id;
+    const adminUserId = parseInt(session.user.id as string, 10);
+
+    if (isNaN(adminUserId)) {
+      return new Response(JSON.stringify({ message: 'ID de administrador inválido en la sesión.' }), { status: 400 });
+    }
 
     if (!id || typeof id !== 'number' || id <= 0) {
       return new Response(JSON.stringify({ message: 'El ID de usuario proporcionado no es válido' }), { status: 400 });
@@ -173,7 +177,11 @@ export const DELETE: APIRoute = async ({ request }) => {
 
   const url = new URL(request.url);
   const userId = url.searchParams.get('id');
-  const adminUserId = session.user.id;
+  const adminUserId = parseInt(session.user.id as string, 10);
+
+  if (isNaN(adminUserId)) {
+    return new Response(JSON.stringify({ message: 'ID de administrador inválido en la sesión.' }), { status: 400 });
+  }
 
   if (!userId) {
     return new Response(JSON.stringify({ message: 'El ID del usuario es requerido' }), { status: 400 });

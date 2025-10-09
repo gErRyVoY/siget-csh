@@ -15,7 +15,11 @@ export const PATCH: APIRoute = async ({ request, locals }) => {
     try {
         const data = await request.json();
         const { ticketId, newComment, newFiles, ...updateDataInput } = data;
-        const adminUserId = session.user.id;
+        const adminUserId = parseInt(session.user.id as string, 10);
+
+        if (isNaN(adminUserId)) {
+            return new Response(JSON.stringify({ message: 'ID de administrador inválido en la sesión.' }), { status: 400 });
+        }
 
         if (!ticketId || typeof ticketId !== 'number') {
             return new Response(JSON.stringify({ message: 'El ID del ticket no es válido' }), { status: 400 });

@@ -17,7 +17,8 @@ async function main() {
   await prisma.categoria.deleteMany({});
   await prisma.logs.deleteMany({});
   await prisma.usuario.deleteMany({});
-  await prisma.rol.deleteMany({});
+  await prisma.permiso.deleteMany({}); // Limpiar permisos
+  await prisma.rol.deleteMany({});      // Limpiar roles
   await prisma.bloque.deleteMany({});
   await prisma.ciclo.deleteMany({});
   await prisma.carrera.deleteMany({});
@@ -49,6 +50,17 @@ async function main() {
     ],
   });
 
+  // --- Insertar Permisos ---
+  console.log('Seeding permiso...');
+  await prisma.permiso.createMany({
+    data: [
+      { id: 1, nombre: 'ver_seccion_marketing', descripcion: 'Permite ver la sección de Marketing en el menú lateral' },
+      { id: 2, nombre: 'ver_seccion_admin', descripcion: 'Permite ver la sección de Administración en el menú lateral' },
+      { id: 3, nombre: 'editar_usuarios', descripcion: 'Permite editar usuarios desde la sección de admin' },
+      { id: 4, nombre: 'ver_todos_tickets', descripcion: 'Permite ver la sección de "Todos los tickets"' },
+    ],
+  });
+
   // --- Insertar Roles ---
   console.log('Seeding rol...');
   await prisma.rol.createMany({
@@ -71,13 +83,47 @@ async function main() {
     ],
   });
 
+  // --- Conectar Permisos a Roles ---
+  console.log('Connecting permissions to roles...');
+  const rolesConPermisos = [
+    // Desarrollador (todos los permisos)
+    { rolId: 6, permisoIds: [1, 2, 3, 4] },
+    // Director CSH (todos los permisos)
+    { rolId: 1, permisoIds: [1, 2, 3, 4] },
+    // Roles de Marketing
+    { rolId: 12, permisoIds: [1] }, // Diseñador
+    { rolId: 13, permisoIds: [1] }, // Community Manager
+    // Director de Marketing (ve marketing y admin, pero no edita usuarios)
+    { rolId: 11, permisoIds: [1, 2, 4] },
+    // Roles de Soporte (ven todo, pero no marketing)
+    { rolId: 2, permisoIds: [2, 3, 4] },
+    { rolId: 3, permisoIds: [2, 3, 4] },
+    { rolId: 4, permisoIds: [2, 3, 4] },
+    { rolId: 5, permisoIds: [2, 4] }, // Auditor no edita usuarios
+  ];
+
+  for (const { rolId, permisoIds } of rolesConPermisos) {
+    await prisma.rol.update({
+      where: { id: rolId },
+      data: {
+        permisos: {
+          connect: permisoIds.map(id => ({ id })),
+        },
+      },
+    });
+  }
+
   // --- Insertar Usuario ---
   console.log('Seeding usuario...');
   await prisma.usuario.createMany({
     data: [
-      { id:1, mail: 'gerardo.omana@humanitas.edu.mx', nombres: 'Gerardo', apellidos: 'Omaña Vazquez', empresaId: 15, rolId: 6, horario_disponibilidad: Prisma.JsonNull, image: "https://lh3.googleusercontent.com/a-/ALV-UjXmcvhEi7AXSnIHJP2pJTizD0lzlhMwNQeR7HM3kVKj0i85LV4Q=s96-c" }
+      { id:1, mail: 'gerardo.omana@humanitas.edu.mx', nombres: 'Gerardo', apellidos: 'Omaña Vazquez', empresaId: 15, rolId: 6, horario_disponibilidad: Prisma.JsonNull, image: "https://lh3.googleusercontent.com/a-/ALV-UjXmcvhEi7AXSnIHJP2pJTizD0lzlhMwNQeR7HM3kVKj0i85LV4Q=s96-c" },
+      { id:2, mail: 'haide.herrera@humanitas.edu.mx', nombres: 'Haide', apellidos: 'Herrera', empresaId: 14, rolId: 12, horario_disponibilidad: Prisma.JsonNull, image: "https://lh3.googleusercontent.com/a-/ALV-UjUPqe4Ka1JQhFH9vqNr4SDHElvdeKhMSrWCLBX16pHRf-o8oxvy=s96-c" }
     ],
   });
+
+  // --- Insertar Oferta, Descuento, Estatus, etc. (sin cambios) ---
+  // (El resto del archivo permanece igual)
 
   // --- Insertar Oferta ---
   console.log('Seeding oferta...');

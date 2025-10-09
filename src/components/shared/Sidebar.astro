@@ -30,7 +30,11 @@ const { session } = Astro.props;
 const { pathname } = Astro.url;
 const { id = 'invitado' } = Astro.params;
 
-const isUsuario = session?.user?.rol?.nivel_soporte === 'Usuario';
+// Permisos del sistema RBAC
+const permisos = session?.user?.permisos ?? [];
+const canSeeMarketing = permisos.includes('ver_seccion_marketing');
+const canSeeAdmin = permisos.includes('ver_seccion_admin');
+const canSeeAllTickets = permisos.includes('ver_todos_tickets');
 
 const cshHref = "/tickets/soporte/nuevo-ticket-csh";
 const isCshActive = pathname === cshHref;
@@ -59,10 +63,13 @@ let ticketSections = [
     }
 ];
 
-if (isUsuario) {
-    // Ocultar la sección de marketing
+if (!canSeeMarketing) {
+    // Ocultar la sección de marketing si no tiene el permiso
     ticketSections = ticketSections.filter(section => section.title !== 'Tickets marketing');
-    // En la sección de soporte, dejar solo "Mis tickets"
+}
+
+if (!canSeeAllTickets) {
+    // En la sección de soporte, dejar solo "Mis tickets" si no tiene permiso para ver todos
     ticketSections = ticketSections.map(section => {
         if (section.title === 'Tickets soporte') {
             section.items = section.items.filter(item => item.label === 'Mis tickets');
@@ -112,7 +119,7 @@ const adminSections = [
             <span class="group-data-[sidebar-collapsed=true]:hidden">C S H</span>
         </a>
         <NewTransfer />
-        { !isUsuario && <NewTicketMkt /> }
+        { canSeeMarketing && <NewTicketMkt /> }
 
         <div class="border-t border-border my-3"></div>
 
@@ -128,7 +135,7 @@ const adminSections = [
             ))}
         </div>
 
-        { !isUsuario && (
+        { canSeeAdmin && (
             <>
                 <div class="px-2 pt-2 text-sm font-semibold text-muted-foreground group-data-[sidebar-collapsed=true]:hidden">Administrador</div>
                 {adminSections.map(section => (

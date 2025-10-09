@@ -30,6 +30,7 @@ model Rol {
   descripcion   String?      @db.Text
   nivel_soporte NivelSoporte
   usuarios      Usuario[]
+  permisos      Permiso[]    @relation()
 
   @@map("rol")
 }
@@ -299,6 +300,15 @@ model NotificacionesCorreo {
   plantilla      PlantillaCorreo @relation(fields: [plantillaId], references: [id])
 
   @@map("notificaciones_correo")
+}
+
+model Permiso {
+  id          Int      @id @default(autoincrement())
+  nombre      String   @unique @db.VarChar(100)
+  descripcion String?
+  roles       Rol[]    @relation()
+
+  @@map("permiso")
 }
 
 enum TipoEmpresa {
