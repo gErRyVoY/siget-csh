@@ -25,12 +25,13 @@ model Empresa {
 }
 
 model Rol {
-  id            Int          @id @default(autoincrement())
-  rol           String       @db.VarChar(50)
-  descripcion   String?      @db.Text
-  nivel_soporte NivelSoporte
-  usuarios      Usuario[]
-  permisos      Permiso[]    @relation()
+  id                 Int                  @id @default(autoincrement())
+  rol                String               @db.VarChar(50)
+  descripcion        String?              @db.Text
+  nivel_soporte      NivelSoporte
+  usuarios           Usuario[]
+  permisos           Permiso[]            @relation()
+  permisos_categoria PermisoCategoria[]
 
   @@map("rol")
 }
@@ -144,13 +145,14 @@ model Estatus {
 }
 
 model Categoria {
-  id                      Int                        @id @default(autoincrement())
-  nombre                  String                     @db.VarChar(100)
-  nivel_soporte_requerido NivelSoporte?
-  activo                  Boolean                    @default(true)
-  tickets                 Ticket[]
-  subcategoria_categorias SubcategoriaCategorias[]
-  asignaciones_categorias AsignacionesCategorias[]
+  id                        Int                          @id @default(autoincrement())
+  nombre                    String                       @db.VarChar(100)
+  nivel_soporte_requerido   NivelSoporte?
+  activo                    Boolean                      @default(true)
+  tickets                   Ticket[]
+  subcategoria_categorias   SubcategoriaCategorias[]
+  asignaciones_categorias   AsignacionesCategorias[]
+  roles_permitidos          PermisoCategoria[]
 
   @@map("categoria")
 }
@@ -166,6 +168,7 @@ model Subcategoria {
   tickets                   Ticket[]
   subcategoria_categorias   SubcategoriaCategorias[]
   asignaciones_categorias   AsignacionesCategorias[]
+  roles_permitidos          PermisoCategoria[]
 
   @@map("subcategoria")
 }
@@ -182,14 +185,14 @@ model SubcategoriaCategorias {
 }
 
 model AsignacionesCategorias {
-  id             Int          @id @default(autoincrement())
+  id             Int           @id @default(autoincrement())
   atiendeId      Int
   categoriaId    Int?
-  subcategoriaId Int
-  activo         Boolean      @default(false)
-  atiende        Usuario      @relation(fields: [atiendeId], references: [id])
-  categoria      Categoria?   @relation(fields: [categoriaId], references: [id])
-  subcategoria   Subcategoria @relation(fields: [subcategoriaId], references: [id])
+  subcategoriaId Int?
+  activo         Boolean       @default(false)
+  atiende        Usuario       @relation(fields: [atiendeId], references: [id])
+  categoria      Categoria?    @relation(fields: [categoriaId], references: [id])
+  subcategoria   Subcategoria? @relation(fields: [subcategoriaId], references: [id])
 
   @@map("asignaciones_categorias")
 }
@@ -309,6 +312,20 @@ model Permiso {
   roles       Rol[]    @relation()
 
   @@map("permiso")
+}
+
+model PermisoCategoria {
+  id             Int           @id @default(autoincrement())
+  rolId          Int
+  categoriaId    Int?
+  subcategoriaId Int?
+
+  rol            Rol           @relation(fields: [rolId], references: [id])
+  categoria      Categoria?    @relation(fields: [categoriaId], references: [id])
+  subcategoria   Subcategoria? @relation(fields: [subcategoriaId], references: [id])
+
+  @@unique([rolId, categoriaId, subcategoriaId])
+  @@map("permiso_categoria")
 }
 
 enum TipoEmpresa {
