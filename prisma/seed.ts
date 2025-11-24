@@ -117,7 +117,7 @@ async function main() {
   console.log('Seeding usuario...');
   await prisma.usuario.createMany({
     data: [
-      { id:1, mail: 'gerardo.omana@humanitas.edu.mx', nombres: 'Gerardo', apellidos: 'Omaña Vazquez', empresaId: 15, rolId: 6, horario_disponibilidad: Prisma.JsonNull, image: "https://lh3.googleusercontent.com/a-/ALV-UjXmcvhEi7AXSnIHJP2pJTizD0lzlhMwNQeR7HM3kVKj0i85LV4Q=s96-c" },
+      { id:1, mail: 'gerardo.omana@humanitas.edu.mx', nombres: 'Gerardo', apellidos: 'Omaña Vazquez', empresaId: 15, rolId: 6, horario_disponibilidad: { "lunes": { "fin": "18:30", "inicio": "10:00" }, "jueves": { "fin": "17:00", "inicio": "10:00" }, "martes": { "fin": "18:30", "inicio": "10:00" }, "sabado": { "fin": "15:00", "inicio": "10:00" }, "viernes": { "fin": "16:30", "inicio": "10:00" }, "miercoles": { "fin": "17:30", "inicio": "10:00" } }, image: "https://lh3.googleusercontent.com/a-/ALV-UjXmcvhEi7AXSnIHJP2pJTizD0lzlhMwNQeR7HM3kVKj0i85LV4Q=s96-c" },
       { id:2, mail: 'haide.herrera@humanitas.edu.mx', nombres: 'Haide', apellidos: 'Herrera', empresaId: 14, rolId: 12, horario_disponibilidad: Prisma.JsonNull, image: "https://lh3.googleusercontent.com/a-/ALV-UjUPqe4Ka1JQhFH9vqNr4SDHElvdeKhMSrWCLBX16pHRf-o8oxvy=s96-c" }
     ],
   });
@@ -586,6 +586,17 @@ async function main() {
       { categoriaId: 12, subcategoriaId: 140 },
       { categoriaId: 12, subcategoriaId: 141 },
       { categoriaId: 12, subcategoriaId: 142 },
+    ],
+  });
+
+  // --- Insertar Asignaciones de Categorias ---
+  console.log('Seeding asignaciones_categorias...');
+  await prisma.asignacionesCategorias.createMany({
+    data: [
+      // Asignar categoria Marketing (12) a usuario Haide Herrera (2)
+      { atiendeId: 2, categoriaId: 12, activo: true },
+      // Asignar categoria Página web (10) a usuario Gerardo Omaña (1)
+      { atiendeId: 1, categoriaId: 10, activo: true },
     ],
   });
 
