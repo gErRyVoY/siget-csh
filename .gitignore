@@ -36,4 +36,4 @@ por_hacer_vscode.txt
 package-lock.json
 
 # Documentación temporal (descomentar si no se desea versionar PDFs)
-# *.pdf
+*.pdf
