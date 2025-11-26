@@ -19,19 +19,6 @@ y este proyecto adhiere a [Versionado Semántico](https://semver.org/lang/es/).
 - Mejora del sistema SSE con reconexión automática y heartbeat
 
 ### Removed
-- Dependencia `express` (no utilizada)
-- Dependencia `socket.io` y `socket.io-client` (reemplazadas por SSE)
-- Archivos residuales: `package-lock.json`, PDFs temporales, `por_hacer_vscode.txt`
-
----
-
-## [0.2.0] - 2025-11-10
-
-### Added
-- Sistema de permisos RBAC (Role-Based Access Control)
-- Validación de horarios laborales en asignación de tickets
-- Script de lógica de formulario de edición de usuarios (`user-edit-form-logic.ts`)
-- Nuevos roles: Ingeniero Hubspot, Editor
 - Modelo `PermisoCategoria` para permisos a nivel de rol
 - Modelo `AsignacionesCategorias` para asignaciones específicas de usuario
 

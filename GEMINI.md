@@ -2,25 +2,26 @@
 
 **Tarea Actual:** Implementación de Sistema de Notificaciones en Tiempo Real y RBAC Híbrido
 
-**Estado:** En progreso - Fase 1 completada.
+**Estado:** En progreso - Fase 1 (Toasts y Tema) completada.
 
 **Pasos Completados:**
 - ✅ Análisis completo del proyecto (tecnologías, código, BD, UI/UX)
-- ✅ Creación de planes de implementación detallados:
-  - Plan RBAC Híbrido (3 sprints, 6 semanas)
-  - Plan Notificaciones en Tiempo Real (5 días)
-- ✅ Limpieza de dependencias obsoletas:
-  - Eliminado: `express`, `socket.io`, `socket.io-client`
-  - Agregado: `sonner` (toasts), `typescript 5.7.2`
-  - Eliminados archivos residuales (package-lock.json, PDFs, archivos temporales)
+- ✅ Creación de planes de implementación detallados
+- ✅ Limpieza de dependencias obsoletas
 - ✅ Creado sistema de changelog estructurado (`CHANGELOG.md`)
+- ✅ Implementación de sistema de toasts personalizado (reemplazo de Sonner/SweetAlert2 para notificaciones UI)
+- ✅ Implementación de toggle de tema claro/oscuro con persistencia
+- ✅ Corrección de estilos de toasts (fondo, borde, posición)
 
 **Pasos Siguientes:**
-1.  **Implementar Sistema de Notificaciones en Tiempo Real (5 días):**
-    - Día 1-2: Instalar y configurar Sonner, migrar de SweetAlert2
-    - Día 3-4: Mejorar sistema SSE con reconexión automática
-    - Día 5: Integrar notificaciones con creación/actualización de tickets
-2.  **Implementar RBAC Híbrido (6 semanas):**
+1.  **Migración de SweetAlert2 a Toast Personalizado:**
+    - Reemplazar alertas en `src/lib/ticket-wizard.ts`
+    - Reemplazar alertas en `src/lib/modal-controller.ts`
+    - Verificar funcionalidad en flujos de tickets
+2.  **Implementar Sistema de Notificaciones en Tiempo Real (SSE):**
+    - Integrar notificaciones con creación/actualización de tickets
+    - Mejorar sistema SSE con reconexión automática
+3.  **Implementar RBAC Híbrido:**
     - Sprint 1: Actualizar BD, crear servicios de asignación
     - Sprint 2: Crear componentes UI, mejorar responsividad
     - Sprint 3: Desplegar y validar con usuarios
@@ -117,7 +118,17 @@ Cuando el usuario me pida leer este archivo (`GEMINI.md`) al inicio de una sesi�
 
 # Historial de Cambios (Log)
 
-## 2025-11-26
+## 2025-11-26 (Sesión 2)
+*   **Corrección de Sistema de Toasts:**
+    *   Se corrigió el error de fondo transparente en los toasts eliminando el uso incorrecto de `hsl()` con variables hexadecimales en `toast.css`.
+    *   Se implementó un borde blanco sutil para los toasts en modo oscuro.
+    *   Se cambió la posición por defecto de los toasts a `top-right`.
+    *   Se corrigieron errores de sintaxis en `toast.ts`.
+*   **Actualización de Documentación:**
+    *   Se actualizó `CHANGELOG.md` con la versión 0.2.0.
+    *   Se actualizó `GEMINI.md` con el progreso actual y los pasos siguientes.
+
+## 2025-11-26 (Sesión 1)
 *   **Limpieza de Dependencias Obsoletas:**
     *   Se eliminaron dependencias no utilizadas: `express` (5.1.0), `socket.io` (4.8.1), `socket.io-client` (4.8.1)
     *   Se agregó `sonner` (1.7.0) para sistema de toasts moderno

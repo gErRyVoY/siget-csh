@@ -1,10 +1,13 @@
 ---
-import Sidebar from '@/components/shared/Sidebar.astro';
-import NotificationEmpty from '@/components/icons/NotificationEmpty.astro';
-import NotificationFull from '@/components/icons/NotificationFull.astro';
-import PanelLeftClose from '@/components/icons/PanelLeftClose.astro';
-import '@/styles/global.css'; 
-import ClientRouter from 'astro/components/ClientRouter.astro';
+import Sidebar from "@/components/shared/Sidebar.astro";
+import NotificationEmpty from "@/components/icons/NotificationEmpty.astro";
+import NotificationFull from "@/components/icons/NotificationFull.astro";
+import PanelLeftClose from "@/components/icons/PanelLeftClose.astro";
+import Toaster from "@/components/ui/Toaster.astro";
+import ThemeToggle from "@/components/ui/ThemeToggle.astro";
+import "@/styles/global.css";
+import "@/styles/toast.css";
+import ClientRouter from "astro/components/ClientRouter.astro";
 
 // La sesión ahora se obtiene desde Astro.locals, inyectada por el middleware.
 const session = Astro.locals.session;
@@ -12,7 +15,7 @@ const session = Astro.locals.session;
 // La lógica de redirección ha sido movida al middleware, manteniendo este layout limpio.
 
 interface Props {
-	title: string;
+    title: string;
 }
 const { title } = Astro.props;
 
@@ -33,69 +36,126 @@ const NOTIFICATION_FULL_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="24
 
 <!doctype html>
 <html lang="es-MX">
-<head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width" />
-    <link rel="icon" type="image/svg+xml" href="/logo-h-wine.png" />
-    <meta name="generator" content={Astro.generator} />
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <title>{ title } | CSH</title>
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width" />
+        <link rel="icon" type="image/svg+xml" href="/logo-h-wine.png" />
+        <meta name="generator" content={Astro.generator} />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+        <link
+            href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap"
+            rel="stylesheet"
+        />
+        <title>{title} | CSH</title>
 
-    <!-- SweetAlert2 -->
-    <script is:inline src="//cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+        <script is:inline>
+            const getThemePreference = () => {
+                if (
+                    typeof localStorage !== "undefined" &&
+                    localStorage.getItem("theme")
+                ) {
+                    return localStorage.getItem("theme");
+                }
+                return window.matchMedia("(prefers-color-scheme: dark)").matches
+                    ? "dark"
+                    : "light";
+            };
+            const isDark = getThemePreference() === "dark";
+            document.documentElement.classList[isDark ? "add" : "remove"](
+                "dark",
+            );
 
-    <ClientRouter />
-</head>
-<body data-user-id={session?.user?.id}>
-    <div id="dashboard-wrapper" class="h-screen w-screen bg-background flex group font-montse">
-        <Sidebar session={session} />
-    
+            if (typeof localStorage !== "undefined") {
+                const observer = new MutationObserver(() => {
+                    const isDark =
+                        document.documentElement.classList.contains("dark");
+                    localStorage.setItem("theme", isDark ? "dark" : "light");
+                });
+                observer.observe(document.documentElement, {
+                    attributes: true,
+                    attributeFilter: ["class"],
+                });
+            }
+        </script>
+
+        <ClientRouter />
+    </head>
+    <body data-user-id={session?.user?.id}>
         <div
-            id="main-content"
-            class=" relative flex-1 flex flex-col h-full overflow-y-auto
-                    transition-[margin-left] duration-300 ease-in-out 
-                    ml-0 md:ml-64 group-data-[sidebar-collapsed=false]:ml-64 group-data-[sidebar-collapsed=true]:ml-0"
+            id="dashboard-wrapper"
+            class="h-screen w-screen bg-background text-foreground flex group font-montse"
         >
-            <header class="h-[var(--header-height)] flex items-center justify-between border-b border-border px-6 sticky top-0 bg-background/80 backdrop-blur-lg z-30">
-                <div class="flex items-center">
-                    <button id="sidebar-toggle-button" class="mr-4 p-2 rounded-md hover:bg-accent">
-                        <PanelLeftClose class="h-5 w-5" />
-                    </button>
-                    <h1 class="text-xl font-semibold h-16 flex items-center justify-center">{ title }</h1>
-                </div>
-                <div class="flex items-center gap-4">
-                    <div id="notification-bell" class="relative cursor-pointer w-6 h-6 flex items-center justify-center">
-                        <NotificationEmpty />
-                        <span id="notification-count" class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center" style="display: none;"></span>
-                    </div>
-                </div>
-            </header>
+            <Sidebar session={session} />
 
-            <main class="p-4 flex-1">
-                <div class="group-data-[sidebar-collapsed=false]:max-md:hidden h-full">
-                    <slot />
-                </div>
-                <div 
-                    id="mobile-overlay-message" 
-                    class=" hidden group-data-[sidebar-collapsed=false]:max-md:flex
-                            absolute inset-0 top-[var(--header-height)] bg-background/80 backdrop-blur-sm cursor-pointer 
-                            items-center justify-center p-8 text-center font-semibold text-foreground z-20"
+            <div
+                id="main-content"
+                class="relative flex-1 flex flex-col h-full overflow-y-auto
+                    transition-[margin-left] duration-300 ease-in-out
+                    ml-0 md:ml-64 group-data-[sidebar-collapsed=false]:ml-64 group-data-[sidebar-collapsed=true]:ml-0"
+            >
+                <header
+                    class="h-[var(--header-height)] flex items-center justify-between border-b border-border px-6 sticky top-0 bg-background/80 backdrop-blur-lg z-30"
                 >
-                    Toque aquí para ver el contenido
-                </div>
-            </main>
-        </div>
-    </div>
-    <script>
-        if (typeof window !== "undefined") {
-            const notificationBell = document.getElementById('notification-bell');
-            const notificationCount = document.getElementById('notification-count');
-            const currentUserId = document.body.dataset.userId;
-            let count = 0;
+                    <div class="flex items-center">
+                        <button
+                            id="sidebar-toggle-button"
+                            class="mr-4 p-2 rounded-md hover:bg-accent"
+                        >
+                            <PanelLeftClose class="h-5 w-5" />
+                        </button>
+                        <h1
+                            class="text-xl font-semibold h-16 flex items-center justify-center"
+                        >
+                            {title}
+                        </h1>
+                    </div>
+                    <div class="flex items-center gap-4">
+                        <ThemeToggle />
+                        <div
+                            id="notification-bell"
+                            class="relative cursor-pointer w-6 h-6 flex items-center justify-center"
+                        >
+                            <NotificationEmpty />
+                            <span
+                                id="notification-count"
+                                class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center"
+                                style="display: none;"></span>
+                        </div>
+                    </div>
+                </header>
 
-            const NOTIFICATION_EMPTY_SVG = `
+                <main class="p-4 flex-1">
+                    <div
+                        class="group-data-[sidebar-collapsed=false]:max-md:hidden h-full"
+                    >
+                        <slot />
+                    </div>
+                    <div
+                        id="mobile-overlay-message"
+                        class="hidden group-data-[sidebar-collapsed=false]:max-md:flex
+                            absolute inset-0 top-[var(--header-height)] bg-background/80 backdrop-blur-sm cursor-pointer
+                            items-center justify-center p-8 text-center font-semibold text-foreground z-20"
+                    >
+                        Toque aquí para ver el contenido
+                    </div>
+                </main>
+            </div>
+        </div>
+
+        <!-- Toaster de Sonner para notificaciones -->
+        <Toaster />
+
+        <script>
+            if (typeof window !== "undefined") {
+                const notificationBell =
+                    document.getElementById("notification-bell");
+                const notificationCount =
+                    document.getElementById("notification-count");
+                const currentUserId = document.body.dataset.userId;
+                let count = 0;
+
+                const NOTIFICATION_EMPTY_SVG = `
 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-bell">
     <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
     <path d="M10 5a2 2 0 1 1 4 0a7 7 0 0 1 4 6v3a4 4 0 0 0 2 -3v-3a7 7 0 0 1 4 -6" />
@@ -103,7 +163,7 @@ const NOTIFICATION_FULL_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="24
 </svg>
 `;
 
-            const NOTIFICATION_FULL_SVG = `
+                const NOTIFICATION_FULL_SVG = `
 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-bell-ringing">
     <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
     <path d="M10 5a2 2 0 1 1 4 0a7 7 0 0 1 4 6v3a4 4 0 0 0 2 -3v-3a7 7 0 0 1 4 -6" />
@@ -113,67 +173,87 @@ const NOTIFICATION_FULL_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="24
 </svg>
 `;
 
-            if (notificationBell && notificationCount) {
-                notificationBell.addEventListener('click', () => {
-                    count = 0;
-                    notificationCount.textContent = '';
-                    notificationCount.style.display = 'none';
-                    notificationBell.innerHTML = NOTIFICATION_EMPTY_SVG;
+                if (notificationBell && notificationCount) {
+                    notificationBell.addEventListener("click", () => {
+                        count = 0;
+                        notificationCount.textContent = "";
+                        notificationCount.style.display = "none";
+                        notificationBell.innerHTML = NOTIFICATION_EMPTY_SVG;
+                    });
+
+                    const eventSource = new EventSource("/api/notifications");
+
+                    eventSource.onmessage = (event) => {
+                        const data = JSON.parse(event.data);
+                        console.log("[SSE] Notification received:", data);
+
+                        // Ignore notification if it was triggered by the current user
+                        if (
+                            data.originatorId &&
+                            data.originatorId.toString() === currentUserId
+                        ) {
+                            console.log(
+                                "[SSE] Ignoring self-triggered notification.",
+                            );
+                            return;
+                        }
+
+                        count++;
+                        notificationCount.textContent = count.toString();
+                        notificationCount.style.display = "flex";
+                        notificationBell.innerHTML = NOTIFICATION_FULL_SVG;
+                    };
+                }
+            }
+        </script>
+        <script>
+            function setupSidebar() {
+                const dashboardWrapper = document.getElementById(
+                    "dashboard-wrapper",
+                ) as HTMLElement;
+                const toggleButton = document.getElementById(
+                    "sidebar-toggle-button",
+                ) as HTMLButtonElement;
+                const mobileOverlay = document.getElementById(
+                    "mobile-overlay-message",
+                ) as HTMLElement;
+
+                if (!dashboardWrapper || !toggleButton || !mobileOverlay)
+                    return;
+
+                function setSidebarState(isCollapsed: boolean) {
+                    dashboardWrapper.setAttribute(
+                        "data-sidebar-collapsed",
+                        String(isCollapsed),
+                    );
+                }
+
+                function handleSidebarForViewport() {
+                    if (window.innerWidth < 768) {
+                        setSidebarState(true);
+                    } else {
+                        setSidebarState(false);
+                    }
+                }
+
+                toggleButton.addEventListener("click", (e) => {
+                    e.stopPropagation();
+                    const isCollapsed =
+                        dashboardWrapper.getAttribute(
+                            "data-sidebar-collapsed",
+                        ) === "true";
+                    setSidebarState(!isCollapsed);
                 });
 
-                const eventSource = new EventSource("/api/notifications");
+                mobileOverlay.addEventListener("click", () =>
+                    setSidebarState(true),
+                );
 
-                eventSource.onmessage = (event) => {
-                    const data = JSON.parse(event.data);
-                    console.log('[SSE] Notification received:', data);
-
-                    // Ignore notification if it was triggered by the current user
-                    if (data.originatorId && data.originatorId.toString() === currentUserId) {
-                        console.log('[SSE] Ignoring self-triggered notification.');
-                        return;
-                    }
-
-                    count++;
-                    notificationCount.textContent = count.toString();
-                    notificationCount.style.display = 'flex';
-                    notificationBell.innerHTML = NOTIFICATION_FULL_SVG;
-                };
+                window.addEventListener("resize", handleSidebarForViewport);
+                handleSidebarForViewport();
             }
-        }
-    </script>
-    <script>
-    function setupSidebar() {
-        const dashboardWrapper = document.getElementById('dashboard-wrapper') as HTMLElement;
-        const toggleButton = document.getElementById('sidebar-toggle-button') as HTMLButtonElement;
-        const mobileOverlay = document.getElementById('mobile-overlay-message') as HTMLElement;
 
-        if (!dashboardWrapper || !toggleButton || !mobileOverlay) return;
-
-        function setSidebarState(isCollapsed: boolean) {
-            dashboardWrapper.setAttribute('data-sidebar-collapsed', String(isCollapsed));
-        }
-
-        function handleSidebarForViewport() {
-            if (window.innerWidth < 768) {
-                setSidebarState(true);
-            } else {
-                setSidebarState(false);
-            }
-        }
-
-        toggleButton.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const isCollapsed = dashboardWrapper.getAttribute('data-sidebar-collapsed') === 'true';
-            setSidebarState(!isCollapsed);
-        });
-
-        mobileOverlay.addEventListener('click', () => setSidebarState(true));
-
-        window.addEventListener('resize', handleSidebarForViewport);
-        handleSidebarForViewport();
-    }
-
-    document.addEventListener('astro:page-load', setupSidebar);
-</script>
-</body>
+            document.addEventListener("astro:page-load", setupSidebar);
+        </script>
+    </body>
 </html>

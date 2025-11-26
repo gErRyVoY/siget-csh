@@ -1,0 +1,232 @@
+---
+import MainLayout from "@/layouts/MainLayout.astro";
+---
+
+<MainLayout title="Test de Toasts">
+    <div class="max-w-4xl mx-auto space-y-6">
+        <h1 class="text-3xl font-bold mb-6">Sistema de Toasts Personalizado</h1>
+
+        <div class="bg-card border rounded-lg p-6 space-y-4">
+            <h2 class="text-xl font-semibold mb-4">Tipos de Toasts</h2>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <button
+                    id="toast-success"
+                    class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
+                >
+                    Toast de Éxito
+                </button>
+
+                <button
+                    id="toast-error"
+                    class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
+                >
+                    Toast de Error
+                </button>
+
+                <button
+                    id="toast-warning"
+                    class="px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 transition-colors"
+                >
+                    Toast de Advertencia
+                </button>
+
+                <button
+                    id="toast-info"
+                    class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                >
+                    Toast de Información
+                </button>
+
+                <button
+                    id="toast-action"
+                    class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors"
+                >
+                    Toast con Acción
+                </button>
+
+                <button
+                    id="toast-custom"
+                    class="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors"
+                >
+                    Toast Personalizado
+                </button>
+            </div>
+        </div>
+
+        <div class="bg-card border rounded-lg p-6 space-y-4">
+            <h2 class="text-xl font-semibold mb-4">Posiciones</h2>
+
+            <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+                <button
+                    id="pos-top-right"
+                    class="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors"
+                >
+                    Top Right
+                </button>
+                <button
+                    id="pos-top-left"
+                    class="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors"
+                >
+                    Top Left
+                </button>
+                <button
+                    id="pos-top-center"
+                    class="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors"
+                >
+                    Top Center
+                </button>
+                <button
+                    id="pos-bottom-right"
+                    class="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors"
+                >
+                    Bottom Right
+                </button>
+                <button
+                    id="pos-bottom-left"
+                    class="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors"
+                >
+                    Bottom Left
+                </button>
+                <button
+                    id="pos-bottom-center"
+                    class="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors"
+                >
+                    Bottom Center
+                </button>
+            </div>
+        </div>
+
+        <div class="bg-card border rounded-lg p-6">
+            <h2 class="text-xl font-semibold mb-4">Características</h2>
+            <ul class="list-disc list-inside space-y-2 text-muted-foreground">
+                <li>✅ 4 tipos de toasts (success, error, warning, info)</li>
+                <li>✅ Colores personalizables</li>
+                <li>✅ Íconos SVG configurables</li>
+                <li>✅ 6 posiciones diferentes</li>
+                <li>✅ Botón de cerrar opcional</li>
+                <li>✅ Acciones personalizadas</li>
+                <li>✅ Duración configurable</li>
+                <li>✅ Animaciones suaves</li>
+                <li>✅ Responsive (móvil y desktop)</li>
+                <li>✅ Máximo de toasts simultáneos</li>
+            </ul>
+        </div>
+    </div>
+</MainLayout>
+
+<script>
+    import { toast } from "@/lib/toast";
+
+    function initToastTests() {
+        // Tipos básicos
+        document
+            .getElementById("toast-success")
+            ?.addEventListener("click", () => {
+                toast.success("¡Operación exitosa!");
+            });
+
+        document
+            .getElementById("toast-error")
+            ?.addEventListener("click", () => {
+                toast.error("Error al procesar la solicitud");
+            });
+
+        document
+            .getElementById("toast-warning")
+            ?.addEventListener("click", () => {
+                toast.warning("Esta acción puede tener consecuencias");
+            });
+
+        document.getElementById("toast-info")?.addEventListener("click", () => {
+            toast.info("Hay una actualización disponible");
+        });
+
+        // Toast con acción
+        document
+            .getElementById("toast-action")
+            ?.addEventListener("click", () => {
+                toast.show({
+                    message: "Nuevo ticket asignado: #456",
+                    type: "info",
+                    action: {
+                        label: "Ver ticket",
+                        onClick: () => {
+                            toast.success("Redirigiendo al ticket...");
+                        },
+                    },
+                    duration: 8000,
+                });
+            });
+
+        // Toast personalizado
+        document
+            .getElementById("toast-custom")
+            ?.addEventListener("click", () => {
+                toast.show({
+                    message:
+                        "Toast con duración extendida y sin botón de cerrar",
+                    type: "warning",
+                    duration: 10000,
+                    closeable: false,
+                });
+            });
+
+        // Posiciones
+        document
+            .getElementById("pos-top-right")
+            ?.addEventListener("click", () => {
+                toast.show({
+                    message: "Toast en Top Right",
+                    position: "top-right",
+                });
+            });
+
+        document
+            .getElementById("pos-top-left")
+            ?.addEventListener("click", () => {
+                toast.show({
+                    message: "Toast en Top Left",
+                    position: "top-left",
+                });
+            });
+
+        document
+            .getElementById("pos-top-center")
+            ?.addEventListener("click", () => {
+                toast.show({
+                    message: "Toast en Top Center",
+                    position: "top-center",
+                });
+            });
+
+        document
+            .getElementById("pos-bottom-right")
+            ?.addEventListener("click", () => {
+                toast.show({
+                    message: "Toast en Bottom Right",
+                    position: "bottom-right",
+                });
+            });
+
+        document
+            .getElementById("pos-bottom-left")
+            ?.addEventListener("click", () => {
+                toast.show({
+                    message: "Toast en Bottom Left",
+                    position: "bottom-left",
+                });
+            });
+
+        document
+            .getElementById("pos-bottom-center")
+            ?.addEventListener("click", () => {
+                toast.show({
+                    message: "Toast en Bottom Center",
+                    position: "bottom-center",
+                });
+            });
+    }
+
+    document.addEventListener("astro:page-load", initToastTests);
+</script>

@@ -27,7 +27,7 @@ async function main() {
   await prisma.planPago.deleteMany({});
   await prisma.empresa.deleteMany({});
   await prisma.estatus.deleteMany({});
-  
+
   // --- Insertar Empresas ---
   console.log('Seeding empresa...');
   await prisma.empresa.createMany({
@@ -117,8 +117,10 @@ async function main() {
   console.log('Seeding usuario...');
   await prisma.usuario.createMany({
     data: [
-      { id:1, mail: 'gerardo.omana@humanitas.edu.mx', nombres: 'Gerardo', apellidos: 'Omaña Vazquez', empresaId: 15, rolId: 6, horario_disponibilidad: { "lunes": { "fin": "18:30", "inicio": "10:00" }, "jueves": { "fin": "17:00", "inicio": "10:00" }, "martes": { "fin": "18:30", "inicio": "10:00" }, "sabado": { "fin": "15:00", "inicio": "10:00" }, "viernes": { "fin": "16:30", "inicio": "10:00" }, "miercoles": { "fin": "17:30", "inicio": "10:00" } }, image: "https://lh3.googleusercontent.com/a-/ALV-UjXmcvhEi7AXSnIHJP2pJTizD0lzlhMwNQeR7HM3kVKj0i85LV4Q=s96-c" },
-      { id:2, mail: 'haide.herrera@humanitas.edu.mx', nombres: 'Haide', apellidos: 'Herrera', empresaId: 14, rolId: 12, horario_disponibilidad: Prisma.JsonNull, image: "https://lh3.googleusercontent.com/a-/ALV-UjUPqe4Ka1JQhFH9vqNr4SDHElvdeKhMSrWCLBX16pHRf-o8oxvy=s96-c" }
+      { id: 1, mail: 'gerardo.omana@humanitas.edu.mx', nombres: 'Gerardo', apellidos: 'Omaña Vazquez', empresaId: 15, rolId: 6, horario_disponibilidad: { "lunes": { "fin": "18:30", "inicio": "10:00" }, "jueves": { "fin": "17:00", "inicio": "10:00" }, "martes": { "fin": "18:30", "inicio": "10:00" }, "sabado": { "fin": "15:00", "inicio": "09:00" }, "viernes": { "fin": "16:30", "inicio": "10:00" }, "miercoles": { "fin": "15:00", "inicio": "08:30" } }, image: "https://lh3.googleusercontent.com/a-/ALV-UjXmcvhEi7AXSnIHJP2pJTizD0lzlhMwNQeR7HM3kVKj0i85LV4Q=s240-p-k-rw-no" },
+      { id: 2, mail: 'haide.herrera@humanitas.edu.mx', nombres: 'Haide', apellidos: 'Herrera', empresaId: 14, rolId: 12, horario_disponibilidad: Prisma.JsonNull, image: "https://lh3.googleusercontent.com/a-/ALV-UjUPqe4Ka1JQhFH9vqNr4SDHElvdeKhMSrWCLBX16pHRf-o8oxvy=s240-p-k-rw-no" },
+      { id: 3, mail: 'victor@humanitas.edu.mx', nombres: 'Victor', apellidos: 'Barrera', empresaId: 15, rolId: 1, horario_disponibilidad: Prisma.JsonNull, image: "https://lh3.googleusercontent.com/a-/ALV-UjXzczZnIALPW_gM9F2H4wKz1syIeeJNR4orX2M3ga9Q0Eoj8Ch5Nlef6fgd40A4Iuw1G4gE-q8b981BUu3S0Wyt_8IBte-b8mqlWsoAn89iLdPFIb2Bi8ficGNiUxGKz9qZOkXTaU_Qxp17TsDh8uuwPd3byYfF5BhWm8LIaNXXfl77NOxtjSjsFLuzvsP8VHdItGQDuGwyp5nsm2N5uPdenc3MJRm-Rh85aFUPf6FWoH_TXyXXxM0H03VBw3cIVebkPC_Bv9soG8dAOeun8kcSfB_jHJGbrYJbN4uTU3tpSgdKyU4uzJt6YJMSav6Uo7kROIOLpiKB5NC1ysBLv6Okm7HDndBNr-Ai2-c50XfqV_wLmp76fYtInKcWtYJ27xmpppVkb3f6_I8dEbZt4CrpoSlPmiC9sjf4WZ2G5W3nWIsy9Ss5BotYapihRnhzp7gSZggL0uObIzs9GjXQ8fFZdx1_rk1eBo4HGPrw_NkDeftxap3Qx40uA6zrWT5REGWHflpJFkgwVnyxis9B_dlS3-OAi2xJFElP0clD6WXXh8EOKnpN5ns7-nExpKiWcc6zi4ydrNSCVVO7hAi-oanYUH0xHgjZ9JEDl5RPyVjlReED1wobfvXtfYAX7pxRg8gp6MNE_JamSylydAiHdxLc6owtk9LkmAv0Gx_g1-WtuYEQjsM-1iJqtZDEq51GHJ-5lA4V8L3AzNxdjwBl42MfYKSipKOiEZCicgoH1R7fj6qdPq0li5hcF7_7GsHoXc0WmcymxzdjyhCQ5Qd3-wKVN9V5NkW8aRZ6WqtH_XLPxxsDzw77eNyohX3ZAk0lzL_RCt4oGcSx09nQ79NLXBpuWeWY63dqG6wpHMQF4IrHGE94qWPEc7yyHE81NsdpZttwFMonfVtDXc2JnQ7Tr_VRFZuztRy6DbBW1Kj_Kazwilcaamr3iAPxETu-5WUOYMGk212lzku0d2TLZa0PwtqcQFPkFrEj0Pzx02VwCN7g_9NwUyUPKAC5yLYWNwPjlmLnNG8ZMqY5qhb2NF__s4QbhUvLPTUmxyGNoBkWncm34YOG_w6OZkw=s240-p-k-rw-no" },
+      { id: 4, mail: 'soporte@humanitas.edu.mx', nombres: 'Centro de Soporte', apellidos: 'Humanitas', empresaId: 15, rolId: 15, horario_disponibilidad: Prisma.JsonNull, image: "https://www.gstatic.com/images/branding/product/2x/avatar_square_grey_48dp.png" }
     ],
   });
 
@@ -129,12 +131,12 @@ async function main() {
   console.log('Seeding oferta...');
   await prisma.oferta.createMany({
     data: [
-        { id: 1, descripcion: 'Licenciatura Ejecutiva' },
-        { id: 2, descripcion: 'Licenciatura Escolarizada' },
-        { id: 3, descripcion: 'Maestría' },
-        { id: 4, descripcion: 'Doctorado' },
-        { id: 5, descripcion: 'Diplomado' },
-        { id: 6, descripcion: 'Idioma' },
+      { id: 1, descripcion: 'Licenciatura Ejecutiva' },
+      { id: 2, descripcion: 'Licenciatura Escolarizada' },
+      { id: 3, descripcion: 'Maestría' },
+      { id: 4, descripcion: 'Doctorado' },
+      { id: 5, descripcion: 'Diplomado' },
+      { id: 6, descripcion: 'Idioma' },
     ],
   });
 
@@ -142,10 +144,10 @@ async function main() {
   console.log('Seeding descuento...');
   await prisma.descuento.createMany({
     data: [
-        { id: 13, descripcion: 'Beca 50', monto: 50, activo: true },
-        { id: 14, descripcion: 'Beca Colab.', monto: 100, activo: true },
-        { id: 15, descripcion: 'Convenio', monto: 10, activo: true },
-        { id: 16, descripcion: 'Desc.Esp.', monto: 0, activo: true },
+      { id: 13, descripcion: 'Beca 50', monto: 50, activo: true },
+      { id: 14, descripcion: 'Beca Colab.', monto: 100, activo: true },
+      { id: 15, descripcion: 'Convenio', monto: 10, activo: true },
+      { id: 16, descripcion: 'Desc.Esp.', monto: 0, activo: true },
     ],
   });
 
@@ -153,17 +155,17 @@ async function main() {
   console.log('Seeding estatus...');
   await prisma.estatus.createMany({
     data: [
-        { id: 1, nombre: 'Sin asignar', descripcion: 'Ticket nuevo sin agente asignado.' },
-        { id: 2, nombre: 'Nuevo', descripcion: 'Ticket nuevo en el sistema y asignado' },
-        { id: 3, nombre: 'En progreso', descripcion: 'El ticket está siendo atendido por un ingeniero de soporte.' },
-        { id: 4, nombre: 'En espera', descripcion: 'El ticket está siendo atendido' },
-        { id: 5, nombre: 'Solucionado', descripcion: 'Ticket cerrado' },
-        { id: 6, nombre: 'Cancelado', descripcion: 'Ticket cancelado' },
-        { id: 7, nombre: 'Duplicado', descripcion: 'Solicitud duplicada' },
-        { id: 8, nombre: 'Revisión CSH', descripcion: 'Traslado: Revisión CSH' },
-        { id: 9, nombre: 'Revisión campus origen', descripcion: 'Traslado en revisión por campus origen' },
-        { id: 10, nombre: 'Información campus destino', descripcion: 'Traslado en espera de información de campus destino' },
-        { id: 11, nombre: 'Confirmación alumno', descripcion: 'Traslado en espera de confirmación del alumno' },
+      { id: 1, nombre: 'Sin asignar', descripcion: 'Ticket nuevo sin agente asignado.' },
+      { id: 2, nombre: 'Nuevo', descripcion: 'Ticket nuevo en el sistema y asignado' },
+      { id: 3, nombre: 'En progreso', descripcion: 'El ticket está siendo atendido por un ingeniero de soporte.' },
+      { id: 4, nombre: 'En espera', descripcion: 'El ticket está siendo atendido' },
+      { id: 5, nombre: 'Solucionado', descripcion: 'Ticket cerrado' },
+      { id: 6, nombre: 'Cancelado', descripcion: 'Ticket cancelado' },
+      { id: 7, nombre: 'Duplicado', descripcion: 'Solicitud duplicada' },
+      { id: 8, nombre: 'Revisión CSH', descripcion: 'Traslado: Revisión CSH' },
+      { id: 9, nombre: 'Revisión campus origen', descripcion: 'Traslado en revisión por campus origen' },
+      { id: 10, nombre: 'Información campus destino', descripcion: 'Traslado en espera de información de campus destino' },
+      { id: 11, nombre: 'Confirmación alumno', descripcion: 'Traslado en espera de confirmación del alumno' },
     ],
   });
 
@@ -171,18 +173,18 @@ async function main() {
   console.log('Seeding categoria...');
   await prisma.categoria.createMany({
     data: [
-        { id: 1, nombre: 'Alumno', nivel_soporte_requerido: 'S_1', activo: true },
-        { id: 2, nombre: 'Aspirante', nivel_soporte_requerido: 'S_1', activo: true },
-        { id: 3, nombre: 'Colaborador', nivel_soporte_requerido: 'S_2', activo: true },
-        { id: 4, nombre: 'Docente', nivel_soporte_requerido: 'S_2', activo: true },
-        { id: 5, nombre: 'Plataforma Humanitas', nivel_soporte_requerido: 'S_2', activo: true },
-        { id: 6, nombre: 'App Humanitas', nivel_soporte_requerido: 'S_2', activo: true },
-        { id: 7, nombre: 'Canvas', nivel_soporte_requerido: 'S_2', activo: true },
-        { id: 8, nombre: 'Hubspot', nivel_soporte_requerido: 'S_2', activo: true },
-        { id: 9, nombre: 'Atom', nivel_soporte_requerido: 'S_2', activo: true },
-        { id: 10, nombre: 'Página web', nivel_soporte_requerido: 'Desarrollador', activo: true },
-        { id: 11, nombre: 'Otro', nivel_soporte_requerido: 'S_1', activo: true },
-        { id: 12, nombre: 'Marketing', nivel_soporte_requerido: 'Marketing', activo: true },
+      { id: 1, nombre: 'Alumno', nivel_soporte_requerido: 'S_1', activo: true },
+      { id: 2, nombre: 'Aspirante', nivel_soporte_requerido: 'S_1', activo: true },
+      { id: 3, nombre: 'Colaborador', nivel_soporte_requerido: 'S_2', activo: true },
+      { id: 4, nombre: 'Docente', nivel_soporte_requerido: 'S_2', activo: true },
+      { id: 5, nombre: 'Plataforma Humanitas', nivel_soporte_requerido: 'S_2', activo: true },
+      { id: 6, nombre: 'App Humanitas', nivel_soporte_requerido: 'S_2', activo: true },
+      { id: 7, nombre: 'Canvas', nivel_soporte_requerido: 'S_2', activo: true },
+      { id: 8, nombre: 'Hubspot', nivel_soporte_requerido: 'S_2', activo: true },
+      { id: 9, nombre: 'Atom', nivel_soporte_requerido: 'S_2', activo: true },
+      { id: 10, nombre: 'Página web', nivel_soporte_requerido: 'Desarrollador', activo: true },
+      { id: 11, nombre: 'Otro', nivel_soporte_requerido: 'S_1', activo: true },
+      { id: 12, nombre: 'Marketing', nivel_soporte_requerido: 'Marketing', activo: true },
     ],
   });
 
@@ -190,42 +192,42 @@ async function main() {
   console.log('Seeding carrera...');
   await prisma.carrera.createMany({
     data: [
-        { id: 1, clave: 'LAC', descripcion: 'Administración', ofertaId: 1, activo: true },
-        { id: 2, clave: 'LACE', descripcion: 'Administración', ofertaId: 2, activo: true },
-        { id: 3, clave: 'LARE', descripcion: 'Arquitectura', ofertaId: 2, activo: true },
-        { id: 4, clave: 'LCPAP', descripcion: 'Ciencias Políticas y Administración Pública', ofertaId: 1, activo: true },
-        { id: 5, clave: 'LECPA', descripcion: 'Ciencias Políticas y Administración Pública', ofertaId: 2, activo: true },
-        { id: 6, clave: 'LAC', descripcion: 'Contabilidad', ofertaId: 1, activo: true },
-        { id: 7, clave: 'LACE', descripcion: 'Contabilidad', ofertaId: 2, activo: true },
-        { id: 8, clave: 'LD', descripcion: 'Derecho', ofertaId: 1, activo: true },
-        { id: 9, clave: 'LDE', descripcion: 'Derecho', ofertaId: 2, activo: true },
-        { id: 10, clave: 'LDGE', descripcion: 'Diseño Gráfico', ofertaId: 2, activo: true },
-        { id: 11, clave: 'LICED', descripcion: 'Educación', ofertaId: 1, activo: true },
-        { id: 12, clave: 'LEED', descripcion: 'Educación', ofertaId: 2, activo: true },
-        { id: 13, clave: 'LPS', descripcion: 'Psicología', ofertaId: 1, activo: true },
-        { id: 14, clave: 'LPSE', descripcion: 'Psicología', ofertaId: 2, activo: true },
-        { id: 15, clave: 'LATE', descripcion: 'Arte y Teatro', ofertaId: 2, activo: true },
-        { id: 16, clave: 'MADEE', descripcion: 'Alta Dirección Corporativa', ofertaId: 3, activo: true },
-        { id: 17, clave: 'MCEI', descripcion: 'Contabilidad e Impuestos', ofertaId: 3, activo: true },
-        { id: 18, clave: 'MDEC', descripcion: 'Derecho Corporativo', ofertaId: 3, activo: true },
-        { id: 19, clave: 'MDFI', descripcion: 'Derecho Fiscal', ofertaId: 3, activo: true },
-        { id: 20, clave: 'MDP', descripcion: 'Derecho Penal', ofertaId: 3, activo: true },
-        { id: 21, clave: 'MAED', descripcion: 'Educación', ofertaId: 3, activo: true },
-        { id: 22, clave: 'MJPSP', descripcion: 'Justicia Penal y Seguridad Pública', ofertaId: 3, activo: true },
-        { id: 23, clave: 'MMER', descripcion: 'Mercadotecnia', ofertaId: 3, activo: true },
-        { id: 24, clave: 'MTPS8', descripcion: 'Psicoterapia con un Enfoque Psicoanalítico', ofertaId: 3, activo: true },
-        { id: 25, clave: 'DOCAD', descripcion: 'Alta Dirección', ofertaId: 4, activo: true },
-        { id: 26, clave: 'DOCDE', descripcion: 'Derecho', ofertaId: 4, activo: true },
-        { id: 27, clave: 'DOCED', descripcion: 'Educación', ofertaId: 4, activo: true },
-        { id: 28, clave: 'DIP11', descripcion: 'Diplomado en Bases de Administración y Principios Contables', ofertaId: 5, activo: true },
-        { id: 29, clave: 'DIP01', descripcion: 'Diplomado en Criminología', ofertaId: 5, activo: true },
-        { id: 30, clave: 'DIP02', descripcion: 'Diplomado en Juicios Orales', ofertaId: 5, activo: true },
-        { id: 31, clave: 'DIP09', descripcion: 'Diplomado en Perfiles Criminales', ofertaId: 5, activo: true },
-        { id: 32, clave: 'DIP04', descripcion: 'Diplomado en Tanatología', ofertaId: 5, activo: true },
-        { id: 33, clave: 'DIP03', descripcion: 'Seminario de Introducción a la Psicoterapia Psicoanalítica en Niños', ofertaId: 5, activo: true },
-        { id: 34, clave: 'DIP05', descripcion: 'Seminario de Introducción al Psicoanálisis', ofertaId: 5, activo: true },
-        { id: 35, clave: 'DIP06', descripcion: 'Seminario de Reflexiones Psicoanalíticas sobre el Cuerpo, la Anorexia y la Obesidad', ofertaId: 5, activo: true },
-        { id: 36, clave: 'ISEMI', descripcion: 'English Kingdom', ofertaId: 6, activo: true },
+      { id: 1, clave: 'LAC', descripcion: 'Administración', ofertaId: 1, activo: true },
+      { id: 2, clave: 'LACE', descripcion: 'Administración', ofertaId: 2, activo: true },
+      { id: 3, clave: 'LARE', descripcion: 'Arquitectura', ofertaId: 2, activo: true },
+      { id: 4, clave: 'LCPAP', descripcion: 'Ciencias Políticas y Administración Pública', ofertaId: 1, activo: true },
+      { id: 5, clave: 'LECPA', descripcion: 'Ciencias Políticas y Administración Pública', ofertaId: 2, activo: true },
+      { id: 6, clave: 'LAC', descripcion: 'Contabilidad', ofertaId: 1, activo: true },
+      { id: 7, clave: 'LACE', descripcion: 'Contabilidad', ofertaId: 2, activo: true },
+      { id: 8, clave: 'LD', descripcion: 'Derecho', ofertaId: 1, activo: true },
+      { id: 9, clave: 'LDE', descripcion: 'Derecho', ofertaId: 2, activo: true },
+      { id: 10, clave: 'LDGE', descripcion: 'Diseño Gráfico', ofertaId: 2, activo: true },
+      { id: 11, clave: 'LICED', descripcion: 'Educación', ofertaId: 1, activo: true },
+      { id: 12, clave: 'LEED', descripcion: 'Educación', ofertaId: 2, activo: true },
+      { id: 13, clave: 'LPS', descripcion: 'Psicología', ofertaId: 1, activo: true },
+      { id: 14, clave: 'LPSE', descripcion: 'Psicología', ofertaId: 2, activo: true },
+      { id: 15, clave: 'LATE', descripcion: 'Arte y Teatro', ofertaId: 2, activo: true },
+      { id: 16, clave: 'MADEE', descripcion: 'Alta Dirección Corporativa', ofertaId: 3, activo: true },
+      { id: 17, clave: 'MCEI', descripcion: 'Contabilidad e Impuestos', ofertaId: 3, activo: true },
+      { id: 18, clave: 'MDEC', descripcion: 'Derecho Corporativo', ofertaId: 3, activo: true },
+      { id: 19, clave: 'MDFI', descripcion: 'Derecho Fiscal', ofertaId: 3, activo: true },
+      { id: 20, clave: 'MDP', descripcion: 'Derecho Penal', ofertaId: 3, activo: true },
+      { id: 21, clave: 'MAED', descripcion: 'Educación', ofertaId: 3, activo: true },
+      { id: 22, clave: 'MJPSP', descripcion: 'Justicia Penal y Seguridad Pública', ofertaId: 3, activo: true },
+      { id: 23, clave: 'MMER', descripcion: 'Mercadotecnia', ofertaId: 3, activo: true },
+      { id: 24, clave: 'MTPS8', descripcion: 'Psicoterapia con un Enfoque Psicoanalítico', ofertaId: 3, activo: true },
+      { id: 25, clave: 'DOCAD', descripcion: 'Alta Dirección', ofertaId: 4, activo: true },
+      { id: 26, clave: 'DOCDE', descripcion: 'Derecho', ofertaId: 4, activo: true },
+      { id: 27, clave: 'DOCED', descripcion: 'Educación', ofertaId: 4, activo: true },
+      { id: 28, clave: 'DIP11', descripcion: 'Diplomado en Bases de Administración y Principios Contables', ofertaId: 5, activo: true },
+      { id: 29, clave: 'DIP01', descripcion: 'Diplomado en Criminología', ofertaId: 5, activo: true },
+      { id: 30, clave: 'DIP02', descripcion: 'Diplomado en Juicios Orales', ofertaId: 5, activo: true },
+      { id: 31, clave: 'DIP09', descripcion: 'Diplomado en Perfiles Criminales', ofertaId: 5, activo: true },
+      { id: 32, clave: 'DIP04', descripcion: 'Diplomado en Tanatología', ofertaId: 5, activo: true },
+      { id: 33, clave: 'DIP03', descripcion: 'Seminario de Introducción a la Psicoterapia Psicoanalítica en Niños', ofertaId: 5, activo: true },
+      { id: 34, clave: 'DIP05', descripcion: 'Seminario de Introducción al Psicoanálisis', ofertaId: 5, activo: true },
+      { id: 35, clave: 'DIP06', descripcion: 'Seminario de Reflexiones Psicoanalíticas sobre el Cuerpo, la Anorexia y la Obesidad', ofertaId: 5, activo: true },
+      { id: 36, clave: 'ISEMI', descripcion: 'English Kingdom', ofertaId: 6, activo: true },
     ],
   });
 
