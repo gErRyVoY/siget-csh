@@ -62,10 +62,10 @@ async function findBestAgent(solicitanteId: number, categoriaId: number): Promis
   const now = new Date();
   // Get day name in Spanish (e.g., 'lunes', 'miércoles') and remove accents for matching
   const dayOfWeekName = now.toLocaleString('es-MX', { weekday: 'long', timeZone: 'America/Mexico_City' })
-                         .toLowerCase()
-                         .normalize("NFD")
-                         .replace(/[\u0300-\u036f]/g, "");
-                         
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+
   const currentTime = now.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'America/Mexico_City' });
 
   const availableAgents = potentialAgents.filter(agent => {
@@ -116,7 +116,7 @@ export const POST: APIRoute = async ({ request }) => {
     const solicitanteId = parseInt(session.user.id as string, 10);
 
     if (isNaN(solicitanteId)) {
-        return new Response(JSON.stringify({ message: 'ID de usuario inválido en la sesión.' }), { status: 400 });
+      return new Response(JSON.stringify({ message: 'ID de usuario inválido en la sesión.' }), { status: 400 });
     }
 
     // --- Dynamic Ticket Assignment ---
@@ -173,10 +173,16 @@ export const POST: APIRoute = async ({ request }) => {
     }
 
     // Notify users
-    sendNotification({ 
-        message: `Se ha creado un nuevo ticket #${nuevoTicket.id}`,
-        originatorId: String(session.user.id)
-    });
+    const notificationPayload: any = {
+      type: 'ticket_created',
+      message: `Se ha creado un nuevo ticket #${nuevoTicket.id}`,
+      ticketId: nuevoTicket.id,
+      originatorId: String(session.user.id)
+    };
+
+    const targetUsers = atiendeId ? [atiendeId] : []; // If assigned, notify agent. If not, maybe notify admins? (Future improvement)
+
+    sendNotification(notificationPayload, targetUsers);
 
     return new Response(JSON.stringify(nuevoTicket), {
       status: 201, // 201 Created

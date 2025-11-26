@@ -5,28 +5,6 @@ Todos los cambios notables en este proyecto serán documentados en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Versionado Semántico](https://semver.org/lang/es/).
 
----
-
-## [Unreleased]
-
-### Added
-- Sistema de notificaciones en tiempo real usando SSE (Server-Sent Events)
-- Librería Sonner para toasts modernos y elegantes
-- TypeScript 5.7.2 para mejor inferencia de tipos y performance
-
-### Changed
-- Migración de SweetAlert2 a Sonner (en progreso)
-- Mejora del sistema SSE con reconexión automática y heartbeat
-
-### Removed
-- Modelo `PermisoCategoria` para permisos a nivel de rol
-- Modelo `AsignacionesCategorias` para asignaciones específicas de usuario
-
-### Changed
-- Refactorización de página de edición de usuarios con selectores de horario
-- Mejora de la lógica de asignación de tickets con validación de disponibilidad
-- Actualización de seed con datos de prueba de horarios
-- Configuración de `.gitignore` para excluir archivos temporales
 
 ### Fixed
 - Error de renderizado "Cannot use import statement outside a module" en edición de usuarios

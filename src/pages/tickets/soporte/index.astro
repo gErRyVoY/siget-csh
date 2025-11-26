@@ -147,7 +147,7 @@ const filteredStatuses = statuses.filter(status => ALLOWED_STATUSES.includes(sta
                 'En espera': 'bg-sky-500',
                 'Solucionado': 'bg-lime-500',
                 'Cancelado': 'bg-red-700',
-                'Duplicado': 'bg-black',
+                'Duplicado': 'bg-neutral-900',
             };
             return colors[statusName] || 'bg-gray-400';
         }
@@ -163,7 +163,7 @@ const filteredStatuses = statuses.filter(status => ALLOWED_STATUSES.includes(sta
 
             if (diffDays > 7) return 'text-red-500';
             if (diffDays >= 3) return 'text-yellow-500';
-            if (diffDays >= 1) return 'text-green-600';
+            if (diffDays >= 1) return 'text-green-600 dark:text-green-400';
             return '';
         }
 
@@ -202,7 +202,7 @@ const filteredStatuses = statuses.filter(status => ALLOWED_STATUSES.includes(sta
                     tableBody.classList.remove('hidden');
                     tickets.forEach(ticket => {
                         const row = document.createElement('tr');
-                        row.className = 'border-b hover:bg-gray-200 cursor-pointer';
+                        row.className = 'border-b hover:bg-muted/50 cursor-pointer transition-colors';
                         row.onclick = () => { window.location.href = `/tickets/view/${ticket.id}`; };
                         
                         const statusColor = getStatusColor(ticket.estatus.nombre);

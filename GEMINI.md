@@ -118,6 +118,34 @@ Cuando el usuario me pida leer este archivo (`GEMINI.md`) al inicio de una sesi�
 
 # Historial de Cambios (Log)
 
+## 2025-11-26 (Sesión 4)
+*   **Migración Completa de SweetAlert2 a Toasts:**
+    *   Se completó la migración de `modal-controller.ts` y sus consumidores (`NewTicketMkt.astro`, `NewTransfer.astro`) al sistema de toasts personalizado.
+    *   Se eliminó la dependencia `sweetalert2` del proyecto.
+    *   Se corrigió una duplicación masiva de código y errores de sintaxis en `NewTicketMkt.astro` que impedían la compilación.
+    *   Se restauró código truncado en `NewTransfer.astro`.
+    *   **Corrección Post-Verificación:** Se detectó y eliminó un bloque duplicado de código (frontmatter y HTML) en `NewTicketMkt.astro` que causaba errores visuales en el sidebar.
+    *   **Migración Vista Ticket:** Se reemplazó `SweetAlert2` por `toast` en `src/pages/tickets/view/[id].astro` y `src/scripts/ticket-view-logic.ts`. Se implementó un modal HTML nativo para la confirmación de borrado de archivos.
+    *   **Corrección Lógica Ticket:** Se corrigió el backend (`update.ts`) para detectar cambios en campos específicos (`estatusId`, `prioridad`, etc.) en lugar de objetos completos, asegurando que el historial se guarde correctamente.
+    *   **Mejora UX Ticket:** Se añadió lógica en el frontend para cambiar automáticamente el estatus de "Nuevo" a "En progreso" al guardar cambios.
+*   **Mejora del Sistema de Notificaciones (SSE):**
+    *   **Backend (`notifications.ts`):** Se implementó identificación de usuarios (`userId`), heartbeats para mantener la conexión viva y limpieza de clientes desconectados.
+    *   **Frontend (`MainLayout.astro`):** Se implementó un cliente SSE robusto con reconexión exponencial y filtrado de notificaciones propias.
+    *   **Integración:** Se actualizaron los endpoints de creación (`create.ts`) y actualización (`update.ts`) de tickets para enviar notificaciones dirigidas (al agente asignado o al solicitante) en lugar de broadcasts generales.
+    *   **UI:** Las notificaciones SSE ahora muestran un toast informativo en la interfaz del usuario.
+*   **Verificación:**
+    *   Se ejecutó `pnpm build` exitosamente, confirmando la integridad del código tras las refactorizaciones.
+
+## 2025-11-26 (Sesión 3)
+*   **Implementación Intensiva de Modo Oscuro:**
+    *   **Dashboard:** Se actualizaron `StatCard.astro` para incluir bordes en modo oscuro y mejorar el contraste del texto.
+    *   **Admin Usuarios:** Se actualizaron `[campus].astro` y `editar/[id].astro` para usar variables de tema en botones, badges y checkboxes.
+    *   **Tickets Soporte:** Se actualizó `index.astro` para mejorar los estados hover de las filas y los colores de los badges de estado y fechas.
+    *   **Vista de Ticket:** Se actualizó `view/[id].astro` para usar variables de tema en selectores, botones, badges y la animación de flash.
+    *   **Limpieza:** Se verificó la ausencia de clases hardcoded (`bg-white`, `text-black`) en componentes clave.
+*   **Corrección de Changelog:**
+    *   Se restauró y actualizó `CHANGELOG.md` con la estructura correcta y los últimos cambios.
+
 ## 2025-11-26 (Sesión 2)
 *   **Corrección de Sistema de Toasts:**
     *   Se corrigió el error de fondo transparente en los toasts eliminando el uso incorrecto de `hsl()` con variables hexadecimales en `toast.css`.

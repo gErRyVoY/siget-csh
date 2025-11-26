@@ -1,5 +1,4 @@
-import Swal from 'sweetalert2';
-import 'sweetalert2/dist/sweetalert2.min.css';
+import { toast } from './toast';
 
 // --- Type Definitions ---
 interface SubcategoriaNode {
@@ -124,7 +123,7 @@ export function initTicketWizard(treeData: CategoriesTreeData) {
         selectedButton.classList.add('bg-secondary', 'text-secondary-foreground');
 
         removeColumns(colIndex + 1);
-        if(descripcionArea) descripcionArea.classList.add('hidden');
+        if (descripcionArea) descripcionArea.classList.add('hidden');
 
         if (type === 'categoria') {
             const categoria = treeData.find(c => c.id === id);
@@ -174,21 +173,6 @@ export function initTicketWizard(treeData: CategoriesTreeData) {
 
         const lastSelectedNode = selection.nodes[selection.nodes.length - 1];
 
-        const Toast = Swal.mixin({
-            toast: true,
-            position: 'bottom',
-            showConfirmButton: false,
-            timer: 3000,
-            timerProgressBar: true,
-            background: '#881912',
-            color: '#FFFFFF',
-            iconColor: '#caab55',
-            didOpen: (toast) => {
-                toast.addEventListener('mouseenter', Swal.stopTimer)
-                toast.addEventListener('mouseleave', Swal.resumeTimer)
-            }
-        });
-
         try {
             const response = await fetch('/api/tickets/create', {
                 method: 'POST',
@@ -205,15 +189,15 @@ export function initTicketWizard(treeData: CategoriesTreeData) {
                 throw new Error(errorData.message);
             }
 
-            await Toast.fire({ icon: 'success', title: '¡Ticket Enviado!' });
-            
+            toast.success('¡Ticket Enviado!', { duration: 3000 });
+
             setTimeout(() => {
                 window.location.href = '/tickets/soporte';
             }, 1500);
 
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'No se pudo crear el ticket.';
-            Toast.fire({ icon: 'error', title: 'Error', text: errorMessage });
+            toast.error(errorMessage);
             submitButton.disabled = false;
             submitButton.textContent = 'Crear Ticket';
         }
@@ -231,7 +215,7 @@ export function initTicketWizard(treeData: CategoriesTreeData) {
             const colIndex = parseInt(closeButton.dataset.closeCol!, 10);
             removeColumns(colIndex);
             selection.nodes.splice(colIndex - 1);
-            if(descripcionArea) descripcionArea.classList.add('hidden');
+            if (descripcionArea) descripcionArea.classList.add('hidden');
             validateForm();
         }
     });

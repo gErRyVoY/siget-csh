@@ -36,7 +36,7 @@ export const PATCH: APIRoute = async ({ request, locals }) => {
         if (updateDataInput.atiendeId) updateData.atiende = { connect: { id: Number(updateDataInput.atiendeId) } };
         if (updateDataInput.prioridad) updateData.prioridad = updateDataInput.prioridad as Prioridad;
         if (typeof updateDataInput.archivado === 'boolean') updateData.archivado = updateDataInput.archivado;
-        
+
         if (Array.isArray(newFiles) && newFiles.length > 0) {
             const existingArchivos = (ticketBeforeUpdate as any).archivos || [];
             (updateData as any).archivos = [...existingArchivos, ...newFiles];
@@ -49,12 +49,19 @@ export const PATCH: APIRoute = async ({ request, locals }) => {
             });
 
             const fieldChanges: { field: string, oldValue: any, newValue: any }[] = [];
-            for (const key of Object.keys(updateData)) {
-                const oldValue = (ticketBeforeUpdate as any)[key];
-                const newValue = (ticketAfterUpdate as any)[key];
-                if (JSON.stringify(oldValue) !== JSON.stringify(newValue)) {
-                    fieldChanges.push({ field: key, oldValue, newValue });
-                }
+
+            // Explicitly check for changes in tracked fields
+            if (ticketBeforeUpdate.estatusId !== ticketAfterUpdate.estatusId) {
+                fieldChanges.push({ field: 'estatusId', oldValue: ticketBeforeUpdate.estatusId, newValue: ticketAfterUpdate.estatusId });
+            }
+            if (ticketBeforeUpdate.prioridad !== ticketAfterUpdate.prioridad) {
+                fieldChanges.push({ field: 'prioridad', oldValue: ticketBeforeUpdate.prioridad, newValue: ticketAfterUpdate.prioridad });
+            }
+            if (ticketBeforeUpdate.atiendeId !== ticketAfterUpdate.atiendeId) {
+                fieldChanges.push({ field: 'atiendeId', oldValue: ticketBeforeUpdate.atiendeId, newValue: ticketAfterUpdate.atiendeId });
+            }
+            if (ticketBeforeUpdate.archivado !== ticketAfterUpdate.archivado) {
+                fieldChanges.push({ field: 'archivado', oldValue: ticketBeforeUpdate.archivado, newValue: ticketAfterUpdate.archivado });
             }
 
             if (fieldChanges.length > 0 || newComment || (newFiles && newFiles.length > 0)) {
@@ -82,10 +89,27 @@ export const PATCH: APIRoute = async ({ request, locals }) => {
         });
 
         // Notify users
-        sendNotification({ 
+        const notificationPayload: any = {
+            type: 'ticket_updated',
             message: `El ticket #${ticketId} ha sido actualizado`,
-            originatorId: session.user.id
-        });
+            ticketId: ticketId,
+            originatorId: String(session.user.id)
+        };
+
+        const targetUsers: number[] = [];
+        const updaterId = adminUserId;
+        const solicitanteId = ticketBeforeUpdate.solicitanteId;
+        const atiendeId = updatedTicket.atiendeId;
+
+        // Logic to determine who to notify
+        if (updaterId !== solicitanteId) {
+            targetUsers.push(solicitanteId);
+        }
+        if (atiendeId && updaterId !== atiendeId) {
+            targetUsers.push(atiendeId);
+        }
+
+        sendNotification(notificationPayload, targetUsers);
 
         return new Response(JSON.stringify(updatedTicket), { status: 200 });
 

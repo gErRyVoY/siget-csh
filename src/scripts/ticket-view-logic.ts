@@ -1,4 +1,4 @@
-declare const Swal: any;
+import { toast } from '@/lib/toast';
 
 declare global {
     interface Window {
@@ -76,7 +76,7 @@ function renderStagedFiles() {
                 </li>
             `).join('') + '</ul>';
     }
-    
+
     attachmentArea.innerHTML = listHtml;
     deleteFilesButton.classList.remove('hidden');
 }
@@ -97,20 +97,7 @@ export function initFileUploads() {
         const newFiles = Array.from(target.files);
 
         if (stagedFiles.length + newFiles.length > 10) {
-            Swal.fire({
-                background: '#881912',
-                color: '#FFFFFF',
-                customClass: { popup: 'Montserrat' },
-                icon: 'error',
-                iconColor: '#CAAB55',
-                position: 'bottom',
-                showConfirmButton: false,
-                text: 'No puede seleccionar más de 10 archivos en total.',
-                timer: 4000,
-                timerProgressBar: true,
-                title: 'Límite de archivos excedido',
-                toast: true
-            });
+            toast.error('No puede seleccionar más de 10 archivos en total.');
             target.value = '';
             return;
         }
@@ -126,10 +113,7 @@ export function initFileUploads() {
         stagedFiles = stagedFiles.concat(newStagedFiles);
 
         if (hasInvalidFiles) {
-            Swal.fire({
-                toast: true, position: 'bottom', showConfirmButton: false, timer: 4000, timerProgressBar: true,
-                icon: 'warning', title: 'Valide sus archivos', text: 'Algunos no cumplen con los requisitos y no serán adjuntados.', color: '#FFFFFF', background: '#881912'
-            });
+            toast.warning('Algunos archivos no cumplen con los requisitos y no serán adjuntados.');
         }
 
         isDeleteSelectionMode = false;
@@ -137,6 +121,49 @@ export function initFileUploads() {
         renderStagedFiles();
         target.value = '';
     });
+
+    // Modal elements
+    const modal = document.getElementById('delete-confirmation-modal');
+    const overlay = document.getElementById('delete-modal-overlay');
+    const btnAll = document.getElementById('confirm-delete-all');
+    const btnSelect = document.getElementById('confirm-delete-select');
+    const btnCancel = document.getElementById('cancel-delete-modal');
+
+    const closeModal = () => modal?.classList.add('hidden');
+
+    // Attach modal listeners only once
+    if (btnAll && !btnAll.dataset.listenerAttached) {
+        btnAll.addEventListener('click', () => {
+            stagedFiles = [];
+            renderStagedFiles();
+            closeModal();
+        });
+        btnAll.dataset.listenerAttached = 'true';
+    }
+
+    if (btnSelect && !btnSelect.dataset.listenerAttached) {
+        btnSelect.addEventListener('click', () => {
+            stagedFiles = stagedFiles.filter(fw => fw.isValid);
+            if (stagedFiles.length > 0) {
+                isDeleteSelectionMode = true;
+                deleteFilesButton.textContent = 'Borrar selección';
+                renderStagedFiles();
+            } else {
+                renderStagedFiles();
+            }
+            closeModal();
+        });
+        btnSelect.dataset.listenerAttached = 'true';
+    }
+
+    if (btnCancel && !btnCancel.dataset.listenerAttached) {
+        btnCancel.addEventListener('click', closeModal);
+        btnCancel.dataset.listenerAttached = 'true';
+    }
+    if (overlay && !overlay.dataset.listenerAttached) {
+        overlay.addEventListener('click', closeModal);
+        overlay.dataset.listenerAttached = 'true';
+    }
 
     deleteFilesButton.addEventListener('click', () => {
         if (isDeleteSelectionMode) {
@@ -146,33 +173,7 @@ export function initFileUploads() {
             deleteFilesButton.textContent = 'Borrar archivos';
             renderStagedFiles();
         } else {
-            Swal.fire({
-                title: 'Elige el tipo de borrado:',
-                icon: 'warning',
-                iconColor: '#CAAB55',
-                showCancelButton: true,
-                confirmButtonColor: '#881912',
-                cancelButtonColor: '#797979',
-                confirmButtonText: 'Borrar todos',
-                cancelButtonText: 'Seleccionar',
-                customClass: {
-                    popup: 'Montserrat'
-                }
-            }).then((result: any) => {
-                if (result.isConfirmed) {
-                    stagedFiles = [];
-                    renderStagedFiles();
-                } else if (result.dismiss === Swal.DismissReason.cancel) {
-                    stagedFiles = stagedFiles.filter(fw => fw.isValid);
-                    if (stagedFiles.length > 0) {
-                        isDeleteSelectionMode = true;
-                        deleteFilesButton.textContent = 'Borrar selección';
-                        renderStagedFiles();
-                    } else {
-                        renderStagedFiles();
-                    }
-                }
-            });
+            modal?.classList.remove('hidden');
         }
     });
 }
@@ -191,7 +192,7 @@ export function initEditForm() {
         const newComment = newCommentElement ? newCommentElement.value.trim() : '';
 
         if (validFilesToUpload.length > 0 && newComment.length < 10) {
-            Swal.fire('Comentario requerido', 'Si desea adjuntar archivos, por favor inserte un comentario descriptivo (mínimo 10 caracteres).', 'warning');
+            toast.warning('Si desea adjuntar archivos, por favor inserte un comentario descriptivo (mínimo 10 caracteres).');
             return;
         }
 
@@ -205,6 +206,12 @@ export function initEditForm() {
         let finalStatusId = estatusSelect.value;
 
         if (closedStatuses.includes(initialStatus) && newComment.length >= 10 && estatusSelect.value === String(ticket.estatusId)) {
+            const enProgresoStatus = statuses.find(s => s.nombre === 'En progreso');
+            if (enProgresoStatus) {
+                finalStatusId = String(enProgresoStatus.id);
+            }
+        } else if (initialStatus === 'Nuevo' && estatusSelect.value === String(ticket.estatusId)) {
+            // Auto-transition from 'Nuevo' to 'En progreso' on any update if status wasn't manually changed
             const enProgresoStatus = statuses.find(s => s.nombre === 'En progreso');
             if (enProgresoStatus) {
                 finalStatusId = String(enProgresoStatus.id);
@@ -232,7 +239,7 @@ export function initEditForm() {
             const results = await Promise.all(uploadPromises);
             uploadedFileKeys = results.filter((key): key is string => key !== null);
             if (uploadedFileKeys.length !== validFilesToUpload.length) {
-                Swal.fire('Error de subida', 'Algunos archivos no se pudieron subir. Por favor, inténtalo de nuevo.', 'error');
+                toast.error('Algunos archivos no se pudieron subir. Por favor, inténtalo de nuevo.');
                 if (submitButton) { submitButton.disabled = false; submitButton.textContent = 'Guardar cambios'; }
                 return;
             }
@@ -255,38 +262,13 @@ export function initEditForm() {
                 const errorData = await response.json();
                 throw new Error(errorData.message || 'Error al actualizar el ticket');
             }
-            Swal.fire({
-                background: '#CAAB55',
-                color: '#FFFFFF',
-                customClass: { popup: 'Montserrat' },
-                icon: 'success',
-                iconColor: '#FFFFFF',
-                position: 'bottom',
-                showConfirmButton: false,
-                text: 'Los cambios han sido guardados.',
-                timer: 4000,
-                timerProgressBar: true,
-                title: 'Ticket actualizado',
-                toast: true
-            }).then(() => {
+            toast.success('Los cambios han sido guardados.');
+            setTimeout(() => {
                 window.location.href = `${window.location.pathname}?new_entry=true`;
-            });
+            }, 1000);
         } catch (error) {
             const message = error instanceof Error ? error.message : 'Ocurrió un error desconocido.';
-            Swal.fire({
-                background: '#881912',
-                color: '#FFFFFF',
-                customClass: { popup: 'Montserrat' },
-                icon: 'error',
-                iconColor: '#CAAB55',
-                position: 'bottom',
-                showConfirmButton: false,
-                text: message,
-                timer: 4000,
-                timerProgressBar: true,
-                title: 'Error',
-                toast: true
-            });
+            toast.error(message);
             if (submitButton) { submitButton.disabled = false; submitButton.textContent = 'Guardar cambios'; }
         }
     });
@@ -333,7 +315,7 @@ export function initHistoryToggles() {
             } catch (error) {
                 const message = error instanceof Error ? error.message : 'Error desconocido';
                 console.error('Error fetching download URL:', error);
-                Swal.fire('Error', message, 'error');
+                toast.error(message);
             }
         });
     });

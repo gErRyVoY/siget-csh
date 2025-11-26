@@ -147,6 +147,8 @@ const NOTIFICATION_FULL_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="24
         <Toaster />
 
         <script>
+            import { toast } from "@/lib/toast";
+
             if (typeof window !== "undefined") {
                 const notificationBell =
                     document.getElementById("notification-bell");
@@ -173,7 +175,7 @@ const NOTIFICATION_FULL_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="24
 </svg>
 `;
 
-                if (notificationBell && notificationCount) {
+                if (notificationBell && notificationCount && currentUserId) {
                     notificationBell.addEventListener("click", () => {
                         count = 0;
                         notificationCount.textContent = "";
@@ -181,28 +183,64 @@ const NOTIFICATION_FULL_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="24
                         notificationBell.innerHTML = NOTIFICATION_EMPTY_SVG;
                     });
 
-                    const eventSource = new EventSource("/api/notifications");
+                    let eventSource: EventSource | null = null;
+                    let reconnectAttempts = 0;
+                    const maxReconnectDelay = 30000;
 
-                    eventSource.onmessage = (event) => {
-                        const data = JSON.parse(event.data);
-                        console.log("[SSE] Notification received:", data);
+                    const connectSSE = () => {
+                        if (eventSource) eventSource.close();
 
-                        // Ignore notification if it was triggered by the current user
-                        if (
-                            data.originatorId &&
-                            data.originatorId.toString() === currentUserId
-                        ) {
-                            console.log(
-                                "[SSE] Ignoring self-triggered notification.",
+                        eventSource = new EventSource(
+                            `/api/notifications?userId=${currentUserId}`,
+                        );
+
+                        eventSource.onopen = () => {
+                            console.log("[SSE] Connected");
+                            reconnectAttempts = 0;
+                        };
+
+                        eventSource.onmessage = (event) => {
+                            // Heartbeat check
+                            if (event.data === ": heartbeat") {
+                                return;
+                            }
+
+                            const data = JSON.parse(event.data);
+                            console.log("[SSE] Notification received:", data);
+
+                            if (data.type === "connected") return;
+
+                            // Ignore notification if it was triggered by the current user
+                            if (
+                                data.originatorId &&
+                                data.originatorId.toString() === currentUserId
+                            ) {
+                                return;
+                            }
+
+                            // Show toast
+                            toast.info(data.message);
+
+                            count++;
+                            notificationCount.textContent = count.toString();
+                            notificationCount.style.display = "flex";
+                            notificationBell.innerHTML = NOTIFICATION_FULL_SVG;
+                        };
+
+                        eventSource.onerror = () => {
+                            console.log("[SSE] Connection error");
+                            eventSource?.close();
+                            const delay = Math.min(
+                                1000 * Math.pow(2, reconnectAttempts),
+                                maxReconnectDelay,
                             );
-                            return;
-                        }
-
-                        count++;
-                        notificationCount.textContent = count.toString();
-                        notificationCount.style.display = "flex";
-                        notificationBell.innerHTML = NOTIFICATION_FULL_SVG;
+                            reconnectAttempts++;
+                            console.log(`[SSE] Reconnecting in ${delay}ms...`);
+                            setTimeout(connectSSE, delay);
+                        };
                     };
+
+                    connectSSE();
                 }
             }
         </script>

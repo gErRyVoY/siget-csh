@@ -1,9 +1,36 @@
 ---
 import MainLayout from "@/layouts/MainLayout.astro";
-
-
+import { Image } from "astro:assets";
 ---
 
 <MainLayout title="Horario de atención">
-    <h1>Horario de atención</h1>
+    <div
+        class="w-full flex flex-col gap-4 justify-center items-center lg:mt-10"
+    >
+        <h1 class="text-2xl font-bold text-secondary">
+            Horario de atención de Centro de Soporte Humanitas
+        </h1>
+        <ul class="text-xl text-center">
+            <li>Lunes a Jueves de 9:30 a 17:30 hrs.</li>
+            <li>Viernes de 9:30 a 16:00 hrs.</li>
+            <li>Sábados de 9:30 a 14:00 hrs.</li>
+        </ul>
+    </div>
+    <div
+        class="w-full flex flex-col gap-4 justify-center items-center lg:mt-10"
+    >
+        <h1 class="text-2xl font-bold text-secondary">
+            Horario de atención de Marketing
+        </h1>
+        <ul class="text-xl text-center mb-10">
+            <li>Lunes a Jueves de 8:00 a 18:30 hrs.</li>
+            <li>Viernes de 8:00 a 14:00 hrs.</li>
+        </ul>
+        <Image
+            src={"/querer-es-poder-oscuro.png"}
+            alt={"Sé tu mejor versión."}
+            width={210.5}
+            height={28.5}
+        />
+    </div>
 </MainLayout>

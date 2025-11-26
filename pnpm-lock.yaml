@@ -47,9 +47,6 @@ importers:
       next-themes:
         specifier: ^0.4.6
         version: 0.4.6(react-dom@19.1.1(react@19.1.1))(react@19.1.1)
-      sweetalert2:
-        specifier: ^11.22.2
-        version: 11.22.3
       tailwindcss:
         specifier: ^4.1.10
         version: 4.1.11
@@ -2609,9 +2606,6 @@ packages:
 
   strnum@2.1.1:
     resolution: {integrity: sha512-7ZvoFTiCnGxBtDqJ//Cu6fWtZtc7Y3x+QOirG15wztbdngGSkht27o2pyGWrVy0b4WAy3jbKmnoK6g5VlVNUUw==}
-
-  sweetalert2@11.22.3:
-    resolution: {integrity: sha512-//WtZEvs9XRmyQVs77tz02ERu2JUTATQvrec+MjJYtKtnYSYDDgAmDdWzRWMkcxClj828EQgfHrpM+tI6qcMOg==}
 
   tailwindcss@4.1.11:
     resolution: {integrity: sha512-2E9TBm6MDD/xKYe+dvJZAmg3yxIEDNRc0jwlNyDg/4Fil2QcSLjFKGVff0lAf1jjeaArlG/M75Ey/EYr/OJtBA==}
@@ -6186,8 +6180,6 @@ snapshots:
       ansi-regex: 6.1.0
 
   strnum@2.1.1: {}
-
-  sweetalert2@11.22.3: {}
 
   tailwindcss@4.1.11: {}
 
