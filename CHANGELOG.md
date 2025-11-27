@@ -6,12 +6,23 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 y este proyecto adhiere a [Versionado Semántico](https://semver.org/lang/es/).
 
 
-### Fixed
-- Error de renderizado "Cannot use import statement outside a module" en edición de usuarios
-- Warnings de TypeScript en archivos de API
-- Validación de tipos en sesión de usuario
+## [0.2.0] - 2025-11-27
 
-**Commits:** `fa67848`, `82b41ed`, `4e2225e`
+### Added
+- Sistema de notificaciones "toast" personalizado (reemplazando SweetAlert2).
+- Conteo de usuarios por empresa en dashboard de admin.
+- Estilos hover mejorados y filas clickeables en listas de tickets y usuarios.
+- Soporte completo para tema oscuro en todos los componentes UI.
+
+### Changed
+- Migración completa de alertas a toasts en toda la aplicación.
+- Mejora de UX en lista de usuarios (eliminación de columna acciones).
+- Optimización de scripts de cliente para compatibilidad con View Transitions.
+
+### Fixed
+- Persistencia del tema oscuro al navegar entre páginas.
+- Error de renderizado en scripts de edición de usuarios.
+- Múltiples correcciones de tipos TypeScript en API y frontend.
 
 ---
 
