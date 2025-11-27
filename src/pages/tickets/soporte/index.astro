@@ -62,14 +62,14 @@ const filteredStatuses = statuses.filter(status => ALLOWED_STATUSES.includes(sta
         <div class="flex justify-start items-center mb-4 gap-4 flex-wrap">
             <div>
                 <label for="estatus-select" class="mr-2 text-sm font-medium">Estatus:</label>
-                <select id="estatus-select" class="bg-card border rounded-md p-2 text-sm">
+                <select id="estatus-select" class="bg-input border-border text-foreground rounded-md p-2 text-sm">
                     <option value="all">Todos</option>
                     {filteredStatuses.map((status: Estatus) => <option value={status.id}>{status.nombre}</option>)}
                 </select>
             </div>
             <div>
                 <label for="categoria-select" class="mr-2 text-sm font-medium">Categoría:</label>
-                <select id="categoria-select" class="bg-card border rounded-md p-2 text-sm">
+                <select id="categoria-select" class="bg-input border-border text-foreground rounded-md p-2 text-sm">
                     <option value="all">Todas</option>
                     {categories.map((cat: Categoria) => <option value={cat.id}>{cat.nombre}</option>)}
                 </select>
@@ -77,14 +77,14 @@ const filteredStatuses = statuses.filter(status => ALLOWED_STATUSES.includes(sta
             {isPrivileged && (
                 <div>
                     <label for="empresa-select" class="mr-2 text-sm font-medium">Empresa:</label>
-                    <select id="empresa-select" class="bg-card border rounded-md p-2 text-sm">
+                    <select id="empresa-select" class="bg-input border-border text-foreground rounded-md p-2 text-sm">
                         <option value="all">Todas</option>
                         {companies.map((comp: Empresa) => <option value={comp.id}>{comp.nombre}</option>)}
                     </select>
                 </div>
                 <div>
                     <label for="atiende-select" class="mr-2 text-sm font-medium">Atiende:</label>
-                    <select id="atiende-select" class="bg-card border rounded-md p-2 text-sm">
+                    <select id="atiende-select" class="bg-input border-border text-foreground rounded-md p-2 text-sm">
                         <option value="all">Todos</option>
                         {agents.map((agent: Usuario) => <option value={agent.id}>{`${agent.nombres} ${agent.apellidos}`}</option>)}
                     </select>
@@ -202,7 +202,7 @@ const filteredStatuses = statuses.filter(status => ALLOWED_STATUSES.includes(sta
                     tableBody.classList.remove('hidden');
                     tickets.forEach(ticket => {
                         const row = document.createElement('tr');
-                        row.className = 'border-b hover:bg-muted/50 cursor-pointer transition-colors';
+                        row.className = 'border-b hover:bg-[#797979]/40 cursor-pointer transition-colors';
                         row.onclick = () => { window.location.href = `/tickets/view/${ticket.id}`; };
                         
                         const statusColor = getStatusColor(ticket.estatus.nombre);
@@ -251,14 +251,14 @@ const filteredStatuses = statuses.filter(status => ALLOWED_STATUSES.includes(sta
             const prevButton = document.createElement('button');
             prevButton.textContent = 'Anterior';
             prevButton.disabled = page === 1;
-            prevButton.className = 'px-4 py-2 text-sm border rounded-md disabled:opacity-50';
+            prevButton.className = 'px-4 py-2 text-sm bg-card border-border text-foreground border rounded-md disabled:opacity-50 hover:bg-muted transition-colors';
             prevButton.addEventListener('click', () => { currentPage--; fetchAndRenderTickets(); });
             paginationControls.appendChild(prevButton);
 
             const nextButton = document.createElement('button');
             nextButton.textContent = 'Siguiente';
             nextButton.disabled = page === totalPages;
-            nextButton.className = 'px-4 py-2 text-sm border rounded-md disabled:opacity-50';
+            nextButton.className = 'px-4 py-2 text-sm bg-card border-border text-foreground border rounded-md disabled:opacity-50 hover:bg-muted transition-colors';
             nextButton.addEventListener('click', () => { currentPage++; fetchAndRenderTickets(); });
             paginationControls.appendChild(nextButton);
         }

@@ -14,43 +14,52 @@ const isPrivileged = PRIVILEGED_ROLES.includes(session.user.rol?.id ?? -1);
 
 // Fetch data for filters
 const userId = session.user.id;
-const excludedStatusNames = ['Cancelado', 'Duplicado', 'Solucionado'];
+const excludedStatusNames = ["Cancelado", "Duplicado", "Solucionado"];
 const excludedStatuses = await prisma.estatus.findMany({
     where: { nombre: { in: excludedStatusNames } },
     select: { id: true },
 });
-const excludedStatusIds = excludedStatuses.map(s => s.id);
+const excludedStatusIds = excludedStatuses.map((s) => s.id);
 
 const userTicketFilter = {
     solicitanteId: parseInt(userId as string, 10),
-    estatusId: { notIn: excludedStatusIds }
+    estatusId: { notIn: excludedStatusIds },
 };
 
 const [statuses, categories, companies, agents] = await Promise.all([
-    prisma.estatus.findMany({ orderBy: { nombre: 'asc' } }),
+    prisma.estatus.findMany({ orderBy: { nombre: "asc" } }),
     prisma.categoria.findMany({
-        where: { 
+        where: {
             activo: true,
-            tickets: { some: userTicketFilter }
+            tickets: { some: userTicketFilter },
         },
-        orderBy: { nombre: 'asc' }
+        orderBy: { nombre: "asc" },
     }),
-    isPrivileged 
+    isPrivileged
         ? prisma.empresa.findMany({
-            where: {
-                tickets: { some: userTicketFilter }
-            },
-            orderBy: { nombre: 'asc' }
-        })
+              where: {
+                  tickets: { some: userTicketFilter },
+              },
+              orderBy: { nombre: "asc" },
+          })
         : Promise.resolve([]),
     prisma.usuario.findMany({
         where: { rolId: { in: PRIVILEGED_ROLES }, activo: true },
-        orderBy: { nombres: 'asc' }
+        orderBy: { nombres: "asc" },
     }),
 ]);
 
-const ALLOWED_STATUSES = ['Nuevo', 'En progreso', 'En espera', 'Solucionado', 'Cancelado', 'Duplicado'];
-const filteredStatuses = statuses.filter(status => ALLOWED_STATUSES.includes(status.nombre));
+const ALLOWED_STATUSES = [
+    "Nuevo",
+    "En progreso",
+    "En espera",
+    "Solucionado",
+    "Cancelado",
+    "Duplicado",
+];
+const filteredStatuses = statuses.filter((status) =>
+    ALLOWED_STATUSES.includes(status.nombre),
+);
 ---
 
 <MainLayout title="Mis Tickets">
@@ -62,37 +71,81 @@ const filteredStatuses = statuses.filter(status => ALLOWED_STATUSES.includes(sta
         <!-- Filters -->
         <div class="flex justify-start items-center mb-4 gap-4 flex-wrap">
             <div>
-                <label for="estatus-select" class="mr-2 text-sm font-medium">Estatus:</label>
-                <select id="estatus-select" class="bg-card border rounded-md p-2 text-sm">
+                <label for="estatus-select" class="mr-2 text-sm font-medium"
+                    >Estatus:</label
+                >
+                <select
+                    id="estatus-select"
+                    class="bg-card border rounded-md p-2 text-sm"
+                >
                     <option value="all">Todos</option>
-                    {filteredStatuses.map((status: Estatus) => <option value={status.id}>{status.nombre}</option>)}
+                    {
+                        filteredStatuses.map((status: Estatus) => (
+                            <option value={status.id}>{status.nombre}</option>
+                        ))
+                    }
                 </select>
             </div>
             <div>
-                <label for="categoria-select" class="mr-2 text-sm font-medium">Categoría:</label>
-                <select id="categoria-select" class="bg-card border rounded-md p-2 text-sm">
+                <label for="categoria-select" class="mr-2 text-sm font-medium"
+                    >Categoría:</label
+                >
+                <select
+                    id="categoria-select"
+                    class="bg-card border rounded-md p-2 text-sm"
+                >
                     <option value="all">Todas</option>
-                    {categories.map((cat: Categoria) => <option value={cat.id}>{cat.nombre}</option>)}
+                    {
+                        categories.map((cat: Categoria) => (
+                            <option value={cat.id}>{cat.nombre}</option>
+                        ))
+                    }
                 </select>
             </div>
-            {!isPrivileged && (
-                <div>
-                    <label for="atiende-select" class="mr-2 text-sm font-medium">Atiende:</label>
-                    <select id="atiende-select" class="bg-card border rounded-md p-2 text-sm">
-                        <option value="all">Todos</option>
-                        {agents.map((agent: Usuario) => <option value={agent.id}>{`${agent.nombres} ${agent.apellidos}`}</option>)}
-                    </select>
-                </div>
-            )}
-            {isPrivileged && (
-                <div>
-                    <label for="empresa-select" class="mr-2 text-sm font-medium">Empresa:</label>
-                    <select id="empresa-select" class="bg-card border rounded-md p-2 text-sm">
-                        <option value="all">Todas</option>
-                        {companies.map((comp: Empresa) => <option value={comp.id}>{comp.nombre}</option>)}
-                    </select>
-                </div>
-            )}
+            {
+                !isPrivileged && (
+                    <div>
+                        <label
+                            for="atiende-select"
+                            class="mr-2 text-sm font-medium"
+                        >
+                            Atiende:
+                        </label>
+                        <select
+                            id="atiende-select"
+                            class="bg-card border rounded-md p-2 text-sm"
+                        >
+                            <option value="all">Todos</option>
+                            {agents.map((agent: Usuario) => (
+                                <option
+                                    value={agent.id}
+                                >{`${agent.nombres} ${agent.apellidos}`}</option>
+                            ))}
+                        </select>
+                    </div>
+                )
+            }
+            {
+                isPrivileged && (
+                    <div>
+                        <label
+                            for="empresa-select"
+                            class="mr-2 text-sm font-medium"
+                        >
+                            Empresa:
+                        </label>
+                        <select
+                            id="empresa-select"
+                            class="bg-card border rounded-md p-2 text-sm"
+                        >
+                            <option value="all">Todas</option>
+                            {companies.map((comp: Empresa) => (
+                                <option value={comp.id}>{comp.nombre}</option>
+                            ))}
+                        </select>
+                    </div>
+                )
+            }
         </div>
 
         <!-- Tickets Table -->
@@ -111,52 +164,57 @@ const filteredStatuses = statuses.filter(status => ALLOWED_STATUSES.includes(sta
                     <tbody id="tickets-table-body"></tbody>
                 </table>
             </div>
-            <div id="no-tickets-message" class="hidden p-8 text-center text-muted-foreground">
+            <div
+                id="no-tickets-message"
+                class="hidden p-8 text-center text-muted-foreground"
+            >
                 No se encontraron tickets con los filtros seleccionados.
             </div>
         </div>
 
         <!-- Pagination -->
         <div class="flex justify-between items-center mt-4">
-            <span id="pagination-info" class="text-sm text-muted-foreground"></span>
+            <span id="pagination-info" class="text-sm text-muted-foreground"
+            ></span>
             <div id="pagination-controls" class="flex gap-2"></div>
         </div>
-
     </div>
 </MainLayout>
 
 <script define:vars={{ isPrivileged, currentUser: session.user }}>
     function initTicketList() {
-        const tableBody = document.getElementById('tickets-table-body');
-        const noTicketsMessage = document.getElementById('no-tickets-message');
-        const paginationInfo = document.getElementById('pagination-info');
-        const paginationControls = document.getElementById('pagination-controls');
-        
-        const estatusSelect = document.getElementById('estatus-select');
-        const categoriaSelect = document.getElementById('categoria-select');
-        const atiendeSelect = document.getElementById('atiende-select');
-        const empresaSelect = document.getElementById('empresa-select');
+        const tableBody = document.getElementById("tickets-table-body");
+        const noTicketsMessage = document.getElementById("no-tickets-message");
+        const paginationInfo = document.getElementById("pagination-info");
+        const paginationControls = document.getElementById(
+            "pagination-controls",
+        );
+
+        const estatusSelect = document.getElementById("estatus-select");
+        const categoriaSelect = document.getElementById("categoria-select");
+        const atiendeSelect = document.getElementById("atiende-select");
+        const empresaSelect = document.getElementById("empresa-select");
 
         if (!tableBody || !paginationControls) return;
 
         let currentPage = 1;
-        let currentLimit = '15';
+        let currentLimit = "15";
 
         function getStatusColor(statusName) {
             const colors = {
-                'Nuevo': 'bg-gray-500',
-                'En espera': 'bg-sky-500',
-                'Solucionado': 'bg-lime-500',
-                'Cancelado': 'bg-red-700',
-                'Duplicado': 'bg-black',
-                'En progreso': 'bg-blue-500',
+                Nuevo: "bg-gray-500",
+                "En espera": "bg-sky-500",
+                Solucionado: "bg-lime-500",
+                Cancelado: "bg-red-700",
+                Duplicado: "bg-black",
+                "En progreso": "bg-blue-500",
             };
-            return colors[statusName] || 'bg-gray-400';
+            return colors[statusName] || "bg-gray-400";
         }
 
         async function fetchAndRenderTickets() {
             let url = `/api/tickets/list?page=${currentPage}&limit=${currentLimit}`;
-            
+
             const selectedStatusId = estatusSelect.value;
             url += `&estatus=${selectedStatusId}`;
             url += `&categoria=${categoriaSelect.value}`;
@@ -164,10 +222,17 @@ const filteredStatuses = statuses.filter(status => ALLOWED_STATUSES.includes(sta
                 url += `&atiendeId=${atiendeSelect.value}`;
             }
 
-            const closedStatuses = ['Cancelado', 'Duplicado', 'Solucionado'];
-            const selectedStatusOption = estatusSelect.querySelector(`option[value="${selectedStatusId}"]`);
-            const selectedStatusName = selectedStatusOption ? selectedStatusOption.textContent : '';
-            if (selectedStatusId === 'all' || !closedStatuses.includes(selectedStatusName)) {
+            const closedStatuses = ["Cancelado", "Duplicado", "Solucionado"];
+            const selectedStatusOption = estatusSelect.querySelector(
+                `option[value="${selectedStatusId}"]`,
+            );
+            const selectedStatusName = selectedStatusOption
+                ? selectedStatusOption.textContent
+                : "";
+            if (
+                selectedStatusId === "all" ||
+                !closedStatuses.includes(selectedStatusName)
+            ) {
                 url += `&exclude_statuses=Cancelado,Duplicado,Solucionado`;
             }
 
@@ -175,26 +240,36 @@ const filteredStatuses = statuses.filter(status => ALLOWED_STATUSES.includes(sta
             url += `&solicitanteId=${currentUser.id}`;
 
             try {
-                const response = await fetch(url, { cache: 'no-store' });
-                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                const response = await fetch(url, { cache: "no-store" });
+                if (!response.ok)
+                    throw new Error(`HTTP error! status: ${response.status}`);
                 const { tickets, pagination } = await response.json();
 
-                tableBody.innerHTML = '';
+                tableBody.innerHTML = "";
                 if (tickets.length === 0) {
-                    noTicketsMessage.classList.remove('hidden');
-                    tableBody.classList.add('hidden');
+                    noTicketsMessage.classList.remove("hidden");
+                    tableBody.classList.add("hidden");
                 } else {
-                    noTicketsMessage.classList.add('hidden');
-                    tableBody.classList.remove('hidden');
-                    tickets.forEach(ticket => {
-                        const row = document.createElement('tr');
-                        row.className = 'border-b hover:bg-gray-200 cursor-pointer';
-                        row.onclick = () => { window.location.href = `/tickets/view/${ticket.id}`; };
-                        
-                        const statusColor = getStatusColor(ticket.estatus.nombre);
-                        const formattedDate = new Date(ticket.fechaalta).toLocaleDateString('es-MX');
+                    noTicketsMessage.classList.add("hidden");
+                    tableBody.classList.remove("hidden");
+                    tickets.forEach((ticket) => {
+                        const row = document.createElement("tr");
+                        row.className =
+                            "border-b hover:bg-[#797979]/40 cursor-pointer transition-colors";
+                        row.onclick = () => {
+                            window.location.href = `/tickets/view/${ticket.id}`;
+                        };
 
-                        const atiendeName = ticket.atiende ? `${ticket.atiende.nombres} ${ticket.atiende.apellidos}` : 'Sin asignar';
+                        const statusColor = getStatusColor(
+                            ticket.estatus.nombre,
+                        );
+                        const formattedDate = new Date(
+                            ticket.fechaalta,
+                        ).toLocaleDateString("es-MX");
+
+                        const atiendeName = ticket.atiende
+                            ? `${ticket.atiende.nombres} ${ticket.atiende.apellidos}`
+                            : "Sin asignar";
 
                         const columns = `
                             <td class="p-2 font-medium text-center">${ticket.id}</td>
@@ -210,7 +285,7 @@ const filteredStatuses = statuses.filter(status => ALLOWED_STATUSES.includes(sta
                 }
                 renderPagination(pagination);
             } catch (error) {
-                console.error('Fetch Error:', error);
+                console.error("Fetch Error:", error);
                 tableBody.innerHTML = `<tr><td colspan="5" class="p-8 text-center text-destructive">Error al cargar los tickets.</td></tr>`;
             }
         }
@@ -219,36 +294,56 @@ const filteredStatuses = statuses.filter(status => ALLOWED_STATUSES.includes(sta
             if (!paginationInfo || !paginationControls) return;
             const { page, totalTickets, totalPages } = pagination;
             paginationInfo.textContent = `Mostrando ${tableBody.rows.length} de ${totalTickets} tickets`;
-            paginationControls.innerHTML = '';
+            paginationControls.innerHTML = "";
             if (totalPages <= 1) return;
 
-            const prevButton = document.createElement('button');
-            prevButton.textContent = 'Anterior';
+            const prevButton = document.createElement("button");
+            prevButton.textContent = "Anterior";
             prevButton.disabled = page === 1;
-            prevButton.className = 'px-4 py-2 text-sm border rounded-md disabled:opacity-50';
-            prevButton.addEventListener('click', () => { currentPage--; fetchAndRenderTickets(); });
+            prevButton.className =
+                "px-4 py-2 text-sm border rounded-md disabled:opacity-50";
+            prevButton.addEventListener("click", () => {
+                currentPage--;
+                fetchAndRenderTickets();
+            });
             paginationControls.appendChild(prevButton);
 
-            const nextButton = document.createElement('button');
-            nextButton.textContent = 'Siguiente';
+            const nextButton = document.createElement("button");
+            nextButton.textContent = "Siguiente";
             nextButton.disabled = page === totalPages;
-            nextButton.className = 'px-4 py-2 text-sm border rounded-md disabled:opacity-50';
-            nextButton.addEventListener('click', () => { currentPage++; fetchAndRenderTickets(); });
+            nextButton.className =
+                "px-4 py-2 text-sm border rounded-md disabled:opacity-50";
+            nextButton.addEventListener("click", () => {
+                currentPage++;
+                fetchAndRenderTickets();
+            });
             paginationControls.appendChild(nextButton);
         }
 
         // Event Listeners
-        estatusSelect.addEventListener('change', () => { currentPage = 1; fetchAndRenderTickets(); });
-        categoriaSelect.addEventListener('change', () => { currentPage = 1; fetchAndRenderTickets(); });
+        estatusSelect.addEventListener("change", () => {
+            currentPage = 1;
+            fetchAndRenderTickets();
+        });
+        categoriaSelect.addEventListener("change", () => {
+            currentPage = 1;
+            fetchAndRenderTickets();
+        });
         if (atiendeSelect) {
-            atiendeSelect.addEventListener('change', () => { currentPage = 1; fetchAndRenderTickets(); });
+            atiendeSelect.addEventListener("change", () => {
+                currentPage = 1;
+                fetchAndRenderTickets();
+            });
         }
         if (isPrivileged && empresaSelect) {
-            empresaSelect.addEventListener('change', () => { currentPage = 1; fetchAndRenderTickets(); });
+            empresaSelect.addEventListener("change", () => {
+                currentPage = 1;
+                fetchAndRenderTickets();
+            });
         }
 
         fetchAndRenderTickets();
     }
 
-    document.addEventListener('astro:page-load', initTicketList);
+    document.addEventListener("astro:page-load", initTicketList);
 </script>

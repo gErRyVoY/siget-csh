@@ -1,4 +1,4 @@
-declare const Swal: any;
+import { toast } from '@/lib/toast';
 
 export function initializeUserEditForm() {
     const form = document.getElementById('edit-user-form') as HTMLFormElement;
@@ -7,7 +7,7 @@ export function initializeUserEditForm() {
         return;
     }
 
-    const userId = parseInt(form.dataset.userId, 10);
+    const userId = parseInt(form.dataset.userId || '0', 10);
     const horarioString = form.dataset.horario;
 
     if (isNaN(userId) || typeof horarioString === 'undefined') {
@@ -66,8 +66,8 @@ export function initializeUserEditForm() {
             const horarioDia = horario && horario[normalizedDia] ? horario[normalizedDia] : { inicio: 'No disponible', fin: 'No disponible' };
             const inicioSelect = document.getElementById(`${normalizedDia}-inicio`) as HTMLSelectElement;
             const finSelect = document.getElementById(`${normalizedDia}-fin`) as HTMLSelectElement;
-            if(inicioSelect) inicioSelect.value = horarioDia.inicio;
-            if(finSelect) finSelect.value = horarioDia.fin;
+            if (inicioSelect) inicioSelect.value = horarioDia.inicio;
+            if (finSelect) finSelect.value = horarioDia.fin;
         });
     }
 
@@ -75,7 +75,7 @@ export function initializeUserEditForm() {
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
             const formData = new FormData(form);
-            const horarioData = {};
+            const horarioData: Record<string, { inicio: FormDataEntryValue | null, fin: FormDataEntryValue | null }> = {};
 
             dias.forEach(dia => {
                 const normalizedDia = dia.normalize("NFD").replace(/[̀-ͯ]/g, "");
@@ -107,26 +107,11 @@ export function initializeUserEditForm() {
                     throw new Error(errorData.message || 'Error al actualizar el usuario');
                 }
 
-                const Toast = Swal.mixin({
-                    toast: true,
-                    position: 'bottom',
-                    showConfirmButton: false,
-                    timer: 3000,
-                    timerProgressBar: true,
-                    background: '#881912',
-                    color: '#FFFFFF',
-                    iconColor: '#caab55',
-                    didOpen: (toast) => {
-                        toast.addEventListener('mouseenter', Swal.stopTimer)
-                        toast.addEventListener('mouseleave', Swal.resumeTimer)
-                    }
-                });
+                toast.success('Usuario actualizado correctamente');
 
-                Toast.fire({ icon: 'success', title: 'Usuario actualizado correctamente' });
-
-            } catch (error) {
+            } catch (error: any) {
                 console.error('Submit error:', error);
-                Swal.fire({ title: 'Error', text: error.message, icon: 'error' });
+                toast.error(error.message || 'Error al actualizar el usuario');
             }
         });
     }

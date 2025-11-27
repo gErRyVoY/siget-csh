@@ -84,7 +84,6 @@ if (["Magno", "Ejecutivo"].includes(empresa.tipo)) {
               <th class="p-4">Nombre</th>
               <th class="p-4">Estado</th>
               <th class="p-4">Vacaciones</th>
-              <th class="p-4"><span class="sr-only">Acciones</span></th>
             </tr>
           </thead>
           <tbody id="users-table-body"></tbody>
@@ -139,14 +138,14 @@ if (["Magno", "Ejecutivo"].includes(empresa.tipo)) {
           tableBody.classList.remove("hidden");
           users.forEach((user) => {
             const row = document.createElement("tr");
-            row.className = "border-b";
+            row.className =
+              "border-b hover:bg-[#797979]/40 transition-colors cursor-pointer";
+            row.onclick = () =>
+              (window.location.href = `/admin/usuarios/editar/${user.id}`);
             row.innerHTML = `
                         <td class="p-4 font-medium text-foreground">${user.nombres} ${user.apellidos}</td>
                         <td class="p-4">${user.activo ? '<span class="px-2 py-1 text-xs font-semibold text-green-800 bg-green-100 dark:bg-green-900/30 dark:text-green-300 rounded-full">Activo</span>' : '<span class="px-2 py-1 text-xs font-semibold text-red-800 bg-red-100 dark:bg-red-900/30 dark:text-red-300 rounded-full">Inactivo</span>'}</td>
                         <td class="p-4">${user.vacaciones ? '<span class="px-2 py-1 text-xs font-semibold text-red-800 bg-red-100 dark:bg-red-900/30 dark:text-red-300 rounded-full">Sí</span>' : '<span class="px-2 py-1 text-xs font-semibold text-green-800 bg-green-100 dark:bg-green-900/30 dark:text-green-300 rounded-full">No</span>'}</td>
-                        <td class="p-4 text-right">
-                            <a href="/admin/usuarios/editar/${user.id}" class="font-medium text-primary hover:underline">Editar</a>
-                        </td>
                     `;
             tableBody.appendChild(row);
           });

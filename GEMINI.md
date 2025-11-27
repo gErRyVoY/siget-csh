@@ -118,6 +118,24 @@ Cuando el usuario me pida leer este archivo (`GEMINI.md`) al inicio de una sesi�
 
 # Historial de Cambios (Log)
 
+## 2025-11-27 (Sesión 5)
+*   **Actualización de Tema Oscuro en Vistas Adicionales:**
+    *   Se actualizaron los selectores de filtros en `src/pages/tickets/soporte/index.astro` para usar variables de tema (`bg-input`, `border-border`, `text-foreground`).
+    *   Se mejoraron los botones de paginación en la misma vista para incluir estados hover y transiciones suaves.
+    *   Se actualizó el botón "Volver a la lista" en `src/pages/tickets/view/[id].astro` para usar variables de tema (`bg-muted`, `text-muted-foreground`).
+    *   Se verificó que los botones "Volver" en `src/pages/admin/usuarios/[campus].astro` y `src/pages/admin/usuarios/editar/[id].astro` ya estaban correctamente actualizados.
+    *   **Corrección de Persistencia de Tema:** Se actualizó `src/components/ui/ThemeToggle.astro` para re-adjuntar el listener de eventos en `astro:page-load`, solucionando el problema donde el botón de tema dejaba de funcionar al navegar entre páginas (View Transitions).
+    *   **Mejora UI Admin Usuarios:**
+        *   Se eliminó la columna "Acciones" en `src/pages/admin/usuarios/[campus].astro`.
+        *   Se hicieron las filas de la tabla de usuarios clickeables para mejorar la navegación.
+        *   Se reemplazó `SweetAlert2` por el sistema de `toasts` en `src/scripts/user-edit-form-logic.ts`.
+        *   Se corrigieron errores de TypeScript en `user-edit-form-logic.ts` (tipado de `dataset` y manejo de errores).
+    *   **Mejoras Visuales y de Datos:**
+        *   Se aplicó un estilo hover específico (`bg-[#797979]/40`) a las filas de las tablas en `[campus].astro`, `soporte/index.astro` y `usuario/index.astro` para mejorar la visibilidad.
+        *   Se añadió el conteo de usuarios por empresa en las tarjetas de `src/pages/admin/usuarios/index.astro`, mostrando el número solo si es mayor a 0.
+*   **Verificación:**
+    *   Se ejecutó `pnpm build` exitosamente, confirmando la integridad del código.
+
 ## 2025-11-26 (Sesión 4)
 *   **Migración Completa de SweetAlert2 a Toasts:**
     *   Se completó la migración de `modal-controller.ts` y sus consumidores (`NewTicketMkt.astro`, `NewTransfer.astro`) al sistema de toasts personalizado.

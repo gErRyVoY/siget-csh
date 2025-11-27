@@ -55,7 +55,9 @@
         localStorage.setItem("theme", isDark ? "dark" : "light");
     };
 
-    document
-        .getElementById("theme-toggle")
-        ?.addEventListener("click", handleToggleClick);
+    document.addEventListener("astro:page-load", () => {
+        document
+            .getElementById("theme-toggle")
+            ?.addEventListener("click", handleToggleClick);
+    });
 </script>
