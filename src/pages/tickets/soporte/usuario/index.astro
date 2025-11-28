@@ -1,349 +1,491 @@
 ---
 import MainLayout from "@/layouts/MainLayout.astro";
-import { getSession } from "auth-astro/server";
 import { prisma } from "@/lib/db";
-import type { Estatus, Categoria, Empresa, Usuario } from "@prisma/client";
+import { getSession } from "auth-astro/server";
+import { format } from "date-fns";
+import { es } from "date-fns/locale";
+import StatusBadge from "@/components/ui/StatusBadge.astro";
+import SkeletonTable from "@/components/ui/SkeletonTable.astro";
 
 const session = await getSession(Astro.request);
-if (!session || !session.user) {
+const user = session?.user;
+
+if (!user) {
     return Astro.redirect("/login");
 }
 
 const PRIVILEGED_ROLES = [1, 2, 3, 4, 5, 6, 15];
-const isPrivileged = PRIVILEGED_ROLES.includes(session.user.rol?.id ?? -1);
+const isPrivileged = PRIVILEGED_ROLES.includes(user.rol?.id ?? -1);
 
-// Fetch data for filters
-const userId = session.user.id;
-const excludedStatusNames = ["Cancelado", "Duplicado", "Solucionado"];
-const excludedStatuses = await prisma.estatus.findMany({
-    where: { nombre: { in: excludedStatusNames } },
-    select: { id: true },
-});
-const excludedStatusIds = excludedStatuses.map((s) => s.id);
+// Obtener parámetros de filtro de la URL
+const url = new URL(Astro.request.url);
+const statusFilter = url.searchParams.get("status") || "all";
+const categoryFilter = url.searchParams.get("category") || "all";
+const companyFilter = url.searchParams.get("company") || "all";
+const assigneeFilter = url.searchParams.get("assignee") || "all";
+const page = parseInt(url.searchParams.get("page") || "1");
+const pageSize = 10;
 
-const userTicketFilter = {
-    solicitanteId: parseInt(userId as string, 10),
-    estatusId: { notIn: excludedStatusIds },
+// Construir el filtro de Prisma
+const where: any = {
+    solicitanteId: parseInt(user.id), // Siempre filtrar por el usuario actual
 };
 
-const [statuses, categories, companies, agents] = await Promise.all([
-    prisma.estatus.findMany({ orderBy: { nombre: "asc" } }),
-    prisma.categoria.findMany({
-        where: {
-            activo: true,
-            tickets: { some: userTicketFilter },
+if (statusFilter !== "all") {
+    where.estatusId = parseInt(statusFilter);
+} else {
+    // Por defecto, excluir tickets cerrados si no se especifica filtro?
+    // La lógica original de usuario/index.astro excluía Cancelado, Duplicado, Solucionado en los filtros de opciones,
+    // pero en el fetch incluía una lógica compleja.
+    // Vamos a mantenerlo simple: Mostrar todos por defecto, o seguir la lógica de "Mis Tickets" que usualmente muestra los activos.
+    // El script original tenía: if (selectedStatusId === "all" || !closedStatuses.includes(...)) url += `&exclude_statuses=...`
+    // Repliquemos esa lógica: Si es "all", excluir cerrados.
+    where.estatus = {
+        nombre: {
+            notIn: ["Cancelado", "Duplicado", "Solucionado"],
         },
-        orderBy: { nombre: "asc" },
-    }),
-    isPrivileged
-        ? prisma.empresa.findMany({
-              where: {
-                  tickets: { some: userTicketFilter },
-              },
-              orderBy: { nombre: "asc" },
-          })
-        : Promise.resolve([]),
-    prisma.usuario.findMany({
-        where: { rolId: { in: PRIVILEGED_ROLES }, activo: true },
-        orderBy: { nombres: "asc" },
-    }),
-]);
+    };
+}
 
-const ALLOWED_STATUSES = [
+if (categoryFilter !== "all") {
+    where.categoriaId = parseInt(categoryFilter);
+}
+
+if (companyFilter !== "all" && isPrivileged) {
+    where.empresaId = parseInt(companyFilter);
+}
+
+if (assigneeFilter !== "all") {
+    if (assigneeFilter === "unassigned") {
+        where.atiendeId = null;
+    } else {
+        where.atiendeId = parseInt(assigneeFilter);
+    }
+}
+
+// Obtener datos para los selectores
+const statuses = await prisma.estatus.findMany({
+    orderBy: { nombre: "asc" },
+});
+
+// Filtrar estatus permitidos para mostrar en el select
+const allowedStatuses = [
     "Nuevo",
     "En progreso",
     "En espera",
     "Solucionado",
     "Cancelado",
     "Duplicado",
+    "Sin asignar",
 ];
 const filteredStatuses = statuses.filter((status) =>
-    ALLOWED_STATUSES.includes(status.nombre),
+    allowedStatuses.includes(status.nombre),
 );
+
+// Categorías disponibles (podríamos filtrar solo las usadas por el usuario, pero todas está bien)
+const categories = await prisma.categoria.findMany({
+    where: { activo: true },
+    orderBy: { nombre: "asc" },
+});
+
+// Empresas (solo si es privilegiado)
+const companies = isPrivileged
+    ? await prisma.empresa.findMany({
+          orderBy: { nombre: "asc" },
+      })
+    : [];
+
+// Agentes (para filtro de atiende)
+const agents = await prisma.usuario.findMany({
+    where: {
+        rolId: { in: PRIVILEGED_ROLES },
+        activo: true,
+    },
+    orderBy: { nombres: "asc" },
+});
+
+// Obtener total de tickets para paginación
+const totalTickets = await prisma.ticket.count({ where });
+const totalPages = Math.ceil(totalTickets / pageSize);
+
+// Obtener tickets paginados
+const tickets = await prisma.ticket.findMany({
+    where,
+    include: {
+        estatus: true,
+        categoria: true,
+        subcategoria: true,
+        solicitante: true,
+        atiende: true,
+        empresa: true,
+    },
+    orderBy: {
+        fechaalta: "desc",
+    },
+    skip: (page - 1) * pageSize,
+    take: pageSize,
+});
 ---
 
 <MainLayout title="Mis Tickets">
-    <div class="max-w-full mx-auto">
-        <div class="flex justify-between items-center mb-6">
-            <h1 class="text-2xl font-bold">Mis Tickets de Soporte</h1>
+    <div class="space-y-6">
+        <div class="flex justify-between items-center">
+            <h1 class="text-3xl font-bold text-foreground">
+                Mis Tickets de Soporte
+            </h1>
+            <a
+                href="/tickets/soporte/nuevo-ticket-csh"
+                class="bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-2 rounded-md font-medium transition-colors"
+            >
+                Nuevo Ticket
+            </a>
         </div>
 
-        <!-- Filters -->
-        <div class="flex justify-start items-center mb-4 gap-4 flex-wrap">
-            <div>
-                <label for="estatus-select" class="mr-2 text-sm font-medium"
-                    >Estatus:</label
-                >
-                <select
-                    id="estatus-select"
-                    class="bg-card border rounded-md p-2 text-sm"
-                >
-                    <option value="all">Todos</option>
-                    {
-                        filteredStatuses.map((status: Estatus) => (
-                            <option value={status.id}>{status.nombre}</option>
-                        ))
-                    }
-                </select>
-            </div>
-            <div>
-                <label for="categoria-select" class="mr-2 text-sm font-medium"
-                    >Categoría:</label
-                >
-                <select
-                    id="categoria-select"
-                    class="bg-card border rounded-md p-2 text-sm"
-                >
-                    <option value="all">Todas</option>
-                    {
-                        categories.map((cat: Categoria) => (
-                            <option value={cat.id}>{cat.nombre}</option>
-                        ))
-                    }
-                </select>
-            </div>
-            {
-                !isPrivileged && (
-                    <div>
-                        <label
-                            for="atiende-select"
-                            class="mr-2 text-sm font-medium"
+        <!-- Filtros -->
+        <div class="bg-card p-4 rounded-lg shadow-sm border border-border">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div>
+                    <label
+                        for="estatus-select"
+                        class="block text-sm font-medium text-muted-foreground mb-1"
+                        >Estatus</label
+                    >
+                    <select
+                        id="estatus-select"
+                        class="w-full bg-input border-border text-foreground rounded-md p-2 text-sm focus:ring-2 focus:ring-primary focus:border-transparent"
+                    >
+                        <option value="all">Activos (Default)</option>
+                        {
+                            filteredStatuses.map((status) => (
+                                <option
+                                    value={status.id}
+                                    selected={
+                                        statusFilter === status.id.toString()
+                                    }
+                                >
+                                    {status.nombre}
+                                </option>
+                            ))
+                        }
+                    </select>
+                </div>
+                <div>
+                    <label
+                        for="categoria-select"
+                        class="block text-sm font-medium text-muted-foreground mb-1"
+                        >Categoría</label
+                    >
+                    <select
+                        id="categoria-select"
+                        class="w-full bg-input border-border text-foreground rounded-md p-2 text-sm focus:ring-2 focus:ring-primary focus:border-transparent"
+                    >
+                        <option value="all">Todas</option>
+                        {
+                            categories.map((category) => (
+                                <option
+                                    value={category.id}
+                                    selected={
+                                        categoryFilter ===
+                                        category.id.toString()
+                                    }
+                                >
+                                    {category.nombre}
+                                </option>
+                            ))
+                        }
+                    </select>
+                </div>
+
+                {
+                    isPrivileged && (
+                        <div>
+                            <label
+                                for="empresa-select"
+                                class="block text-sm font-medium text-muted-foreground mb-1"
+                            >
+                                Empresa
+                            </label>
+                            <select
+                                id="empresa-select"
+                                class="w-full bg-input border-border text-foreground rounded-md p-2 text-sm focus:ring-2 focus:ring-primary focus:border-transparent"
+                            >
+                                <option value="all">Todas</option>
+                                {companies.map((company) => (
+                                    <option
+                                        value={company.id}
+                                        selected={
+                                            companyFilter ===
+                                            company.id.toString()
+                                        }
+                                    >
+                                        {company.nombre}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                    )
+                }
+
+                <div>
+                    <label
+                        for="assignee-select"
+                        class="block text-sm font-medium text-muted-foreground mb-1"
+                        >Asignado a</label
+                    >
+                    <select
+                        id="assignee-select"
+                        class="w-full bg-input border-border text-foreground rounded-md p-2 text-sm focus:ring-2 focus:ring-primary focus:border-transparent"
+                    >
+                        <option value="all">Todos</option>
+                        <option
+                            value="unassigned"
+                            selected={assigneeFilter === "unassigned"}
+                            >Sin asignar</option
                         >
-                            Atiende:
-                        </label>
-                        <select
-                            id="atiende-select"
-                            class="bg-card border rounded-md p-2 text-sm"
-                        >
-                            <option value="all">Todos</option>
-                            {agents.map((agent: Usuario) => (
+                        {
+                            agents.map((agent) => (
                                 <option
                                     value={agent.id}
-                                >{`${agent.nombres} ${agent.apellidos}`}</option>
-                            ))}
-                        </select>
-                    </div>
-                )
+                                    selected={
+                                        assigneeFilter === agent.id.toString()
+                                    }
+                                >
+                                    {agent.nombres} {agent.apellidos}
+                                </option>
+                            ))
+                        }
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Vista Móvil: Cards -->
+        <div class="md:hidden space-y-4">
+            {
+                tickets.map((ticket) => (
+                    <a href={`/tickets/view/${ticket.id}`} class="block">
+                        <div class="bg-card border border-border rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow">
+                            <div class="flex justify-between items-start mb-2">
+                                <span class="font-bold text-lg text-foreground">
+                                    #{ticket.id}
+                                </span>
+                                <StatusBadge
+                                    status={ticket.estatus.nombre}
+                                    size="sm"
+                                />
+                            </div>
+                            <h3 class="font-medium text-foreground mb-2 line-clamp-2">
+                                {ticket.descripcion}
+                            </h3>
+                            <div class="text-sm text-muted-foreground space-y-1">
+                                <p>
+                                    <span class="font-semibold">
+                                        Categoría:
+                                    </span>{" "}
+                                    {ticket.categoria.nombre}
+                                </p>
+                                <p>
+                                    <span class="font-semibold">
+                                        Solicitante:
+                                    </span>{" "}
+                                    {ticket.solicitante.nombres}{" "}
+                                    {ticket.solicitante.apellidos}
+                                </p>
+                                <p>
+                                    <span class="font-semibold">Fecha:</span>{" "}
+                                    {format(
+                                        new Date(ticket.fechaalta),
+                                        "dd/MM/yyyy",
+                                        { locale: es },
+                                    )}
+                                </p>
+                            </div>
+                        </div>
+                    </a>
+                ))
             }
             {
-                isPrivileged && (
-                    <div>
-                        <label
-                            for="empresa-select"
-                            class="mr-2 text-sm font-medium"
-                        >
-                            Empresa:
-                        </label>
-                        <select
-                            id="empresa-select"
-                            class="bg-card border rounded-md p-2 text-sm"
-                        >
-                            <option value="all">Todas</option>
-                            {companies.map((comp: Empresa) => (
-                                <option value={comp.id}>{comp.nombre}</option>
-                            ))}
-                        </select>
+                tickets.length === 0 && (
+                    <div class="text-center py-8 text-muted-foreground bg-card rounded-lg border border-border">
+                        No se encontraron tickets con los filtros seleccionados.
                     </div>
                 )
             }
         </div>
 
-        <!-- Tickets Table -->
-        <div class="bg-card border rounded-lg overflow-hidden">
+        <!-- Vista Desktop: Tabla -->
+        <div
+            class="hidden md:block bg-card rounded-lg shadow-sm border border-border overflow-hidden"
+        >
             <div class="overflow-x-auto">
                 <table class="w-full text-sm text-left">
-                    <thead class="bg-muted/50">
-                        <tr class="text-center">
-                            <th class="p-2">Folio</th>
-                            <th class="p-2">Atiende</th>
-                            <th class="p-2">Prioridad</th>
-                            <th class="p-2">Estatus</th>
-                            <th class="p-2">Fecha Alta</th>
+                    <thead
+                        class="bg-muted text-muted-foreground uppercase text-xs"
+                    >
+                        <tr>
+                            <th class="px-6 py-3 font-medium">ID</th>
+                            <th class="px-6 py-3 font-medium">Estatus</th>
+                            <th class="px-6 py-3 font-medium">Solicitante</th>
+                            <th class="px-6 py-3 font-medium">Categoría</th>
+                            <th class="px-6 py-3 font-medium">Asignado a</th>
+                            <th class="px-6 py-3 font-medium">Fecha</th>
                         </tr>
                     </thead>
-                    <tbody id="tickets-table-body"></tbody>
+                    <tbody class="divide-y divide-border">
+                        {
+                            tickets.map((ticket) => (
+                                <tr
+                                    class="hover:bg-[#797979]/40 transition-colors cursor-pointer"
+                                    onclick={`window.location.href='/tickets/view/${ticket.id}'`}
+                                >
+                                    <td class="px-6 py-4 font-medium text-foreground">
+                                        #{ticket.id}
+                                    </td>
+                                    <td class="px-6 py-4">
+                                        <StatusBadge
+                                            status={ticket.estatus.nombre}
+                                        />
+                                    </td>
+                                    <td class="px-6 py-4 text-muted-foreground">
+                                        {ticket.solicitante.nombres}{" "}
+                                        {ticket.solicitante.apellidos}
+                                        <span class="text-xs block text-muted-foreground/70">
+                                            {ticket.empresa.nombre}
+                                        </span>
+                                    </td>
+                                    <td class="px-6 py-4 text-muted-foreground">
+                                        {ticket.categoria.nombre}
+                                        {ticket.subcategoria && (
+                                            <span class="text-xs block text-muted-foreground/70">
+                                                {ticket.subcategoria.nombre}
+                                            </span>
+                                        )}
+                                    </td>
+                                    <td class="px-6 py-4 text-muted-foreground">
+                                        {ticket.atiende ? (
+                                            <>
+                                                {ticket.atiende.nombres}{" "}
+                                                {ticket.atiende.apellidos}
+                                            </>
+                                        ) : (
+                                            <span class="text-muted-foreground/50 italic">
+                                                Sin asignar
+                                            </span>
+                                        )}
+                                    </td>
+                                    <td class="px-6 py-4 text-muted-foreground">
+                                        {format(
+                                            new Date(ticket.fechaalta),
+                                            "dd MMM yyyy",
+                                            { locale: es },
+                                        )}
+                                    </td>
+                                </tr>
+                            ))
+                        }
+                        {
+                            tickets.length === 0 && (
+                                <tr>
+                                    <td
+                                        colspan="6"
+                                        class="px-6 py-8 text-center text-muted-foreground"
+                                    >
+                                        No se encontraron tickets con los
+                                        filtros seleccionados.
+                                    </td>
+                                </tr>
+                            )
+                        }
+                    </tbody>
                 </table>
-            </div>
-            <div
-                id="no-tickets-message"
-                class="hidden p-8 text-center text-muted-foreground"
-            >
-                No se encontraron tickets con los filtros seleccionados.
             </div>
         </div>
 
-        <!-- Pagination -->
-        <div class="flex justify-between items-center mt-4">
-            <span id="pagination-info" class="text-sm text-muted-foreground"
-            ></span>
-            <div id="pagination-controls" class="flex gap-2"></div>
-        </div>
+        <!-- Paginación -->
+        {
+            totalPages > 1 && (
+                <div class="flex justify-center mt-6 gap-2">
+                    <button
+                        id="prev-page"
+                        disabled={page === 1}
+                        class="px-4 py-2 text-sm bg-card border-border text-foreground border rounded-md disabled:opacity-50 hover:bg-muted transition-colors"
+                    >
+                        Anterior
+                    </button>
+                    <span class="px-4 py-2 text-sm text-muted-foreground">
+                        Página {page} de {totalPages}
+                    </span>
+                    <button
+                        id="next-page"
+                        disabled={page === totalPages}
+                        class="px-4 py-2 text-sm bg-card border-border text-foreground border rounded-md disabled:opacity-50 hover:bg-muted transition-colors"
+                    >
+                        Siguiente
+                    </button>
+                </div>
+            )
+        }
     </div>
 </MainLayout>
 
-<script define:vars={{ isPrivileged, currentUser: session.user }}>
-    function initTicketList() {
-        const tableBody = document.getElementById("tickets-table-body");
-        const noTicketsMessage = document.getElementById("no-tickets-message");
-        const paginationInfo = document.getElementById("pagination-info");
-        const paginationControls = document.getElementById(
-            "pagination-controls",
-        );
+<script>
+    // Manejo de filtros
+    const selects = document.querySelectorAll("select");
+    selects.forEach((select) => {
+        select.addEventListener("change", () => {
+            const url = new URL(window.location.href);
+            const paramName = select.id.replace("-select", "");
+            const value = select.value;
 
-        const estatusSelect = document.getElementById("estatus-select");
-        const categoriaSelect = document.getElementById("categoria-select");
-        const atiendeSelect = document.getElementById("atiende-select");
-        const empresaSelect = document.getElementById("empresa-select");
-
-        if (!tableBody || !paginationControls) return;
-
-        let currentPage = 1;
-        let currentLimit = "15";
-
-        function getStatusColor(statusName) {
-            const colors = {
-                Nuevo: "bg-gray-500",
-                "En espera": "bg-sky-500",
-                Solucionado: "bg-lime-500",
-                Cancelado: "bg-red-700",
-                Duplicado: "bg-black",
-                "En progreso": "bg-blue-500",
-            };
-            return colors[statusName] || "bg-gray-400";
-        }
-
-        async function fetchAndRenderTickets() {
-            let url = `/api/tickets/list?page=${currentPage}&limit=${currentLimit}`;
-
-            const selectedStatusId = estatusSelect.value;
-            url += `&estatus=${selectedStatusId}`;
-            url += `&categoria=${categoriaSelect.value}`;
-            if (atiendeSelect) {
-                url += `&atiendeId=${atiendeSelect.value}`;
+            if (value === "all") {
+                url.searchParams.delete(
+                    paramName === "estatus"
+                        ? "status"
+                        : paramName === "categoria"
+                          ? "category"
+                          : paramName === "empresa"
+                            ? "company"
+                            : "assignee",
+                );
+            } else {
+                url.searchParams.set(
+                    paramName === "estatus"
+                        ? "status"
+                        : paramName === "categoria"
+                          ? "category"
+                          : paramName === "empresa"
+                            ? "company"
+                            : "assignee",
+                    value,
+                );
             }
-
-            const closedStatuses = ["Cancelado", "Duplicado", "Solucionado"];
-            const selectedStatusOption = estatusSelect.querySelector(
-                `option[value="${selectedStatusId}"]`,
-            );
-            const selectedStatusName = selectedStatusOption
-                ? selectedStatusOption.textContent
-                : "";
-            if (
-                selectedStatusId === "all" ||
-                !closedStatuses.includes(selectedStatusName)
-            ) {
-                url += `&exclude_statuses=Cancelado,Duplicado,Solucionado`;
-            }
-
-            // For this page, always filter by the logged-in user as the requester
-            url += `&solicitanteId=${currentUser.id}`;
-
-            try {
-                const response = await fetch(url, { cache: "no-store" });
-                if (!response.ok)
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                const { tickets, pagination } = await response.json();
-
-                tableBody.innerHTML = "";
-                if (tickets.length === 0) {
-                    noTicketsMessage.classList.remove("hidden");
-                    tableBody.classList.add("hidden");
-                } else {
-                    noTicketsMessage.classList.add("hidden");
-                    tableBody.classList.remove("hidden");
-                    tickets.forEach((ticket) => {
-                        const row = document.createElement("tr");
-                        row.className =
-                            "border-b hover:bg-[#797979]/40 cursor-pointer transition-colors";
-                        row.onclick = () => {
-                            window.location.href = `/tickets/view/${ticket.id}`;
-                        };
-
-                        const statusColor = getStatusColor(
-                            ticket.estatus.nombre,
-                        );
-                        const formattedDate = new Date(
-                            ticket.fechaalta,
-                        ).toLocaleDateString("es-MX");
-
-                        const atiendeName = ticket.atiende
-                            ? `${ticket.atiende.nombres} ${ticket.atiende.apellidos}`
-                            : "Sin asignar";
-
-                        const columns = `
-                            <td class="p-2 font-medium text-center">${ticket.id}</td>
-                            <td class="p-2">${atiendeName}</td>
-                            <td class="p-2 text-center">${ticket.prioridad}</td>
-                            <td class="p-2 text-center"><span class="px-2 py-1 text-xs font-semibold text-white ${statusColor} rounded-full">${ticket.estatus.nombre}</span></td>
-                            <td class="p-2 text-center">${formattedDate}</td>
-                        `;
-
-                        row.innerHTML = columns;
-                        tableBody.appendChild(row);
-                    });
-                }
-                renderPagination(pagination);
-            } catch (error) {
-                console.error("Fetch Error:", error);
-                tableBody.innerHTML = `<tr><td colspan="5" class="p-8 text-center text-destructive">Error al cargar los tickets.</td></tr>`;
-            }
-        }
-
-        function renderPagination(pagination) {
-            if (!paginationInfo || !paginationControls) return;
-            const { page, totalTickets, totalPages } = pagination;
-            paginationInfo.textContent = `Mostrando ${tableBody.rows.length} de ${totalTickets} tickets`;
-            paginationControls.innerHTML = "";
-            if (totalPages <= 1) return;
-
-            const prevButton = document.createElement("button");
-            prevButton.textContent = "Anterior";
-            prevButton.disabled = page === 1;
-            prevButton.className =
-                "px-4 py-2 text-sm border rounded-md disabled:opacity-50";
-            prevButton.addEventListener("click", () => {
-                currentPage--;
-                fetchAndRenderTickets();
-            });
-            paginationControls.appendChild(prevButton);
-
-            const nextButton = document.createElement("button");
-            nextButton.textContent = "Siguiente";
-            nextButton.disabled = page === totalPages;
-            nextButton.className =
-                "px-4 py-2 text-sm border rounded-md disabled:opacity-50";
-            nextButton.addEventListener("click", () => {
-                currentPage++;
-                fetchAndRenderTickets();
-            });
-            paginationControls.appendChild(nextButton);
-        }
-
-        // Event Listeners
-        estatusSelect.addEventListener("change", () => {
-            currentPage = 1;
-            fetchAndRenderTickets();
+            // Resetear a página 1 al filtrar
+            url.searchParams.set("page", "1");
+            window.location.href = url.toString();
         });
-        categoriaSelect.addEventListener("change", () => {
-            currentPage = 1;
-            fetchAndRenderTickets();
-        });
-        if (atiendeSelect) {
-            atiendeSelect.addEventListener("change", () => {
-                currentPage = 1;
-                fetchAndRenderTickets();
-            });
-        }
-        if (isPrivileged && empresaSelect) {
-            empresaSelect.addEventListener("change", () => {
-                currentPage = 1;
-                fetchAndRenderTickets();
-            });
-        }
+    });
 
-        fetchAndRenderTickets();
+    // Manejo de paginación
+    const prevBtn = document.getElementById("prev-page");
+    const nextBtn = document.getElementById("next-page");
+
+    if (prevBtn) {
+        prevBtn.addEventListener("click", () => {
+            const url = new URL(window.location.href);
+            const currentPage = parseInt(url.searchParams.get("page") || "1");
+            if (currentPage > 1) {
+                url.searchParams.set("page", (currentPage - 1).toString());
+                window.location.href = url.toString();
+            }
+        });
     }
 
-    document.addEventListener("astro:page-load", initTicketList);
+    if (nextBtn) {
+        nextBtn.addEventListener("click", () => {
+            const url = new URL(window.location.href);
+            const currentPage = parseInt(url.searchParams.get("page") || "1");
+            url.searchParams.set("page", (currentPage + 1).toString());
+            window.location.href = url.toString();
+        });
+    }
 </script>

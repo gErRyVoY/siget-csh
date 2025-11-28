@@ -6,6 +6,22 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 y este proyecto adhiere a [Versionado Semántico](https://semver.org/lang/es/).
 
 
+## [0.3.0] - 2025-11-28
+
+### Added
+- **RBAC Híbrido:** Implementación completa de lógica de asignación (Usuario Específico > Rol > Fallback).
+- **Componentes UI:** `StatusBadge` para estados de tickets y `SkeletonTable` para carga.
+- **Diseño Responsivo:** Vista de tarjetas para móviles en listas de tickets.
+
+### Changed
+- **UI Tickets:** Eliminación de columna "Asunto" y reordenamiento de columnas (ID, Estatus, Solicitante, Categoría, Asignado a, Fecha).
+- **Refactorización:** Migración de `tickets/soporte/usuario` a SSR para paridad visual y funcional.
+- **Base de Datos:** Actualización de esquema para soportar prioridades y estados en asignaciones.
+
+### Fixed
+- Error de compilación por dependencia faltante (`date-fns`).
+- Error 500 en creación de tickets (sincronización de cliente Prisma).
+
 ## [0.2.0] - 2025-11-27
 
 ### Added

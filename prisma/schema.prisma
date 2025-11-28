@@ -189,11 +189,18 @@ model AsignacionesCategorias {
   atiendeId      Int
   categoriaId    Int?
   subcategoriaId Int?
-  activo         Boolean       @default(false)
-  atiende        Usuario       @relation(fields: [atiendeId], references: [id])
-  categoria      Categoria?    @relation(fields: [categoriaId], references: [id])
-  subcategoria   Subcategoria? @relation(fields: [subcategoriaId], references: [id])
+  activo         Boolean       @default(true)
+  prioridad      Int           @default(5)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
 
+  atiende        Usuario       @relation(fields: [atiendeId], references: [id], onDelete: Cascade)
+  categoria      Categoria?    @relation(fields: [categoriaId], references: [id], onDelete: Cascade)
+  subcategoria   Subcategoria? @relation(fields: [subcategoriaId], references: [id], onDelete: Cascade)
+
+  @@unique([atiendeId, categoriaId, subcategoriaId])
+  @@index([categoriaId, subcategoriaId, activo])
+  @@index([atiendeId, activo])
   @@map("asignaciones_categorias")
 }
 
@@ -319,12 +326,18 @@ model PermisoCategoria {
   rolId          Int
   categoriaId    Int?
   subcategoriaId Int?
+  activo         Boolean       @default(true)
+  prioridad      Int           @default(0)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
 
-  rol            Rol           @relation(fields: [rolId], references: [id])
-  categoria      Categoria?    @relation(fields: [categoriaId], references: [id])
-  subcategoria   Subcategoria? @relation(fields: [subcategoriaId], references: [id])
+  rol            Rol           @relation(fields: [rolId], references: [id], onDelete: Cascade)
+  categoria      Categoria?    @relation(fields: [categoriaId], references: [id], onDelete: Cascade)
+  subcategoria   Subcategoria? @relation(fields: [subcategoriaId], references: [id], onDelete: Cascade)
 
   @@unique([rolId, categoriaId, subcategoriaId])
+  @@index([categoriaId, subcategoriaId, activo])
+  @@index([rolId, activo])
   @@map("permiso_categoria")
 }
 

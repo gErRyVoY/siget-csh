@@ -1,0 +1,32 @@
+---
+interface Props {
+    status: string;
+    size?: "sm" | "md" | "lg";
+}
+
+const { status, size = "md" } = Astro.props;
+
+const statusColors: Record<string, string> = {
+    Nuevo: "bg-zinc-400",
+    "En progreso": "bg-blue-500",
+    "En espera": "bg-sky-400",
+    Solucionado: "bg-lime-500",
+    Cancelado: "bg-red-600",
+    Duplicado: "bg-neutral-900",
+    "Sin asignar": "bg-gray-500",
+};
+
+const sizeClasses = {
+    sm: "px-2 py-0.5 text-xs",
+    md: "px-2 py-1 text-xs",
+    lg: "px-3 py-1.5 text-sm",
+};
+
+const color = statusColors[status] || "bg-gray-400";
+---
+
+<span
+    class={`inline-flex items-center rounded-full font-semibold text-white ${color} ${sizeClasses[size]}`}
+>
+    {status}
+</span>

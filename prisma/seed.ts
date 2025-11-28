@@ -80,6 +80,8 @@ async function main() {
       { id: 13, rol: 'Community manager', descripcion: 'Ejecutivo de atención en redes sociales', nivel_soporte: 'Marketing' },
       { id: 14, rol: 'Visitante', descripcion: 'Visitante', nivel_soporte: 'Usuario' },
       { id: 15, rol: 'Visitante administrador', descripcion: 'Visitante administrador', nivel_soporte: 'S_1' },
+      { id: 16, rol: 'Ingeniero Hubspot', descripcion: 'Ingeniero especializado en Hubspot', nivel_soporte: 'S_2' },
+      { id: 17, rol: 'Editor', descripcion: 'Editor de contenido multimedia', nivel_soporte: 'Marketing' },
     ],
   });
 
@@ -600,6 +602,104 @@ async function main() {
       // Asignar categoria Página web (10) a usuario Gerardo Omaña (1)
       { atiendeId: 1, categoriaId: 10, activo: true },
     ],
+  });
+
+  // --- Insertar Permisos de Categoría por Rol ---
+  console.log('Seeding permiso_categoria...');
+
+  const permisosData = [
+    // Ingeniero soporte 1 (ID: 2)
+    { rolId: 2, categoriaId: 1, subcategoriaId: null }, // Alumno (completa)
+    { rolId: 2, categoriaId: 2, subcategoriaId: null }, // Aspirante (completa)
+    { rolId: 2, categoriaId: 3, subcategoriaId: null }, // Colaborador (completa)
+    { rolId: 2, categoriaId: 4, subcategoriaId: null }, // Docente (completa)
+    { rolId: 2, categoriaId: 5, subcategoriaId: null }, // Plataforma Humanitas (completa)
+    { rolId: 2, categoriaId: 11, subcategoriaId: null }, // Otro (completa)
+    { rolId: 2, categoriaId: 1, subcategoriaId: 9 },   // Alumno -> Correo institucional
+    { rolId: 2, categoriaId: 1, subcategoriaId: 58 },  // Alumno -> Traslado
+    { rolId: 2, categoriaId: 3, subcategoriaId: 67 },  // Colaborador -> Altas -> Creación de correo
+
+    // Ingeniero soporte 2 (ID: 3)
+    { rolId: 3, categoriaId: 1, subcategoriaId: null }, // Alumno (completa)
+    { rolId: 3, categoriaId: 2, subcategoriaId: null }, // Aspirante (completa)
+    { rolId: 3, categoriaId: 6, subcategoriaId: null }, // App Humanitas (completa)
+    { rolId: 3, categoriaId: 7, subcategoriaId: null }, // Canvas (completa)
+    { rolId: 3, categoriaId: 3, subcategoriaId: null }, // Colaborador (completa)
+    { rolId: 3, categoriaId: 4, subcategoriaId: null }, // Docente (completa)
+    { rolId: 3, categoriaId: 5, subcategoriaId: null }, // Plataforma Humanitas (completa)
+    { rolId: 3, categoriaId: 11, subcategoriaId: null }, // Otro (completa)
+    { rolId: 3, categoriaId: 1, subcategoriaId: 8 },   // Alumno -> Aplicación móvil
+    { rolId: 3, categoriaId: 1, subcategoriaId: 27 },  // Alumno -> Finanzas -> Cobros -> En campus
+    { rolId: 3, categoriaId: 1, subcategoriaId: 58 },  // Alumno -> Traslado
+    { rolId: 3, categoriaId: 3, subcategoriaId: 70 },  // Colaborador -> Altas -> Replicar permisos
+
+    // Director CSH (ID: 1) e Ingeniero soporte 3 (ID: 4) - MISMOS PERMISOS
+    ...([1, 4].flatMap(rolId => [
+      { rolId, categoriaId: 1, subcategoriaId: 5 },   // Alumno -> Académico -> Calificaciones -> Replicar
+      { rolId, categoriaId: 1, subcategoriaId: 90 },  // Alumno -> Finanzas -> Becas -> Colaboradores
+      { rolId, categoriaId: 1, subcategoriaId: 89 },  // Alumno -> Finanzas -> Becas -> Docentes
+      { rolId, categoriaId: 3, subcategoriaId: 71 },  // Colaborador -> Bajas
+      { rolId, categoriaId: 3, subcategoriaId: 13 },  // Colaborador -> Correo -> Redireccionar
+      { rolId, categoriaId: 4, subcategoriaId: 9 },   // Docente -> Correo institucional
+      { rolId, categoriaId: 4, subcategoriaId: 92 },  // Docente -> Expediente -> Correo personal
+      { rolId, categoriaId: 4, subcategoriaId: 86 },  // Docente -> Lista negra
+      { rolId, categoriaId: 5, subcategoriaId: 40 },  // Plataforma -> Finanzas -> Notas aclaratorias
+    ])),
+
+    // Ingeniero Hubspot (ID: 16 - NUEVO)
+    { rolId: 16, categoriaId: 1, subcategoriaId: null }, // Alumno (completa)
+    { rolId: 16, categoriaId: 2, subcategoriaId: null }, // Aspirante (completa)
+    { rolId: 16, categoriaId: 9, subcategoriaId: null }, // Atom (completa)
+    { rolId: 16, categoriaId: 3, subcategoriaId: null }, // Colaborador (completa)
+    { rolId: 16, categoriaId: 4, subcategoriaId: null }, // Docente (completa)
+    { rolId: 16, categoriaId: 8, subcategoriaId: null }, // Hubspot (completa)
+    { rolId: 16, categoriaId: 5, subcategoriaId: null }, // Plataforma Humanitas (completa)
+    { rolId: 16, categoriaId: 11, subcategoriaId: null }, // Otro (completa)
+    { rolId: 16, categoriaId: 1, subcategoriaId: 58 },  // Alumno -> Traslado
+
+    // Desarrollador (ID: 6)
+    { rolId: 6, categoriaId: 10, subcategoriaId: null }, // Página web (completa)
+    { rolId: 6, categoriaId: 1, subcategoriaId: 58 },   // Alumno -> Traslado
+
+    // Contador (ID: 10)
+    { rolId: 10, categoriaId: 1, subcategoriaId: 39 },  // Alumno -> Finanzas -> Facturas
+    { rolId: 10, categoriaId: 1, subcategoriaId: 42 },  // Alumno -> Finanzas -> Registro de Pagos
+
+    // Diseñador (ID: 12)
+    { rolId: 12, categoriaId: 12, subcategoriaId: 133 }, // Marketing -> Archivos para impresión
+    { rolId: 12, categoriaId: 12, subcategoriaId: 137 }, // Marketing -> Botargas
+    { rolId: 12, categoriaId: 12, subcategoriaId: 132 }, // Marketing -> Convenios
+    { rolId: 12, categoriaId: 12, subcategoriaId: 130 }, // Marketing -> Diseño de postal
+    { rolId: 12, categoriaId: 12, subcategoriaId: 134 }, // Marketing -> Firmas
+    { rolId: 12, categoriaId: 12, subcategoriaId: 131 }, // Marketing -> Mailings
+    { rolId: 12, categoriaId: 12, subcategoriaId: 136 }, // Marketing -> Proyectos especiales
+    { rolId: 12, categoriaId: 12, subcategoriaId: 135 }, // Marketing -> Señalética
+
+    // Community manager (ID: 13)
+    { rolId: 13, categoriaId: 12, subcategoriaId: 140 }, // Marketing -> Publicación colaboradores
+    { rolId: 13, categoriaId: 12, subcategoriaId: 139 }, // Marketing -> Publicación redes sociales
+
+    // Editor (ID: 17 - NUEVO)
+    { rolId: 17, categoriaId: 12, subcategoriaId: 142 }, // Marketing -> Video institucional
+
+    // Auditor CSH (ID: 5)
+    { rolId: 5, categoriaId: 1, subcategoriaId: 58 },   // Alumno -> Traslado
+
+    // Visitante administrador (ID: 15)
+    { rolId: 15, categoriaId: 1, subcategoriaId: null }, // Alumno (completa)
+    { rolId: 15, categoriaId: 2, subcategoriaId: null }, // Aspirante (completa)
+    { rolId: 15, categoriaId: 3, subcategoriaId: null }, // Colaborador (completa)
+    { rolId: 15, categoriaId: 4, subcategoriaId: null }, // Docente (completa)
+    { rolId: 15, categoriaId: 5, subcategoriaId: null }, // Plataforma Humanitas (completa)
+    { rolId: 15, categoriaId: 11, subcategoriaId: null }, // Otro (completa)
+    { rolId: 15, categoriaId: 1, subcategoriaId: 9 },   // Alumno -> Correo institucional
+    { rolId: 15, categoriaId: 1, subcategoriaId: 58 },  // Alumno -> Traslado
+    { rolId: 15, categoriaId: 3, subcategoriaId: 67 },  // Colaborador -> Altas -> Creación correo
+  ];
+
+  await prisma.permisoCategoria.createMany({
+    data: permisosData,
+    skipDuplicates: true,
   });
 
   console.log(`Seeding finished.`);

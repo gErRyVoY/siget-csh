@@ -2,29 +2,25 @@
 
 **Tarea Actual:** Implementación de Sistema de Notificaciones en Tiempo Real y RBAC Híbrido
 
-**Estado:** En progreso - Fase 1 (Toasts y Tema) completada.
+**Estado:** En progreso - RBAC Híbrido Completado. Siguiente: Notificaciones SSE.
 
 **Pasos Completados:**
 - ✅ Análisis completo del proyecto (tecnologías, código, BD, UI/UX)
 - ✅ Creación de planes de implementación detallados
 - ✅ Limpieza de dependencias obsoletas
 - ✅ Creado sistema de changelog estructurado (`CHANGELOG.md`)
-- ✅ Implementación de sistema de toasts personalizado (reemplazo de Sonner/SweetAlert2 para notificaciones UI)
+- ✅ Implementación de sistema de toasts personalizado
 - ✅ Implementación de toggle de tema claro/oscuro con persistencia
-- ✅ Corrección de estilos de toasts (fondo, borde, posición)
+- ✅ Implementación completa de RBAC Híbrido (BD, Lógica, UI)
+- ✅ Mejoras de UI en listas de tickets (Diseño responsivo, limpieza de columnas)
 
 **Pasos Siguientes:**
-1.  **Migración de SweetAlert2 a Toast Personalizado:**
-    - Reemplazar alertas en `src/lib/ticket-wizard.ts`
-    - Reemplazar alertas en `src/lib/modal-controller.ts`
-    - Verificar funcionalidad en flujos de tickets
-2.  **Implementar Sistema de Notificaciones en Tiempo Real (SSE):**
+1.  **Implementar Sistema de Notificaciones en Tiempo Real (SSE):**
     - Integrar notificaciones con creación/actualización de tickets
     - Mejorar sistema SSE con reconexión automática
-3.  **Implementar RBAC Híbrido:**
-    - Sprint 1: Actualizar BD, crear servicios de asignación
-    - Sprint 2: Crear componentes UI, mejorar responsividad
-    - Sprint 3: Desplegar y validar con usuarios
+2.  **Optimización y Limpieza:**
+    - Revisar código muerto tras refactorizaciones
+    - Pruebas de carga para SSE
 
 **Documentos de Referencia:**
 - `CHANGELOG.md`: Registro de cambios del proyecto
@@ -133,6 +129,22 @@ Cuando el usuario me pida leer este archivo (`GEMINI.md`) al inicio de una sesi�
     *   **Mejoras Visuales y de Datos:**
         *   Se aplicó un estilo hover específico (`bg-[#797979]/40`) a las filas de las tablas en `[campus].astro`, `soporte/index.astro` y `usuario/index.astro` para mejorar la visibilidad.
         *   Se añadió el conteo de usuarios por empresa en las tarjetas de `src/pages/admin/usuarios/index.astro`, mostrando el número solo si es mayor a 0.
+*   **Implementación RBAC Híbrido (Fase 1):**
+    *   **Base de Datos:** Se actualizó `prisma/schema.prisma` agregando campos de auditoría (`createdAt`, `updatedAt`), estado (`activo`) y prioridad a `PermisoCategoria` y `AsignacionesCategorias`. Se añadieron índices para optimizar búsquedas.
+    *   **Seed:** Se actualizó `prisma/seed.ts` incluyendo los nuevos roles (`Ingeniero Hubspot`, `Editor`) y la lógica completa de población de `PermisoCategoria` con 73 permisos iniciales mapeados.
+    *   **Migración:** Se ejecutó exitosamente la migración `add_rbac_improvements` y el seed de datos.
+    *   **Verificación:** Se validó la integridad de los datos (roles y permisos) mediante script de prueba.
+*   **Implementación RBAC Híbrido (Fase 2):**
+    *   **Servicio:** Se creó `src/services/ticketAssignmentService.ts` implementando la lógica de asignación híbrida (Usuario > Rol > Fallback).
+    *   **API:** Se actualizó `src/pages/api/tickets/create.ts` para utilizar el nuevo servicio de asignación.
+    *   **Corrección:** Se corrigió un error de importación en `create.ts` que causaba fallos en el build.
+*   **Implementación RBAC Híbrido (Fase 3):**
+    *   **Componentes UI:** Se crearon `StatusBadge.astro` (badges de estado consistentes) y `SkeletonTable.astro` (loader).
+    *   **Vista de Tickets:** Se actualizó `src/pages/tickets/soporte/index.astro` con diseño responsivo (tabla en desktop, cards en móvil) y uso de los nuevos componentes.
+    *   **Dependencias:** Se instaló `date-fns` para el formateo de fechas en el servidor.
+*   **Mejoras UI (Listas de Tickets):**
+    *   **Soporte General:** Se eliminó la columna "Asunto" y se reordenaron las columnas (ID, Estatus, Solicitante, Categoría, Asignado a, Fecha) en `tickets/soporte/index.astro`.
+    *   **Mis Tickets:** Se refactorizó `tickets/soporte/usuario/index.astro` a SSR para paridad visual y funcional, aplicando el mismo diseño responsivo y orden de columnas.
 *   **Verificación:**
     *   Se ejecutó `pnpm build` exitosamente, confirmando la integridad del código.
 
