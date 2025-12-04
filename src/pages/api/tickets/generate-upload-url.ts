@@ -21,18 +21,20 @@ const s3Client = new S3Client({
 
 export const POST: APIRoute = async ({ request }) => {
     const session = await getSession(request);
-    if (!session || !session.user || !PRIVILEGED_ROLES.includes(session.user.rol?.id ?? -1)) {
-        return new Response(JSON.stringify({ message: 'No autorizado' }), { status: 403 });
+    if (!session || !session.user) {
+        return new Response(JSON.stringify({ message: 'No autorizado' }), { status: 401 });
     }
 
     try {
         const { fileName, fileType, ticketId } = await request.json();
+        const currentUserId = parseInt(session.user.id as string, 10);
+        const userRoleId = session.user.rol?.id ?? -1;
 
         if (!fileName || !fileType || !ticketId) {
             return new Response(JSON.stringify({ message: 'Faltan parámetros requeridos (fileName, fileType, ticketId)' }), { status: 400 });
         }
 
-        // Fetch ticket to get company slug for folder structure
+        // Fetch ticket to get company slug and check ownership
         const ticket = await prisma.ticket.findUnique({
             where: { id: ticketId },
             include: { empresa: { select: { slug: true } } },
@@ -40,6 +42,14 @@ export const POST: APIRoute = async ({ request }) => {
 
         if (!ticket) {
             return new Response(JSON.stringify({ message: 'Ticket no encontrado' }), { status: 404 });
+        }
+
+        // Authorization Check
+        const isPrivileged = PRIVILEGED_ROLES.includes(userRoleId);
+        const isOwner = ticket.solicitanteId === currentUserId;
+
+        if (!isPrivileged && !isOwner) {
+            return new Response(JSON.stringify({ message: 'No tienes permiso para adjuntar archivos a este ticket' }), { status: 403 });
         }
 
         // Create a unique key for the S3 object

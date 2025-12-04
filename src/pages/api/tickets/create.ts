@@ -1,7 +1,7 @@
 import type { APIRoute } from 'astro';
 import { getSession } from 'auth-astro/server';
 import { prisma } from '../../../lib/db';
-import { sendNotification } from '../notifications';
+import { sendNotification } from '../notifications/sse';
 import { findBestAgentHybrid } from '../../../services/ticketAssignmentService';
 
 export const POST: APIRoute = async ({ request }) => {
@@ -39,7 +39,32 @@ export const POST: APIRoute = async ({ request }) => {
 
     const atiendeId = assignmentResult.agentId;
     const empresaId = session.user.empresa!.id;
-    const prioridad = 'Baja';
+
+    // Determinar prioridad basada en el rol del usuario
+    let prioridad: 'Baja' | 'Media' | 'Alta' = 'Baja';
+    const nivelSoporte = session.user.rol?.nivel_soporte;
+
+    if (nivelSoporte) {
+      switch (nivelSoporte) {
+        case 'Usuario':
+          prioridad = 'Baja';
+          break;
+        case 'S-1':
+        case 'S-2':
+        case 'Desarrollador':
+        case 'Coordinador':
+        case 'Contador':
+        case 'Marketing':
+          prioridad = 'Media';
+          break;
+        case 'S-3':
+        case 'Director':
+          prioridad = 'Alta';
+          break;
+        default:
+          prioridad = 'Baja'; // Fallback
+      }
+    }
 
     let nuevoTicket;
 
@@ -86,10 +111,21 @@ export const POST: APIRoute = async ({ request }) => {
     }
 
     // Notificar
-    sendNotification({
+    // Notificar
+    const notificationPayload = {
+      type: 'ticket_created' as const,
       message: `Se ha creado un nuevo ticket #${nuevoTicket.id}`,
+      ticketId: nuevoTicket.id,
       originatorId: String(session.user.id)
-    });
+    };
+
+    const targetUsers: number[] = [];
+    if (atiendeId) {
+      targetUsers.push(atiendeId);
+    }
+
+    // Si hay agente asignado, notificar solo a él. Si no, broadcast (o lógica futura de admins)
+    sendNotification(notificationPayload, targetUsers.length > 0 ? targetUsers : undefined);
 
     return new Response(JSON.stringify(nuevoTicket), {
       status: 201,

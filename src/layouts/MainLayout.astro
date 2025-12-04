@@ -21,13 +21,13 @@ const { title } = Astro.props;
 
 const NOTIFICATION_EMPTY_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-bell">
     <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-    <path d="M10 5a2 2 0 1 1 4 0a7 7 0 0 1 4 6v3a4 4 0 0 0 2 -3v-3a7 7 0 0 1 4 -6" />
+    <path d="M10 5a2 2 0 1 1 4 0a7 7 0 0 1 4 6v3a4 4 0 0 0 2 3h-16a4 4 0 0 0 2 -3v-3a7 7 0 0 1 4 -6" />
     <path d="M9 17v1a3 3 0 0 0 6 0v-1" />
 </svg>`;
 
 const NOTIFICATION_FULL_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-bell-ringing">
     <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-    <path d="M10 5a2 2 0 1 1 4 0a7 7 0 0 1 4 6v3a4 4 0 0 0 2 -3v-3a7 7 0 0 1 4 -6" />
+    <path d="M10 5a2 2 0 1 1 4 0a7 7 0 0 1 4 6v3a4 4 0 0 0 2 3h-16a4 4 0 0 0 2 -3v-3a7 7 0 0 1 4 -6" />
     <path d="M9 17v1a3 3 0 0 0 6 0v-1" />
     <path d="M21 6.727a11.05 11.05 0 0 0 -2.794 -3.727" />
     <path d="M3 6.727a11.05 11.05 0 0 1 2.792 -3.727" />
@@ -81,7 +81,10 @@ const NOTIFICATION_FULL_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="24
 
         <ClientRouter />
     </head>
-    <body data-user-id={session?.user?.id}>
+    <body
+        data-user-id={session?.user?.id}
+        data-user-role={session?.user?.rol?.id}
+    >
         <div
             id="dashboard-wrapper"
             class="h-screen w-screen bg-background text-foreground flex group font-montse"
@@ -114,13 +117,39 @@ const NOTIFICATION_FULL_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="24
                         <ThemeToggle />
                         <div
                             id="notification-bell"
-                            class="relative cursor-pointer w-6 h-6 flex items-center justify-center"
+                            class="relative cursor-pointer w-6 h-6 flex items-center justify-center shrink-0"
                         >
-                            <NotificationEmpty />
+                            <div id="notification-icon">
+                                <NotificationEmpty />
+                            </div>
                             <span
                                 id="notification-count"
                                 class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center"
                                 style="display: none;"></span>
+
+                            <!-- Dropdown de Notificaciones -->
+                            <div
+                                id="notification-dropdown"
+                                class="absolute top-full right-0 mt-2 w-80 bg-card border border-border rounded-lg shadow-lg z-50 hidden flex-col max-h-[80vh]"
+                            >
+                                <div
+                                    class="p-3 border-b border-border font-semibold text-sm"
+                                >
+                                    Notificaciones
+                                </div>
+                                <div
+                                    id="notification-list"
+                                    class="overflow-y-auto flex-1"
+                                >
+                                    <!-- Items se inyectarán aquí -->
+                                </div>
+                                <button
+                                    id="notification-load-more"
+                                    class="p-2 text-xs text-center text-primary hover:bg-accent w-full border-t border-border hidden"
+                                >
+                                    Ver más
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </header>
@@ -149,18 +178,48 @@ const NOTIFICATION_FULL_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="24
         <script>
             import { toast } from "@/lib/toast";
 
-            if (typeof window !== "undefined") {
+            let eventSource: EventSource | null = null;
+
+            document.addEventListener("astro:page-load", () => {
                 const notificationBell =
                     document.getElementById("notification-bell");
+                const notificationIcon =
+                    document.getElementById("notification-icon");
+                const notificationDropdown = document.getElementById(
+                    "notification-dropdown",
+                );
+                const notificationList =
+                    document.getElementById("notification-list");
                 const notificationCount =
                     document.getElementById("notification-count");
+                const loadMoreBtn = document.getElementById(
+                    "notification-load-more",
+                );
+                const userRoleStr = document.body.dataset.userRole || "-1";
                 const currentUserId = document.body.dataset.userId;
+
+                if (
+                    !notificationBell ||
+                    !notificationIcon ||
+                    !notificationDropdown ||
+                    !notificationList ||
+                    !notificationCount ||
+                    !loadMoreBtn
+                ) {
+                    return;
+                }
+
+                let currentPage = 1;
                 let count = 0;
+                let isLoadingNotifications = false;
+                const PRIVILEGED_ROLES = [1, 2, 3, 4, 5, 6, 15];
+                const userRoleId = parseInt(userRoleStr, 10);
+                const isResolver = PRIVILEGED_ROLES.includes(userRoleId);
 
                 const NOTIFICATION_EMPTY_SVG = `
 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-bell">
     <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-    <path d="M10 5a2 2 0 1 1 4 0a7 7 0 0 1 4 6v3a4 4 0 0 0 2 -3v-3a7 7 0 0 1 4 -6" />
+    <path d="M10 5a2 2 0 1 1 4 0a7 7 0 0 1 4 6v3a4 4 0 0 0 2 3h-16a4 4 0 0 0 2 -3v-3a7 7 0 0 1 4 -6" />
     <path d="M9 17v1a3 3 0 0 0 6 0v-1" />
 </svg>
 `;
@@ -168,81 +227,269 @@ const NOTIFICATION_FULL_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="24
                 const NOTIFICATION_FULL_SVG = `
 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-bell-ringing">
     <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-    <path d="M10 5a2 2 0 1 1 4 0a7 7 0 0 1 4 6v3a4 4 0 0 0 2 -3v-3a7 7 0 0 1 4 -6" />
+    <path d="M10 5a2 2 0 1 1 4 0a7 7 0 0 1 4 6v3a4 4 0 0 0 2 3h-16a4 4 0 0 0 2 -3v-3a7 7 0 0 1 4 -6" />
     <path d="M9 17v1a3 3 0 0 0 6 0v-1" />
     <path d="M21 6.727a11.05 11.05 0 0 0 -2.794 -3.727" />
     <path d="M3 6.727a11.05 11.05 0 0 1 2.792 -3.727" />
 </svg>
 `;
 
-                if (notificationBell && notificationCount && currentUserId) {
-                    notificationBell.addEventListener("click", () => {
-                        count = 0;
-                        notificationCount.textContent = "";
+                const updateNotificationUI = () => {
+                    if (count > 0) {
+                        notificationCount.textContent = count.toString();
+                        notificationCount.style.display = "flex";
+                        notificationIcon.innerHTML = NOTIFICATION_FULL_SVG;
+                    } else {
                         notificationCount.style.display = "none";
-                        notificationBell.innerHTML = NOTIFICATION_EMPTY_SVG;
+                        notificationIcon.innerHTML = NOTIFICATION_EMPTY_SVG;
+                    }
+                };
+
+                const renderNotifications = (
+                    tickets: any[],
+                    append = false,
+                ) => {
+                    if (!append) {
+                        notificationList.innerHTML = "";
+                    }
+
+                    if (tickets.length === 0 && !append) {
+                        notificationList.innerHTML = `
+                            <div class="px-4 py-8 text-sm text-muted-foreground text-center flex flex-col items-center gap-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-muted-foreground/50"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12.5 17h-8.5a4 4 0 0 0 2 -3v-3a7 7 0 0 1 4 -6a2 2 0 0 1 4 0a7 7 0 0 1 4 6v3c.025 .912 .452 1.745 1.154 2.318" /><path d="M9 17v1a3 3 0 0 0 6 0v-1" /><path d="M16 19h6" /><path d="M19 16v6" /></svg>
+                                <p>No hay notificaciones nuevas.</p>
+                                <p class="text-xs opacity-70">Estás al día.</p>
+                            </div>
+                        `;
+                        loadMoreBtn.classList.add("hidden");
+                        return;
+                    }
+
+                    tickets.forEach((ticket: any) => {
+                        const item = document.createElement("a");
+                        item.href = `/tickets/view/${ticket.id}`;
+                        item.className =
+                            "block px-4 py-3 hover:bg-muted/50 transition-colors border-b border-border last:border-0";
+
+                        // Determine status color
+                        let statusColor = "bg-gray-500";
+                        if (ticket.estatusId === 2) statusColor = "bg-blue-500"; // Nuevo/Asignado
+                        if (ticket.estatusId === 1) statusColor = "bg-gray-500"; // Sin asignar
+
+                        item.innerHTML = `
+                            <div class="flex justify-between items-start mb-1">
+                                <span class="font-medium text-sm text-foreground">Ticket #${ticket.id}</span>
+                                <span class="text-xs px-2 py-0.5 rounded-full text-white ${statusColor}">${ticket.estatus?.nombre || "Estado"}</span>
+                            </div>
+                            <p class="text-sm text-muted-foreground line-clamp-2 mb-1">${ticket.descripcion}</p>
+                            <div class="flex justify-between items-center text-xs text-muted-foreground/70">
+                                <span>${ticket.solicitante.nombres} ${ticket.solicitante.apellidos}</span>
+                                <span>${ticket.categoria.nombre}</span>
+                            </div>
+                        `;
+
+                        item.addEventListener("click", () => {
+                            if (count > 0) {
+                                count--;
+                                updateNotificationUI();
+                            }
+                            notificationDropdown.classList.add("hidden");
+                        });
+
+                        notificationList.appendChild(item);
                     });
+                };
 
-                    let eventSource: EventSource | null = null;
-                    let reconnectAttempts = 0;
-                    const maxReconnectDelay = 30000;
+                const fetchNotifications = async () => {
+                    if (isLoadingNotifications) return;
+                    isLoadingNotifications = true;
+                    loadMoreBtn.textContent = "Cargando...";
+                    console.log(
+                        "[Debug] Fetching notifications page:",
+                        currentPage,
+                    );
 
-                    const connectSSE = () => {
-                        if (eventSource) eventSource.close();
-
-                        eventSource = new EventSource(
-                            `/api/notifications?userId=${currentUserId}`,
+                    try {
+                        const res = await fetch(
+                            `/api/notifications/list?page=${currentPage}&limit=5`,
                         );
-
-                        eventSource.onopen = () => {
-                            console.log("[SSE] Connected");
-                            reconnectAttempts = 0;
-                        };
-
-                        eventSource.onmessage = (event) => {
-                            // Heartbeat check
-                            if (event.data === ": heartbeat") {
-                                return;
-                            }
-
-                            const data = JSON.parse(event.data);
-                            console.log("[SSE] Notification received:", data);
-
-                            if (data.type === "connected") return;
-
-                            // Ignore notification if it was triggered by the current user
-                            if (
-                                data.originatorId &&
-                                data.originatorId.toString() === currentUserId
-                            ) {
-                                return;
-                            }
-
-                            // Show toast
-                            toast.info(data.message);
-
-                            count++;
-                            notificationCount.textContent = count.toString();
-                            notificationCount.style.display = "flex";
-                            notificationBell.innerHTML = NOTIFICATION_FULL_SVG;
-                        };
-
-                        eventSource.onerror = () => {
-                            console.log("[SSE] Connection error");
-                            eventSource?.close();
-                            const delay = Math.min(
-                                1000 * Math.pow(2, reconnectAttempts),
-                                maxReconnectDelay,
+                        console.log(
+                            "[Debug] Notifications list response status:",
+                            res.status,
+                        );
+                        if (res.ok) {
+                            const data = await res.json();
+                            console.log(
+                                "[Debug] Notifications list data:",
+                                data,
                             );
-                            reconnectAttempts++;
-                            console.log(`[SSE] Reconnecting in ${delay}ms...`);
-                            setTimeout(connectSSE, delay);
-                        };
+                            renderNotifications(data.tickets, currentPage > 1);
+
+                            if (data.hasMore) {
+                                loadMoreBtn.classList.remove("hidden");
+                                loadMoreBtn.textContent = "Ver más";
+                            } else {
+                                loadMoreBtn.classList.add("hidden");
+                            }
+                        }
+                    } catch (error) {
+                        console.error("Error fetching notifications:", error);
+                        loadMoreBtn.textContent = "Error al cargar";
+                    } finally {
+                        isLoadingNotifications = false;
+                    }
+                };
+
+                const fetchNotificationCount = async () => {
+                    try {
+                        console.log("[Debug] Fetching notification count...");
+                        const res = await fetch("/api/notifications/count");
+                        console.log(
+                            "[Debug] Notification count response status:",
+                            res.status,
+                        );
+                        if (res.ok) {
+                            const data = await res.json();
+                            console.log(
+                                "[Debug] Notification count data:",
+                                data,
+                            );
+                            count = data.count;
+                            updateNotificationUI();
+                        }
+                    } catch (error) {
+                        console.error(
+                            "Error fetching notification count:",
+                            error,
+                        );
+                    }
+                };
+
+                notificationBell.addEventListener("click", (e) => {
+                    console.log("[Debug] Bell clicked");
+                    e.stopPropagation();
+                    const isHidden =
+                        notificationDropdown.classList.contains("hidden");
+
+                    if (isHidden) {
+                        console.log("[Debug] Opening dropdown");
+                        notificationDropdown.classList.remove("hidden");
+                        notificationDropdown.classList.add("flex");
+                        currentPage = 1;
+                        fetchNotifications();
+                    } else {
+                        console.log("[Debug] Closing dropdown");
+                        notificationDropdown.classList.add("hidden");
+                        notificationDropdown.classList.remove("flex");
+                    }
+                });
+
+                document.addEventListener("click", (e) => {
+                    if (
+                        !notificationBell.contains(e.target as Node) &&
+                        !notificationDropdown.contains(e.target as Node)
+                    ) {
+                        notificationDropdown.classList.add("hidden");
+                        notificationDropdown.classList.remove("flex");
+                    }
+                });
+
+                loadMoreBtn.addEventListener("click", (e) => {
+                    e.stopPropagation();
+                    currentPage++;
+                    fetchNotifications();
+                });
+
+                fetchNotificationCount();
+
+                // SSE Logic
+                if (eventSource) {
+                    eventSource.close();
+                }
+
+                let reconnectAttempts = 0;
+                const maxReconnectDelay = 30000;
+
+                const connectSSE = () => {
+                    if (eventSource) eventSource.close();
+
+                    eventSource = new EventSource(
+                        `/api/notifications/sse?userId=${currentUserId}`,
+                    );
+
+                    eventSource.onopen = () => {
+                        console.log("[SSE] Connected");
+                        reconnectAttempts = 0;
                     };
 
-                    connectSSE();
-                }
-            }
+                    eventSource.onmessage = (event) => {
+                        if (event.data === ": heartbeat") return;
+
+                        const data = JSON.parse(event.data);
+                        if (data.type === "connected") return;
+
+                        if (
+                            data.originatorId &&
+                            data.originatorId.toString() === currentUserId
+                        ) {
+                            return;
+                        }
+
+                        toast.info(data.message, {
+                            action: {
+                                label: "Ver",
+                                onClick: () => {
+                                    if (data.ticketId) {
+                                        window.location.href = `/tickets/view/${data.ticketId}`;
+                                    }
+                                },
+                            },
+                        });
+
+                        let shouldIncrement = false;
+
+                        if (isResolver) {
+                            if (data.type === "ticket_created") {
+                                shouldIncrement = true;
+                            }
+                        } else {
+                            if (data.type === "ticket_updated") {
+                                shouldIncrement = true;
+                            }
+                        }
+
+                        if (shouldIncrement) {
+                            count++;
+                            updateNotificationUI();
+                        }
+                    };
+
+                    eventSource.onerror = (error) => {
+                        console.error("SSE Error:", error);
+                        eventSource?.close();
+                        const delay = Math.min(
+                            1000 * Math.pow(2, reconnectAttempts),
+                            maxReconnectDelay,
+                        );
+                        reconnectAttempts++;
+                        setTimeout(connectSSE, delay);
+                    };
+                };
+
+                document.addEventListener("visibilitychange", () => {
+                    if (document.visibilityState === "visible") {
+                        if (
+                            !eventSource ||
+                            eventSource.readyState === EventSource.CLOSED
+                        ) {
+                            reconnectAttempts = 0;
+                            connectSSE();
+                        }
+                    }
+                });
+
+                connectSSE();
+            });
         </script>
         <script>
             function setupSidebar() {

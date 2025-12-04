@@ -91,21 +91,36 @@ let statuses: Estatus[] = [];
 let agents: Usuario[] = [];
 const priorities = Object.values(Prioridad);
 
+// Fetch statuses for everyone
+statuses = await prisma.estatus.findMany({
+    where: { nombre: { in: ALLOWED_STATUSES } },
+});
+
 if (isPrivileged) {
-    [statuses, agents] = await Promise.all([
-        prisma.estatus.findMany({
-            where: { nombre: { in: ALLOWED_STATUSES } },
-        }),
-        prisma.usuario.findMany({
-            where: { rolId: { in: PRIVILEGED_ROLES }, activo: true },
-        }),
-    ]);
+    // Privileged users see all agents
+    agents = await prisma.usuario.findMany({
+        where: { rolId: { in: PRIVILEGED_ROLES }, activo: true },
+    });
+} else {
+    // Regular users only see the current agent (if any)
+    if (ticket.atiende) {
+        agents = [ticket.atiende];
+    }
+
+    // Regular users cannot select 'Nuevo' if it's not currently 'Nuevo'
+    if (ticket.estatus.nombre !== "Nuevo") {
+        statuses = statuses.filter((s) => s.nombre !== "Nuevo");
+    }
 }
 
 const parseFileName = (key: string) => {
     if (!key) return "archivo-desconocido";
     return key.split("/").pop()?.split("-").slice(1).join("-") || key;
 };
+
+const source = Astro.url.searchParams.get("source");
+const backLink =
+    source === "mis-tickets" ? "/tickets/soporte/usuario" : "/tickets/soporte";
 ---
 
 <MainLayout title={`Ticket #${ticket.id}`}>
@@ -160,7 +175,7 @@ const parseFileName = (key: string) => {
                         {ticket.solicitante.apellidos}
                     </p>
                     <a
-                        href="/tickets/soporte"
+                        href={backLink}
                         class="bg-muted text-muted-foreground hover:bg-muted/80 px-6 py-2 rounded-md text-sm font-semibold transition-colors"
                         >Volver a la lista</a
                     >
@@ -289,37 +304,66 @@ const parseFileName = (key: string) => {
             </div>
 
             <div class="flex justify-between items-start gap-4 mb-4 w-full">
-                <div id="attachment-area" class="space-y-2 flex-grow"></div>
-                <div
-                    id="action-buttons-container"
-                    class="flex flex-wrap justify-between items-center gap-4 flex-shrink-0 w-3/5"
-                >
+                <div class="flex-grow space-y-2">
+                    <div
+                        id="drop-zone"
+                        class="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 text-center hover:bg-muted/50 transition-colors cursor-pointer relative"
+                    >
+                        <p class="text-sm text-muted-foreground mb-4">
+                            Arrastre sus archivos aquí o haga clic para
+                            seleccionar
+                        </p>
+                        <div id="attachment-area" class="space-y-2 text-left">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div
+                id="action-buttons-container"
+                class="flex flex-wrap justify-end items-center gap-4"
+            >
+                <div class="flex gap-2 w-[176px]">
                     <button
                         type="button"
                         id="upload-files-button"
-                        class="bg-muted-foreground text-white hover:bg-muted-foreground/80 px-8 py-2 rounded-md text-sm font-semibold w-[176px]"
+                        class="bg-muted-foreground text-white hover:bg-muted-foreground/80 px-4 py-2 rounded-md text-sm font-semibold flex-grow h-10"
                     >
-                        Adjuntar archivos
-                    </button>
-                    <button
-                        type="submit"
-                        id="submit-button"
-                        class="bg-primary text-white hover:bg-primary/80 px-8 py-2 rounded-md text-sm font-semibold w-[176px]"
-                    >
-                        Guardar cambios
+                        Adjuntar
                     </button>
                     <button
                         type="button"
-                        id="delete-files-button"
-                        class="hidden bg-secondary text-white hover:bg-secondary/80 px-8 py-2 rounded-md text-sm font-semibold w-[176px]"
+                        id="google-drive-button"
+                        class="bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 px-2 rounded-md flex items-center justify-center h-10 w-10"
+                        title="Adjuntar desde Google Drive"
                     >
-                        Borrar archivos
+                        <img
+                            src="/Google_Drive_icon.svg"
+                            width="24"
+                            height="24"
+                            alt="Google Drive"
+                        />
                     </button>
                 </div>
+
+                <button
+                    type="submit"
+                    id="submit-button"
+                    class="bg-primary text-white hover:bg-primary/80 px-8 py-2 rounded-md text-sm font-semibold w-[176px] h-10"
+                >
+                    Guardar cambios
+                </button>
+                <button
+                    type="button"
+                    id="delete-files-button"
+                    class="hidden bg-secondary text-white hover:bg-secondary/80 px-8 py-2 rounded-md text-sm font-semibold w-[176px] h-10"
+                >
+                    Borrar archivos
+                </button>
             </div>
             <p
                 id="help-text"
-                class="text-sm text-secondary w-full text-right mb-8"
+                class="text-sm text-secondary w-full text-right mb-8 mt-2"
             >
                 * Máximo 5MB cada uno. Formatos permitidos: jpg, png, pdf, docx,
                 xlsx
@@ -408,7 +452,7 @@ const parseFileName = (key: string) => {
                                                             <path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.59a2 2 0 0 1-2.83-2.83l8.49-8.48" />
                                                         </svg>
                                                     </button>
-                                                    <div class="attachment-dropdown hidden absolute z-10 bg-card border rounded-md shadow-lg mt-1 py-1">
+                                                    <div class="attachment-dropdown hidden absolute z-10 bg-card border rounded-md shadow-lg mt-1 py-1 w-72 max-w-[80vw] md:w-96">
                                                         {(
                                                             entry.archivos as any
                                                         ).newFiles.map(
@@ -418,7 +462,7 @@ const parseFileName = (key: string) => {
                                                                     data-key={
                                                                         key
                                                                     }
-                                                                    class="attachment-link block px-4 py-2 text-sm text-card-foreground hover:bg-accent"
+                                                                    class="attachment-link block px-4 py-1 text-sm text-card-foreground hover:underline hover:text-[#722f37]"
                                                                 >
                                                                     {parseFileName(
                                                                         key,
@@ -513,10 +557,62 @@ const parseFileName = (key: string) => {
             </div>
         </div>
     </div>
-</MainLayout>
 
-<script define:vars={{ ticketId, ticket, statuses }}>
-    window.ticketViewData = { ticketId, ticket, statuses };
+    <!-- Status Change Confirmation Modal -->
+    <div
+        id="status-change-confirmation-modal"
+        class="fixed inset-0 z-50 flex items-center justify-center hidden"
+        role="dialog"
+        aria-modal="true"
+    >
+        <div
+            class="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            id="status-change-modal-overlay"
+        >
+        </div>
+        <div
+            class="relative bg-card border border-border rounded-lg shadow-lg p-6 w-full max-w-sm mx-4"
+        >
+            <h3 class="text-lg font-semibold mb-2">Confirmación de Estatus</h3>
+            <p class="text-sm text-muted-foreground mb-6">
+                ¿Desea cambiar el estatus del ticket a "En espera"?
+            </p>
+            <div class="flex gap-3">
+                <button
+                    id="confirm-status-change-yes"
+                    class="flex-1 bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-2 rounded-md text-sm font-semibold transition-colors"
+                >
+                    Sí
+                </button>
+                <button
+                    id="confirm-status-change-no"
+                    class="flex-1 bg-secondary text-secondary-foreground hover:bg-secondary/80 px-4 py-2 rounded-md text-sm font-semibold transition-colors"
+                >
+                    No
+                </button>
+            </div>
+        </div>
+    </div>
+</MainLayout>
+<script
+    define:vars={{
+        ticketId,
+        ticket,
+        statuses,
+        currentUserId: session?.user?.id,
+        accessToken: session?.accessToken,
+    }}
+>
+    window.ticketViewData = {
+        ticketId,
+        ticket,
+        statuses,
+        accessToken: accessToken || "",
+        currentUserId: currentUserId ? parseInt(currentUserId, 10) : null,
+        isCreator: currentUserId
+            ? parseInt(currentUserId, 10) === ticket.solicitanteId
+            : false,
+    };
 </script>
 <script>
     import {

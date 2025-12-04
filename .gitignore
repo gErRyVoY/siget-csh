@@ -37,3 +37,6 @@ package-lock.json
 
 # Documentación temporal (descomentar si no se desea versionar PDFs)
 *.pdf
+
+# Google Client Secrets
+client_secret*.json

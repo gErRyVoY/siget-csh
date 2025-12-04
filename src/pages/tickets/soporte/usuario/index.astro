@@ -28,7 +28,10 @@ const pageSize = 10;
 
 // Construir el filtro de Prisma
 const where: any = {
-    solicitanteId: parseInt(user.id), // Siempre filtrar por el usuario actual
+    OR: [
+        { solicitanteId: parseInt(String(user.id || "0")) },
+        { atiendeId: parseInt(String(user.id || "0")) },
+    ],
 };
 
 if (statusFilter !== "all") {
@@ -263,7 +266,10 @@ const tickets = await prisma.ticket.findMany({
         <div class="md:hidden space-y-4">
             {
                 tickets.map((ticket) => (
-                    <a href={`/tickets/view/${ticket.id}`} class="block">
+                    <a
+                        href={`/tickets/view/${ticket.id}?source=mis-tickets`}
+                        class="block"
+                    >
                         <div class="bg-card border border-border rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow">
                             <div class="flex justify-between items-start mb-2">
                                 <span class="font-bold text-lg text-foreground">
@@ -336,7 +342,7 @@ const tickets = await prisma.ticket.findMany({
                             tickets.map((ticket) => (
                                 <tr
                                     class="hover:bg-[#797979]/40 transition-colors cursor-pointer"
-                                    onclick={`window.location.href='/tickets/view/${ticket.id}'`}
+                                    onclick={`window.location.href='/tickets/view/${ticket.id}?source=mis-tickets'`}
                                 >
                                     <td class="px-6 py-4 font-medium text-foreground">
                                         #{ticket.id}

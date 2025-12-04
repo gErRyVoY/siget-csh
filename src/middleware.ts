@@ -43,5 +43,15 @@ export const onRequest = defineMiddleware(async (context, next) => {
   }
 
   // Si todo está en orden (ruta protegida y con sesión), continuamos.
-  return next();
+  // Si todo está en orden (ruta protegida y con sesión), continuamos.
+  // Si todo está en orden (ruta protegida y con sesión), continuamos.
+  const response = await next();
+  response.headers.set("Cross-Origin-Opener-Policy", "same-origin-allow-popups");
+  response.headers.set("Cross-Origin-Embedder-Policy", "unsafe-none");
+  response.headers.set("Referrer-Policy", "no-referrer-when-downgrade");
+
+  // Debug log to verify headers are set (remove in production)
+  // console.log(`[Middleware] Setting headers for ${context.url.pathname}`);
+
+  return response;
 });

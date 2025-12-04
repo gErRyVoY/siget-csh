@@ -2,23 +2,24 @@ import type { APIRoute } from 'astro';
 import { getSession } from 'auth-astro/server';
 import { prisma } from '@/lib/db';
 import type { Prisma, Prioridad } from '@prisma/client';
-import { sendNotification } from '../notifications';
+import { sendNotification } from '../notifications/sse';
 
 const PRIVILEGED_ROLES = [1, 2, 3, 4, 5, 6, 15];
 
 export const PATCH: APIRoute = async ({ request, locals }) => {
     const session = await getSession(request);
-    if (!session || !session.user || !PRIVILEGED_ROLES.includes(session.user.rol?.id ?? -1)) {
-        return new Response(JSON.stringify({ message: 'No autorizado' }), { status: 403 });
+    if (!session || !session.user) {
+        return new Response(JSON.stringify({ message: 'No autorizado' }), { status: 401 });
     }
 
     try {
         const data = await request.json();
         const { ticketId, newComment, newFiles, ...updateDataInput } = data;
-        const adminUserId = parseInt(session.user.id as string, 10);
+        const currentUserId = parseInt(session.user.id as string, 10);
+        const userRoleId = session.user.rol?.id ?? -1;
 
-        if (isNaN(adminUserId)) {
-            return new Response(JSON.stringify({ message: 'ID de administrador inválido en la sesión.' }), { status: 400 });
+        if (isNaN(currentUserId)) {
+            return new Response(JSON.stringify({ message: 'ID de usuario inválido en la sesión.' }), { status: 400 });
         }
 
         if (!ticketId || typeof ticketId !== 'number') {
@@ -30,12 +31,34 @@ export const PATCH: APIRoute = async ({ request, locals }) => {
             return new Response(JSON.stringify({ message: 'Ticket a actualizar no encontrado' }), { status: 404 });
         }
 
+        // Authorization Check
+        const isPrivileged = PRIVILEGED_ROLES.includes(userRoleId);
+        const isOwner = ticketBeforeUpdate.solicitanteId === currentUserId;
+
+        if (!isPrivileged && !isOwner) {
+            return new Response(JSON.stringify({ message: 'No tienes permiso para modificar este ticket' }), { status: 403 });
+        }
+
         const updateData: Prisma.TicketUpdateInput = {};
         if (updateDataInput.estatusId) updateData.estatus = { connect: { id: Number(updateDataInput.estatusId) } };
         if (updateDataInput.solicitanteId) updateData.solicitante = { connect: { id: Number(updateDataInput.solicitanteId) } };
         if (updateDataInput.atiendeId) updateData.atiende = { connect: { id: Number(updateDataInput.atiendeId) } };
         if (updateDataInput.prioridad) updateData.prioridad = updateDataInput.prioridad as Prioridad;
         if (typeof updateDataInput.archivado === 'boolean') updateData.archivado = updateDataInput.archivado;
+
+        // Auto-set status to 'Nuevo' (2) if assignee changes and status is not explicitly provided
+        if (updateDataInput.atiendeId && Number(updateDataInput.atiendeId) !== ticketBeforeUpdate.atiendeId) {
+            if (!updateDataInput.estatusId) {
+                updateData.estatus = { connect: { id: 2 } };
+            }
+        } else {
+            // Auto-set status to 'En progreso' (3) if Resolver updates a 'Nuevo' ticket and didn't change status
+            if (isPrivileged && ticketBeforeUpdate.estatusId === 2 && !updateDataInput.estatusId) {
+                if (!updateData.estatus) {
+                    updateData.estatus = { connect: { id: 3 } };
+                }
+            }
+        }
 
         if (Array.isArray(newFiles) && newFiles.length > 0) {
             const existingArchivos = (ticketBeforeUpdate as any).archivos || [];
@@ -69,7 +92,7 @@ export const PATCH: APIRoute = async ({ request, locals }) => {
                     data: {
                         ticketId: ticketId,
                         estatusId: ticketAfterUpdate.estatusId,
-                        usuarioId: adminUserId,
+                        usuarioId: currentUserId,
                         comentario: newComment || null,
                         cambios: fieldChanges.length > 0 ? { fieldChanges } : null,
                         archivos: newFiles && newFiles.length > 0 ? { newFiles } : null,
@@ -79,8 +102,8 @@ export const PATCH: APIRoute = async ({ request, locals }) => {
                 await tx.logs.create({
                     data: {
                         accion: `Actualización de Ticket (ID: ${ticketId})`,
-                        detalles: { adminUserId, comment: newComment, changes: fieldChanges, files: newFiles },
-                        usuarioId: adminUserId,
+                        detalles: { currentUserId, comment: newComment, changes: fieldChanges, files: newFiles },
+                        usuarioId: currentUserId,
                     },
                 });
             }
@@ -89,15 +112,15 @@ export const PATCH: APIRoute = async ({ request, locals }) => {
         });
 
         // Notify users
-        const notificationPayload: any = {
-            type: 'ticket_updated',
+        const notificationPayload = {
+            type: 'ticket_updated' as const,
             message: `El ticket #${ticketId} ha sido actualizado`,
             ticketId: ticketId,
             originatorId: String(session.user.id)
         };
 
         const targetUsers: number[] = [];
-        const updaterId = adminUserId;
+        const updaterId = currentUserId;
         const solicitanteId = ticketBeforeUpdate.solicitanteId;
         const atiendeId = updatedTicket.atiendeId;
 

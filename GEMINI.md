@@ -114,6 +114,21 @@ Cuando el usuario me pida leer este archivo (`GEMINI.md`) al inicio de una sesi�
 
 # Historial de Cambios (Log)
 
+## 2025-12-04 (Sesión 6)
+*   **Mejoras en Navegación y Contexto:**
+    *   **Sidebar Inteligente:** Se implementó lógica en `CollapsibleNavSection.astro` para resaltar correctamente "Mis Tickets" o "Todos" basándose en un parámetro `source` en la URL, corrigiendo el problema de pérdida de contexto al ver un ticket.
+    *   **Botón Volver Dinámico:** La vista de detalle del ticket (`view/[id].astro`) ahora redirige a la lista correcta ("Mis Tickets" o "Todos") usando el mismo parámetro `source`.
+    *   **Enlaces Actualizados:** Se actualizaron las listas de tickets (`soporte/index.astro` y `soporte/usuario/index.astro`) para incluir el parámetro `source` en los enlaces.
+*   **Optimización de Login y Sesión:**
+    *   **Experiencia de Usuario:** Se eliminó la pantalla de consentimiento forzado de Google (`prompt: "consent"`) para usuarios recurrentes.
+    *   **Persistencia:** Se extendió la duración de la sesión a 30 días en `auth.config.ts`.
+    *   **UI:** Se añadió un checkbox visual "Recordar este equipo" en la pantalla de login.
+*   **Lógica de Negocio (Tickets):**
+    *   **Prioridad Automática:** Se implementó la asignación automática de prioridad basada en el rol del usuario (`nivel_soporte`) al crear un ticket (`create.ts`).
+    *   **Google Drive:** Se integró la solicitud de permisos de Drive en el flujo de login principal y se corrigió un bug que impedía borrar archivos individuales de Drive (debido a incompatibilidad de tipos de ID).
+*   **Verificación:**
+    *   Se ejecutó `pnpm build` exitosamente.
+
 ## 2025-11-27 (Sesión 5)
 *   **Actualización de Tema Oscuro en Vistas Adicionales:**
     *   Se actualizaron los selectores de filtros en `src/pages/tickets/soporte/index.astro` para usar variables de tema (`bg-input`, `border-border`, `text-foreground`).

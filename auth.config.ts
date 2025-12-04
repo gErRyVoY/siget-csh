@@ -13,7 +13,9 @@ export default defineConfig({
       authorization: {
         params: {
           scope:
-            "openid email profile https://www.googleapis.com/auth/admin.directory.user.readonly",
+            "openid email profile https://www.googleapis.com/auth/admin.directory.user.readonly https://www.googleapis.com/auth/drive.readonly",
+          access_type: "offline",
+          response_type: "code"
         },
       },
     }),
@@ -21,7 +23,7 @@ export default defineConfig({
   secret: process.env.AUTH_SECRET,
   session: {
     strategy: "jwt",
-    maxAge: 12 * 60 * 60, // 12 horas en segundos
+    maxAge: 30 * 24 * 60 * 60, // 30 días
   },
   callbacks: {
     async signIn({ account, profile }) {
@@ -58,66 +60,66 @@ export default defineConfig({
         const userData = response.data;
 
         if (!userData.orgUnitPath || userData.orgUnitPath === "/") {
-            return '/login?error=OUNoAsignada';
+          return '/login?error=OUNoAsignada';
         }
 
         if (!userData.orgUnitPath.toLowerCase().includes('colaboradores')) {
-            return '/login?error=NoEsColaborador';
+          return '/login?error=NoEsColaborador';
         }
 
         const dbUser = await prisma.usuario.findUnique({
-            where: { mail: profile.email },
+          where: { mail: profile.email },
         });
 
         if (!dbUser) {
-            const ouParts = userData.orgUnitPath.split('/').filter(part => part);
-            const firstLevelOU = ouParts[0];
+          const ouParts = userData.orgUnitPath.split('/').filter(part => part);
+          const firstLevelOU = ouParts[0];
 
-            if (!firstLevelOU) {
-                console.error(`No se pudo extraer el primer nivel de la OU: ${userData.orgUnitPath}`);
-                return '/login?error=ErrorOU';
+          if (!firstLevelOU) {
+            console.error(`No se pudo extraer el primer nivel de la OU: ${userData.orgUnitPath}`);
+            return '/login?error=ErrorOU';
+          }
+
+          const slug = firstLevelOU
+            .toLowerCase()
+            .replace(/^campus\s+/, '')
+            .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+            .replace(/\s+/g, '-');
+
+          const empresa = await prisma.empresa.findUnique({
+            where: { slug: slug },
+          });
+
+          if (!empresa) {
+            console.error(`El slug '${slug}' derivado de la OU no corresponde a ninguna empresa en la BD.`);
+            return '/login?error=EmpresaNoMapeada';
+          }
+
+          const defaultRoleId = 14;
+
+          await prisma.usuario.create({
+            data: {
+              mail: profile.email,
+              nombres: profile.given_name || 'Usuario',
+              apellidos: profile.family_name || 'Humanitas',
+              image: userData.thumbnailPhotoUrl,
+              empresaId: empresa.id,
+              rolId: defaultRoleId,
+              activo: true,
+              vacaciones: false,
             }
-
-            const slug = firstLevelOU
-                .toLowerCase()
-                .replace(/^campus\s+/, '')
-                .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-                .replace(/\s+/g, '-');
-
-            const empresa = await prisma.empresa.findUnique({
-                where: { slug: slug },
-            });
-
-            if (!empresa) {
-                console.error(`El slug '${slug}' derivado de la OU no corresponde a ninguna empresa en la BD.`);
-                return '/login?error=EmpresaNoMapeada';
-            }
-
-            const defaultRoleId = 14;
-
-            await prisma.usuario.create({
-                data: {
-                    mail: profile.email,
-                    nombres: profile.given_name || 'Usuario',
-                    apellidos: profile.family_name || 'Humanitas',
-                    image: userData.thumbnailPhotoUrl,
-                    empresaId: empresa.id,
-                    rolId: defaultRoleId,
-                    activo: true,
-                    vacaciones: false,
-                }
-            });
-            console.log(`Usuario ${profile.email} creado exitosamente.`);
+          });
+          console.log(`Usuario ${profile.email} creado exitosamente.`);
         } else {
-            await prisma.usuario.update({
-                where: { mail: profile.email },
-                data: {
-                    nombres: profile.given_name ?? dbUser.nombres,
-                    apellidos: profile.family_name ?? dbUser.apellidos,
-                    image: userData.thumbnailPhotoUrl ?? dbUser.image,
-                    ultimo_login: new Date(),
-                }
-            });
+          await prisma.usuario.update({
+            where: { mail: profile.email },
+            data: {
+              nombres: profile.given_name ?? dbUser.nombres,
+              apellidos: profile.family_name ?? dbUser.apellidos,
+              image: userData.thumbnailPhotoUrl ?? dbUser.image,
+              ultimo_login: new Date(),
+            }
+          });
         }
 
         return true;
@@ -128,7 +130,11 @@ export default defineConfig({
       }
     },
 
-    async jwt({ token }) {
+    async jwt({ token, account }) {
+      if (account) {
+        token.accessToken = account.access_token;
+      }
+
       if (token.email) {
         const dbUser = await prisma.usuario.findUnique({
           where: { mail: token.email },
@@ -162,6 +168,8 @@ export default defineConfig({
         session.user.image = token.image as string | null;
         // Asignar los permisos a la sesión
         session.user.permisos = token.permisos as string[];
+        // Asignar access token
+        session.accessToken = token.accessToken as string;
       }
       return session;
     },
@@ -170,6 +178,7 @@ export default defineConfig({
 
 declare module "@auth/core/types" {
   interface Session {
+    accessToken?: string;
     user: Omit<DefaultSession["user"], "id" | "image"> & {
       id?: string | number;
       rol?: Rol;
@@ -182,6 +191,7 @@ declare module "@auth/core/types" {
 
 declare module "@auth/core/jwt" {
   interface JWT {
+    accessToken?: string;
     userId?: number;
     rol?: Rol;
     empresa?: Empresa;
