@@ -6,6 +6,23 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 y este proyecto adhiere a [Versionado Semántico](https://semver.org/lang/es/).
 
 
+
+## [0.4.0] - 2025-12-04
+
+### Added
+- **Login:** Checkbox "Recordar este equipo" y sesión extendida a 30 días.
+- **Drive:** Integración de solicitud de permisos de Google Drive en el login.
+- **Prioridad:** Asignación automática de prioridad basada en el rol del usuario (`nivel_soporte`).
+
+### Changed
+- **Navegación:** Sidebar y botón "Volver" ahora mantienen el contexto ("Mis Tickets" vs "Todos") usando `?source=`.
+- **Login:** Eliminación de la pantalla de consentimiento forzado de Google para usuarios recurrentes.
+- **Drive:** Corrección de IDs para permitir borrado individual de archivos de Drive.
+
+### Fixed
+- Pérdida de contexto de navegación al ver detalles de tickets.
+- Bug que impedía borrar archivos de Drive por incompatibilidad de tipos de ID.
+
 ## [0.3.0] - 2025-11-28
 
 ### Added
@@ -84,4 +101,4 @@ El proyecto usa [Versionado Semántico](https://semver.org/lang/es/):
 
 ---
 
-**Última actualización:** 2025-11-26
+**Última actualización:** 2025-12-04
