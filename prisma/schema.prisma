@@ -215,6 +215,8 @@ model Ticket {
   atiendeId             Int?
   prioridad             Prioridad
   descripcion           String?                @db.Text
+  afectado_clave        String?                @db.VarChar(20)
+  afectado_nombre       String?                @db.VarChar(150)
   empresaId             Int
   archivado             Boolean                @default(false)
   archivos              Json?                  @db.JsonB

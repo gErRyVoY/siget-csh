@@ -14,7 +14,7 @@ export const PATCH: APIRoute = async ({ request, locals }) => {
 
     try {
         const data = await request.json();
-        const { ticketId, newComment, newFiles, ...updateDataInput } = data;
+        const { ticketId, newComment, newFiles, afectado_clave, afectado_nombre, descripcion, ...updateDataInput } = data;
         const currentUserId = parseInt(session.user.id as string, 10);
         const userRoleId = session.user.rol?.id ?? -1;
 
@@ -26,7 +26,10 @@ export const PATCH: APIRoute = async ({ request, locals }) => {
             return new Response(JSON.stringify({ message: 'El ID del ticket no es válido' }), { status: 400 });
         }
 
-        const ticketBeforeUpdate = await prisma.ticket.findUnique({ where: { id: ticketId } });
+        const ticketBeforeUpdate = await prisma.ticket.findUnique({
+            where: { id: ticketId },
+            include: { estatus: true, atiende: true }
+        });
         if (!ticketBeforeUpdate) {
             return new Response(JSON.stringify({ message: 'Ticket a actualizar no encontrado' }), { status: 404 });
         }
@@ -45,6 +48,10 @@ export const PATCH: APIRoute = async ({ request, locals }) => {
         if (updateDataInput.atiendeId) updateData.atiende = { connect: { id: Number(updateDataInput.atiendeId) } };
         if (updateDataInput.prioridad) updateData.prioridad = updateDataInput.prioridad as Prioridad;
         if (typeof updateDataInput.archivado === 'boolean') updateData.archivado = updateDataInput.archivado;
+
+        if (typeof afectado_clave === 'string') updateData.afectado_clave = afectado_clave;
+        if (typeof afectado_nombre === 'string') updateData.afectado_nombre = afectado_nombre;
+        if (typeof descripcion === 'string') updateData.descripcion = descripcion;
 
         // Auto-set status to 'Nuevo' (2) if assignee changes and status is not explicitly provided
         if (updateDataInput.atiendeId && Number(updateDataInput.atiendeId) !== ticketBeforeUpdate.atiendeId) {
@@ -69,22 +76,34 @@ export const PATCH: APIRoute = async ({ request, locals }) => {
             const ticketAfterUpdate = await tx.ticket.update({
                 where: { id: ticketId },
                 data: updateData,
+                include: { estatus: true, atiende: true }
             });
 
             const fieldChanges: { field: string, oldValue: any, newValue: any }[] = [];
 
             // Explicitly check for changes in tracked fields
             if (ticketBeforeUpdate.estatusId !== ticketAfterUpdate.estatusId) {
-                fieldChanges.push({ field: 'estatusId', oldValue: ticketBeforeUpdate.estatusId, newValue: ticketAfterUpdate.estatusId });
+                fieldChanges.push({ field: 'estatusId', oldValue: ticketBeforeUpdate.estatus?.nombre, newValue: ticketAfterUpdate.estatus?.nombre });
             }
             if (ticketBeforeUpdate.prioridad !== ticketAfterUpdate.prioridad) {
                 fieldChanges.push({ field: 'prioridad', oldValue: ticketBeforeUpdate.prioridad, newValue: ticketAfterUpdate.prioridad });
             }
             if (ticketBeforeUpdate.atiendeId !== ticketAfterUpdate.atiendeId) {
-                fieldChanges.push({ field: 'atiendeId', oldValue: ticketBeforeUpdate.atiendeId, newValue: ticketAfterUpdate.atiendeId });
+                const oldAgent = ticketBeforeUpdate.atiende ? `${ticketBeforeUpdate.atiende.nombres} ${ticketBeforeUpdate.atiende.apellidos}` : 'Sin asignar';
+                const newAgent = ticketAfterUpdate.atiende ? `${ticketAfterUpdate.atiende.nombres} ${ticketAfterUpdate.atiende.apellidos}` : 'Sin asignar';
+                fieldChanges.push({ field: 'atiendeId', oldValue: oldAgent, newValue: newAgent });
             }
             if (ticketBeforeUpdate.archivado !== ticketAfterUpdate.archivado) {
                 fieldChanges.push({ field: 'archivado', oldValue: ticketBeforeUpdate.archivado, newValue: ticketAfterUpdate.archivado });
+            }
+            if (ticketBeforeUpdate.afectado_clave !== ticketAfterUpdate.afectado_clave) {
+                fieldChanges.push({ field: 'afectado_clave', oldValue: ticketBeforeUpdate.afectado_clave, newValue: ticketAfterUpdate.afectado_clave });
+            }
+            if (ticketBeforeUpdate.afectado_nombre !== ticketAfterUpdate.afectado_nombre) {
+                fieldChanges.push({ field: 'afectado_nombre', oldValue: ticketBeforeUpdate.afectado_nombre, newValue: ticketAfterUpdate.afectado_nombre });
+            }
+            if (ticketBeforeUpdate.descripcion !== ticketAfterUpdate.descripcion) {
+                fieldChanges.push({ field: 'descripcion', oldValue: ticketBeforeUpdate.descripcion, newValue: ticketAfterUpdate.descripcion });
             }
 
             if (fieldChanges.length > 0 || newComment || (newFiles && newFiles.length > 0)) {

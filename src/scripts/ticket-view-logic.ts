@@ -219,6 +219,9 @@ export function initEditForm() {
             archivado: (form.elements.namedItem('archivado') as HTMLInputElement).checked,
             newComment: newComment,
             newFiles: uploadedFileKeys,
+            afectado_clave: formData.get('afectado_clave'),
+            afectado_nombre: formData.get('afectado_nombre'),
+            descripcion: formData.get('descripcion'),
         };
 
         try {

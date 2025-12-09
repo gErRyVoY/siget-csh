@@ -13,7 +13,7 @@ export const POST: APIRoute = async ({ request }) => {
 
   try {
     const data = await request.json();
-    const { categoriaId, subcategoriaId, descripcion } = data;
+    const { categoriaId, subcategoriaId, descripcion, afectado_clave, afectado_nombre } = data;
     const parsedCategoriaId = parseInt(categoriaId, 10);
     const parsedSubcategoriaId = subcategoriaId ? parseInt(subcategoriaId, 10) : null;
 
@@ -82,6 +82,8 @@ export const POST: APIRoute = async ({ request }) => {
             categoriaId: parsedCategoriaId,
             subcategoriaId: parsedSubcategoriaId,
             descripcion: descripcion,
+            afectado_clave: afectado_clave || null,
+            afectado_nombre: afectado_nombre || null,
           },
         }),
         prisma.usuario.update({
@@ -104,6 +106,8 @@ export const POST: APIRoute = async ({ request }) => {
           categoriaId: parsedCategoriaId,
           subcategoriaId: parsedSubcategoriaId,
           descripcion: descripcion,
+          afectado_clave: afectado_clave || null,
+          afectado_nombre: afectado_nombre || null,
         },
       });
 

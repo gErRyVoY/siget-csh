@@ -31,10 +31,17 @@ export function initTicketWizard(treeData: CategoriesTreeData) {
     const descripcionArea = document.getElementById('descripcion-area');
     const descripcionTitle = document.getElementById('descripcion-title');
     const descripcionInput = document.getElementById('descripcion') as HTMLTextAreaElement;
+
+    // Afectado fields
+    const afectadoFields = document.getElementById('afectado-fields');
+    const afectadoClave = document.getElementById('afectado_clave') as HTMLInputElement;
+    const afectadoNombre = document.getElementById('afectado_nombre') as HTMLInputElement;
+    const lblClave = document.getElementById('lbl-clave');
+
     const submitButton = document.getElementById('submit-ticket') as HTMLButtonElement;
     const ticketForm = document.getElementById('ticket-form');
 
-    if (!wizard || !descripcionArea || !descripcionTitle || !descripcionInput || !submitButton || !ticketForm) {
+    if (!wizard || !descripcionArea || !descripcionTitle || !descripcionInput || !submitButton || !ticketForm || !afectadoFields || !afectadoClave || !afectadoNombre || !lblClave) {
         console.error('Wizard initialization failed: One or more required DOM elements are missing.');
         return;
     }
@@ -105,6 +112,28 @@ export function initTicketWizard(treeData: CategoriesTreeData) {
         const path = [selection.categoria?.nombre, ...selection.nodes.map(n => n.nombre)].filter(Boolean).join(' > ');
         descripcionArea.classList.remove('hidden');
         descripcionTitle.textContent = `Describe tu solicitud para: ${path}`;
+
+        // Logic for affected fields
+        if (selection.categoria) {
+            const catId = selection.categoria.id;
+            // 1: Alumno, 2: Aspirante, 3: Colaborador, 4: Docente
+            if ([1, 2, 3, 4].includes(catId)) {
+                afectadoFields!.classList.remove('hidden');
+                afectadoFields!.classList.add('grid');
+
+                let labelText = 'Clave';
+                if (catId === 1) labelText = 'Matrícula';
+                else if (catId === 2) labelText = 'Folio';
+
+                lblClave!.textContent = labelText;
+            } else {
+                afectadoFields!.classList.add('hidden');
+                afectadoFields!.classList.remove('grid');
+                afectadoClave.value = '';
+                afectadoNombre.value = '';
+            }
+        }
+
         validateForm();
         descripcionArea.scrollIntoView({ behavior: 'smooth', block: 'center' });
         descripcionInput.focus();
@@ -163,7 +192,14 @@ export function initTicketWizard(treeData: CategoriesTreeData) {
             (selection.categoria && selection.categoria.subcategorias.length === 0) ||
             (lastSelectedNode && lastSelectedNode.children.length === 0);
 
-        submitButton.disabled = !(isSelectionFinal && hasDescription);
+        let areAfectadoFieldsValid = true;
+        if (afectadoFields && !afectadoFields.classList.contains('hidden')) {
+            areAfectadoFieldsValid =
+                afectadoClave.value.trim().length > 0 &&
+                afectadoNombre.value.trim().length > 0;
+        }
+
+        submitButton.disabled = !(isSelectionFinal && hasDescription && areAfectadoFieldsValid);
     }
 
     async function handleSubmit(e: SubmitEvent) {
@@ -173,6 +209,8 @@ export function initTicketWizard(treeData: CategoriesTreeData) {
 
         const lastSelectedNode = selection.nodes[selection.nodes.length - 1];
 
+        const isAfectadoVisible = !afectadoFields!.classList.contains('hidden');
+
         try {
             const response = await fetch('/api/tickets/create', {
                 method: 'POST',
@@ -181,6 +219,8 @@ export function initTicketWizard(treeData: CategoriesTreeData) {
                     categoriaId: selection.categoria?.id,
                     subcategoriaId: lastSelectedNode?.id || null,
                     descripcion: descripcionInput.value,
+                    afectado_clave: isAfectadoVisible ? afectadoClave.value : null,
+                    afectado_nombre: isAfectadoVisible ? afectadoNombre.value : null,
                 }),
             });
 
@@ -221,6 +261,9 @@ export function initTicketWizard(treeData: CategoriesTreeData) {
     });
 
     descripcionInput.addEventListener('input', validateForm);
+    afectadoClave.addEventListener('input', validateForm);
+    afectadoNombre.addEventListener('input', validateForm);
+
     ticketForm.addEventListener('submit', handleSubmit);
 
     // --- Initial Render ---

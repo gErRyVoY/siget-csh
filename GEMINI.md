@@ -2,7 +2,7 @@
 
 **Tarea Actual:** Implementación de Sistema de Notificaciones en Tiempo Real y RBAC Híbrido
 
-**Estado:** En progreso - RBAC Híbrido Completado. Siguiente: Notificaciones SSE.
+**Estado:** En progreso - Edición Avanzada y Mejoras UI completadas.
 
 **Pasos Completados:**
 - ✅ Análisis completo del proyecto (tecnologías, código, BD, UI/UX)
@@ -15,12 +15,10 @@
 - ✅ Mejoras de UI en listas de tickets (Diseño responsivo, limpieza de columnas)
 
 **Pasos Siguientes:**
-1.  **Implementar Sistema de Notificaciones en Tiempo Real (SSE):**
-    - Integrar notificaciones con creación/actualización de tickets
-    - Mejorar sistema SSE con reconexión automática
-2.  **Optimización y Limpieza:**
+1.  **Optimización y Limpieza:**
     - Revisar código muerto tras refactorizaciones
     - Pruebas de carga para SSE
+    - Implementar carga masiva de usuarios (csv)? (Posible futuro)
 
 **Documentos de Referencia:**
 - `CHANGELOG.md`: Registro de cambios del proyecto
@@ -128,6 +126,28 @@ Cuando el usuario me pida leer este archivo (`GEMINI.md`) al inicio de una sesi�
     *   **Google Drive:** Se integró la solicitud de permisos de Drive en el flujo de login principal y se corrigió un bug que impedía borrar archivos individuales de Drive (debido a incompatibilidad de tipos de ID).
 *   **Verificación:**
     *   Se ejecutó `pnpm build` exitosamente.
+
+## 2025-12-09 (Sesión 7)
+*   **Corrección de Modo Oscuro:**
+    *   Se solucionó el problema de reseteo del tema al navegar. Se reemplazó el `MutationObserver` conflictivo en `MainLayout.astro` por un listener de `astro:after-swap`, asegurando que la preferencia del usuario persista correctamente.
+*   **Gestión de Datos de Usuario Afectado:**
+    *   **Base de Datos:** Se añadieron las columnas opcionales `afectado_clave` y `afectado_nombre` a la tabla `Ticket` mediante una migración de Prisma.
+    *   **Creación de Tickets:** Se actualizó `nuevo-ticket-csh.astro` y su lógica (`ticket-wizard.ts`) para solicitar dinámicamente "Matrícula/Folio/Clave" y "Nombre" cuando la categoría es Alumno, Aspirante, Colaborador o Docente.
+    *   **Vista de Tickets:** Se actualizó `view/[id].astro` para mostrar estos datos condicionalmente con etiquetas dinámicas, integrándolos visualmente en la sección de detalles.
+    *   **Edición de Datos:** Se habilitó la modificación de `afectado_clave` y `afectado_nombre` desde la vista de detalle.
+        *   Frontend: Campos `<input>` en lugar de texto estático.
+        *   Backend: Lógica de actualización y seguimiento en historial (`historialSolicitud`).
+    *   **Edición Avanzada:**
+        - Se convirtió el campo "Descripción" en un `<textarea>` editable.
+        - Se implementó lógica para cambiar dinámicamente la etiqueta de "Nombre del Afectado" a "Nombre del Alumno/Aspirante/etc." según la categoría.
+        - Se mejoró el Historial de Cambios para registrar modificaciones en la Descripción y usar nombres amigables para todos los campos (incluyendo las etiquetas dinámicas).
+        - Se actualizó el backend para registrar Nombres Reales (ej. "En progreso") en lugar de IDs en el historial para Estatus y Agente.
+    *   **UI Notificaciones:** Se corrigieron los colores de los badges de estatus en el dropdown de notificaciones para que coincidan con la definición global.
+    *   **Limpieza UI:** Se eliminó la columna "Solicitante" en la vista "Mis Tickets" por redundancia.
+    *   **Optimización Móvil (Filtros):** Se mejoró el diseño de los filtros en móvil (grid de 2 columnas) y se renombró 'Campus' a 'Empresa' en las vistas de tickets.
+    *   **Mejora UX (Mis Tickets):** Se implementó visualización condicional de columnas (Solicitante + Empresa) para usuarios privilegiados y un botón "Limpiar Filtros" para restablecer la vista.
+*   **Verificación:**
+    *   Pruebas de flujo completo de creación y visualización de tickets con los nuevos campos.
 
 ## 2025-11-27 (Sesión 5)
 *   **Actualización de Tema Oscuro en Vistas Adicionales:**

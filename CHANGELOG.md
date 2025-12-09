@@ -7,6 +7,21 @@ y este proyecto adhiere a [Versionado Semántico](https://semver.org/lang/es/).
 
 
 
+## [0.5.0] - 2025-12-09
+
+### Added
+- **Edición Avanzada:** Descripción de tickets editable (textarea) y etiquetas dinámicas para campos de afectado.
+- **Historial Mejorado:** Registro de cambios con nombres amigables para Estatus (ej. "Nuevo" -> "En progreso") y Agentes.
+- **Vista Privilegiada:** Columnas adicionales ("Solicitante" + "Empresa") en "Mis Tickets" para agentes y administradores.
+- **Filtros:** Botón "Limpiar Filtros" para restablecer rápidamente la vista.
+- **Datos Extra:** Campos `afectado_clave` y `afectado_nombre` en base de datos y UI.
+
+### Changed
+- **UI Móvil:** Optimización de filtros a grid de 2 columnas para ahorrar espacio.
+- **UI Tickets:** Cambio de etiqueta "Campus" a "Empresa".
+- **Limpieza UI:** Ocultación de columna "Solicitante" en "Mis Tickets" para usuarios estándar.
+- **Notificaciones:** Corrección de colores en badges de estatus del dropdown.
+
 ## [0.4.0] - 2025-12-04
 
 ### Added
@@ -101,4 +116,4 @@ El proyecto usa [Versionado Semántico](https://semver.org/lang/es/):
 
 ---
 
-**Última actualización:** 2025-12-04
+**Última actualización:** 2025-12-09

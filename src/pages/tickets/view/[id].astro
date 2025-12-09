@@ -121,6 +121,31 @@ const parseFileName = (key: string) => {
 const source = Astro.url.searchParams.get("source");
 const backLink =
     source === "mis-tickets" ? "/tickets/soporte/usuario" : "/tickets/soporte";
+
+let afectadoLabel = "Clave";
+let nombreLabel = "Nombre del Afectado";
+
+if (ticket.categoriaId === 1) {
+    afectadoLabel = "Matrícula";
+    nombreLabel = "Nombre del Alumno";
+} else if (ticket.categoriaId === 2) {
+    afectadoLabel = "Folio";
+    nombreLabel = "Nombre del Aspirante";
+} else if (ticket.categoriaId === 3) {
+    nombreLabel = "Nombre del Colaborador";
+} else if (ticket.categoriaId === 4) {
+    nombreLabel = "Nombre del Docente";
+}
+
+const fieldMap: Record<string, string> = {
+    prioridad: "Prioridad",
+    estatusId: "Estatus",
+    atiendeId: "Atiende",
+    archivado: "Archivado",
+    afectado_clave: afectadoLabel,
+    afectado_nombre: nombreLabel,
+    descripcion: "Descripción",
+};
 ---
 
 <MainLayout title={`Ticket #${ticket.id}`}>
@@ -289,16 +314,59 @@ const backLink =
                             </div>
                         </div>
                     </div>
+
+                    {
+                        (ticket.afectado_clave || ticket.afectado_nombre) && (
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 border rounded-md bg-muted/20 p-3">
+                                {ticket.afectado_clave && (
+                                    <div>
+                                        <label
+                                            for="afectado_clave"
+                                            class="block text-xs font-medium text-muted-foreground"
+                                        >
+                                            {afectadoLabel}
+                                        </label>
+                                        <input
+                                            type="text"
+                                            id="afectado_clave"
+                                            name="afectado_clave"
+                                            value={ticket.afectado_clave}
+                                            class="mt-1 block w-full rounded-md border-border bg-input p-2 text-sm font-medium"
+                                        />
+                                    </div>
+                                )}
+                                {ticket.afectado_nombre && (
+                                    <div>
+                                        <label
+                                            for="afectado_nombre"
+                                            class="block text-xs font-medium text-muted-foreground"
+                                        >
+                                            {nombreLabel}
+                                        </label>
+                                        <input
+                                            type="text"
+                                            id="afectado_nombre"
+                                            name="afectado_nombre"
+                                            value={ticket.afectado_nombre}
+                                            class="mt-1 block w-full rounded-md border-border bg-input p-2 text-sm font-medium"
+                                        />
+                                    </div>
+                                )}
+                            </div>
+                        )
+                    }
+
                     <div>
                         <label
                             class="block text-xs font-medium text-muted-foreground"
                             >Descripción</label
                         >
-                        <p
-                            class="mt-1 whitespace-pre-wrap p-2 border rounded-md bg-input/50"
+                        <textarea
+                            name="descripcion"
+                            rows="6"
+                            class="mt-1 block w-full rounded-md border-border bg-input p-2 text-sm whitespace-pre-wrap"
+                            >{ticket.descripcion}</textarea
                         >
-                            {ticket.descripcion}
-                        </p>
                     </div>
                 </div>
             </div>
@@ -396,9 +464,15 @@ const backLink =
                             const fieldChanges =
                                 (entry.cambios as any)?.fieldChanges?.filter(
                                     (c: any) =>
-                                        ["prioridad", "atiendeId"].includes(
-                                            c.field,
-                                        ),
+                                        [
+                                            "prioridad",
+                                            "atiendeId",
+                                            "estatusId",
+                                            "archivado",
+                                            "afectado_clave",
+                                            "afectado_nombre",
+                                            "descripcion",
+                                        ].includes(c.field),
                                 ) || [];
                             return (
                                 <li
@@ -489,10 +563,10 @@ const backLink =
                                                         <p>
                                                             {`• `}
                                                             <span class="font-semibold capitalize">
-                                                                {change.field.replace(
-                                                                    /Id$/,
-                                                                    "",
-                                                                )}
+                                                                {fieldMap[
+                                                                    change.field
+                                                                ] ||
+                                                                    change.field}
                                                                 :
                                                             </span>
                                                             {` '${String(change.oldValue)}' → '${String(change.newValue)}'`}

@@ -1,48 +1,69 @@
-# Astro Starter Kit: Basics
+# Sistema de Gestión de Tickets (SiGeT) V2.0
 
-```sh
-pnpm create astro@latest -- --template basics
-```
+Sistema integral para la gestión de solicitudes de soporte, mantenimiento y servicios para la Universidad Humanitas.
 
-[![Open in StackBlitz](https://developer.stackblitz.com/img/open_in_stackblitz.svg)](https://stackblitz.com/github/withastro/astro/tree/latest/examples/basics)
-[![Open with CodeSandbox](https://assets.codesandbox.io/github/button-edit-lime.svg)](https://codesandbox.io/p/sandbox/github/withastro/astro/tree/latest/examples/basics)
-[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/withastro/astro?devcontainer_path=.devcontainer/basics/devcontainer.json)
+## 🚀 Características Principales
 
-> 🧑‍🚀 **Seasoned astronaut?** Delete this file. Have fun!
+*   **Gestión de Tickets:** Creación, asignación, seguimiento y cierre de tickets.
+*   **Roles y Permisos:** Sistema RBAC híbrido (Roles + Usuarios específicos) para controlar acceso a vistas y acciones.
+*   **Notificaciones en Tiempo Real:** Sistema SSE (Server-Sent Events) para alertas instantáneas de nuevos tickets y cambios.
+*   **Historial Detallado:** Registro exhaustivo de cambios en tickets, incluyendo estatus, asignaciones y ediciones de contenido.
+*   **Archivos Adjuntos:** Integración con AWS S3 para subida segura y gestión de evidencias.
+*   **Interfaz Moderna:** UI responsiva construida con Astro, TailwindCSS y soporte nativo para **Modo Oscuro**.
 
-![just-the-basics](https://github.com/withastro/astro/assets/2244813/a0a5533c-a856-4198-8470-2d67b1d7c554)
+## 🛠️ Stack Tecnológico
 
-## 🚀 Project Structure
+*   **Frontend:** [Astro 5.10](https://astro.build) + React (para componentes interactivos complejos).
+*   **Estilos:** [TailwindCSS](https://tailwindcss.com).
+*   **Backend:** Node.js (API Routes en Astro).
+*   **Base de Datos:** PostgreSQL (vía AWS RDS) + [Prisma ORM](https://www.prisma.io).
+*   **Autenticación:** [Auth.js](https://authjs.dev) (Google OAuth).
+*   **Infraestructura:** Docker, AWS (ECR, App Runner).
 
-Inside of your Astro project, you'll see the following folders and files:
+## 📦 Instalación y Desarrollo
 
-```text
-/
-├── public/
-│   └── favicon.svg
-├── src/
-│   ├── layouts/
-│   │   └── Layout.astro
-│   └── pages/
-│       └── index.astro
-└── package.json
-```
+1.  **Clonar repositorio:**
+    ```bash
+    git clone <repo-url>
+    cd siget-csh
+    ```
 
-To learn more about the folder structure of an Astro project, refer to [our guide on project structure](https://docs.astro.build/en/basics/project-structure/).
+2.  **Instalar dependencias:**
+    ```bash
+    pnpm install
+    ```
 
-## 🧞 Commands
+3.  **Variables de Entorno:**
+    Copiar `.env.example` a `.env` y configurar las credenciales (Base de datos, Google Auth, AWS S3).
 
-All commands are run from the root of the project, from a terminal:
+4.  **Base de Datos:**
+    ```bash
+    # Generar cliente de Prisma
+    pnpm dlx prisma generate
 
-| Command                   | Action                                           |
-| :------------------------ | :----------------------------------------------- |
-| `pnpm install`             | Installs dependencies                            |
-| `pnpm dev`             | Starts local dev server at `localhost:4321`      |
-| `pnpm build`           | Build your production site to `./dist/`          |
-| `pnpm preview`         | Preview your build locally, before deploying     |
-| `pnpm astro ...`       | Run CLI commands like `astro add`, `astro check` |
-| `pnpm astro -- --help` | Get help using the Astro CLI                     |
+    # Ejecutar migraciones
+    pnpm dlx prisma migrate dev
 
-## 👀 Want to learn more?
+    # Cargar datos semilla (Roles, Categorías, Usuarios Admin)
+    pnpm run seed
+    ```
 
-Feel free to check [our documentation](https://docs.astro.build) or jump into our [Discord server](https://astro.build/chat).
+5.  **Ejecutar entorno local:**
+    ```bash
+    pnpm dev
+    ```
+
+## 🔄 Flujo de Trabajo (Git)
+
+Seguimos [Conventional Commits](https://www.conventionalcommits.org/) para los mensajes de commit.
+
+*   `feat:` Nueva funcionalidad
+*   `fix:` Corrección de bugs
+*   `docs:` Cambios en documentación
+*   `style:` Cambios de formato (espacios, puntos y comas)
+*   `refactor:` Refactorización de código sin cambios lógicos
+*   `chore:` Tareas de mantenimiento (dependencias, scripts)
+
+## 📄 Licencia
+
+Propiedad de Universidad Humanitas. Uso interno y confidencial.

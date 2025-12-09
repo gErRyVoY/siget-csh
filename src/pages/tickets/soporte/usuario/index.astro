@@ -142,11 +142,18 @@ const tickets = await prisma.ticket.findMany({
             >
                 Nuevo Ticket
             </a>
+            <button
+                id="reset-filters"
+                class="ml-2 bg-secondary text-secondary-foreground hover:bg-secondary/80 px-4 py-2 rounded-md font-medium transition-colors text-sm"
+                onclick="window.location.href = window.location.pathname"
+            >
+                Limpiar Filtros
+            </button>
         </div>
 
         <!-- Filtros -->
         <div class="bg-card p-4 rounded-lg shadow-sm border border-border">
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div>
                     <label
                         for="estatus-select"
@@ -290,13 +297,7 @@ const tickets = await prisma.ticket.findMany({
                                     </span>{" "}
                                     {ticket.categoria.nombre}
                                 </p>
-                                <p>
-                                    <span class="font-semibold">
-                                        Solicitante:
-                                    </span>{" "}
-                                    {ticket.solicitante.nombres}{" "}
-                                    {ticket.solicitante.apellidos}
-                                </p>
+
                                 <p>
                                     <span class="font-semibold">Fecha:</span>{" "}
                                     {format(
@@ -329,12 +330,31 @@ const tickets = await prisma.ticket.findMany({
                         class="bg-muted text-muted-foreground uppercase text-xs"
                     >
                         <tr>
-                            <th class="px-6 py-3 font-medium">ID</th>
-                            <th class="px-6 py-3 font-medium">Estatus</th>
-                            <th class="px-6 py-3 font-medium">Solicitante</th>
-                            <th class="px-6 py-3 font-medium">Categoría</th>
-                            <th class="px-6 py-3 font-medium">Asignado a</th>
-                            <th class="px-6 py-3 font-medium">Fecha</th>
+                            <th class="p-2 font-medium">ID</th>
+                            <th class="p-2 font-medium">Estatus</th>
+                            {
+                                isPrivileged ? (
+                                    <>
+                                        <th class="p-2 font-medium">
+                                            Solicitante
+                                        </th>
+                                        <th class="p-2 font-medium">
+                                            Categoría
+                                        </th>
+                                        <th class="p-2 font-medium">Fecha</th>
+                                    </>
+                                ) : (
+                                    <>
+                                        <th class="p-2 font-medium">
+                                            Categoría
+                                        </th>
+                                        <th class="p-2 font-medium">
+                                            Asignado a
+                                        </th>
+                                        <th class="p-2 font-medium">Fecha</th>
+                                    </>
+                                )
+                            }
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-border">
@@ -344,48 +364,80 @@ const tickets = await prisma.ticket.findMany({
                                     class="hover:bg-[#797979]/40 transition-colors cursor-pointer"
                                     onclick={`window.location.href='/tickets/view/${ticket.id}?source=mis-tickets'`}
                                 >
-                                    <td class="px-6 py-4 font-medium text-foreground">
+                                    <td class="p-2 font-medium text-foreground">
                                         #{ticket.id}
                                     </td>
-                                    <td class="px-6 py-4">
+                                    <td class="p-2">
                                         <StatusBadge
                                             status={ticket.estatus.nombre}
                                         />
                                     </td>
-                                    <td class="px-6 py-4 text-muted-foreground">
-                                        {ticket.solicitante.nombres}{" "}
-                                        {ticket.solicitante.apellidos}
-                                        <span class="text-xs block text-muted-foreground/70">
-                                            {ticket.empresa.nombre}
-                                        </span>
-                                    </td>
-                                    <td class="px-6 py-4 text-muted-foreground">
-                                        {ticket.categoria.nombre}
-                                        {ticket.subcategoria && (
-                                            <span class="text-xs block text-muted-foreground/70">
-                                                {ticket.subcategoria.nombre}
-                                            </span>
-                                        )}
-                                    </td>
-                                    <td class="px-6 py-4 text-muted-foreground">
-                                        {ticket.atiende ? (
-                                            <>
-                                                {ticket.atiende.nombres}{" "}
-                                                {ticket.atiende.apellidos}
-                                            </>
-                                        ) : (
-                                            <span class="text-muted-foreground/50 italic">
-                                                Sin asignar
-                                            </span>
-                                        )}
-                                    </td>
-                                    <td class="px-6 py-4 text-muted-foreground">
-                                        {format(
-                                            new Date(ticket.fechaalta),
-                                            "dd MMM yyyy",
-                                            { locale: es },
-                                        )}
-                                    </td>
+
+                                    {isPrivileged ? (
+                                        <>
+                                            <td class="p-2 text-muted-foreground">
+                                                {ticket.solicitante.nombres}{" "}
+                                                {ticket.solicitante.apellidos}
+                                                <span class="text-xs block text-muted-foreground/70">
+                                                    {ticket.empresa.nombre}
+                                                </span>
+                                            </td>
+                                            <td class="p-2 text-muted-foreground">
+                                                {ticket.categoria.nombre}
+                                                {ticket.subcategoria && (
+                                                    <span class="text-xs block text-muted-foreground/70">
+                                                        {
+                                                            ticket.subcategoria
+                                                                .nombre
+                                                        }
+                                                    </span>
+                                                )}
+                                            </td>
+                                            <td class="p-2 text-muted-foreground">
+                                                {format(
+                                                    new Date(ticket.fechaalta),
+                                                    "dd MMM yyyy",
+                                                    { locale: es },
+                                                )}
+                                            </td>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <td class="p-2 text-muted-foreground">
+                                                {ticket.categoria.nombre}
+                                                {ticket.subcategoria && (
+                                                    <span class="text-xs block text-muted-foreground/70">
+                                                        {
+                                                            ticket.subcategoria
+                                                                .nombre
+                                                        }
+                                                    </span>
+                                                )}
+                                            </td>
+                                            <td class="p-2 text-muted-foreground">
+                                                {ticket.atiende ? (
+                                                    <>
+                                                        {ticket.atiende.nombres}{" "}
+                                                        {
+                                                            ticket.atiende
+                                                                .apellidos
+                                                        }
+                                                    </>
+                                                ) : (
+                                                    <span class="text-muted-foreground/50 italic">
+                                                        Sin asignar
+                                                    </span>
+                                                )}
+                                            </td>
+                                            <td class="p-2 text-muted-foreground">
+                                                {format(
+                                                    new Date(ticket.fechaalta),
+                                                    "dd MMM yyyy",
+                                                    { locale: es },
+                                                )}
+                                            </td>
+                                        </>
+                                    )}
                                 </tr>
                             ))
                         }
@@ -393,7 +445,7 @@ const tickets = await prisma.ticket.findMany({
                             tickets.length === 0 && (
                                 <tr>
                                     <td
-                                        colspan="6"
+                                        colspan="5"
                                         class="px-6 py-8 text-center text-muted-foreground"
                                     >
                                         No se encontraron tickets con los
