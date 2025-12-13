@@ -22,6 +22,27 @@ y este proyecto adhiere a [Versionado Semántico](https://semver.org/lang/es/).
 - **Limpieza UI:** Ocultación de columna "Solicitante" en "Mis Tickets" para usuarios estándar.
 - **Notificaciones:** Corrección de colores en badges de estatus del dropdown.
 
+## [0.7.0] - 2025-12-12
+
+### Added
+- **Marketing Separado:** Página dedicada de creación de tickets (`tickets/marketing/nuevo.astro`) con wizard simplificado.
+- **Dashboard Marketing:** Estadísticas específicas ("Total", "Nuevos", "En Progreso") y ocultación de métricas irrelevantes.
+
+### Changed
+- **Sidebar:** Personalización de menú para roles de Marketing (ocultar soporte general, asistencia remota, base de conocimientos).
+- **Layout:** Ajuste de ancho de dashboard (`w-full`) para eliminar scroll horizontal no deseado.
+- **API:** Optimización de queries de Prisma para evitar bucles infinitos en vistas de Marketing.
+
+## [0.6.0] - 2025-12-12
+
+### Added
+- **Transferencias:** Lógica completa de creación de tickets de traslado (Backend/Frontend).
+- **Auditores:** Nuevos campos `auditor_docs` y `auditor_req` en usuarios.
+- **RBAC Usuarios:** Roles estrictos para edición de usuarios (Editor Total vs Parcial).
+
+### Changed
+- **UI Edición Usuario:** Rediseño de checkboxes (Grid/Flex responsivo), restauración de cabecera y estilos personalizados para botón "Volver".
+
 ## [0.4.0] - 2025-12-04
 
 ### Added

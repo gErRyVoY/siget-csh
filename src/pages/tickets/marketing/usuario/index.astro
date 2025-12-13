@@ -27,9 +27,16 @@ const pageSize = 10;
 // Definir estatus activos para la vista por defecto
 const activeStatusNames = ["Sin asignar", "Nuevo", "En progreso", "En espera"];
 
-// Reconstrucción segura del WHERE (AND structure)
+// Construcción segura del WHERE
+const userId = user.id ? parseInt(String(user.id)) || 0 : 0;
+
 const finalWhere: any = {
-    AND: [{ categoriaId: MARKETING_CATEGORY_ID }],
+    AND: [
+        { categoriaId: MARKETING_CATEGORY_ID },
+        {
+            OR: [{ solicitanteId: userId }, { atiendeId: userId }],
+        },
+    ],
 };
 
 // Estatus
@@ -52,7 +59,13 @@ if (subcategoryFilter !== "all") {
     }
 }
 
-if (companyFilter !== "all") {
+if (
+    companyFilter !==
+    "all" /* && isPrivileged logic if needed, but marketing usually sees all? or restricted? Assuming no restriction based on user request "Mis tickets" */
+) {
+    // User request didn't specify strict company filtering per role for Marketing view, but generic logic allows it.
+    // However, "Mis Tickets" usually implies I can see tickets assigned TO ME regardless of company, OR requested BY ME.
+    // So company filter is just a helper.
     const compId = parseInt(companyFilter);
     if (!isNaN(compId)) {
         finalWhere.AND.push({ empresaId: compId });
@@ -88,6 +101,8 @@ const filteredStatuses = statuses.filter((status) =>
 );
 
 // Subcategorías (Nivel 2: Diseño, Redes, Video)
+// Buscamos subcategorías que sean "top level" (parent null) y estén asociadas a Marketing (12)
+// O que sean explícitamente las IDs de esas áreas si las conocemos, pero mejor dinámico.
 const marketingSubcategories = await prisma.subcategoria.findMany({
     where: {
         subcategoria_categorias: {
@@ -99,7 +114,7 @@ const marketingSubcategories = await prisma.subcategoria.findMany({
     orderBy: { nombre: "asc" },
 });
 
-// Empresas (Todas)
+// Empresas con tickets de marketing en scope (opcional, o todas)
 const companies = await prisma.empresa.findMany({
     orderBy: { nombre: "asc" },
 });
@@ -148,14 +163,14 @@ const getTicketDateColor = (date: Date, status: string) => {
 };
 ---
 
-<MainLayout title="Tickets Marketing">
+<MainLayout title="Mis Tickets Marketing">
     <div class="space-y-6">
         <div class="flex justify-between items-center">
             <h1 class="text-3xl font-bold text-foreground">
-                Tickets Marketing (Todos)
+                Mis Tickets Marketing
             </h1>
             <div class="flex items-center gap-4">
-                <!-- Boton NewTicketMkt si queremos acceso directo aqui -->
+                <!-- Boton NewTicketMkt si queremos acceso directo aqui, pero ya esta en sidebar -->
                 <button
                     id="reset-filters"
                     class="bg-secondary text-secondary-foreground hover:bg-secondary/80 px-4 py-2 rounded-md font-medium transition-colors text-sm"
@@ -283,7 +298,7 @@ const getTicketDateColor = (date: Date, status: string) => {
             {
                 tickets.map((ticket) => (
                     <a
-                        href={`/tickets/view/${ticket.id}?source=marketing_todos`}
+                        href={`/tickets/view/${ticket.id}?source=marketing_usuario`}
                         class="block"
                     >
                         <div class="bg-card border border-border rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow">
@@ -306,13 +321,6 @@ const getTicketDateColor = (date: Date, status: string) => {
                                     </span>{" "}
                                     {ticket.subcategoria?.nombre ||
                                         ticket.categoria.nombre}
-                                </p>
-                                <p>
-                                    <span class="font-semibold">
-                                        Solicitante:
-                                    </span>{" "}
-                                    {ticket.solicitante.nombres}{" "}
-                                    {ticket.solicitante.apellidos}
                                 </p>
                                 <p>
                                     <span class="font-semibold">Fecha:</span>{" "}
@@ -366,7 +374,7 @@ const getTicketDateColor = (date: Date, status: string) => {
                             tickets.map((ticket) => (
                                 <tr
                                     class="hover:bg-[#797979]/40 transition-colors cursor-pointer"
-                                    onclick={`window.location.href='/tickets/view/${ticket.id}?source=marketing_todos'`}
+                                    onclick={`window.location.href='/tickets/view/${ticket.id}?source=marketing_usuario'`}
                                 >
                                     <td class="p-2 font-medium text-foreground">
                                         #{ticket.id}

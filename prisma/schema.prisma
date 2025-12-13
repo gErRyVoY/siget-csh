@@ -70,6 +70,8 @@ model Usuario {
   ultimo_login             DateTime                 @default(now()) @db.Timestamp(6)
   horario_disponibilidad   Json?                    @db.JsonB
   carga_actual             Int                      @default(0)
+  auditor_docs             Boolean                  @default(false)
+  auditor_req              Boolean                  @default(false)
   empresa                  Empresa                  @relation(fields: [empresaId], references: [id])
   rol                      Rol                      @relation(fields: [rolId], references: [id])
   asignaciones_categorias  AsignacionesCategorias[]
@@ -259,6 +261,17 @@ model Traslado {
   auditor_docsId Int?
   auditor_reqId  Int?
   especial       Boolean   @default(false)
+
+  // Validacion Auditor Documentos
+  validacion_docs        Boolean   @default(false)
+  descripcion_docs       String?   @db.Text
+
+  // Validacion Auditor Requisitos (Calificaciones y Estado de Cuenta)
+  validacion_calif       Boolean   @default(false)
+  descripcion_calif      String?   @db.Text
+  validacion_edocta      Boolean   @default(false)
+  descripcion_edocta     String?   @db.Text
+
   ticket         Ticket    @relation(fields: [ticketId], references: [id])
   origen         Empresa   @relation("Origen", fields: [origenId], references: [id])
   destino        Empresa   @relation("Destino", fields: [destinoId], references: [id])

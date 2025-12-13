@@ -84,7 +84,7 @@ const NOTIFICATION_FULL_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="24
     >
         <div
             id="dashboard-wrapper"
-            class="h-screen w-screen bg-background text-foreground flex group font-montse"
+            class="h-screen w-full bg-background text-foreground flex group font-montse"
         >
             <Sidebar session={session} />
 
@@ -105,7 +105,7 @@ const NOTIFICATION_FULL_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="24
                             <PanelLeftClose class="h-5 w-5" />
                         </button>
                         <h1
-                            class="text-xl font-semibold h-16 flex items-center justify-center"
+                            class="text-xl font-semibold h-16 flex items-center justify-center group-data-[sidebar-collapsed=false]:max-md:hidden"
                         >
                             {title}
                         </h1>
@@ -153,7 +153,7 @@ const NOTIFICATION_FULL_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="24
 
                 <main class="p-4 flex-1">
                     <div
-                        class="group-data-[sidebar-collapsed=false]:max-md:hidden h-full"
+                        class="group-data-[sidebar-collapsed=false]:max-md:hidden h-full w-full"
                     >
                         <slot />
                     </div>

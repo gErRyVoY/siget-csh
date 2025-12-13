@@ -86,13 +86,23 @@ export default defineConfig({
             .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
             .replace(/\s+/g, '-');
 
+          // Mapping specific OUs
+          if (slug === 'corporativo-humanitas') {
+            // "Corporativo Humanitas" maps to "corporativo" (ID 14)
+            // But verify if we need to set slug to 'corporativo'
+            // Yes, checking seed.ts: slug: 'corporativo' exists.
+            // But wait, variable is const? No, lines 83-87 define 'const slug'.
+            // I need to change it to 'let slug' or handle it differently.
+            // I will replace the whole block.
+          }
+
           const empresa = await prisma.empresa.findUnique({
-            where: { slug: slug },
+            where: { slug: slug === 'corporativo-humanitas' ? 'corporativo' : slug },
           });
 
           if (!empresa) {
             console.error(`El slug '${slug}' derivado de la OU no corresponde a ninguna empresa en la BD.`);
-            return '/login?error=EmpresaNoMapeada';
+            return '/login?error=AccesoNoPermitido';
           }
 
           const defaultRoleId = 14;

@@ -144,13 +144,42 @@ async function main() {
 
   // --- Insertar Descuento ---
   console.log('Seeding descuento...');
-  await prisma.descuento.createMany({
-    data: [
-      { id: 13, descripcion: 'Beca 50', monto: 50, activo: true },
-      { id: 14, descripcion: 'Beca Colab.', monto: 100, activo: true },
-      { id: 15, descripcion: 'Convenio', monto: 10, activo: true },
-      { id: 16, descripcion: 'Desc.Esp.', monto: 0, activo: true },
-    ],
+  const descuentosNumericos = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 15, 20, 25, 40];
+  const descuentosData = [
+    { id: 1, descripcion: 'N/A', monto: 0, activo: true },
+    ...descuentosNumericos.map((monto, index) => ({
+      id: index + 2,
+      descripcion: monto.toString(),
+      monto: monto,
+      activo: true
+    })),
+    { id: 18, descripcion: 'Beca 50', monto: 50, activo: true },
+    { id: 19, descripcion: 'Beca 100', monto: 100, activo: true },
+    { id: 20, descripcion: 'Convenio', monto: 10, activo: true },
+    { id: 21, descripcion: 'Especial', monto: 0, activo: true },
+  ];
+  await prisma.descuento.createMany({ data: descuentosData });
+
+  // --- Insertar PlanPago ---
+  console.log('Seeding plan_pago...');
+  const planesPago = [
+    { nombre: 'Solo colegiatura', descripcion: 'Licenciatura ejecutivo' },
+    { nombre: 'Todo incluido', descripcion: 'Licenciatura ejecutivo' },
+    { nombre: 'Equivalencia', descripcion: 'Licenciatura ejecutivo' },
+    { nombre: 'Escolarizado 1 - 10', descripcion: 'Licenciatura escolarizado' },
+    { nombre: 'Escolarizado 11 - 14', descripcion: 'Licenciatura escolarizado' },
+    { nombre: 'Escolarizado equivalencia', descripcion: 'Licenciatura escolarizado' },
+    { nombre: 'Maestría interno', descripcion: 'Maestría' },
+    { nombre: 'Maestría externo', descripcion: 'Maestría' },
+    { nombre: 'Seminario de casos', descripcion: 'Maestría' },
+    { nombre: 'Inglés interno', descripcion: 'Idiomas' },
+    { nombre: 'Inglés externo', descripcion: 'Idiomas' },
+    { nombre: 'Doctorado interno', descripcion: 'Doctorado' },
+    { nombre: 'Doctorado externo', descripcion: 'Doctorado' },
+    { nombre: 'Diplomados', descripcion: 'Diplomados' },
+  ];
+  await prisma.planPago.createMany({
+    data: planesPago.map((p, i) => ({ ...p, id: i + 1, activo: true })),
   });
 
   // --- Insertar Estatus ---

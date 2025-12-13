@@ -43,6 +43,28 @@ export const GET: APIRoute = async ({ request }) => {
       empresaId: empresa.id,
     };
 
+    // --- RBAC: Marketing Roles Restriction ---
+    // If the requester is a Marketing Team Member, they can ONLY see users with 'Marketing' support level.
+    const session = await getSession(request);
+    if (session?.user?.id) {
+      const requesterId = parseInt(session.user.id as string);
+      const requester = await prisma.usuario.findUnique({
+        where: { id: requesterId },
+        include: { rol: true }
+      });
+
+      const MARKETING_ROLES = ["Director Marketing", "Diseñador", "Community manager", "Editor"];
+      if (requester?.rol && MARKETING_ROLES.includes(requester.rol.rol)) {
+        // Filter by specific Marketing roles instead of generic 'Marketing' support level
+        // This ensures 'Director Marketing' (who has 'Director' level) is also included/visible
+        where.rol = {
+          rol: { in: MARKETING_ROLES }
+        };
+      }
+    }
+    // -----------------------------------------
+
+
     const status = params.get('status');
     if (status === 'active') where.activo = true;
     else if (status === 'inactive') where.activo = false;
@@ -118,6 +140,12 @@ export const PATCH: APIRoute = async ({ request }) => {
     }
     if (typeof updateDataInput.vacaciones === 'boolean') {
       updateData.vacaciones = updateDataInput.vacaciones;
+    }
+    if (typeof updateDataInput.auditor_docs === 'boolean') {
+      updateData.auditor_docs = updateDataInput.auditor_docs;
+    }
+    if (typeof updateDataInput.auditor_req === 'boolean') {
+      updateData.auditor_req = updateDataInput.auditor_req;
     }
     if (updateDataInput.horario_disponibilidad !== undefined) {
       updateData.horario_disponibilidad = updateDataInput.horario_disponibilidad;
@@ -204,9 +232,9 @@ export const DELETE: APIRoute = async ({ request }) => {
       await tx.logs.create({
         data: {
           accion: `Eliminación de usuario (ID: ${userIdToDelete})`,
-          detalles: { 
+          detalles: {
             adminUserId,
-            deletedUser: userToDelete 
+            deletedUser: userToDelete
           },
           usuarioId: adminUserId,
         },

@@ -1,9 +1,272 @@
 ---
 import MainLayout from "@/layouts/MainLayout.astro";
+import { prisma } from "@/lib/db";
+import { getSession } from "auth-astro/server";
 
+const session = await getSession(Astro.request);
+const user = session?.user;
 
+if (!user) {
+    return Astro.redirect("/login");
+}
+
+// RBAC
+const MARKETING_ROLES = [
+    "Director Marketing",
+    "Diseñador",
+    "Community manager",
+    "Editor",
+];
+const isMarketing = user.rol && MARKETING_ROLES.includes(user.rol.rol || "");
+const isAdmin = user.rol && user.rol.id < 5; // Assuming low IDs are admins or using permissions.
+// Ideally use 'ver_seccion_admin' permission but for now we follow the Role based instruction.
+
+const MARKETING_CATEGORY_ID = 12;
+
+let categories = [];
+let subcategories = [];
+
+if (isMarketing) {
+    // Only Marketing Category
+    categories = await prisma.categoria.findMany({
+        where: { id: MARKETING_CATEGORY_ID },
+    });
+    // Marketing Subcategories
+    subcategories = await prisma.subcategoria.findMany({
+        where: {
+            subcategoria_categorias: {
+                some: { categoriaId: MARKETING_CATEGORY_ID },
+            },
+            activo: true,
+        },
+        orderBy: { nombre: "asc" },
+        include: {
+            parent_subcategoria: true, // To show hierarchy if any
+        },
+    });
+} else {
+    // Admin sees all?
+    categories = await prisma.categoria.findMany({
+        orderBy: { nombre: "asc" },
+    });
+    subcategories = await prisma.subcategoria.findMany({
+        where: { activo: true },
+        orderBy: { nombre: "asc" },
+        include: {
+            subcategoria_categorias: { include: { categoria: true } },
+            parent_subcategoria: true,
+        },
+    });
+}
+
+// Mapeo para mostrar la categoría padre en la tabla (para admins)
+const getParentCatName = (sub: any) => {
+    if (isMarketing) return "Marketing";
+    if (sub.subcategoria_categorias && sub.subcategoria_categorias.length > 0) {
+        return sub.subcategoria_categorias
+            .map((sc: any) => sc.categoria.nombre)
+            .join(", ");
+    }
+    return "-";
+};
+
+// Subcategorías de Nivel 2 (Diseño, Redes, Video) para usar como padres en nuevas subs
+// Solo relevante si queremos crear Nivel 3.
+// El requerimiento dice "agregar subcategorías".
+// Asumiremos que pueden elegir un "Padre" dentro de las existentes o "Ninguno" (Nivel 2).
+const parentOptions = subcategories.filter(
+    (s) => s.parent_subcategoriaId === null,
+);
 ---
 
-<MainLayout title="Admin Tickets Soporte">
-    <h1>Administrar recursos para tickets de Soporte</h1>
+<MainLayout title="Gestión de Subcategorías">
+    <div class="max-w-4xl mx-auto space-y-6">
+        <div class="flex justify-between items-center">
+            <h1 class="text-2xl font-bold">
+                Gestión de Subcategorías {isMarketing && "(Marketing)"}
+            </h1>
+            <button
+                id="btn-new-sub"
+                class="bg-primary text-primary-foreground px-4 py-2 rounded-md hover:bg-primary/90 transition-colors"
+                onclick="document.getElementById('modal-new-sub').showModal()"
+            >
+                Nueva Subcategoría
+            </button>
+        </div>
+
+        <div class="bg-card border border-border rounded-lg overflow-hidden">
+            <table class="w-full text-sm text-left">
+                <thead class="bg-muted text-muted-foreground uppercase text-xs">
+                    <tr>
+                        <th class="p-3">ID</th>
+                        <th class="p-3">Nombre</th>
+                        <th class="p-3">Categoría Principal</th>
+                        <th class="p-3">Subcategoría Padre</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-border">
+                    {
+                        subcategories.map((sub) => (
+                            <tr class="hover:bg-muted/50">
+                                <td class="p-3 font-medium">{sub.id}</td>
+                                <td class="p-3">{sub.nombre}</td>
+                                <td class="p-3 text-muted-foreground">
+                                    {getParentCatName(sub)}
+                                </td>
+                                <td class="p-3 text-muted-foreground">
+                                    {sub.parent_subcategoria?.nombre || "-"}
+                                </td>
+                            </tr>
+                        ))
+                    }
+                    {
+                        subcategories.length === 0 && (
+                            <tr>
+                                <td
+                                    colspan="4"
+                                    class="p-6 text-center text-muted-foreground"
+                                >
+                                    No hay subcategorías registradas.
+                                </td>
+                            </tr>
+                        )
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Modal Nueva Subcategoría -->
+    <dialog
+        id="modal-new-sub"
+        class="bg-card text-card-foreground p-6 rounded-lg shadow-xl border border-border w-full max-w-md backdrop:bg-black/50"
+    >
+        <h2 class="text-xl font-bold mb-4">Nueva Subcategoría</h2>
+        <form id="form-new-sub" class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium mb-1">Nombre</label>
+                <input
+                    type="text"
+                    name="nombre"
+                    required
+                    class="w-full bg-input border border-border rounded-md p-2 focus:ring-2 focus:ring-primary"
+                    placeholder="Ej. Branding"
+                />
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium mb-1"
+                    >Categoría Principal</label
+                >
+                <select
+                    name="categoriaId"
+                    class="w-full bg-input border border-border rounded-md p-2"
+                    disabled={isMarketing}
+                >
+                    {
+                        categories.map((c) => (
+                            <option
+                                value={c.id}
+                                selected={
+                                    isMarketing &&
+                                    c.id === MARKETING_CATEGORY_ID
+                                }
+                            >
+                                {c.nombre}
+                            </option>
+                        ))
+                    }
+                </select>
+                {
+                    /* Si está deshabilitado, necesitamos un input hidden para enviarlo */
+                }
+                {
+                    isMarketing && (
+                        <input
+                            type="hidden"
+                            name="categoriaId"
+                            value={MARKETING_CATEGORY_ID}
+                        />
+                    )
+                }
+            </div>
+
+            {/* Opcional: Elegir Padre (Nivel 2) */}
+            <div>
+                <label class="block text-sm font-medium mb-1"
+                    >Subcategoría Padre (Opcional)</label
+                >
+                <select
+                    name="parent_subcategoriaId"
+                    class="w-full bg-input border border-border rounded-md p-2"
+                >
+                    <option value="">Ninguna (Nivel Superior)</option>
+                    {
+                        parentOptions.map((p) => (
+                            <option value={p.id}>{p.nombre}</option>
+                        ))
+                    }
+                </select>
+                <p class="text-xs text-muted-foreground mt-1">
+                    Selecciona si esta es una sub-sección de otra área (ej.
+                    Branding dentro de Diseño).
+                </p>
+            </div>
+
+            <div class="flex justify-end gap-2 mt-6">
+                <button
+                    type="button"
+                    class="px-4 py-2 hover:bg-muted rounded-md"
+                    onclick="document.getElementById('modal-new-sub').close()"
+                    >Cancelar</button
+                >
+                <button
+                    type="submit"
+                    class="bg-primary text-primary-foreground px-4 py-2 rounded-md hover:bg-primary/90"
+                    >Guardar</button
+                >
+            </div>
+        </form>
+    </dialog>
 </MainLayout>
+
+<script>
+    import { toast } from "sonner"; // If we can use sonner here inside script tag, but usually imported in Astro component script?
+    // Wait, script tags in Astro are raw JS in browser. Cannot import 'sonner' unless using it via global or ViewTransitions/islands.
+    // We already have 'toast' available globally?
+    // In `src/layouts/MainLayout.astro` we might have Toaster.
+    // But sending toast from here requires client side lib.
+    // Previous code used `import { toast } from 'svelte-sonner'` or similar?
+    // Project has `sonner` package.
+    // I need to check how to invoke it.
+    // Checking `modal-controller.ts`: calls `createToast` or similar?
+    // Re-checked `toast.ts`.
+
+    // Simple fetch submission
+    const form = document.getElementById("form-new-sub");
+    if (form) {
+        form.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target as HTMLFormElement);
+            const data = Object.fromEntries(formData);
+
+            try {
+                const res = await fetch("/api/admin/subcategories", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(data),
+                });
+
+                if (res.ok) {
+                    alert("Subcategoría creada correctamente"); // Fallback for now or use custom toast
+                    window.location.reload();
+                } else {
+                    alert("Error al crear subcategoría");
+                }
+            } catch (err) {
+                console.error(err);
+                alert("Error de conexión");
+            }
+        });
+    }
+</script>

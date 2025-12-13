@@ -11,6 +11,7 @@ interface ModalConfig {
     loadFormData: (data: Record<string, any>) => void;
     successMessage?: string;
     onSuccess?: () => void;
+    onSubmit?: (data: Record<string, any>) => Promise<void>;
 }
 
 /**
@@ -72,9 +73,19 @@ export function setupModal(config: ModalConfig): void {
         save();
     });
 
-    form.addEventListener('submit', (e: SubmitEvent) => {
+    form.addEventListener('submit', async (e: SubmitEvent) => {
         e.preventDefault();
         if (!validate(true)) return; // Pass true to show all errors on submit attempt
+
+        if (config.onSubmit) {
+            try {
+                await config.onSubmit(getFormData());
+            } catch (error) {
+                console.error('Error in modal submission:', error);
+                toast.error('Ocurrió un error al enviar el formulario.');
+                return;
+            }
+        }
 
         // Show success toast
         toast.success(successMessage || 'Operación exitosa', { duration: 3000 });

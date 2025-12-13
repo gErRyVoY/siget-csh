@@ -2,7 +2,7 @@
 import MainLayout from "@/layouts/MainLayout.astro";
 import { prisma } from "@/lib/db";
 import { getSession } from "auth-astro/server";
-import { format } from "date-fns";
+import { format, differenceInDays } from "date-fns";
 import { es } from "date-fns/locale";
 import StatusBadge from "@/components/ui/StatusBadge.astro";
 import SkeletonTable from "@/components/ui/SkeletonTable.astro";
@@ -26,30 +26,39 @@ const assigneeFilter = url.searchParams.get("assignee") || "all";
 const page = parseInt(url.searchParams.get("page") || "1");
 const pageSize = 10;
 
-// Construir el filtro de Prisma
-const where: any = {
+// Definir estatus activos para la vista por defecto
+const activeStatusNames = ["Sin asignar", "Nuevo", "En progreso", "En espera"];
+
+// Scope base: Tickets propios o asignados
+const baseWhere: any = {
     OR: [
-        { solicitanteId: parseInt(String(user.id || "0")) },
-        { atiendeId: parseInt(String(user.id || "0")) },
+        { solicitanteId: user.id ? parseInt(String(user.id)) : 0 },
+        { atiendeId: user.id ? parseInt(String(user.id)) : 0 },
     ],
 };
 
+// Lógica de filtro de Estatus (Principal)
+let statusWhere: any = {};
 if (statusFilter !== "all") {
-    where.estatusId = parseInt(statusFilter);
+    statusWhere = { estatusId: parseInt(statusFilter) };
 } else {
-    // Por defecto, excluir tickets cerrados si no se especifica filtro?
-    // La lógica original de usuario/index.astro excluía Cancelado, Duplicado, Solucionado en los filtros de opciones,
-    // pero en el fetch incluía una lógica compleja.
-    // Vamos a mantenerlo simple: Mostrar todos por defecto, o seguir la lógica de "Mis Tickets" que usualmente muestra los activos.
-    // El script original tenía: if (selectedStatusId === "all" || !closedStatuses.includes(...)) url += `&exclude_statuses=...`
-    // Repliquemos esa lógica: Si es "all", excluir cerrados.
-    where.estatus = {
-        nombre: {
-            notIn: ["Cancelado", "Duplicado", "Solucionado"],
+    // Por defecto mostrar solo activos
+    statusWhere = {
+        estatus: {
+            nombre: {
+                in: activeStatusNames,
+            },
         },
     };
 }
 
+// Construir el filtro principal para la lista de tickets
+const where: any = {
+    ...baseWhere,
+    ...statusWhere,
+};
+
+// Añadir otros filtros si están presentes
 if (categoryFilter !== "all") {
     where.categoriaId = parseInt(categoryFilter);
 }
@@ -66,7 +75,12 @@ if (assigneeFilter !== "all") {
     }
 }
 
-// Obtener datos para los selectores
+// Obtener datos para los selectores (DINÁMICOS basados en Estatus + Scope)
+const dropdownScope = {
+    ...baseWhere,
+    ...statusWhere,
+};
+
 const statuses = await prisma.estatus.findMany({
     orderBy: { nombre: "asc" },
 });
@@ -85,24 +99,39 @@ const filteredStatuses = statuses.filter((status) =>
     allowedStatuses.includes(status.nombre),
 );
 
-// Categorías disponibles (podríamos filtrar solo las usadas por el usuario, pero todas está bien)
+// Categorías disponibles (solo las que tienen tickets en el estatus/scope actual)
 const categories = await prisma.categoria.findMany({
-    where: { activo: true },
+    where: {
+        activo: true,
+        tickets: {
+            some: dropdownScope,
+        },
+    },
     orderBy: { nombre: "asc" },
 });
 
-// Empresas (solo si es privilegiado)
+// Empresas (solo si es privilegiado y tienen tickets en scope)
 const companies = isPrivileged
     ? await prisma.empresa.findMany({
+          where: {
+              tickets: {
+                  some: dropdownScope,
+              },
+          },
           orderBy: { nombre: "asc" },
       })
     : [];
 
-// Agentes (para filtro de atiende)
+// Agentes (solo los que tienen tickets asignados en scope, o todos los posibles agentes?
+// User said: "solo deben contener los valores disponibles de la lista de tickets que se muestran"
+// So strictly filtered by tickets present.
 const agents = await prisma.usuario.findMany({
     where: {
         rolId: { in: PRIVILEGED_ROLES },
         activo: true,
+        tickets_atendidos: {
+            some: dropdownScope, // Filter agents who actually have tickets in this view
+        },
     },
     orderBy: { nombres: "asc" },
 });
@@ -128,6 +157,20 @@ const tickets = await prisma.ticket.findMany({
     skip: (page - 1) * pageSize,
     take: pageSize,
 });
+
+const getTicketDateColor = (date: Date, status: string) => {
+    const activeStatuses = ["Sin asignar", "Nuevo", "En progreso", "En espera"];
+    if (!activeStatuses.includes(status)) return "text-muted-foreground";
+
+    const days = differenceInDays(new Date(), new Date(date));
+
+    if (days <= 1) return "text-green-600 dark:text-green-500 font-medium";
+    if (days >= 3 && days <= 5)
+        return "text-yellow-600 dark:text-yellow-500 font-medium";
+    if (days >= 7) return "text-red-600 dark:text-red-500 font-bold";
+
+    return "text-muted-foreground";
+};
 ---
 
 <MainLayout title="Mis Tickets">
@@ -136,19 +179,21 @@ const tickets = await prisma.ticket.findMany({
             <h1 class="text-3xl font-bold text-foreground">
                 Mis Tickets de Soporte
             </h1>
-            <a
-                href="/tickets/soporte/nuevo-ticket-csh"
-                class="bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-2 rounded-md font-medium transition-colors"
-            >
-                Nuevo Ticket
-            </a>
-            <button
-                id="reset-filters"
-                class="ml-2 bg-secondary text-secondary-foreground hover:bg-secondary/80 px-4 py-2 rounded-md font-medium transition-colors text-sm"
-                onclick="window.location.href = window.location.pathname"
-            >
-                Limpiar Filtros
-            </button>
+            <div class="flex items-center gap-4">
+                <a
+                    href="/tickets/soporte/nuevo-ticket-csh"
+                    class="bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-2 rounded-md font-medium transition-colors"
+                >
+                    Nuevo Ticket
+                </a>
+                <button
+                    id="reset-filters"
+                    class="bg-secondary text-secondary-foreground hover:bg-secondary/80 px-4 py-2 rounded-md font-medium transition-colors text-sm"
+                    onclick="window.location.href = window.location.pathname"
+                >
+                    Limpiar Filtros
+                </button>
+            </div>
         </div>
 
         <!-- Filtros -->
@@ -300,11 +345,18 @@ const tickets = await prisma.ticket.findMany({
 
                                 <p>
                                     <span class="font-semibold">Fecha:</span>{" "}
-                                    {format(
-                                        new Date(ticket.fechaalta),
-                                        "dd/MM/yyyy",
-                                        { locale: es },
-                                    )}
+                                    <span
+                                        class={getTicketDateColor(
+                                            ticket.fechaalta,
+                                            ticket.estatus.nombre,
+                                        )}
+                                    >
+                                        {format(
+                                            new Date(ticket.fechaalta),
+                                            "dd/MM/yyyy",
+                                            { locale: es },
+                                        )}
+                                    </span>
                                 </p>
                             </div>
                         </div>

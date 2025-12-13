@@ -11,6 +11,7 @@ const { searchParams } = Astro.url;
 const error = searchParams.get("error");
 
 let errorMessage: { title: string; message: string } | null = null;
+let isAccessDeniedError = false;
 
 if (error) {
     switch (error) {
@@ -27,6 +28,14 @@ if (error) {
                 title: "Acceso denegado",
                 message:
                     "Su correo no puede ser usado para usar éste servicio.",
+            };
+            break;
+        case "AccesoNoPermitido":
+            isAccessDeniedError = true;
+            errorMessage = {
+                title: "Acceso denegado",
+                message:
+                    "Contacte al Centro Soporte para que le brinden acceso a ésta plataforma.",
             };
             break;
         case "NoToken":
@@ -87,7 +96,12 @@ if (error) {
                             </h1>
                         ) : (
                             <div
-                                class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded-md"
+                                class:list={[
+                                    "border-l-4 p-4 rounded-md",
+                                    isAccessDeniedError
+                                        ? "bg-secondary/10 border-secondary text-secondary"
+                                        : "bg-red-100 border-red-500 text-red-700",
+                                ]}
                                 role="alert"
                             >
                                 <p class="font-bold">{errorMessage.title}</p>

@@ -34,7 +34,7 @@ export async function findBestAgentHybrid(
     const specificAgents = await findAgentsBySpecificAssignment(categoriaId, subcategoriaId);
 
     if (specificAgents.length > 0) {
-        const agent = await selectBestAgent(specificAgents, solicitanteId);
+        const agent = await selectBestAgent(specificAgents, solicitanteId, categoriaId);
         if (agent) {
             console.log(`[Assignment] Agente encontrado por asignación específica: ${agent.id}`);
             return { agentId: agent.id, assignmentType: 'specific' };
@@ -45,123 +45,81 @@ export async function findBestAgentHybrid(
     const roleAgents = await findAgentsByRolePermissions(categoriaId, subcategoriaId);
 
     if (roleAgents.length > 0) {
-        const agent = await selectBestAgent(roleAgents, solicitanteId);
+        const agent = await selectBestAgent(roleAgents, solicitanteId, categoriaId);
         if (agent) {
             console.log(`[Assignment] Agente encontrado por permiso de rol: ${agent.id}`);
             return { agentId: agent.id, assignmentType: 'role' };
         }
     }
 
-    // PASO 3: Fallback a lógica anterior
-    console.warn(`[Assignment] No se encontraron permisos específicos, usando fallback`);
-    const fallbackAgent = await findAgentByFallback(solicitanteId, categoriaId);
-
-    if (fallbackAgent) {
-        return { agentId: fallbackAgent, assignmentType: 'fallback' };
+    // PASO 3: Fallback (si no hay reglas, usar lógica default antigua)
+    const fallbackId = await findAgentByFallback(solicitanteId, categoriaId);
+    if (fallbackId) {
+        console.log(`[Assignment] Agente encontrado por fallback: ${fallbackId}`);
+        return { agentId: fallbackId, assignmentType: 'fallback' };
     }
 
-    console.warn(`[Assignment] No se encontró ningún agente disponible`);
-    return { agentId: null, assignmentType: 'none', reason: 'No agents available' };
+    return { agentId: null, assignmentType: 'none', reason: 'No se encontraron agentes disponibles' };
 }
 
-/**
- * Busca agentes con asignación específica para la categoría/subcategoría
- */
-async function findAgentsBySpecificAssignment(
-    categoriaId: number,
-    subcategoriaId?: number | null
-): Promise<AgentWithRelations[]> {
+// ------------------------------------------------------------------
+// HELPERS
+// ------------------------------------------------------------------
+
+async function findAgentsBySpecificAssignment(catId: number, subId?: number | null): Promise<AgentWithRelations[]> {
     const assignments = await prisma.asignacionesCategorias.findMany({
         where: {
-            activo: true,
-            OR: buildCategorySubcategoryFilter(categoriaId, subcategoriaId),
+            categoriaId: catId,
+            subcategoriaId: subId ?? null,
+            activo: true
         },
         include: {
-            atiende: {
-                include: { rol: true },
-            },
-        },
-        orderBy: {
-            prioridad: 'desc', // Mayor prioridad primero
-        },
+            usuario: {
+                include: { rol: true }
+            }
+        }
     });
 
+    // Filtrar usuarios inactivos o vacacionando
     return assignments
-        .map(a => a.atiende)
-        .filter(u => u.activo && !u.vacaciones);
+        .map(a => a.usuario)
+        .filter(u => u.activo && !u.vacaciones) as AgentWithRelations[];
 }
 
-/**
- * Busca agentes cuyos roles tienen permiso para la categoría/subcategoría
- */
-async function findAgentsByRolePermissions(
-    categoriaId: number,
-    subcategoriaId?: number | null
-): Promise<AgentWithRelations[]> {
+async function findAgentsByRolePermissions(catId: number, subId?: number | null): Promise<AgentWithRelations[]> {
     const permissions = await prisma.permisoCategoria.findMany({
         where: {
-            activo: true,
-            OR: buildCategorySubcategoryFilter(categoriaId, subcategoriaId),
+            categoriaId: catId,
+            subcategoriaId: subId ?? null,
+            activo: true
         },
-        include: {
-            rol: true,
-        },
-        orderBy: {
-            prioridad: 'desc',
-        },
+        select: { rolId: true }
     });
 
-    if (permissions.length === 0) {
-        return [];
-    }
+    if (permissions.length === 0) return [];
 
-    const roleIds = [...new Set(permissions.map(p => p.rolId))];
+    const roleIds = permissions.map(p => p.rolId);
 
     return await prisma.usuario.findMany({
         where: {
-            activo: true,
-            vacaciones: false,
             rolId: { in: roleIds },
+            activo: true,
+            vacaciones: false
         },
-        include: { rol: true },
-    });
-}
-
-/**
- * Construye el filtro OR para categoría/subcategoría
- */
-function buildCategorySubcategoryFilter(
-    categoriaId: number,
-    subcategoriaId?: number | null
-) {
-    const filters: any[] = [];
-
-    // Permiso específico a subcategoría
-    if (subcategoriaId) {
-        filters.push({
-            categoriaId,
-            subcategoriaId,
-        });
-    }
-
-    // Permiso a categoría completa (subcategoriaId = null)
-    filters.push({
-        categoriaId,
-        subcategoriaId: null,
-    });
-
-    return filters.filter(Boolean);
+        include: { rol: true }
+    }) as AgentWithRelations[];
 }
 
 /**
  * Selecciona el mejor agente de una lista según:
  * 1. No sea el solicitante
- * 2. Esté en horario laboral
+ * 2. Esté en horario laboral (excepto Marketing)
  * 3. Tenga menor carga de trabajo
  */
 async function selectBestAgent(
     agents: AgentWithRelations[],
-    solicitanteId: number
+    solicitanteId: number,
+    categoriaId: number
 ): Promise<AgentWithRelations | null> {
     // Filtrar solicitante
     const filtered = agents.filter(a => a.id !== solicitanteId);
@@ -170,19 +128,25 @@ async function selectBestAgent(
         return null;
     }
 
-    // Filtrar por horario
-    const available = filterBySchedule(filtered);
+    // Filtrar por horario (Ignorar para Marketing ID 12)
+    const MARKETING_CATEGORY_ID = 12;
+    let available = filtered;
+
+    if (categoriaId !== MARKETING_CATEGORY_ID) {
+        available = filterBySchedule(filtered);
+    } else {
+        // Para marketing, si queremos solo "activos" ya lo filtró el query anterior.
+        // Podríamos agregar chequeo extra, pero asumimos activos.
+    }
 
     if (available.length === 0) {
-        console.warn(`[Assignment] Ningún agente está en horario laboral`);
-        // Opcional: Si nadie está en horario, ¿asignamos al de menor carga igual?
-        // Por ahora retornamos null para que caiga en fallback o sin asignar
-        return null;
+        return null; // Nadie disponible por horario
     }
 
     // Ordenar por carga de trabajo
     available.sort((a, b) => a.carga_actual - b.carga_actual);
 
+    // Retornar el de menor carga
     return available[0];
 }
 
@@ -191,11 +155,12 @@ async function selectBestAgent(
  */
 function filterBySchedule(agents: AgentWithRelations[]): AgentWithRelations[] {
     const now = new Date();
+    // Obtener nombre del día en español (lunes, martes...)
     const dayOfWeekName = now
         .toLocaleString('es-MX', { weekday: 'long', timeZone: 'America/Mexico_City' })
         .toLowerCase()
         .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, "");
+        .replace(/[\u0300-\u036f]/g, ""); // Remover acentos si hay
 
     const currentTime = now.toLocaleTimeString('es-MX', {
         hour: '2-digit',
@@ -206,6 +171,8 @@ function filterBySchedule(agents: AgentWithRelations[]): AgentWithRelations[] {
 
     return agents.filter(agent => {
         if (!agent.horario_disponibilidad || typeof agent.horario_disponibilidad !== 'object') {
+            // Si no tiene horario definido, asumimos NO disponible o Disponible? 
+            // La lógica previa era estricta: si no hay horario, no asigna.
             return false;
         }
 
@@ -213,7 +180,7 @@ function filterBySchedule(agents: AgentWithRelations[]): AgentWithRelations[] {
         const daySchedule = schedule[dayOfWeekName];
 
         if (!daySchedule || !daySchedule.inicio || !daySchedule.fin) {
-            return false;
+            return false; // No trabaja hoy
         }
 
         return currentTime >= daySchedule.inicio && currentTime <= daySchedule.fin;
@@ -227,23 +194,24 @@ async function findAgentByFallback(
     solicitanteId: number,
     categoriaId: number
 ): Promise<number | null> {
-    // Aquí podríamos implementar una lógica simple de "asignar a cualquiera de soporte nivel 1"
-    // o simplemente retornar null para que el ticket quede "Sin asignar"
-
-    // Ejemplo simple: Buscar cualquier S_1 disponible
-    const fallbackAgent = await prisma.usuario.findFirst({
+    // Buscar agentes de soporte general (S-1) que estén disponibles
+    const fallbackAgents = await prisma.usuario.findMany({
         where: {
             activo: true,
             vacaciones: false,
             rol: {
-                nivel_soporte: 'S_1'
+                nivel_soporte: 'S_1' // Usar string literal exacto del enum
             },
             id: { not: solicitanteId }
         },
+        include: { rol: true },
         orderBy: {
             carga_actual: 'asc'
         }
     });
 
-    return fallbackAgent ? fallbackAgent.id : null;
+    // Validar horario también para ellos
+    const available = filterBySchedule(fallbackAgents as AgentWithRelations[]);
+
+    return available.length > 0 ? available[0].id : null;
 }

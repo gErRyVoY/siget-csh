@@ -644,6 +644,20 @@ import {
                     el.textContent = "";
                 });
             },
+            onSubmit: async (formData) => {
+                const response = await fetch("/api/tickets/transfer", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(formData),
+                });
+
+                if (!response.ok) {
+                    const res = await response.json();
+                    throw new Error(
+                        res.message || "Error al enviar la solicitud.",
+                    );
+                }
+            },
         });
 
         // Setup specific features after common setup
