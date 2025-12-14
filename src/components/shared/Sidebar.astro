@@ -39,6 +39,14 @@ const canSeeAllTickets = permisos.includes("ver_todos_tickets");
 const cshHref = "/tickets/soporte/nuevo-ticket-csh";
 const isCshActive = pathname === cshHref;
 
+const isMarketingDirector = session?.user?.rol?.rol === "Director Marketing";
+
+const isMarketingStaff = ["Diseñador", "Community manager", "Editor"].includes(
+    session?.user?.rol?.rol || "",
+);
+
+const isMarketingRole = isMarketingDirector || isMarketingStaff;
+
 const mainNavItems = [
     {
         href: "https://my.anydesk.com/download/DftqvrQy/AnyDesk_Universidad_Humanitas.exe",
@@ -55,14 +63,19 @@ const mainNavItems = [
         label: "Horario de atención",
         icon: OfficeHours,
     },
-];
-
-const isMarketingRole = [
-    "Director Marketing",
-    "Diseñador",
-    "Community manager",
-    "Editor",
-].includes(session?.user?.rol?.rol || "");
+].filter((item) => {
+    // Director Marketing: Solo Horario
+    if (isMarketingDirector) {
+        return item.label === "Horario de atención";
+    }
+    // Staff Marketing: Horario y Asistencia remota
+    if (isMarketingStaff) {
+        return ["Horario de atención", "Asistencia remota"].includes(
+            item.label,
+        );
+    }
+    return true;
+});
 
 let ticketSections = [
     {
@@ -122,6 +135,13 @@ if (!canSeeAllTickets) {
         }
         return section;
     });
+}
+
+// Ocultar sección de soporte general para roles de marketing
+if (isMarketingRole) {
+    ticketSections = ticketSections.filter(
+        (section) => section.title !== "Tickets soporte",
+    );
 }
 
 const adminSections = [
@@ -203,6 +223,7 @@ const marketingAdminSections = [
         >
             Abrir ticket
         </div>
+        {/* Mostrar CSH Ticket para todos (Incluido Staff, que ahora lo ve) */}
         <a
             href={cshHref}
             class:list={[
@@ -213,10 +234,14 @@ const marketingAdminSections = [
             ]}
         >
             <AddTicket class="h-5 w-5" />
-            <span class="group-data-[sidebar-collapsed=true]:hidden">C S H</span
-            >
+            <span class="group-data-[sidebar-collapsed=true]:hidden">
+                C S H
+            </span>
         </a>
-        <NewTransfer />
+
+        {/* NewTransfer oculto para Marketing (Director y Staff) */}
+        {!isMarketingRole && <NewTransfer />}
+
         {/* <NewTicketMkt /> Replaced by page */}
         {
             canSeeMarketing && (
@@ -285,10 +310,10 @@ const marketingAdminSections = [
         }
 
         {
-            /* Marketing Admin Section (SiGeT) - Visible only for Marketing Roles if they are not Full Admins (or override?) */
+            /* Marketing Admin Section (SiGeT) - Visible only for Marketing Director */
         }
         {
-            !canSeeAdmin && isMarketingRole && (
+            !canSeeAdmin && isMarketingDirector && (
                 <>
                     <div class="px-2 pt-2 text-sm font-semibold text-muted-foreground group-data-[sidebar-collapsed=true]:hidden">
                         Administrador

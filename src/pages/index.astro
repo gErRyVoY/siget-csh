@@ -13,6 +13,17 @@ if (session.user.rol?.nivel_soporte === "Usuario") {
     return Astro.redirect("/tickets/soporte/usuario");
 }
 
+const MARKETING_ROLES = [
+    "Director Marketing",
+    "Diseñador",
+    "Community manager",
+    "Editor",
+];
+
+if (MARKETING_ROLES.includes(session.user.rol?.rol || "")) {
+    return Astro.redirect("/tickets/marketing/dashboard");
+}
+
 const statusColors = {
     "Total de Tickets": "#6b7280", // gray-500
     "Tickets Nuevos": "#a1a1aa", // zinc-400

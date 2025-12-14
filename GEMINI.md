@@ -144,6 +144,19 @@ Cuando el usuario me pida leer este archivo (`GEMINI.md`) al inicio de una sesi�
     *   **Sidebar:** Se condicionó la visibilidad de elementos ("Base de conocimientos", "Asistencia remota", "Tickets soporte") para simplificar la vista a roles de Marketing.
     *   **Dashboard:** Se ajustaron las tarjetas estadísticas del Dashboard de Marketing (Mostrar Total, Ocultar Solucionados/Cancelados).
     *   **Layout:** Se corrigió el scroll horizontal forzando `w-full` en el wrapper del dashboard.
+
+## 2025-12-14 (Sesión 8+ y Optimización)
+*   **Seguridad y RBAC:**
+    *   **Middleware:** Se implementó protección de rutas en `middleware.ts` para redirigir a usuarios de Staff de Marketing que intenten acceder a `/admin`.
+    *   **Feedback Visual:** Se añadió lógica en `MainLayout.astro` para mostrar un toast de error ("No tienes permisos suficientes") cuando se detecta una redirección por falta de permisos.
+    *   **Corrección:** Se solucionó un error de compilación crítico en `Sidebar.astro` (variable duplicada `mainNavItems`).
+*   **Optimización Dashboard Marketing:**
+    *   **Redirección Raíz:** Los roles de Marketing ahora son redirigidos automáticamente de `/` a `/tickets/marketing/dashboard`.
+    *   **UX Sidebar:** La sección de Marketing se expande automáticamente al entrar al dashboard gracias a la lógica de redirección y coincidencia de rutas.
+    *   **Tarjetas:** Se reorganizaron las tarjetas (Prioridad a Nuevos/En Progreso) y se ocultaron por defecto los estados finales (Solucionado/Cancelado/Duplicado).
+    *   **Funcionalidad:** Se reparó el botón "Ver todo" en el dashboard de marketing, añadiendo la lógica JS faltante para alternar la visibilidad de las tarjetas secundarias.
+*   **Ajuste Fino de Permisos (Sidebar):**
+    *   **Staff Marketing:** Se habilitó la vista del botón `AddTicket` (CSH) y el enlace "Asistencia Remota". Se ocultó explícitamente el componente `NewTransfer`.
 ## 2025-12-09 (Sesión 7)
 *   **Corrección de Modo Oscuro:**
     *   Se solucionó el problema de reseteo del tema al navegar. Se reemplazó el `MutationObserver` conflictivo en `MainLayout.astro` por un listener de `astro:after-swap`, asegurando que la preferencia del usuario persista correctamente.

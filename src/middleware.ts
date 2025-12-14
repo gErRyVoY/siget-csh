@@ -42,6 +42,44 @@ export const onRequest = defineMiddleware(async (context, next) => {
     return context.redirect("/login");
   }
 
+  // --- Lógica de Control de Acceso (RBAC) ---
+  const userRole = session.user?.rol?.rol;
+  
+  // Definir rutas restringidas
+  const adminRoutes = ["/admin"];
+  const marketingRoutes = ["/tickets/marketing"];
+  const supportRoutes = ["/tickets/soporte"]; // Ajustar si es necesario
+
+  // 1. Restricción para "/admin"
+  if (pathname.startsWith("/admin")) {
+      // Director Marketing puede ver /admin/tickets y /admin/usuarios (pero usuarios tiene su propia lógica interna o subrutas)
+      // "Diseñador", "Community manager", "Editor" NO pueden ver /admin
+      if (["Diseñador", "Community manager", "Editor"].includes(userRole || "")) {
+           return context.redirect("/?unauthorized=true");
+      }
+      // Otros roles: Validar si tienen permiso general (opcional, si confías en el Sidebar)
+      // Pero como buena práctica, validamos permiso 'ver_seccion_admin' o 'ver_seccion_marketing' para sus áreas
+      // Aquí simplificaré usando el permiso que ya viene en sesión si existe, o lógica de roles.
+      // El prompt especificaba redirección con toast.
+  }
+
+    // 1. Restricción para Administración
+    if (pathname.startsWith("/admin")) {
+        const isMarketingDirector = userRole === "Director Marketing";
+        const isMarketingStaff = ["Diseñador", "Community manager", "Editor"].includes(userRole || "");
+        
+        // Staff de Marketing NO tiene acceso a NADA de admin
+        if (isMarketingStaff) {
+             return context.redirect("/tickets/marketing/dashboard?unauthorized=true");
+        }
+
+        // Director Marketing tiene acceso limitado (Tickets, Usuarios)
+        // Si intenta entrar a correos u otras cosas futuras...
+        // Por ahora el prompt solo pedía bloquear a Diseñador/etc de /admin/tickets.
+        // Asumimos que los permisos 'ver_seccion_admin' controlan a los demás.
+    }
+
+
   // Si todo está en orden (ruta protegida y con sesión), continuamos.
   // Si todo está en orden (ruta protegida y con sesión), continuamos.
   // Si todo está en orden (ruta protegida y con sesión), continuamos.

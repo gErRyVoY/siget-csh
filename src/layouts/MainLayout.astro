@@ -206,6 +206,19 @@ const NOTIFICATION_FULL_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="24
                     return;
                 }
 
+                // Check for unauthorized access redirect
+                const urlParams = new URLSearchParams(window.location.search);
+                if (urlParams.get("unauthorized") === "true") {
+                    setTimeout(() => {
+                        toast.error("No tienes permisos suficientes.", {
+                            duration: 5000,
+                        });
+                        // Clean URL without reloading
+                        const newUrl = window.location.pathname;
+                        window.history.replaceState({}, document.title, newUrl);
+                    }, 500); // Small delay to ensure toast lib is ready and visible after transition
+                }
+
                 let currentPage = 1;
                 let count = 0;
                 let isLoadingNotifications = false;

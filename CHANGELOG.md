@@ -22,6 +22,21 @@ y este proyecto adhiere a [Versionado Semántico](https://semver.org/lang/es/).
 - **Limpieza UI:** Ocultación de columna "Solicitante" en "Mis Tickets" para usuarios estándar.
 - **Notificaciones:** Corrección de colores en badges de estatus del dropdown.
 
+## [0.8.0] - 2025-12-14
+
+### Added
+- **Seguridad (Middleware):** Redirección automática de roles de Marketing fuera de `/admin` y desde raíz `/` a su dashboard específico.
+- **Seguridad (UI):** Toast de "No tienes permisos suficientes" en `MainLayout` activado por query param `?unauthorized=true`.
+- **Sidebar UX:** Expansión automática de la sección "Tickets Marketing" en el dashboard.
+
+### Changed
+- **Dashboard Marketing:** Reordenamiento de tarjetas (Total, Nuevos, En Progreso, En Espera) y funcionalidad de "Ver todo" (Toggle) para tarjetas ocultas.
+- **Permisos Sidebar:** Staff de Marketing ahora ve `AddTicket` (CSH) y "Asistencia Remota", pero `NewTransfer` está explícitamente oculto.
+
+### Fixed
+- **Sidebar:** Error de compilación por duplicidad de variable `mainNavItems`.
+- **Dashboard Marketing:** Enlace roto (botón sin funcionalidad JS) en "Ver todo".
+
 ## [0.7.0] - 2025-12-12
 
 ### Added

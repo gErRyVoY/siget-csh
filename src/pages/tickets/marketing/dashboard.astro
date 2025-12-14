@@ -106,13 +106,11 @@ const stats = {
             </a>
         </div>
 
-        {
-            /* 
         <div
             id="secondary-stats"
-            class="grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-6 hidden"
+            class="hidden grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-6"
         >
-             <a
+            <a
                 href={`/tickets/marketing?status=${getStatusId("Solucionado")}`}
                 class="block transition-transform hover:scale-105"
             >
@@ -157,8 +155,6 @@ const stats = {
                 >Ver todo</button
             >
         </div>
-        */
-        }
     </div>
 </MainLayout>
 
@@ -166,7 +162,24 @@ const stats = {
     let dashboardEventSource: EventSource | null = null;
 
     document.addEventListener("astro:page-load", () => {
+        const toggleBtn = document.getElementById("toggle-stats-btn");
+        const secondaryStats = document.getElementById("secondary-stats");
         const userId = document.body.dataset.userId;
+
+        if (toggleBtn && secondaryStats) {
+            toggleBtn.addEventListener("click", () => {
+                const isHidden = secondaryStats.classList.contains("hidden");
+                if (isHidden) {
+                    secondaryStats.classList.remove("hidden");
+                    secondaryStats.classList.add("grid");
+                    toggleBtn.textContent = "Ver menos";
+                } else {
+                    secondaryStats.classList.add("hidden");
+                    secondaryStats.classList.remove("grid");
+                    toggleBtn.textContent = "Ver todo";
+                }
+            });
+        }
 
         // Real-time updates logic
         const updateStats = async () => {
