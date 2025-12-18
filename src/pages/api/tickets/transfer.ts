@@ -43,12 +43,13 @@ export const POST: APIRoute = async ({ request }) => {
         }
 
         // --- Resolve Entities ---
-        // 1. Categoria "Traslado"
-        const categoria = await prisma.categoria.findFirst({ where: { nombre: 'Traslados' } }); // Adjust name if needed (Traslado/Traslados)
-        if (!categoria) {
-            // Fallback or Error? Assuming 'Traslados' exists from seed.
-            console.error('Categoria "Traslados" no encontrada.');
-            return new Response(JSON.stringify({ message: 'Error de configuración: Categoría no encontrada.' }), { status: 500 });
+        // 1. Categoria "Alumno" y Subcategoria "Traslado"
+        const categoria = await prisma.categoria.findFirst({ where: { nombre: 'Alumno' } });
+        const subcategoria = await prisma.subcategoria.findFirst({ where: { nombre: 'Traslado' } });
+
+        if (!categoria || !subcategoria) {
+            console.error('Categoria "Alumno" o Subcategoria "Traslado" no encontrada.');
+            return new Response(JSON.stringify({ message: 'Error de configuración: Categoría/Subcategoría no encontrada.' }), { status: 500 });
         }
 
         // 2. Empresas (Campus)
@@ -66,20 +67,11 @@ export const POST: APIRoute = async ({ request }) => {
             const descuento = await prisma.descuento.findFirst({ where: { monto: monto, active: true } });
             if (descuento) {
                 descuentoId = descuento.id;
-            } else {
-                // Should we create it or fail? 
-                // For now, fail to enforce seed usage, or fallback to closest? 
-                // Let's fallback to N/A or maybe the seed logic requires specific values.
-                // But to be safe, if provided value is not found, we refrain from setting an invalid ID.
-                // Or maybe searching by description?
             }
         }
 
         // 4. Auditors
         // Find User with auditor_docs = true. 
-        // Logic: Look in Campus Origen? Or Global? 
-        // Usually admin auditors might be central or per campus. 
-        // I'll search in empresaOrigen first, if not found then any.
         let auditorDocs = await prisma.usuario.findFirst({
             where: { auditor_docs: true, empresaId: empresaOrigen.id, activo: true }
         });
@@ -118,6 +110,7 @@ export const POST: APIRoute = async ({ request }) => {
                     empresaId: empresaOrigen.id, // Ticket belongs to Origin Campus?
                     prioridad: 'Media',
                     categoriaId: categoria.id,
+                    subcategoriaId: subcategoria.id,
                     descripcion: `Traslado solicitado de ${campusOrigen} a ${campusDestino} para la carrera ${carrera}.`,
                     afectado_clave: matricula,
                     afectado_nombre: nombreCompleto,

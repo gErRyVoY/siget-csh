@@ -11,12 +11,13 @@ import OfficeHours from "@/components/icons/OfficeHours.astro";
 import RemoteSupportIcon from "@/components/icons/RemoteSupportIcon.astro";
 import CreateMailIcon from "../icons/CreateMailIcon.astro";
 import UpdateMailIcon from "../icons/UpdateMailIcon.astro";
+import UserTransferIcon from "@/components/icons/UserTransferIcon.astro";
 
 import CollapsibleNavSection from "@/components/shared/CollapsibleNavSection.astro";
 import NavItem from "@/components/shared/NavItem.astro";
 import NewTicketMkt from "@/components/shared/NewTicketMkt.astro";
 import AddTicketMkt from "@/components/icons/AddTicketMkt.astro";
-import NewTransfer from "@/components/shared/NewTransfer.astro";
+
 import PlataformaHumanitas from "./PlataformaHumanitas.astro";
 import UserProfile from "@/components/shared/UserProfile.astro";
 import AddTicket from "@/components/icons/AddTicket.astro";
@@ -239,8 +240,25 @@ const marketingAdminSections = [
             </span>
         </a>
 
-        {/* NewTransfer oculto para Marketing (Director y Staff) */}
-        {!isMarketingRole && <NewTransfer />}
+        {/* Link a Traslado para todos excepto Marketing */}
+        {
+            !isMarketingRole && (
+                <a
+                    href="/tickets/soporte/traslado"
+                    class:list={[
+                        "w-full flex items-center gap-3 rounded-md px-4 py-2.5 text-sm font-semibold transition-colors duration-500 focus-visible:outline-none focus-visible:ring-1",
+                        pathname === "/tickets/soporte/traslado"
+                            ? "bg-secondary text-secondary-foreground"
+                            : "bg-primary text-primary-foreground hover:bg-secondary/90",
+                    ]}
+                >
+                    <UserTransferIcon class="h-5 w-5" />
+                    <span class="group-data-[sidebar-collapsed=true]:hidden">
+                        Traslado
+                    </span>
+                </a>
+            )
+        }
 
         {/* <NewTicketMkt /> Replaced by page */}
         {

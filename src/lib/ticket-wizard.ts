@@ -173,6 +173,12 @@ export function initTicketWizard(treeData: CategoriesTreeData) {
 
             if (!subcatNode) return;
 
+            // Redirección para Traslado
+            if (subcatNode.id === 58) {
+                window.location.href = "/tickets/soporte/traslado";
+                return;
+            }
+
             selection.nodes.splice(colIndex - 1);
             selection.nodes.push(subcatNode);
 

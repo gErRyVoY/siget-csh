@@ -13,6 +13,7 @@
 - ✅ Implementación de toggle de tema claro/oscuro con persistencia
 - ✅ Implementación completa de RBAC Híbrido (BD, Lógica, UI)
 - ✅ Mejoras de UI en listas de tickets (Diseño responsivo, limpieza de columnas)
+- ✅ Refactorización completa de página de Traslados (UI/UX + Carga de Archivos)
 
 **Pasos Siguientes:**
 1.  **Optimización y Limpieza:**
@@ -111,6 +112,16 @@ Cuando el usuario me pida leer este archivo (`GEMINI.md`) al inicio de una sesi�
 5.  **Confirmar Rol y Esperar Instrucción:** Re-afirmar internamente mi rol como "ScrumBot" y esperar la siguiente instrucción del usuario para proceder.
 
 # Historial de Cambios (Log)
+
+## 2025-12-17 (Sesión 9)
+*   **Mejoras en Página de Traslados (`src/pages/tickets/soporte/traslado.astro`):**
+    *   **UI/UX Autocomplete:** Se implementó navegación por teclado (Flechas/Enter), bordes estilizados (`#797979`) y feedback visual (hover vino) en las listas de sugerencias.
+    *   **Carga de Archivos:** Se integró funcionalidad completa de adjuntos.
+        *   **Drag & Drop:** Zona de carga estilizada y validación de cliente (tipo/tamaño).
+        *   **Google Drive:** Integración de Google Picker API para adjuntar desde Drive.
+    *   **Lógica de Envío Robusta:** Se refactorizó el envío del formulario a un proceso secuencial de 3 pasos (Crear Ticket -> Obtener ID -> Subir Archivos a S3 -> Actualizar Ticket), garantizando que los archivos se vinculen correctamente.
+*   **Verificación:**
+    *   Pruebas manuales de UI y flujo de carga confirmaron el funcionamiento correcto.
 
 ## 2025-12-04 (Sesión 6)
 *   **Mejoras en Navegación y Contexto:**

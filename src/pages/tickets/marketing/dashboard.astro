@@ -108,7 +108,7 @@ const stats = {
 
         <div
             id="secondary-stats"
-            class="hidden grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-6"
+            class="hidden md:grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-6"
         >
             <a
                 href={`/tickets/marketing?status=${getStatusId("Solucionado")}`}
@@ -148,7 +148,7 @@ const stats = {
             </a>
         </div>
 
-        <div class="mt-6 text-center">
+        <div class="mt-6 text-center md:hidden">
             <button
                 id="toggle-stats-btn"
                 class="text-sm font-semibold text-primary hover:underline"
