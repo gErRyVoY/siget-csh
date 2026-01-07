@@ -99,12 +99,14 @@ function showStatusConfirmation(): Promise<boolean | null> {
         }
 
         modal.classList.remove('hidden');
+        modal.classList.add('flex');
 
         const cleanup = () => {
             btnYes.removeEventListener('click', handleYes);
             btnNo.removeEventListener('click', handleNo);
             overlay?.removeEventListener('click', handleNo);
             modal.classList.add('hidden');
+            modal.classList.remove('flex');
         };
 
         const handleYes = (e: Event) => {
@@ -329,7 +331,10 @@ export function initFileUploads() {
     const btnSelect = document.getElementById('confirm-delete-select');
     const btnCancel = document.getElementById('cancel-delete-modal');
 
-    const closeModal = () => modal?.classList.add('hidden');
+    const closeModal = () => {
+        modal?.classList.add('hidden');
+        modal?.classList.remove('flex');
+    };
 
     // Attach modal listeners only once
     if (btnAll && !btnAll.dataset.listenerAttached) {
@@ -374,6 +379,7 @@ export function initFileUploads() {
             renderStagedFiles();
         } else {
             modal?.classList.remove('hidden');
+            modal?.classList.add('flex');
         }
     });
 }
