@@ -113,6 +113,15 @@ Cuando el usuario me pida leer este archivo (`GEMINI.md`) al inicio de una sesi�
 
 # Historial de Cambios (Log)
 
+## 2026-01-07 (Sesión 10)
+*   **Corrección de Error Crítico (Traslados):**
+    *   Se solucionó un error 500 en `src/services/ticketAssignmentService.ts` que impedía crear tickets de traslado.
+    *   **Causa:** La consulta de Prisma intentaba incluir la relación `usuario` en `AsignacionesCategorias`, pero el nombre correcto en el esquema es `atiende`.
+    *   **Solución:** Se corrigió el nombre de la relación en el `include` y en el `map` posterior.
+*   **Limpieza de Código:**
+    *   Se eliminó `src/components/shared/NewTransfer.astro` ya que su funcionalidad fue migrada completamente a `src/pages/tickets/soporte/traslado.astro`.
+    *   Se verificó que `modal-controller.ts` sigue siendo utilizado por otros componentes (`NewTicketMkt`), por lo que se mantuvo.
+
 ## 2025-12-17 (Sesión 9)
 *   **Mejoras en Página de Traslados (`src/pages/tickets/soporte/traslado.astro`):**
     *   **UI/UX Autocomplete:** Se implementó navegación por teclado (Flechas/Enter), bordes estilizados (`#797979`) y feedback visual (hover vino) en las listas de sugerencias.

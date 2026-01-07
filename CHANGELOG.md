@@ -22,6 +22,14 @@ y este proyecto adhiere a [Versionado Semántico](https://semver.org/lang/es/).
 - **Limpieza UI:** Ocultación de columna "Solicitante" en "Mis Tickets" para usuarios estándar.
 - **Notificaciones:** Corrección de colores en badges de estatus del dropdown.
 
+## [0.9.1] - 2026-01-07
+
+### Fixed
+- **API Traslados:** Error 500 en creación de tickets por nombre incorrecto de relación en Prisma (`usuario` -> `atiende`).
+
+### Removed
+- **Código Muerto:** Componente `NewTransfer.astro` eliminado tras migración exitosa.
+
 ## [0.9.0] - 2025-12-17
 
 ### Added

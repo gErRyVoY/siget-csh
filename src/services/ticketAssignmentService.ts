@@ -74,7 +74,7 @@ async function findAgentsBySpecificAssignment(catId: number, subId?: number | nu
             activo: true
         },
         include: {
-            usuario: {
+            atiende: {
                 include: { rol: true }
             }
         }
@@ -82,7 +82,7 @@ async function findAgentsBySpecificAssignment(catId: number, subId?: number | nu
 
     // Filtrar usuarios inactivos o vacacionando
     return assignments
-        .map(a => a.usuario)
+        .map(a => a.atiende)
         .filter(u => u.activo && !u.vacaciones) as AgentWithRelations[];
 }
 
