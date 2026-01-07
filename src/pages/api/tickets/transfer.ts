@@ -64,13 +64,21 @@ export const POST: APIRoute = async ({ request }) => {
         let descuentoId = 1; // Default "N/A" (ID 1 from seed)
         if (tieneDescuento && descuentoValor) {
             const monto = parseInt(descuentoValor, 10);
-            const descuento = await prisma.descuento.findFirst({ where: { monto: monto, active: true } });
+            const descuento = await prisma.descuento.findFirst({ where: { monto: monto, activo: true } });
             if (descuento) {
                 descuentoId = descuento.id;
             }
         }
 
-        // 4. Auditors
+        // --- Resolve Carrera URL/Name to ID ---
+        // Seed has short names like "Administración", form sends "Licenciatura en Administración"
+        const cleanCarreraName = carrera.replace(/^(Licenciatura en |Maestría en )/g, '').trim();
+        const carreraEntity = await prisma.carrera.findFirst({
+            where: { descripcion: { contains: cleanCarreraName, mode: 'insensitive' } }
+        });
+        const carreraId = carreraEntity?.id || 1;
+
+        // 4. Auditors ... (unchanged code for auditors logic, assuming it's above or I include it)
         // Find User with auditor_docs = true. 
         let auditorDocs = await prisma.usuario.findFirst({
             where: { auditor_docs: true, empresaId: empresaOrigen.id, activo: true }
@@ -114,23 +122,23 @@ export const POST: APIRoute = async ({ request }) => {
                     descripcion: `Traslado solicitado de ${campusOrigen} a ${campusDestino} para la carrera ${carrera}.`,
                     afectado_clave: matricula,
                     afectado_nombre: nombreCompleto,
-                    traslado: {
+                    traslados: {
                         create: {
                             matricula,
-                            nombre: nombreCompleto,
-                            campus_origen: campusOrigen,
-                            campus_destino: campusDestino,
-                            carrera,
-                            semestre: 0, // Not in form?
-                            bloque: bloque,
+                            alumno: nombreCompleto,
+                            folio: matricula.replace(/\D/g, '').slice(0, 10), // Clean folio
+                            origenId: empresaOrigen.id,
+                            destinoId: empresaDestino.id,
+                            carreraId: carreraId,
+                            bloqueId: null, // Optional now
+                            bloque_nombre: bloqueSugerido ? String(bloqueSugerido) : null,
                             descuentoId,
                             auditor_docsId: auditorDocs?.id,
                             auditor_reqId: auditorReq?.id,
-                            // Defaults for validations are false
                         }
                     }
                 },
-                include: { traslado: true }
+                include: { traslados: true }
             }),
             ...(atiendeId ? [
                 prisma.usuario.update({

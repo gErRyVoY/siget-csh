@@ -255,7 +255,8 @@ model Traslado {
   destinoId      Int
   carreraId      Int
   descuentoId    Int
-  bloqueId       Int
+  bloqueId       Int?
+  bloque_nombre  String?   @db.VarChar(20)
   actualizacion  Boolean   @default(false)
   planpagoId     Int?
   auditor_docsId Int?
@@ -277,7 +278,7 @@ model Traslado {
   destino        Empresa   @relation("Destino", fields: [destinoId], references: [id])
   carrera        Carrera   @relation(fields: [carreraId], references: [id])
   descuento      Descuento @relation(fields: [descuentoId], references: [id])
-  bloque         Bloque    @relation(fields: [bloqueId], references: [id])
+  bloque         Bloque?    @relation(fields: [bloqueId], references: [id])
   planpago       PlanPago? @relation(fields: [planpagoId], references: [id])
   auditor_docs   Usuario?  @relation("AuditorDocs", fields: [auditor_docsId], references: [id])
   auditor_req    Usuario?  @relation("AuditorReq", fields: [auditor_reqId], references: [id])
