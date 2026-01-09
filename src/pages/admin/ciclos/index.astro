@@ -1,0 +1,160 @@
+---
+import MainLayout from "@/layouts/MainLayout.astro";
+import { prisma } from "@/lib/db";
+import { formatDate } from "date-fns";
+import { es } from "date-fns/locale";
+
+// Fetch cycles
+const ciclos = await prisma.ciclo.findMany({
+    orderBy: { id: "asc" },
+});
+---
+
+<MainLayout title="Administración de ciclos">
+    <div class="space-y-6">
+        <div class="flex justify-between items-center">
+            <h1 class="text-3xl font-bold tracking-tight">Ciclos escolares</h1>
+        </div>
+
+        <div class="rounded-md border bg-background">
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="border-b bg-muted/50 transition-colors">
+                        <th
+                            class="h-12 px-4 text-left align-middle font-medium text-muted-foreground"
+                            >ID</th
+                        >
+                        <th
+                            class="h-12 px-4 text-left align-middle font-medium text-muted-foreground"
+                            >Ciclo</th
+                        >
+                        <th
+                            class="h-12 px-4 text-left align-middle font-medium text-muted-foreground"
+                            >Fecha Inicio</th
+                        >
+                        <th
+                            class="h-12 px-4 text-left align-middle font-medium text-muted-foreground"
+                            >Fecha Fin</th
+                        >
+                        <th
+                            class="h-12 px-4 text-left align-middle font-medium text-muted-foreground"
+                            >Estatus</th
+                        >
+                        <th
+                            class="h-12 px-4 text-left align-middle font-medium text-muted-foreground"
+                            >Acciones</th
+                        >
+                    </tr>
+                </thead>
+                <tbody>
+                    {
+                        ciclos.map((ciclo) => (
+                            <tr class="border-b transition-colors hover:bg-muted/50">
+                                <td class="p-4 align-middle">{ciclo.id}</td>
+                                <td class="p-4 align-middle font-medium">
+                                    {ciclo.ciclo}
+                                </td>
+                                <td class="p-4 align-middle">
+                                    {formatDate(
+                                        ciclo.fecha_inicio,
+                                        "dd MMM yyyy",
+                                        { locale: es },
+                                    )}
+                                </td>
+                                <td class="p-4 align-middle">
+                                    {formatDate(
+                                        ciclo.fecha_fin,
+                                        "dd MMM yyyy",
+                                        { locale: es },
+                                    )}
+                                </td>
+                                <td class="p-4 align-middle">
+                                    <span
+                                        class={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 ${
+                                            ciclo.activo
+                                                ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
+                                                : "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-400"
+                                        }`}
+                                    >
+                                        {ciclo.activo ? "Activo" : "Inactivo"}
+                                    </span>
+                                </td>
+                                <td class="p-4 align-middle">
+                                    <button
+                                        class="toggle-btn inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-3"
+                                        data-id={ciclo.id}
+                                        data-active={ciclo.activo.toString()}
+                                    >
+                                        {ciclo.activo
+                                            ? "Desactivar"
+                                            : "Activar"}
+                                    </button>
+                                </td>
+                            </tr>
+                        ))
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        <div class="rounded-md bg-muted-foreground/10 p-4 dark:bg-blue-900/20">
+            <div class="flex">
+                <div class="shrink-0">
+                    <svg
+                        class="h-5 w-5 text-primary"
+                        viewBox="0 0 20 20"
+                        fill="currentColor"
+                    >
+                        <path
+                            fill-rule="evenodd"
+                            d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
+                            clip-rule="evenodd"></path>
+                    </svg>
+                </div>
+                <div class="ml-3 flex-1 md:flex md:justify-between">
+                    <p class="text-sm text-secondary">
+                        El sistema verifica y actualiza automáticamente el ciclo
+                        activo basándose en las fechas actuales cada vez que se
+                        crea un ticket o se accede a esta página.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</MainLayout>
+
+<script>
+    import { toast } from "@/lib/toast";
+
+    document.querySelectorAll(".toggle-btn").forEach((btn) => {
+        btn.addEventListener("click", async (e) => {
+            const button = e.currentTarget as HTMLButtonElement;
+            const id = button.dataset.id;
+            const currentActive = button.dataset.active === "true";
+
+            // Optimistic UI update could be risky here if logic fails, let's wait for response.
+            button.disabled = true;
+
+            try {
+                const res = await fetch("/api/admin/ciclos/toggle", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        id: Number(id),
+                        activo: !currentActive,
+                    }),
+                });
+
+                if (!res.ok) throw new Error("Error updating status");
+
+                toast.success("Estatus actualizado correctamente");
+                // Reload to reflect state (especially if logic auto-deactivated others)
+                window.location.reload();
+            } catch (error) {
+                console.error(error);
+                toast.error("Error al actualizar el estatus");
+                button.disabled = false;
+            }
+        });
+    });
+</script>

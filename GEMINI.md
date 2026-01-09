@@ -1,8 +1,8 @@
 # Plan de Trabajo (SIGET-CSH)
 
-**Tarea Actual:** Implementación de Sistema de Notificaciones en Tiempo Real y RBAC Híbrido
+**Tarea Actual:** Optimización Final, Descuentos Dinámicos y Sync Repositorio.
 
-**Estado:** En progreso - Edición Avanzada y Mejoras UI completadas.
+**Estado:** Completado - Autocomplete de descuentos, Ciclos y limpieza de UI implementados.
 
 **Pasos Completados:**
 - ✅ Análisis completo del proyecto (tecnologías, código, BD, UI/UX)
@@ -112,6 +112,26 @@ Cuando el usuario me pida leer este archivo (`GEMINI.md`) al inicio de una sesi�
 5.  **Confirmar Rol y Esperar Instrucción:** Re-afirmar internamente mi rol como "ScrumBot" y esperar la siguiente instrucción del usuario para proceder.
 
 # Historial de Cambios (Log)
+
+## 2026-01-09 (Sesión 10 - Parte 3)
+*   **Mejoras en Traslados:**
+    *   **Autocomplete de Descuentos:** Se implementó búsqueda dinámica basada en la tabla `Descuento` (campo `descripcion`). Se actualizó tanto el frontend (`traslado.astro`) como el backend (`transfer.ts`).
+    *   **Búsqueda Robusta:** Se aplicó normalización de texto (NFD) para ignorar acentos en las búsquedas de Campus, Carrera y Descuento.
+*   **Limpieza y Mantenimiento:**
+    *   **Eliminación de Código Muerto:** Se borró `src/pages/tickets/view/ejemplo.astro` al confirmar que no tiene usos en el proyecto.
+    *   **Optimización CSS:** Se migraron clases de layout (`shrink-0`, `grow`) y se simplificaron referencias a variables de tema en múltiples archivos.
+    *   **Corrección de API:** Se solucionó un error estructural en `transfer.ts` que causaba fallos de sintaxis intermitentes.
+*   **Git:** Sincronización completa del repositorio con los últimos cambios de ciclos y traslados.
+
+## 2026-01-08 (Sesión 10 - Parte 2)
+*   **Gestión de Ciclos Escolares:**
+    *   **Seed de Datos:** Se poblaron los ciclos académicos del 2026-3 al 2027-2 en la base de datos (`prisma/seed.ts`).
+    *   **Automatización:** Se creó `src/services/cycleService.ts` que activa automáticamente el ciclo vigente y desactiva los anteriores basándose en la fecha actual.
+    *   **Validación de Traslados:** Se actualizó la API `transfer.ts` para bloquear la creación de tickets si no existe un ciclo activo, garantizando la integridad de los datos.
+    *   **Panel Administrativo:** Se implementó una nueva vista `/admin/ciclos` para visualizar y activar/desactivar ciclos manualmente.
+    *   **Corrección de Errores Sidebar:** Se restauró el acceso al módulo "Ciclos" en el sidebar principal de administración.
+*   **Correcciones Estéticas:**
+    *   Se ajustaron los colores de las alertas informativas en la administración de ciclos (texto vino, fondo gris translúcido) según feedback de usuario.
 
 ## 2026-01-07 (Sesión 10)
 *   **Corrección de Error Crítico (Traslados):**

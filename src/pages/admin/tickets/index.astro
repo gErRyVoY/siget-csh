@@ -231,7 +231,7 @@ const parentOptions = subcategories.filter(
 </MainLayout>
 
 <script>
-    import { toast } from "sonner"; // If we can use sonner here inside script tag, but usually imported in Astro component script?
+    import { toast } from "@/lib/toast"; // If we can use sonner here inside script tag, but usually imported in Astro component script?
     // Wait, script tags in Astro are raw JS in browser. Cannot import 'sonner' unless using it via global or ViewTransitions/islands.
     // We already have 'toast' available globally?
     // In `src/layouts/MainLayout.astro` we might have Toaster.

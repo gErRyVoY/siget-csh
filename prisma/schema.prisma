@@ -104,6 +104,7 @@ model Ciclo {
   fecha_fin    DateTime @db.Timestamp(6)
   activo       Boolean  @default(false)
   bloques      Bloque[]
+  tickets      Ticket[]
 
   @@map("ciclo")
 }
@@ -220,6 +221,7 @@ model Ticket {
   afectado_clave        String?                @db.VarChar(20)
   afectado_nombre       String?                @db.VarChar(150)
   empresaId             Int
+  cicloId               Int?
   archivado             Boolean                @default(false)
   archivos              Json?                  @db.JsonB
   estatus               Estatus                @relation(fields: [estatusId], references: [id])
@@ -228,6 +230,7 @@ model Ticket {
   solicitante           Usuario                @relation("Solicitante", fields: [solicitanteId], references: [id])
   atiende               Usuario?               @relation("Atiende", fields: [atiendeId], references: [id])
   empresa               Empresa                @relation(fields: [empresaId], references: [id])
+  ciclo                 Ciclo?                 @relation(fields: [cicloId], references: [id])
   traslados             Traslado[]
   historial_solicitudes HistorialSolicitud[]
   notificaciones_correo NotificacionesCorreo[]
@@ -249,7 +252,7 @@ model Traslado {
   id             Int       @id @default(autoincrement())
   ticketId       Int       @unique
   folio          String    @db.VarChar(10) @unique
-  matricula      String    @db.VarChar(10) @unique
+  matricula      String    @db.VarChar(10)
   alumno         String    @db.VarChar(100)
   origenId       Int
   destinoId      Int

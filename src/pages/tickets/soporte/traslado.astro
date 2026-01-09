@@ -1,6 +1,7 @@
 ---
 import MainLayout from "@/layouts/MainLayout.astro";
 import UserTransferIcon from "@/components/icons/UserTransferIcon.astro";
+import { prisma } from "@/lib/db";
 import {
     campusOptions,
     carreraOptions,
@@ -10,6 +11,12 @@ import {
 const GOOGLE_API_KEY = import.meta.env.PUBLIC_GOOGLE_API_KEY;
 const GOOGLE_CLIENT_ID = import.meta.env.PUBLIC_GOOGLE_CLIENT_ID;
 const GOOGLE_APP_ID = import.meta.env.PUBLIC_GOOGLE_APP_ID;
+
+const descuentos = await prisma.descuento.findMany({
+    where: { activo: true },
+    select: { descripcion: true },
+});
+const descuentoOptions = descuentos.map((d) => d.descripcion);
 ---
 
 <MainLayout title="Solicitud de nuevo traslado">
@@ -34,6 +41,7 @@ const GOOGLE_APP_ID = import.meta.env.PUBLIC_GOOGLE_APP_ID;
                     class="space-y-6"
                     data-campus-options={JSON.stringify(campusOptions)}
                     data-carrera-options={JSON.stringify(carreraOptions)}
+                    data-descuento-options={JSON.stringify(descuentoOptions)}
                     data-google-api-key={GOOGLE_API_KEY}
                     data-google-client-id={GOOGLE_CLIENT_ID}
                     data-google-app-id={GOOGLE_APP_ID}
@@ -208,7 +216,7 @@ const GOOGLE_APP_ID = import.meta.env.PUBLIC_GOOGLE_APP_ID;
                             <div class="flex items-center mb-2 h-5">
                                 <label
                                     class="text-sm font-medium text-foreground"
-                                    >Descuento</label
+                                    >¿Tiene descuento?</label
                                 >
                             </div>
                             <div
@@ -224,26 +232,26 @@ const GOOGLE_APP_ID = import.meta.env.PUBLIC_GOOGLE_APP_ID;
                                     <label
                                         for="tiene-descuento"
                                         class="ml-2 text-sm text-foreground"
-                                        >Aplica</label
+                                        >Si</label
                                     >
                                 </div>
                                 <div
                                     id="descuento-container"
-                                    class="items-center hidden ml-auto"
+                                    class="items-center hidden ml-auto relative w-full max-w-[200px]"
                                 >
                                     <input
-                                        type="number"
+                                        type="text"
                                         id="descuento-valor"
                                         name="descuento-valor"
-                                        min="1"
-                                        max="99"
-                                        class="w-20 rounded-md border-border bg-input px-2 py-1 text-sm text-right focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                                        placeholder="0"
+                                        autocomplete="off"
+                                        class="w-full rounded-md border-border bg-input px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                        placeholder="Buscar..."
                                     />
-                                    <span
-                                        class="ml-1 text-sm text-muted-foreground"
-                                        >%</span
+                                    <div
+                                        id="descuento-suggestions"
+                                        class="absolute z-10 w-full bg-popover text-popover-foreground border border-[#797979] rounded-md mt-1 hidden max-h-40 overflow-y-auto shadow-md top-full left-0 origin-top"
                                     >
+                                    </div>
                                 </div>
                             </div>
                             <p
@@ -394,6 +402,9 @@ const GOOGLE_APP_ID = import.meta.env.PUBLIC_GOOGLE_APP_ID;
         const carreraOptions: string[] = JSON.parse(
             form.dataset.carreraOptions || "[]",
         );
+        const descuentoOptions: string[] = JSON.parse(
+            form.dataset.descuentoOptions || "[]",
+        );
 
         const GOOGLE_API_KEY = form.dataset.googleApiKey;
         const GOOGLE_CLIENT_ID = form.dataset.googleClientId;
@@ -483,6 +494,9 @@ const GOOGLE_APP_ID = import.meta.env.PUBLIC_GOOGLE_APP_ID;
         };
 
         // --- LOGIC ---
+        // State
+        let duplicateError = "";
+
         const handleEscolarizadaLogic = () => {
             const carrera = carreraInput.value;
             const groupB = [
@@ -508,9 +522,11 @@ const GOOGLE_APP_ID = import.meta.env.PUBLIC_GOOGLE_APP_ID;
             }
         };
 
-        const validate = (showAllErrors = false) => {
+        const validate = (fieldsToShow: string[] | "ALL" = []) => {
             handleEscolarizadaLogic();
             let isValid = true;
+            const shouldShow = (id: string) =>
+                fieldsToShow === "ALL" || fieldsToShow.includes(id);
 
             const matricula = matriculaInput.value.trim();
             const nombre = nombreInput.value.trim();
@@ -523,27 +539,39 @@ const GOOGLE_APP_ID = import.meta.env.PUBLIC_GOOGLE_APP_ID;
             // Matricula
             if (!matricula) {
                 isValid = false;
-                if (showAllErrors) showError("matricula", "Requerido.");
+                if (shouldShow("matricula"))
+                    showError("matricula", "Requerido.");
+            } else if (duplicateError) {
+                isValid = false;
+                if (shouldShow("matricula"))
+                    showError("matricula", duplicateError);
             } else clearError("matricula");
 
             // Nombre
-            if (!nombre || !nameRegex.test(nombre)) {
+            if (!nombre) {
                 isValid = false;
-                if (showAllErrors)
-                    showError("nombre-completo", "Nombre inválido.");
+                if (shouldShow("nombre-completo"))
+                    showError("nombre-completo", "Requerido.");
+            } else if (!nameRegex.test(nombre)) {
+                isValid = false;
+                if (shouldShow("nombre-completo"))
+                    showError(
+                        "nombre-completo",
+                        "Contiene caracteres inválidos.",
+                    );
             } else clearError("nombre-completo");
 
             // Campus
             if (!campusOptions.includes(campusOrigen)) {
                 isValid = false;
-                if (showAllErrors)
-                    showError("campus-origen", "Campus inválido.");
+                if (shouldShow("campus-origen"))
+                    showError("campus-origen", "Campus origen no coincide.");
             } else clearError("campus-origen");
 
             if (!campusOptions.includes(campusDestino)) {
                 isValid = false;
-                if (showAllErrors)
-                    showError("campus-destino", "Campus inválido.");
+                if (shouldShow("campus-destino"))
+                    showError("campus-destino", "Campus destino no coincide.");
             } else {
                 if (
                     campusOrigen &&
@@ -551,7 +579,7 @@ const GOOGLE_APP_ID = import.meta.env.PUBLIC_GOOGLE_APP_ID;
                     campusOrigen === campusDestino
                 ) {
                     isValid = false;
-                    if (showAllErrors)
+                    if (shouldShow("campus-destino"))
                         showError(
                             "campus-destino",
                             "Debe ser diferente al origen.",
@@ -564,17 +592,21 @@ const GOOGLE_APP_ID = import.meta.env.PUBLIC_GOOGLE_APP_ID;
             // Carrera
             if (!carreraOptions.includes(carrera)) {
                 isValid = false;
-                if (showAllErrors)
-                    showError("carrera", "Selecciona una opción válida.");
+                if (shouldShow("carrera"))
+                    showError("carrera", "No se reconoce oferta.");
             } else clearError("carrera");
 
             // Descuento
             if (tieneDescuento) {
-                const val = parseInt(descuentoValorInput.value.trim(), 10);
-                if (isNaN(val) || val <= 0 || val > 99) {
+                const val = descuentoValorInput.value.trim();
+                if (!val) {
                     isValid = false;
-                    if (showAllErrors)
-                        showError("descuento-valor", "Inválido (1-99).");
+                    if (shouldShow("descuento-valor"))
+                        showError("descuento-valor", "Requerido.");
+                } else if (!descuentoOptions.includes(val)) {
+                    isValid = false;
+                    if (shouldShow("descuento-valor"))
+                        showError("descuento-valor", "Descuento no válido.");
                 } else clearError("descuento-valor");
             } else clearError("descuento-valor");
 
@@ -593,6 +625,14 @@ const GOOGLE_APP_ID = import.meta.env.PUBLIC_GOOGLE_APP_ID;
                 suggestionsId,
             ) as HTMLElement;
             if (!input || !suggestions) return;
+
+            // Helper to normalize text (remove accents and lowercase)
+            const normalizeText = (text: string) => {
+                return text
+                    .normalize("NFD")
+                    .replace(/[\u0300-\u036f]/g, "")
+                    .toLowerCase();
+            };
 
             let activeIndex = -1;
 
@@ -627,7 +667,7 @@ const GOOGLE_APP_ID = import.meta.env.PUBLIC_GOOGLE_APP_ID;
             };
 
             input.addEventListener("input", function () {
-                const val = this.value.toLowerCase();
+                const val = normalizeText(this.value);
                 suggestions.innerHTML = "";
                 activeIndex = -1;
 
@@ -638,7 +678,7 @@ const GOOGLE_APP_ID = import.meta.env.PUBLIC_GOOGLE_APP_ID;
                 }
 
                 const filtered = options.filter((opt) =>
-                    opt.toLowerCase().includes(val),
+                    normalizeText(opt).includes(val),
                 );
 
                 if (filtered.length > 0) {
@@ -918,10 +958,58 @@ const GOOGLE_APP_ID = import.meta.env.PUBLIC_GOOGLE_APP_ID;
             campusOptions,
         );
         setupAutocomplete("carrera", "carrera-suggestions", carreraOptions);
+        setupAutocomplete(
+            "descuento-valor",
+            "descuento-suggestions",
+            descuentoOptions,
+        );
 
-        matriculaInput.addEventListener("input", () => validate());
-        nombreInput.addEventListener("input", () => validate());
-        descuentoValorInput.addEventListener("input", () => validate());
+        async function checkDuplicateMatricula() {
+            const matricula = matriculaInput.value.trim();
+            if (!matricula) return;
+
+            try {
+                const res = await fetch(
+                    `/api/tickets/check-transfer?matricula=${matricula}`,
+                );
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.exists) {
+                        duplicateError = `Hay un traslado activo para ésta matrícula, folio TRL-${data.ticketId}`;
+                        validate(["matricula"]);
+                    }
+                }
+            } catch (e) {
+                console.error("Error checking duplicate", e);
+            }
+        }
+
+        matriculaInput.addEventListener("input", () => {
+            duplicateError = ""; // Reset on edit
+            validate([]);
+        });
+        matriculaInput.addEventListener("blur", async () => {
+            validate(["matricula"]);
+            await checkDuplicateMatricula();
+        });
+
+        // For Name, show errors immediately on input if invalid chars found
+        nombreInput.addEventListener("input", () => {
+            validate(["nombre-completo"]);
+        });
+
+        // For inputs that might need blur validation to be sure
+        campusOrigenInput.addEventListener("blur", () =>
+            validate(["campus-origen"]),
+        );
+        campusDestinoInput.addEventListener("blur", () =>
+            validate(["campus-destino"]),
+        );
+        carreraInput.addEventListener("blur", () => validate(["carrera"]));
+
+        descuentoValorInput.addEventListener("input", () =>
+            validate(["descuento-valor"]),
+        );
 
         tieneDescuentoCheckbox.addEventListener("change", (e) => {
             const isChecked = (e.target as HTMLInputElement).checked;
@@ -930,7 +1018,7 @@ const GOOGLE_APP_ID = import.meta.env.PUBLIC_GOOGLE_APP_ID;
                 container.classList.toggle("hidden", !isChecked);
                 container.classList.toggle("flex", isChecked);
             }
-            validate();
+            validate([]);
         });
 
         // File listeners
@@ -977,7 +1065,7 @@ const GOOGLE_APP_ID = import.meta.env.PUBLIC_GOOGLE_APP_ID;
         // --- SUBMIT ---
         form.addEventListener("submit", async (e) => {
             e.preventDefault();
-            if (!validate(true)) return;
+            if (!validate("ALL")) return;
 
             submitButton.disabled = true;
             submitButton.innerHTML = `<span class="animate-spin mr-2">⏳</span> Enviando Solicitud...`;

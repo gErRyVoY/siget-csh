@@ -50,6 +50,19 @@ async function main() {
     ],
   });
 
+  // --- Insertar Ciclos ---
+  console.log('Seeding ciclos...');
+  await prisma.ciclo.createMany({
+    data: [
+      { id: 1, ciclo: '2026-3', fecha_inicio: new Date('2025-12-18'), fecha_fin: new Date('2026-04-01'), activo: false },
+      { id: 2, ciclo: '2026-4', fecha_inicio: new Date('2026-04-02'), fecha_fin: new Date('2026-07-01'), activo: false },
+      { id: 3, ciclo: '2027-1', fecha_inicio: new Date('2026-07-01'), fecha_fin: new Date('2026-09-23'), activo: false },
+      { id: 4, ciclo: '2027-2', fecha_inicio: new Date('2026-09-24'), fecha_fin: new Date('2027-01-06'), activo: false },
+    ],
+  });
+
+
+
   // --- Insertar Permisos ---
   console.log('Seeding permiso...');
   await prisma.permiso.createMany({

@@ -191,9 +191,7 @@ const fieldMap: Record<string, string> = {
         </div>
 
         <form id="edit-ticket-form">
-            <div
-                class="bg-card border border-[var(--secondary)] rounded-lg p-4 mb-6"
-            >
+            <div class="bg-card border border-secondary rounded-lg p-4 mb-6">
                 <div class="flex justify-between items-center mb-4">
                     <p class="text-lg font-semibold">
                         {ticket.solicitante.nombres}
@@ -372,7 +370,7 @@ const fieldMap: Record<string, string> = {
             </div>
 
             <div class="flex justify-between items-start gap-4 mb-4 w-full">
-                <div class="flex-grow space-y-2">
+                <div class="grow space-y-2">
                     <div
                         id="drop-zone"
                         class="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 text-center hover:bg-muted/50 transition-colors cursor-pointer relative"
@@ -395,7 +393,7 @@ const fieldMap: Record<string, string> = {
                     <button
                         type="button"
                         id="upload-files-button"
-                        class="bg-muted-foreground text-white hover:bg-muted-foreground/80 px-4 py-2 rounded-md text-sm font-semibold flex-grow h-10"
+                        class="bg-muted-foreground text-white hover:bg-muted-foreground/80 px-4 py-2 rounded-md text-sm font-semibold grow h-10"
                     >
                         Adjuntar
                     </button>
@@ -439,7 +437,7 @@ const fieldMap: Record<string, string> = {
         </form>
         <input type="file" id="file-input" multiple class="hidden" />
 
-        <div class="bg-card border border-[var(--secondary)] rounded-lg p-8">
+        <div class="bg-card border border-secondary rounded-lg p-8">
             <div class="mb-6">
                 <label
                     for="new-comment"
@@ -481,7 +479,7 @@ const fieldMap: Record<string, string> = {
                                         index === 0 ? "true" : "false"
                                     }
                                 >
-                                    <div class="flex-grow">
+                                    <div class="grow">
                                         <div class="flex justify-between items-center">
                                             <p class="font-semibold text-sm">
                                                 {entry.usuario.nombres}{" "}

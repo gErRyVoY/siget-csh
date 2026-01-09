@@ -22,6 +22,25 @@ y este proyecto adhiere a [Versionado Semántico](https://semver.org/lang/es/).
 - **Limpieza UI:** Ocultación de columna "Solicitante" en "Mis Tickets" para usuarios estándar.
 - **Notificaciones:** Corrección de colores en badges de estatus del dropdown.
 
+## [0.9.2] - 2026-01-09
+
+### Added
+- **Gestión de Ciclos:** Panel administrativo para activar/desactivar ciclos escolares.
+- **Validación de Ciclos:** Automatización de validación de ciclos activos al crear traslados.
+- **Descuentos:** Sistema de autocompletado para el campo de descuento en traslados, sincronizado con la base de datos.
+- **UX Search:** Búsqueda de campus y carreras insensible a acentos (normalización NFD).
+
+### Changed
+- **Optimización CSS:** Migración masiva de clases utilitarias (`flex-shrink-0` -> `shrink-0`, `flex-grow` -> `grow`) y simplificación de variables de tema (`var(--secondary)` -> `secondary`).
+- **Sidebar:** Restauración de acceso al módulo de Ciclos para administradores.
+
+### Fixed
+- **API Traslados:** Error de sintaxis crítico (ReferenceError) y cierre prematuro de función en `transfer.api`.
+- **UI Traslados:** Etiqueta del checkbox de descuento cambiada a "¿Tiene descuento? > Si".
+
+### Removed
+- **Código Muerto:** Eliminación del archivo `src/pages/tickets/view/ejemplo.astro`.
+
 ## [0.9.1] - 2026-01-07
 
 ### Fixed
