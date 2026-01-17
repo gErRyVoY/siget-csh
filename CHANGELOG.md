@@ -22,6 +22,11 @@ y este proyecto adhiere a [Versionado Semántico](https://semver.org/lang/es/).
 - **Limpieza UI:** Ocultación de columna "Solicitante" en "Mis Tickets" para usuarios estándar.
 - **Notificaciones:** Corrección de colores en badges de estatus del dropdown.
 
+## [0.9.3] - 2026-01-17
+
+### Added
+- **Roles:** Se añadieron nuevos roles al seed (Ejecutivos acad/adm, Coordinadores, Soporte técnico) para cubrir la estructura organizacional completa (IDs 18-28).
+
 ## [0.9.2] - 2026-01-09
 
 ### Added

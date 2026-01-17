@@ -80,6 +80,8 @@ model Usuario {
   historial_solicitudes    HistorialSolicitud[]
   traslados_auditor_docs   Traslado[]               @relation("AuditorDocs")
   traslados_auditor_req    Traslado[]               @relation("AuditorReq")
+  trl_mail                 Boolean   @default(false)
+  trl_coord                Boolean   @default(false)
   notificaciones_correo    NotificacionesCorreo[]
   logs                     Logs[]
 
@@ -265,6 +267,7 @@ model Traslado {
   auditor_docsId Int?
   auditor_reqId  Int?
   especial       Boolean   @default(false)
+  nuevo_ingreso  Boolean   @default(false)
 
   // Validacion Auditor Documentos
   validacion_docs        Boolean   @default(false)

@@ -144,8 +144,8 @@ if (["Magno", "Ejecutivo"].includes(empresa.tipo)) {
               (window.location.href = `/admin/usuarios/editar/${user.id}`);
             row.innerHTML = `
                         <td class="p-4 font-medium text-foreground">${user.nombres} ${user.apellidos}</td>
-                        <td class="p-4">${user.activo ? '<span class="px-2 py-1 text-xs font-semibold text-green-800 bg-green-100 dark:bg-green-900/30 dark:text-green-300 rounded-full">Activo</span>' : '<span class="px-2 py-1 text-xs font-semibold text-red-800 bg-red-100 dark:bg-red-900/30 dark:text-red-300 rounded-full">Inactivo</span>'}</td>
-                        <td class="p-4">${user.vacaciones ? '<span class="px-2 py-1 text-xs font-semibold text-red-800 bg-red-100 dark:bg-red-900/30 dark:text-red-300 rounded-full">Sí</span>' : '<span class="px-2 py-1 text-xs font-semibold text-green-800 bg-green-100 dark:bg-green-900/30 dark:text-green-300 rounded-full">No</span>'}</td>
+                        <td class="p-4">${user.activo ? '<span class="badge-active px-2 py-1 text-xs font-semibold rounded-full">Activo</span>' : '<span class="badge-inactive px-2 py-1 text-xs font-semibold rounded-full">Inactivo</span>'}</td>
+                        <td class="p-4">${user.vacaciones ? '<span class="px-2 py-1 text-xs font-semibold text-red-800 bg-red-100 dark:bg-red-900/30 dark:text-red-300 rounded-full">Sí</span>' : '<span class="badge-active px-2 py-1 text-xs font-semibold rounded-full">No</span>'}</td>
                     `;
             tableBody.appendChild(row);
           });
@@ -208,3 +208,22 @@ if (["Magno", "Ejecutivo"].includes(empresa.tipo)) {
 
   document.addEventListener("astro:page-load", initUserList);
 </script>
+
+<style is:global>
+  .badge-active {
+    background-color: #166534; /* green-800 */
+    color: #ffffff;
+  }
+  .dark .badge-active {
+    background-color: rgba(20, 83, 45, 0.3); /* green-900/30 approx */
+    color: #86efac; /* green-300 */
+  }
+  .badge-inactive {
+    background-color: #9f0712;
+    color: #ffffff;
+  }
+  .dark .badge-inactive {
+    background-color: rgba(159, 7, 18, 0.3);
+    color: #e46971;
+  }
+</style>

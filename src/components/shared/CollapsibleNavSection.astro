@@ -60,7 +60,7 @@ const contentId = `collapsible-content-${title.toLowerCase().replace(/\s+/g, "-"
             "collapsible-trigger flex items-center w-full p-2 rounded-md group-data-[sidebar-collapsed=true]:justify-center  transition-colors duration-500",
             isSectionActive
                 ? "bg-secondary text-secondary-foreground"
-                : "hover:bg-secondary/90 hover:text-primary-foreground",
+                : "hover:bg-secondary/90 hover:text-secondary-foreground",
         ]}
         aria-expanded={isSectionActive ? "true" : "false"}
         aria-controls={contentId}

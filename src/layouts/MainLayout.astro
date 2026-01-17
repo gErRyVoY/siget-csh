@@ -306,6 +306,9 @@ const NOTIFICATION_FULL_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="24
                             </div>
                         `;
 
+                        // Always redirect notifications to 'mis-tickets' context
+                        item.href = `/tickets/view/${ticket.id}?source=mis-tickets`;
+
                         item.addEventListener("click", () => {
                             if (count > 0) {
                                 count--;

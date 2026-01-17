@@ -20,6 +20,9 @@
     - Revisar código muerto tras refactorizaciones
     - Pruebas de carga para SSE
     - Implementar carga masiva de usuarios (csv)? (Posible futuro)
+2.  **Seguridad y Validación de Vistas (Próximo Objetivo):**
+    - **Proteger Rutas/Vistas:** Separar explícitamente las vistas de Admin CSH y Admin Marketing.
+    - **Validación de Vistas:** Auditar y validar las vistas de tickets y traslados para asegurar que cada rol (Admin, Usuario) vea solo lo que le corresponde.
 
 **Documentos de Referencia:**
 - `CHANGELOG.md`: Registro de cambios del proyecto
@@ -112,6 +115,25 @@ Cuando el usuario me pida leer este archivo (`GEMINI.md`) al inicio de una sesi�
 5.  **Confirmar Rol y Esperar Instrucción:** Re-afirmar internamente mi rol como "ScrumBot" y esperar la siguiente instrucción del usuario para proceder.
 
 # Historial de Cambios (Log)
+
+## 2026-01-17 (Sesión 12 - Roles y Validación)
+*   **Base de Datos (Seed):**
+    *   Se ampliaron los roles disponibles en `prisma/seed.ts` (IDs 18-28) para incluir posiciones administrativas y académicas (Ejecutivos, Coordinadores, Soporte).
+    *   Se validó la consistencia con el enum `NivelSoporte`.
+*   **Documentación:**
+    *   Actualización de `CHANGELOG.md` con los nuevos cambios.
+    *   Sincronización de repositorio.
+
+## 2026-01-15 (Sesión 11 - Carga Masiva)
+*   **Carga Masiva de Usuarios:**
+    *   **Frontend:** Implementada nueva sección en `admin/usuarios/index.astro` con Drag & Drop y Google Drive Picker para archivos `.csv`.
+    *   **Backend:** Nuevo endpoint `api/admin/usuarios/import-csv` utilizando `csv-parse`.
+    *   **Validaciones:**
+        *   Formato estricto `.csv`.
+        *   Columnas requeridas: `nombres,apellidos,mail,empresa_slug,rol_nombre`.
+        *   Verificación de existencia de Empresa (slug) y Rol (nombre).
+        *   Validación de formato de email y duplicados en BD.
+    *   **Feedback:** Sistema de notificaciones (toasts) con reporte de éxito/fallo.
 
 ## 2026-01-09 (Sesión 10 - Parte 3)
 *   **Mejoras en Traslados:**
