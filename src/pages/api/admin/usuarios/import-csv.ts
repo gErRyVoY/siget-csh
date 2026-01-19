@@ -42,12 +42,20 @@ export const POST: APIRoute = async ({ request }) => {
         const roleMap = new Map(roles.map((r) => [r.rol.toLowerCase(), r.id]));
         const empresaMap = new Map(empresas.map((e) => [e.slug.toLowerCase(), e.id]));
 
+        interface UserImportRow {
+            nombres: string;
+            apellidos: string;
+            mail: string;
+            empresa_slug: string;
+            rol_nombre: string;
+        }
+
         // Transactional processing not strictly required for bulk upload report, 
         // but useful if we wanted all-or-nothing. 
         // Here we will do "best effort" and report failures.
 
         for (let i = 0; i < records.length; i++) {
-            const row = records[i];
+            const row = records[i] as UserImportRow;
             const rowNum = i + 2; // +2 accounting for header and 0-index
 
             const { nombres, apellidos, mail, empresa_slug, rol_nombre } = row;
@@ -103,7 +111,6 @@ export const POST: APIRoute = async ({ request }) => {
                         empresaId,
                         rolId,
                         activo: true, // Default active
-                        loading: false, // Default loading false (if field exists, checked schema ok)
                         // No password field in schema provided! Auth is likely via Google or similar.
                         // If local auth was needed, we'd need a password field.
                         // Based on schema, only 'mail' is unique identifier.

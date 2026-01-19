@@ -116,6 +116,13 @@ Cuando el usuario me pida leer este archivo (`GEMINI.md`) al inicio de una sesi�
 
 # Historial de Cambios (Log)
 
+## 2026-01-19 (Sesión 13 - Corrección CSV Import)
+*   **Carga Masiva (Fix):**
+    *   Se solucionó un error crítico 500 que impedía la importación de usuarios.
+    *   **Causa:** Se estaba pasando un campo inexistente (`loading`) al método `create` de Prisma.
+    *   **Solución:** Se eliminó el campo del objeto de datos en `api/admin/usuarios/import-csv.ts`.
+*   **Documentación:** Sincronización de registros de cambios.
+
 ## 2026-01-17 (Sesión 12 - Roles y Validación)
 *   **Base de Datos (Seed):**
     *   Se ampliaron los roles disponibles en `prisma/seed.ts` (IDs 18-28) para incluir posiciones administrativas y académicas (Ejecutivos, Coordinadores, Soporte).

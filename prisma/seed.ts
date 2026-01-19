@@ -106,6 +106,7 @@ async function main() {
       { id: 26, rol: 'Coordinador vida estudiantil', descripcion: 'Coordinador de vida estudiantil y humanitas vive', nivel_soporte: 'Coordinador' },
       { id: 27, rol: 'Coordinador control escolar', descripcion: 'Coordinador de control escolar', nivel_soporte: 'Coordinador' },
       { id: 28, rol: 'Soporte técnico', descripcion: 'Soporte técnico', nivel_soporte: 'S_1' },
+      { id: 29, rol: 'Enlace académico', descripcion: 'Enlace académico', nivel_soporte: 'Usuario' },
     ],
   });
 
