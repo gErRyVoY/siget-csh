@@ -15,6 +15,7 @@ model Empresa {
   nombre            String     @db.VarChar(50)
   slug              String     @db.VarChar(50) @unique
   tipo              TipoEmpresa
+  activa            Boolean    @default(true)
   usuarios          Usuario[]
   tickets           Ticket[]
   traslados_origen  Traslado[] @relation("Origen")

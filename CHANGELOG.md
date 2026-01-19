@@ -20,12 +20,23 @@ y este proyecto adhiere a [Versionado Semántico](https://semver.org/lang/es/).
 - **UI Móvil:** Optimización de filtros a grid de 2 columnas para ahorrar espacio.
 - **UI Tickets:** Cambio de etiqueta "Campus" a "Empresa".
 - **Limpieza UI:** Ocultación de columna "Solicitante" en "Mis Tickets" para usuarios estándar.
+## 2026-01-19 (Sesión 13 - Parte 2)
+*   **Base de Datos (Empresa):**
+    *   Se añadió la columna `activa` (bool) a la tabla `Empresa`.
+    *   Se actualizó el `seed.ts` para inicializar todas las empresas como activas.
+    *   Ejecución exitosa de migración y seed.
+
+## 2026-01-19 (Sesión 13 - Corrección CSV Import)
 - **Notificaciones:** Corrección de colores en badges de estatus del dropdown.
 
 ## [0.9.4] - 2026-01-19
 
 ### Fixed
 - **API Usuarios:** Corregido error 500 en carga masiva de usuarios por argumento inválido (`loading`) en la creación de Prisma.
+
+### Added
+- **Base de Datos:** Nueva columna `activa` (boolean) en la tabla `Empresa` con valor por defecto `true`.
+- **Seed:** Actualización de datos de empresas para incluir el estado activo.
 
 ## [0.9.3] - 2026-01-17
 
