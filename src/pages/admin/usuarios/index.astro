@@ -410,7 +410,46 @@ const empresas = await prisma.empresa.findMany({
       const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(result.error || result.details || "Error desconocido");
+        let errorMessage = result.error || "Error al procesar el archivo";
+        let detailedMessage = "";
+
+        if (result.error === "Invalid CSV structure" && result.details) {
+          const { missing, found, required } = result.details;
+          errorMessage = "Estructura de CSV inválida";
+
+          if (found.length === 0) {
+            detailedMessage =
+              "<strong>Error:</strong> El archivo no contiene ninguna de las columnas necesarias.";
+          } else {
+            detailedMessage = `
+              <div class="mt-2 space-y-1">
+                <p><strong>Faltan ${missing.length} columnas:</strong></p>
+                <ul class="list-disc list-inside text-xs opacity-90 pl-2">
+                  ${missing.map((col: string) => `<li>${col}</li>`).join("")}
+                </ul>
+                <p class="mt-2 text-xs italic">Columnas encontradas: ${found.join(", ")}</p>
+              </div>
+            `;
+          }
+        } else if (result.error === "Invalid CSV format") {
+          detailedMessage = `<strong>Error de formato:</strong> ${result.details}`;
+        } else if (result.details) {
+          detailedMessage = `<p>${result.details}</p>`;
+        }
+
+        toast.show({
+          message: detailedMessage
+            ? `${errorMessage}<br/>${detailedMessage}`
+            : errorMessage,
+          type: "error",
+          allowHtml: true,
+          duration: 0, // Persistent until closed
+          closeable: true,
+        });
+
+        uploadBtn.disabled = false;
+        uploadBtn.textContent = "Subir CSV";
+        return;
       }
 
       // Success UI Update
@@ -420,28 +459,43 @@ const empresas = await prisma.empresa.findMany({
 
       if (result.errors && result.errors.length > 0) {
         console.warn("Errores de importación:", result.errors);
-        // Show first few errors in toast or create a detailed report functionality?
-        // For now, simple alert or multiple toasts could be annoying.
-        // Let's show a summary toast.
-        setTimeout(() => {
-          toast.warning(
-            `Hubo ${result.errors.length} errores. Revisa la consola para más detalles.`,
-          );
-        }, 2000);
+
+        const errorSummary = `
+          <div class="mt-2">
+            <p><strong>Hubo ${result.errors.length} errores en las filas:</strong></p>
+            <ul class="list-disc list-inside text-xs opacity-90 pl-2 max-h-32 overflow-y-auto">
+              ${result.errors
+                .slice(0, 5)
+                .map((err: any) => `<li>Fila ${err.row}: ${err.message}</li>`)
+                .join("")}
+              ${result.errors.length > 5 ? `<li>... y ${result.errors.length - 5} más</li>` : ""}
+            </ul>
+          </div>
+        `;
+
+        toast.show({
+          message: errorSummary,
+          type: "warning",
+          allowHtml: true,
+          duration: 8000,
+          closeable: true,
+        });
       }
 
       if (result.success > 0) {
-        // Refresh data? Reload page?
         setTimeout(() => {
           window.location.reload();
-        }, 2000);
+        }, 5000); // More time to read errors
       } else {
         uploadBtn.disabled = false;
         uploadBtn.textContent = "Subir CSV";
       }
     } catch (error: any) {
       console.error(error);
-      toast.error(`Error al subir archivo: ${error.message}`);
+      toast.error(`Error de red o servidor: ${error.message}`, {
+        duration: 0,
+        closeable: true,
+      });
       uploadBtn.disabled = false;
       uploadBtn.textContent = "Subir CSV";
     }

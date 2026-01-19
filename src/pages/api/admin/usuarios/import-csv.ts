@@ -29,6 +29,38 @@ export const POST: APIRoute = async ({ request }) => {
             trim: true,
         });
 
+        const REQUIRED_COLUMNS = ["nombres", "apellidos", "mail", "empresa_slug", "rol_nombre"];
+
+        // If there are records, check the first one's keys to validate headers
+        if (records.length > 0) {
+            const headers = Object.keys(records[0] as Record<string, any>);
+            const missingColumns = REQUIRED_COLUMNS.filter(col => !headers.includes(col));
+            const extraColumns = headers.filter(col => !REQUIRED_COLUMNS.includes(col));
+
+            if (missingColumns.length > 0) {
+                return new Response(JSON.stringify({
+                    error: "Invalid CSV structure",
+                    details: {
+                        missing: missingColumns,
+                        found: headers,
+                        required: REQUIRED_COLUMNS
+                    }
+                }), {
+                    status: 400,
+                    headers: { "Content-Type": "application/json" },
+                });
+            }
+        } else if (text.trim() && !text.includes(",")) {
+            // Heuristic for "zero columns found" / wrong delimiter
+            return new Response(JSON.stringify({
+                error: "Invalid CSV format",
+                details: "No columns detected. Ensure the file uses commas as delimiters."
+            }), {
+                status: 400,
+                headers: { "Content-Type": "application/json" },
+            });
+        }
+
         const results = {
             success: 0,
             failed: 0,

@@ -12,6 +12,7 @@ export interface ToastOptions {
     duration?: number;
     position?: ToastPosition;
     closeable?: boolean;
+    allowHtml?: boolean;
     action?: {
         label: string;
         onClick: () => void;
@@ -131,6 +132,7 @@ class ToastManager {
             message,
             type = 'info',
             closeable = true,
+            allowHtml = false,
             action,
         } = options;
 
@@ -142,12 +144,14 @@ class ToastManager {
         const color = this.config.colors[type];
         const icon = this.config.icons[type];
 
+        const messageContent = allowHtml ? message : this.escapeHtml(message);
+
         toast.innerHTML = `
       <div class="toast-icon" style="color: ${color};">
         ${icon}
       </div>
       <div class="toast-content">
-        <div class="toast-message">${this.escapeHtml(message)}</div>
+        <div class="toast-message">${messageContent}</div>
         ${action ? `<button class="toast-action">${this.escapeHtml(action.label)}</button>` : ''}
       </div>
       ${closeable ? `<button class="toast-close" aria-label="Cerrar">${this.config.icons.close}</button>` : ''}
