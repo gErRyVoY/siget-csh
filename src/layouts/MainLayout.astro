@@ -84,7 +84,7 @@ const NOTIFICATION_FULL_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="24
     >
         <div
             id="dashboard-wrapper"
-            class="h-screen w-full bg-background text-foreground flex group font-montse"
+            class="h-full w-full bg-background text-foreground flex group font-montse"
         >
             <Sidebar session={session} />
 
@@ -95,7 +95,7 @@ const NOTIFICATION_FULL_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="24
                     ml-0 md:ml-64 group-data-[sidebar-collapsed=false]:ml-64 group-data-[sidebar-collapsed=true]:ml-0"
             >
                 <header
-                    class="h-[var(--header-height)] flex items-center justify-between border-b border-border px-6 sticky top-0 bg-background/80 backdrop-blur-lg z-30"
+                    class="h-(--header-height) flex items-center justify-between border-b border-border px-6 sticky top-0 bg-background/80 backdrop-blur-lg z-30"
                 >
                     <div class="flex items-center">
                         <button
@@ -160,7 +160,7 @@ const NOTIFICATION_FULL_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="24
                     <div
                         id="mobile-overlay-message"
                         class="hidden group-data-[sidebar-collapsed=false]:max-md:flex
-                            absolute inset-0 top-[var(--header-height)] bg-background/80 backdrop-blur-sm cursor-pointer
+                            absolute inset-0 top-(--header-height) bg-background/80 backdrop-blur-sm cursor-pointer
                             items-center justify-center p-8 text-center font-semibold text-foreground z-20"
                     >
                         Toque aquí para ver el contenido

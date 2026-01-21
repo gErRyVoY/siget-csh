@@ -20,6 +20,12 @@ y este proyecto adhiere a [Versionado Semántico](https://semver.org/lang/es/).
 - **UI Móvil:** Optimización de filtros a grid de 2 columnas para ahorrar espacio.
 - **UI Tickets:** Cambio de etiqueta "Campus" a "Empresa".
 - **Limpieza UI:** Ocultación de columna "Solicitante" en "Mis Tickets" para usuarios estándar.
+## 2026-01-21 (Sesión 14 - Fixes de UI y Layout)
+*   **Layout (Scrollbar):** Se solucionó el problema de la barra de scroll doble/incorrecta cambiando la altura del contenedor principal de `h-screen` a `h-full` en `MainLayout`.
+*   **CSS:** Corrección de warnings de sintaxis de Tailwind para variables CSS (`h-[var(--...)]` -> `h-(--...)`).
+*   **Dashboard:** Ajuste de altura (`h-full`) en `StatCard` para asegurar uniformidad en el grid.
+*   **Traslados:** Optimización de tag de imagen (`Img` -> `img`) para mejor compatibilidad.
+
 ## 2026-01-19 (Sesión 13 - Parte 2)
 *   **Base de Datos (Empresa):**
     *   Se añadió la columna `activa` (bool) a la tabla `Empresa`.

@@ -116,6 +116,15 @@ Cuando el usuario me pida leer este archivo (`GEMINI.md`) al inicio de una sesi�
 
 # Historial de Cambios (Log)
 
+## 2026-01-21 (Sesión 14 - Fixes de UI y Layout)
+*   **Layout & Scroll:**
+    *   **Corrección:** Se reemplazó `h-screen` por `h-full` en el wrapper de `MainLayout` para solucionar problemas de scrollbar no deseado o cortado.
+    *   **CSS:** Se actualizó la sintaxis de clases arbitrarias de Tailwind (ej. `h-(--header-height)`) para eliminar advertencias de consola.
+*   **Componentes:**
+    *   **StatCard:** Se forzó `h-full` para que las tarjetas del dashboard ocupen toda la altura disponible en su celda.
+    *   **Traslados:** Simplificación del tag de imagen.
+*   **Git:** Sincronización de cambios al repositorio.
+
 ## 2026-01-19 (Sesión 13 - Corrección CSV Import)
 *   **Carga Masiva (Fix):**
     *   Se solucionó un error crítico 500 que impedía la importación de usuarios.
