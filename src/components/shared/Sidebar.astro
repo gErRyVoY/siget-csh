@@ -50,6 +50,11 @@ const isMarketingRole = isMarketingDirector || isMarketingStaff;
 
 const mainNavItems = [
     {
+        href: "/traslados",
+        label: "Proceso de traslados",
+        icon: UserTransferIcon,
+    },
+    {
         href: "https://my.anydesk.com/download/DftqvrQy/AnyDesk_Universidad_Humanitas.exe",
         label: "Asistencia remota",
         icon: RemoteSupportIcon,
@@ -359,8 +364,17 @@ const marketingAdminSections = [
         }
     </nav>
 
-    <div class="p-2 border-t border-border mt-auto shrink-0">
+    <div
+        class="p-2 border-t border-border mt-auto shrink-0 bg-sidebar/80 backdrop-blur-sm z-10"
+    >
         <UserProfile session={session} />
+    </div>
+
+    {/* Fondo decorativo con opacidad reducida */}
+    <div
+        class="absolute inset-0 z-0 pointer-events-none opacity-[0.08] dark:opacity-[0.05]"
+        style="background-image: url('/leon-querer-es-poder.png'); background-position: bottom center; background-repeat: no-repeat; background-size: contain;"
+    >
     </div>
 </aside>
 
