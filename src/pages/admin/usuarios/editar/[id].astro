@@ -10,6 +10,7 @@ const session = await getSession(Astro.request);
 const [user, empresas, roles] = await Promise.all([
   prisma.usuario.findUnique({
     where: { id: parseInt(id as string, 10) },
+    include: { empresa: true, rol: true },
   }),
   prisma.empresa.findMany({ orderBy: { nombre: "asc" } }),
   prisma.rol.findMany({ orderBy: { rol: "asc" } }),
@@ -263,13 +264,12 @@ const horarioString = JSON.stringify(user.horario_disponibilidad);
         {
           canEdit && (
             <div class="flex justify-end pt-4 gap-4">
-              <button
-                type="button"
-                id="back-button"
-                class="text-muted-foreground hover:bg-muted/80 px-6 py-2 rounded-md text-sm font-semibold transition-colors border border-transparent hover:border-border"
+              <a
+                href={`/admin/usuarios/${user.empresa.slug}`}
+                class="bg-muted-foreground text-white hover:bg-muted-foreground/80 px-6 py-2 rounded-md text-sm font-semibold transition-colors"
               >
-                Volver
-              </button>
+                Volver a la lista
+              </a>
               <button
                 type="submit"
                 class="bg-primary text-primary-foreground hover:bg-primary/90 px-6 py-2 rounded-md text-sm font-semibold"
@@ -284,14 +284,12 @@ const horarioString = JSON.stringify(user.horario_disponibilidad);
       {
         !canEdit && (
           <div class="flex justify-end pt-4 gap-4">
-            <button
-              type="button"
-              id="back-button-readonly"
-              class="text-muted-foreground hover:bg-muted/80 px-6 py-2 rounded-md text-sm font-semibold transition-colors"
-              onclick="history.back()"
+            <a
+              href={`/admin/usuarios/${user.empresa.slug}`}
+              class="bg-muted text-muted-foreground hover:bg-muted/80 px-6 py-2 rounded-md text-sm font-semibold transition-colors"
             >
-              Volver
-            </button>
+              Volver a la lista
+            </a>
           </div>
         )
       }
@@ -303,8 +301,5 @@ const horarioString = JSON.stringify(user.horario_disponibilidad);
   import { initializeUserEditForm } from "@/scripts/user-edit-form-logic";
   document.addEventListener("astro:page-load", () => {
     initializeUserEditForm();
-    // Back button logic for the ReadOnly button if it exists, logic for the form button is likely in the imported script or requires id 'back-button'
-    const backBtn = document.getElementById("back-button");
-    if (backBtn) backBtn.addEventListener("click", () => history.back());
   });
 </script>

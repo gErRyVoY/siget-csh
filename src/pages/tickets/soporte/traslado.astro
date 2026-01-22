@@ -42,6 +42,7 @@ const descuentoOptions = descuentos.map((d) => d.descripcion);
                     data-campus-options={JSON.stringify(campusOptions)}
                     data-carrera-options={JSON.stringify(carreraOptions)}
                     data-descuento-options={JSON.stringify(descuentoOptions)}
+                    data-bloque-options={JSON.stringify(bloqueOptions)}
                     data-google-api-key={GOOGLE_API_KEY}
                     data-google-client-id={GOOGLE_CLIENT_ID}
                     data-google-app-id={GOOGLE_APP_ID}
@@ -208,8 +209,44 @@ const descuentoOptions = descuentos.map((d) => d.descripcion);
                         >
                         </p>
                     </div>
-
-                    <!-- Descuentos y bloque -->
+                    <!-- Bloque sugerido -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label
+                                for="bloque-sugerido"
+                                class="block text-sm font-medium text-foreground mb-1"
+                            >
+                                Bloque sugerido <span class="text-destructive"
+                                    >*</span
+                                >
+                            </label>
+                            <select
+                                id="bloque-sugerido"
+                                name="bloque-sugerido"
+                                class="w-full rounded-md border-border bg-input px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring"
+                            >
+                                {
+                                    bloqueOptions.map((option) => (
+                                        <option
+                                            value={option
+                                                .toLowerCase()
+                                                .replace(/\s+/g, "-")}
+                                        >
+                                            {option}
+                                        </option>
+                                    ))
+                                }
+                            </select>
+                        </div>
+                    </div>
+                    <div class="flex justify-between items-center mb-1 w-full">
+                        <h1
+                            class="text-sm font-medium text-foreground w-full text-center border-b border-muted-foreground/40"
+                        >
+                            Información opcional
+                        </h1>
+                    </div>
+                    <!-- Descuentos y comentarios -->
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <!-- Descuento -->
                         <div>
@@ -260,32 +297,21 @@ const descuentoOptions = descuentos.map((d) => d.descripcion);
                             >
                             </p>
                         </div>
-
-                        <!-- Bloque sugerido -->
+                        <!-- Comentarios -->
                         <div>
-                            <label
-                                for="bloque-sugerido"
-                                class="block text-sm font-medium text-foreground mb-1"
-                            >
-                                Bloque sugerido
-                            </label>
-                            <select
-                                id="bloque-sugerido"
-                                name="bloque-sugerido"
-                                class="w-full rounded-md border-border bg-input px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring"
-                            >
-                                {
-                                    bloqueOptions.map((option) => (
-                                        <option
-                                            value={option
-                                                .toLowerCase()
-                                                .replace(/\s+/g, "-")}
-                                        >
-                                            {option}
-                                        </option>
-                                    ))
-                                }
-                            </select>
+                            <div class="flex items-center mb-2 h-5">
+                                <label
+                                    class="text-sm font-medium text-foreground"
+                                    >Comentarios</label
+                                >
+                            </div>
+                            <textarea
+                                id="comentarios"
+                                name="comentarios"
+                                rows="4"
+                                class="w-full rounded-md border-border bg-input px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                placeholder="Escribe tus comentarios aquí..."
+                            ></textarea>
                         </div>
                     </div>
 
@@ -405,6 +431,9 @@ const descuentoOptions = descuentos.map((d) => d.descripcion);
         const descuentoOptions: string[] = JSON.parse(
             form.dataset.descuentoOptions || "[]",
         );
+        const bloqueOptionsFull: string[] = JSON.parse(
+            form.dataset.bloqueOptions || "[]",
+        );
 
         const GOOGLE_API_KEY = form.dataset.googleApiKey;
         const GOOGLE_CLIENT_ID = form.dataset.googleClientId;
@@ -438,8 +467,12 @@ const descuentoOptions = descuentos.map((d) => d.descripcion);
         const escolarizadaContainer = document.getElementById(
             "escolarizada-container",
         ) as HTMLElement;
-
-        // --- FILE UPLOAD REFS ---
+        const bloqueSugeridoSelect = document.getElementById(
+            "bloque-sugerido",
+        ) as HTMLSelectElement;
+        const comentariosInput = document.getElementById(
+            "comentarios",
+        ) as HTMLTextAreaElement;
         const dropZone = document.getElementById("drop-zone");
         const fileInput = document.getElementById(
             "file-input",
@@ -522,8 +555,47 @@ const descuentoOptions = descuentos.map((d) => d.descripcion);
             }
         };
 
+        const handleBloqueOptions = () => {
+            const carrera = carreraInput.value.toLowerCase();
+            const normalize = (str: string) =>
+                str
+                    .normalize("NFD")
+                    .replace(/[\u0300-\u036f]/g, "")
+                    .toLowerCase();
+            const carreraNorm = normalize(carrera);
+
+            let filteredOptions: string[] = [];
+
+            if (carreraNorm.includes("licenciatura")) {
+                const nums = Array.from({ length: 16 }, (_, i) =>
+                    String(i + 1),
+                );
+                filteredOptions = [...nums, "Actualización"];
+            } else if (carreraNorm.includes("maestria")) {
+                const nums = Array.from({ length: 5 }, (_, i) => String(i + 1));
+                filteredOptions = [...nums, "Seminario", "Actualización"];
+            } else {
+                filteredOptions = bloqueOptionsFull;
+            }
+
+            const currentValue = bloqueSugeridoSelect.value;
+            bloqueSugeridoSelect.innerHTML = "";
+
+            filteredOptions.forEach((opt) => {
+                const normalizedOpt = opt.toLowerCase().replace(/\s+/g, "-");
+                const optionEl = document.createElement("option");
+                optionEl.value = normalizedOpt;
+                optionEl.textContent = opt;
+                if (normalizedOpt === currentValue) {
+                    optionEl.selected = true;
+                }
+                bloqueSugeridoSelect.appendChild(optionEl);
+            });
+        };
+
         const validate = (fieldsToShow: string[] | "ALL" = []) => {
             handleEscolarizadaLogic();
+            handleBloqueOptions();
             let isValid = true;
             const shouldShow = (id: string) =>
                 fieldsToShow === "ALL" || fieldsToShow.includes(id);
@@ -609,6 +681,22 @@ const descuentoOptions = descuentos.map((d) => d.descripcion);
                         showError("descuento-valor", "Descuento no válido.");
                 } else clearError("descuento-valor");
             } else clearError("descuento-valor");
+
+            // Bloque Sugerido
+            if (
+                !bloqueSugeridoSelect.value ||
+                bloqueSugeridoSelect.value === ""
+            ) {
+                isValid = false;
+                // Assuming you want to show error for this field too, but existing code doesn't have an error p tag for it in the HTML provided in previous turns.
+                // Let's check if we need to add error display logic for it.
+                // The previous user edit code didn't add p#bloque-sugerido-error.
+                // I will add the red border at least using the existing helper if I can, or just standard validation.
+                // Helper uses ID to find error element. Let's assume I should add the logic to show error style.
+                bloqueSugeridoSelect.classList.add("border-destructive");
+            } else {
+                bloqueSugeridoSelect.classList.remove("border-destructive");
+            }
 
             submitButton.disabled = !isValid;
             return isValid;
@@ -1005,7 +1093,17 @@ const descuentoOptions = descuentos.map((d) => d.descripcion);
         campusDestinoInput.addEventListener("blur", () =>
             validate(["campus-destino"]),
         );
-        carreraInput.addEventListener("blur", () => validate(["carrera"]));
+        carreraInput.addEventListener("blur", () => {
+            validate(["carrera"]);
+            handleEscolarizadaLogic();
+            handleBloqueOptions();
+        });
+
+        // Trigger logic on input too for realtime feedback if mostly typing
+        carreraInput.addEventListener("input", () => {
+            handleEscolarizadaLogic();
+            handleBloqueOptions();
+        });
 
         descuentoValorInput.addEventListener("input", () =>
             validate(["descuento-valor"]),
@@ -1081,6 +1179,7 @@ const descuentoOptions = descuentos.map((d) => d.descripcion);
                 "descuento-valor": formData.get("descuento-valor"),
                 escolarizada: formData.get("escolarizada") === "on",
                 "bloque-sugerido": formData.get("bloque-sugerido"),
+                comentarios: formData.get("comentarios"),
             };
 
             try {

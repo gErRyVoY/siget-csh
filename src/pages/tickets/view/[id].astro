@@ -10,6 +10,18 @@ import {
     type HistorialSolicitud,
     type Subcategoria,
 } from "@prisma/client";
+import {
+    campusOptions,
+    carreraOptions,
+    bloqueOptions,
+} from "@/config/form-options";
+
+// Fetch discounts for options
+const descuentos = await prisma.descuento.findMany({
+    where: { activo: true },
+    select: { descripcion: true },
+});
+const descuentoOptions = descuentos.map((d) => d.descripcion);
 
 const { id } = Astro.params;
 if (!id) {
@@ -52,7 +64,11 @@ const [ticket, ticketHistory, cshSupportUsers, cshAuditorDocs, cshAuditorReq] =
                     include: {
                         origen: true,
                         destino: true,
-                        carrera: true,
+                        carrera: {
+                            include: {
+                                oferta: true,
+                            }
+                        },
                         descuento: true,
                         bloque: true,
                     },
@@ -101,6 +117,8 @@ const isPrivileged = session?.user
     ? PRIVILEGED_ROLES.includes(session.user.rol?.id ?? -1)
     : false;
 const isReadOnly = false; // Reverted: Allow editing for all statuses
+
+
 
 const breadcrumbPath = [ticket.categoria.nombre];
 if (ticket.subcategoria) {
@@ -181,9 +199,24 @@ const fieldMap: Record<string, string> = {
 
 const isTraslado = ticket.traslados && ticket.traslados.length > 0;
 const traslado = isTraslado ? ticket.traslados[0] : null;
+
+const currentUserId = session?.user?.id ? parseInt(String(session.user.id), 10) : -1;
+const isOwner = ticket.solicitanteId === currentUserId;
+
+// Permission Logic for Auditors
+const canEditDocs = isPrivileged || (traslado && traslado.auditor_docsId === currentUserId);
+const canEditReq = isPrivileged || (traslado && traslado.auditor_reqId === currentUserId);
+
+const ofertaDesc = traslado?.carrera?.oferta?.descripcion || "";
+let carreraDisplayValue = traslado?.carrera?.descripcion || "";
+if (ofertaDesc.includes("Licenciatura")) carreraDisplayValue = `Licenciatura en ${carreraDisplayValue}`;
+else if (ofertaDesc.includes("Maestría")) carreraDisplayValue = `Maestría en ${carreraDisplayValue}`;
+else if (ofertaDesc.includes("Doctorado")) carreraDisplayValue = `Doctorado en ${carreraDisplayValue}`;
+
+console.log("CAREER DEBUG:", { ofertaDesc, carreraOriginal: traslado?.carrera?.descripcion, carreraFinal: carreraDisplayValue });
 ---
 
-<MainLayout title={`Ticket #${ticket.id}`}>
+<MainLayout title={`Ticket #${isTraslado ? "TRL-" : ""}${ticket.id}`}>
     <style>
         @keyframes flash {
             0% {
@@ -225,26 +258,46 @@ const traslado = isTraslado ? ticket.traslados[0] : null;
             {breadcrumbPath.join(" > ")}
         </div>
 
-        <form id="edit-ticket-form">
+        <form 
+            id="edit-ticket-form"
+            data-campus-options={JSON.stringify(campusOptions)}
+            data-carrera-options={JSON.stringify(carreraOptions)}
+            data-bloque-options={JSON.stringify(bloqueOptions)}
+            data-descuento-options={JSON.stringify(descuentoOptions)}
+        >
             <div class="bg-card border border-secondary rounded-lg p-4 mb-6">
                 {isTraslado && traslado ? (
-                    /* --- VISTA TRASLADOS --- */
+                    /* --- VISTA TRASLADOS (EDITABLE) --- */
                     <div class="space-y-6">
-                        {/* Header: Back Button & Status */}
-                        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                            <a
-                                href={backLink}
-                                class="bg-muted-foreground text-white hover:bg-muted-foreground/90 px-6 py-2 rounded-md text-sm font-semibold transition-colors shrink-0"
-                            >
-                                Volver a la lista
-                            </a>
-                            <div class="flex items-center gap-4 w-full md:w-auto justify-end">
+                        {/* Header: Back Button & Status & Save */}
+                        <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+                            <div class="flex justify-end items-center lg:justify-start gap-4 w-full">
+                                <a
+                                    href={backLink}
+                                    class="bg-muted-foreground text-white hover:bg-muted-foreground/90 px-6 py-2 rounded-md text-sm font-semibold transition-colors shrink-0"
+                                >
+                                    Volver a la lista
+                                </a>
+                                {/* Only show Save button if privileged or owner (handled by logic usually, but here checking privilege for layout) */}
+                                {(isPrivileged || isOwner) && (
+                                    <button
+                                        type="button"
+                                        id="btn-save-transfer-changes"
+                                        class="bg-primary text-primary-foreground hover:bg-primary/90 px-6 py-2 rounded-md text-sm font-semibold shadow transition-colors"
+                                    >
+                                        Guardar cambios
+                                    </button>
+                                )}
+                            </div>
+                            
+                            <div class="flex items-center gap-4 w-full justify-end">
                                 <div>
                                     <label for="prioridad" class="block text-xs font-medium text-muted-foreground text-right mb-1">Prioridad</label>
                                     <select
                                         id="prioridad"
                                         name="prioridad"
                                         class="block w-32 rounded-md border-border bg-input p-2 text-sm"
+                                        disabled={!isPrivileged && !isOwner}
                                     >
                                         {priorities.map((p) => (
                                             <option value={p} selected={p === ticket.prioridad}>{p}</option>
@@ -258,6 +311,7 @@ const traslado = isTraslado ? ticket.traslados[0] : null;
                                         name="estatusId"
                                         class="block w-40 rounded-md border-border p-2 text-sm font-medium"
                                         style={`background-color: ${(ticket.estatus.nombre === "Nuevo" && !ticket.atiendeId) ? "var(--primary)" : (statusColors[ticket.estatus.nombre] || "#a1a1aa")}; color: white;`}
+                                        disabled={!isPrivileged && !isOwner}
                                     >
                                         {statuses.map((s) => {
                                             let label = s.nombre;
@@ -281,81 +335,187 @@ const traslado = isTraslado ? ticket.traslados[0] : null;
                             </div>
                         </div>
 
-                        {/* Student Info */}
-                        <div class="grid grid-cols-3 gap-4 border-b border-border pb-4">
-                            <div>
-                                <label class="block text-xs font-medium text-muted-foreground">Matrícula</label>
-                                <p class="text-base font-semibold">{traslado.matricula}</p>
-                            </div>
-                            <div class="col-span-2">
-                                <label class="block text-xs font-medium text-muted-foreground">Nombre del Alumno</label>
-                                <p class="text-base font-semibold">{traslado.alumno}</p>
-                            </div>
-                        </div>
-
-                        {/* Campus Info */}
-                        <div class="grid grid-cols-2 gap-4 border-b border-border pb-4">
-                            <div>
-                                <label class="block text-xs font-medium text-muted-foreground">Campus Origen</label>
-                                <p class="text-sm">{traslado.origen?.nombre}</p>
-                            </div>
-                            <div>
-                                <label class="block text-xs font-medium text-muted-foreground">Campus Destino</label>
-                                <p class="text-sm font-bold text-primary">{traslado.destino?.nombre}</p>
-                            </div>
-                        </div>
-
-                        {/* Career */}
-                        <div class="border-b border-border pb-4">
-                            <label class="block text-xs font-medium text-muted-foreground">Carrera</label>
-                            <p class="text-sm">{traslado.carrera?.descripcion}</p>
-                        </div>
-
-                        {/* Admission, Discount & Block */}
-                        <div class="grid grid-cols-3 gap-4 border-b border-border pb-4 items-center">
-                            <div>
-                                <label class="block text-xs font-medium text-muted-foreground">¿Es nuevo ingreso?</label>
-                                <p class="text-sm font-semibold">{traslado.nuevo_ingreso ? 'Sí' : 'No'}</p>
-                            </div>
-                            <div>
-                                <label class="block text-xs font-medium text-muted-foreground">¿Tiene descuento?</label>
-                                <p class="text-sm">{traslado.descuento ? `${traslado.descuento.descripcion} (Sí)` : 'No'}</p>
-                            </div>
-                            <div>
-                                <label class="block text-xs font-medium text-muted-foreground">Bloque Sugerido</label>
-                                <div class="flex items-center gap-2">
-                                    <p class="text-sm">{traslado.bloque_nombre || 'N/A'}</p>
-                                    {(traslado.bloqueId || traslado.bloque) && (
-                                        <button 
-                                            type="button"
-                                            class="text-xs text-blue-600 hover:underline"
-                                            onclick={`document.getElementById('bloque-info-modal').showModal()`}
-                                        >
-                                            Ver información
-                                        </button>
-                                    )}
+                         <form id="transfer-edit-form" class="space-y-6">
+                            {/* Student Info */}
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 border-b border-border pb-6">
+                                <div>
+                                    <label for="matricula" class="block text-xs font-medium text-muted-foreground mb-1">Matrícula</label>
+                                    <input 
+                                        type="text" 
+                                        id="matricula" 
+                                        name="matricula" 
+                                        value={traslado.matricula} 
+                                        class="w-full rounded-md border-border bg-input px-3 py-2 text-sm"
+                                        disabled={!isPrivileged && !isOwner}
+                                    />
+                                </div>
+                                <div>
+                                    <label for="alumno" class="block text-xs font-medium text-muted-foreground mb-1">Nombre del alumno</label>
+                                    <input 
+                                        type="text" 
+                                        id="alumno" 
+                                        name="alumno" 
+                                        value={traslado.alumno} 
+                                        class="w-full rounded-md border-border bg-input px-3 py-2 text-sm"
+                                        disabled={!isPrivileged && !isOwner}
+                                    />
                                 </div>
                             </div>
-                        </div>
+
+                            {/* Campus Info */}
+                             <div class="grid grid-cols-1 md:grid-cols-2 gap-6 border-b border-border pb-6">
+                                <div class="relative">
+                                    <label for="campus-origen" class="block text-xs font-medium text-muted-foreground mb-1">Campus origen</label>
+                                    <input 
+                                        type="text" 
+                                        id="campus-origen" 
+                                        name="campus-origen" 
+                                        value={traslado.origen?.nombre} 
+                                        class="w-full rounded-md border-border bg-input px-3 py-2 text-sm"
+                                        autocomplete="off"
+                                        disabled={!isPrivileged && !isOwner}
+                                    />
+                                    <div id="campus-origen-suggestions" class="absolute z-10 w-full bg-popover text-popover-foreground border border-[#797979] rounded-md mt-1 hidden max-h-40 overflow-y-auto shadow-md"></div>
+                                </div>
+                                <div class="relative">
+                                    <label for="campus-destino" class="block text-xs font-medium text-muted-foreground mb-1">Campus destino</label>
+                                    <input 
+                                        type="text" 
+                                        id="campus-destino" 
+                                        name="campus-destino" 
+                                        value={traslado.destino?.nombre} 
+                                        class="w-full rounded-md border-border bg-input px-3 py-2 text-sm"
+                                        autocomplete="off"
+                                        disabled={!isPrivileged && !isOwner}
+                                    />
+                                    <div id="campus-destino-suggestions" class="absolute z-10 w-full bg-popover text-popover-foreground border border-[#797979] rounded-md mt-1 hidden max-h-40 overflow-y-auto shadow-md"></div>
+                                </div>
+                            </div>
+
+                            {/* Career */}
+                            <div class="border-b border-border pb-6 relative">
+                                <label for="carrera" class="block text-xs font-medium text-muted-foreground mb-1">Carrera</label>
+                                <input 
+                                    type="text" 
+                                    id="carrera" 
+                                    name="carrera" 
+                                    value={carreraDisplayValue} 
+                                    class="w-full rounded-md border-border bg-input px-3 py-2 text-sm"
+                                    autocomplete="off"
+                                    disabled={!isPrivileged && !isOwner}
+                                />
+                                <div id="carrera-suggestions" class="absolute z-10 w-full bg-popover text-popover-foreground border border-[#797979] rounded-md mt-1 hidden max-h-48 overflow-y-auto shadow-md"></div>
+                            </div>
+
+                            {/* Admission, Discount & Block */}
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 border-b border-border pb-6 items-start">
+                                <div>
+                                    <div class="flex items-center gap-2 mb-2 h-5">
+                                        <input 
+                                            type="checkbox" 
+                                            id="nuevo_ingreso" 
+                                            name="nuevo_ingreso" 
+                                            checked={traslado.nuevo_ingreso} 
+                                            class="rounded border-input text-primary focus:ring-primary"
+                                            disabled={!isPrivileged && !isOwner}
+                                        />
+                                        <label for="nuevo_ingreso" class="text-xs font-medium text-muted-foreground">¿Es nuevo ingreso?</label>
+                                    </div>
+                                </div>
+                                
+                                <div>
+                                    <div class="flex items-center gap-2 mb-2 h-5">
+                                        <input 
+                                            type="checkbox" 
+                                            id="tiene_descuento" 
+                                            name="tiene_descuento" 
+                                            checked={!!traslado.descuento} 
+                                            class="rounded border-input text-primary focus:ring-primary"
+                                            disabled={!isPrivileged && !isOwner}
+                                        />
+                                        <label for="tiene_descuento" class="text-xs font-medium text-muted-foreground">¿Tiene descuento?</label>
+                                    </div>
+                                    <div id="descuento-container" class={`relative ${!!traslado.descuento ? '' : 'hidden'}`}>
+                                        <input 
+                                            type="text" 
+                                            id="descuento-valor" 
+                                            name="descuento-valor"
+                                            value={traslado.descuento?.descripcion || ''}
+                                            class="w-full rounded-md border-border bg-input px-3 py-2 text-sm"
+                                            placeholder="Buscar descuento..."
+                                            autocomplete="off"
+                                            disabled={!isPrivileged && !isOwner}
+                                        />
+                                        <div id="descuento-suggestions" class="absolute z-10 w-full bg-popover text-popover-foreground border border-[#797979] rounded-md mt-1 hidden max-h-40 overflow-y-auto shadow-md"></div>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label for="bloque-sugerido" class="block text-xs font-medium text-muted-foreground mb-2 h-5">Bloque sugerido</label>
+                                    <select 
+                                        id="bloque-sugerido" 
+                                        name="bloque-sugerido" 
+                                        class="w-full rounded-md border-border bg-input px-3 py-2 text-sm"
+                                        disabled={!isPrivileged && !isOwner}
+                                        data-current-val={traslado.bloque_nombre || traslado.bloque?.descripcion}
+                                    >
+                                        {/* Options populated by JS */}
+                                    </select>
+                                </div>
+                            </div>
+                        </form>
                         
-                        {/* Hidden Modal for Block Info (Simple HTML dialog) */}
-                        {traslado.bloque && (
-                            <dialog id="bloque-info-modal" class="p-6 rounded-lg border border-border bg-card shadow-xl backdrop:bg-black/50">
-                                <h3 class="font-bold text-lg mb-4">Información del Bloque</h3>
-                                <div class="space-y-2 text-sm">
-                                    <p><strong>Clave:</strong> {traslado.bloque.clave}</p>
-                                    <p><strong>Descripción:</strong> {traslado.bloque.descripcion}</p>
-                                    <p><strong>Días:</strong> {traslado.bloque.dias}</p>
-                                    <p><strong>Horas:</strong> {traslado.bloque.hora}</p>
+                        {/* Initial Comment & Attachments (Read Only Section) */}
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 border-b border-border pb-6">
+                             <div>
+                                <label class="block text-xs font-medium text-muted-foreground mb-1">Comentario Inicial</label>
+                                <div class="p-3 bg-muted/20 rounded-md border border-border text-sm min-h-[80px] whitespace-pre-wrap">
+                                    {ticket.descripcion || "Sin comentarios."}
                                 </div>
-                                <div class="mt-6 flex justify-end">
-                                    <button type="button" class="px-4 py-2 bg-muted rounded hover:bg-muted/80" onclick="this.closest('dialog').close()">Cerrar</button>
-                                </div>
-                            </dialog>
-                        )}
+                             </div>
+                             <div>
+                                <label class="block text-xs font-medium text-muted-foreground mb-1">Archivos adjuntos</label>
+                                {(ticket.archivos as any[]) && (ticket.archivos as any[]).length > 0 ? (
+                                    <div class="flex items-center flex-wrap gap-2 text-sm p-2 rounded-md border border-border bg-card">
+                                        <svg
+                                            xmlns="http://www.w3.org/2000/svg"
+                                            width="16"
+                                            height="16"
+                                            viewBox="0 0 24 24"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            stroke-width="2"
+                                            stroke-linecap="round"
+                                            stroke-linejoin="round"
+                                            class="text-muted-foreground"
+                                        >
+                                            <path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.59a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+                                        </svg>
+                                        {(ticket.archivos as any[]).map((file: any, index: number) => {
+                                            const key = typeof file === 'string' ? file : (file.key || file.url);
+                                            const name = typeof file === 'string' ? parseFileName(key) : (file.nombre || parseFileName(key));
+                                            return (
+                                                <>
+                                                    <a 
+                                                        href={`/api/tickets/attachment?key=${encodeURIComponent(key)}`}
+                                                        target="_blank" 
+                                                        rel="noopener noreferrer"
+                                                        class="text-primary hover:underline hover:text-primary/80 transition-colors"
+                                                    >
+                                                        {name}
+                                                    </a>
+                                                    {index < (ticket.archivos as any[]).length - 1 && <span class="text-muted-foreground">, </span>}
+                                                </>
+                                            );
+                                        })}
+                                    </div>
+                                ) : (
+                                    <p class="text-sm text-muted-foreground italic p-2">No hay archivos adjuntos.</p>
+                                )}
+                             </div>
+                        </div>
 
-
-                        {/* 3-Column Assignment Section */}
+                        {/* 3-Column Assignment Section (Existing Logic kept as is, just wrapped) */}
                         <div class="grid grid-cols-1 custom-lg:grid-cols-3 gap-4">
                             <style>
                                 @media (min-width: 1100px) {
@@ -367,9 +527,13 @@ const traslado = isTraslado ? ticket.traslados[0] : null;
                             <div class="space-y-2 bg-muted/10 p-3 rounded-md border border-border/50">
                                 <h4 class="font-semibold text-sm border-b border-border pb-2 mb-2">Atiende</h4>
                                 <div class="flex flex-col gap-1">
-                                    <span class="text-xs text-muted-foreground">Ingeniero Asignado:</span>
+                                    <span class="text-xs text-muted-foreground">Ingeniero asignado:</span>
                                     {isPrivileged ? (
-                                        <select name="atiendeId" class="w-full rounded-md border-border bg-input p-1 text-sm">
+                                        <select 
+                                            id="atiendeId"
+                                            name="atiendeId" 
+                                            class="w-full rounded-md border-border bg-input p-1 text-sm"
+                                        >
                                             <option value="">Sin asignar</option>
                                             {cshSupportUsers.map(u => (
                                                 <option value={u.id} selected={u.id === ticket.atiendeId}>{u.nombres} {u.apellidos}</option>
@@ -383,40 +547,61 @@ const traslado = isTraslado ? ticket.traslados[0] : null;
 
                             {/* Col 2: Rev. Documentos */}
                             <div class="space-y-2 bg-muted/10 p-3 rounded-md border border-border/50">
-                                <h4 class="font-semibold text-sm border-b border-border pb-2 mb-2">Rev. Documentos</h4>
+                                <h4 class="font-semibold text-sm border-b border-border pb-2 mb-2">Rev. documentos</h4>
                                 
                                 {/* Row 1: Assign Auditor */}
-                                <div class="flex items-center gap-2 mb-2">
-                                    <input type="checkbox" disabled checked={!!traslado.auditor_docsId} class="rounded text-muted-foreground" />
-                                    <div class="w-full">
-                                        <label class="block text-xs text-muted-foreground">Auditor:</label>
-                                        <select name="auditor_docsId" class="w-full rounded-md border-border bg-input p-1 text-sm">
-                                            <option value="">Sin asignar</option>
-                                            {cshAuditorDocs.map(u => (
-                                                <option value={u.id} selected={u.id === traslado.auditor_docsId}>{u.nombres} {u.apellidos}</option>
-                                            ))}
-                                        </select>
-                                    </div>
+                                <div class="flex flex-col gap-1 mb-3">
+                                    <label class="block text-xs text-muted-foreground">Auditor:</label>
+                                    <select 
+                                        id="auditor_docsId"
+                                        name="auditor_docsId" 
+                                        class="w-full rounded-md border-border bg-input p-1 text-sm"
+                                        disabled={!isPrivileged}
+                                    >
+                                        <option value="">Sin asignar</option>
+                                        {cshAuditorDocs.map(u => (
+                                            <option value={u.id} selected={u.id === traslado.auditor_docsId}>{u.nombres} {u.apellidos}</option>
+                                        ))}
+                                    </select>
                                 </div>
 
                                 {/* Row 2: Validation */}
                                 <div class="space-y-1">
                                     <div class="flex items-center gap-2">
-                                        <input type="checkbox" name="validacion_docs" id="validacion_docs" checked={traslado.validacion_docs} class="rounded" />
-                                        <label for="validacion_docs" class="text-xs font-medium">Documentación Correcta</label>
+                                        <input 
+                                            type="checkbox" 
+                                            name="validacion_docs" 
+                                            id="validacion_docs" 
+                                            checked={traslado.validacion_docs} 
+                                            class="rounded" 
+                                            disabled={!canEditDocs}
+                                        />
+                                        <label for="validacion_docs" class="text-xs font-medium">Documentación correcta</label>
                                     </div>
-                                    <textarea name="descripcion_docs" rows="2" placeholder="Comentarios..." class="w-full text-xs rounded border-border bg-input p-1">{traslado.descripcion_docs}</textarea>
+                                    <textarea 
+                                        name="descripcion_docs" 
+                                        id="descripcion_docs"
+                                        rows="5" 
+                                        placeholder="Comentarios..." 
+                                        class="w-full text-xs rounded border-border bg-input p-1"
+                                        disabled={!canEditDocs}
+                                    >{traslado.descripcion_docs}</textarea>
                                 </div>
                             </div>
 
                             {/* Col 3: Rev. Adeudos */}
                             <div class="space-y-2 bg-muted/10 p-3 rounded-md border border-border/50">
-                                <h4 class="font-semibold text-sm border-b border-border pb-2 mb-2">Rev. Adeudos</h4>
+                                <h4 class="font-semibold text-sm border-b border-border pb-2 mb-2">Rev. adeudos</h4>
                                 
                                 {/* Row 1: Assign Auditor */}
                                 <div class="flex flex-col gap-1 mb-3">
                                     <label class="text-xs text-muted-foreground">Auditor:</label>
-                                    <select name="auditor_reqId" class="w-full rounded-md border-border bg-input p-1 text-sm">
+                                    <select 
+                                        id="auditor_reqId"
+                                        name="auditor_reqId" 
+                                        class="w-full rounded-md border-border bg-input p-1 text-sm"
+                                        disabled={!isPrivileged}
+                                    >
                                         <option value="">Sin asignar</option>
                                         {cshAuditorReq.map(u => (
                                             <option value={u.id} selected={u.id === traslado.auditor_reqId}>{u.nombres} {u.apellidos}</option>
@@ -427,23 +612,50 @@ const traslado = isTraslado ? ticket.traslados[0] : null;
                                 {/* Row 2a: Edocta */}
                                 <div class="space-y-1 mb-2">
                                     <div class="flex items-center gap-2">
-                                        <input type="checkbox" name="validacion_edocta" id="validacion_edocta" checked={traslado.validacion_edocta} class="rounded" />
-                                        <label for="validacion_edocta" class="text-xs font-medium">Sin Adeudo Financiero</label>
+                                        <input 
+                                            type="checkbox" 
+                                            name="validacion_edocta" 
+                                            id="validacion_edocta" 
+                                            checked={traslado.validacion_edocta} 
+                                            class="rounded"
+                                            disabled={!canEditReq}
+                                        />
+                                        <label for="validacion_edocta" class="text-xs font-medium">Sin adeudo financiero</label>
                                     </div>
-                                    <textarea name="descripcion_edocta" rows="1" placeholder="Comentarios Edocta..." class="w-full text-xs rounded border-border bg-input p-1">{traslado.descripcion_edocta}</textarea>
+                                    <textarea 
+                                        name="descripcion_edocta" 
+                                        id="descripcion_edocta"
+                                        rows="1" 
+                                        placeholder="Comentarios Edocta..." 
+                                        class="w-full text-xs rounded border-border bg-input p-1"
+                                        disabled={!canEditReq}
+                                    >{traslado.descripcion_edocta}</textarea>
                                 </div>
 
                                 {/* Row 2b: Calif */}
                                 <div class="space-y-1">
                                     <div class="flex items-center gap-2">
-                                        <input type="checkbox" name="validacion_calif" id="validacion_calif" checked={traslado.validacion_calif} class="rounded" />
-                                        <label for="validacion_calif" class="text-xs font-medium">Sin Adeudo Escolar</label>
+                                        <input 
+                                            type="checkbox" 
+                                            name="validacion_calif" 
+                                            id="validacion_calif" 
+                                            checked={traslado.validacion_calif} 
+                                            class="rounded" 
+                                            disabled={!canEditReq}
+                                        />
+                                        <label for="validacion_calif" class="text-xs font-medium">Sin adeudo escolar</label>
                                     </div>
-                                    <textarea name="descripcion_calif" rows="1" placeholder="Comentarios Calif..." class="w-full text-xs rounded border-border bg-input p-1">{traslado.descripcion_calif}</textarea>
+                                    <textarea 
+                                        name="descripcion_calif" 
+                                        id="descripcion_calif"
+                                        rows="1" 
+                                        placeholder="Comentarios Calif..." 
+                                        class="w-full text-xs rounded border-border bg-input p-1"
+                                        disabled={!canEditReq}
+                                    >{traslado.descripcion_calif}</textarea>
                                 </div>
                             </div>
                         </div>
-
                     </div>
                 ) : (
                     /* --- VISTA NORMAL (EXISTENTE) --- */
@@ -686,7 +898,7 @@ const traslado = isTraslado ? ticket.traslados[0] : null;
                                                 <div class="relative">
                                                     <button
                                                         type="button"
-                                                        class="attachment-clip"
+                                                        class="attachment-clip cursor-pointer"
                                                         aria-expanded="false"
                                                     >
                                                         <svg
@@ -844,6 +1056,7 @@ const traslado = isTraslado ? ticket.traslados[0] : null;
             </div>
         </div>
     </div>
+
 </MainLayout>
 <script
     define:vars={{
@@ -874,6 +1087,7 @@ const traslado = isTraslado ? ticket.traslados[0] : null;
         initStatusColorizer,
         handleNewHistoryEntry,
     } from "@/scripts/ticket-view-logic.ts";
+    import { toast } from "@/lib/toast";
 
     document.addEventListener("astro:page-load", () => {
         init();
@@ -882,5 +1096,190 @@ const traslado = isTraslado ? ticket.traslados[0] : null;
         initHistoryToggles();
         initStatusColorizer();
         handleNewHistoryEntry();
+
+
+
+        // --- TRASLADOS EDIT LOGIC ---
+        const initTransferLogic = () => {
+             const transferForm = document.getElementById("edit-ticket-form");
+            if (transferForm) {
+                // Parse Options
+                const campusOptions = JSON.parse(transferForm.dataset.campusOptions || "[]");
+                const carreraOptions = JSON.parse(transferForm.dataset.carreraOptions || "[]");
+                const bloqueOptionsFull = JSON.parse(transferForm.dataset.bloqueOptions || "[]");
+                const descuentoOptions = JSON.parse(transferForm.dataset.descuentoOptions || "[]");
+
+                // Autocomplete Helper
+                function setupAutocomplete(inputId: string, suggestionsId: string, options: string[]) {
+                    const input = document.getElementById(inputId) as HTMLInputElement | null;
+                    const suggestions = document.getElementById(suggestionsId);
+                    if (!input || !suggestions) return;
+
+                    const normalizeText = (text: string) => text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+
+                    const closeSuggestions = () => {
+                        suggestions.classList.add("hidden");
+                        suggestions.innerHTML = "";
+                    };
+
+                    input.addEventListener("input", function () {
+                        const val = normalizeText((this as HTMLInputElement).value);
+                        suggestions.innerHTML = "";
+                        if (!val) {
+                            closeSuggestions();
+                            return;
+                        }
+                        const filtered = options.filter(opt => normalizeText(opt).includes(val));
+                        if (filtered.length > 0) {
+                            suggestions.classList.remove("hidden");
+                            filtered.forEach(opt => {
+                                const div = document.createElement("div");
+                                div.textContent = opt;
+                                div.className = "p-2 hover:bg-secondary hover:text-secondary-foreground cursor-pointer text-sm transition-colors";
+                                div.onclick = () => {
+                                    input.value = opt;
+                                    closeSuggestions();
+                                    if (inputId === 'carrera') handleBloqueOptions();
+                                };
+                                suggestions.appendChild(div);
+                            });
+                        } else {
+                            closeSuggestions();
+                        }
+                    });
+                    
+                    document.addEventListener("click", (e) => {
+                        if (e.target !== input && e.target !== suggestions) closeSuggestions();
+                    });
+                }
+
+                // Bloque Options Logic
+                const carreraInput = document.getElementById("carrera") as HTMLInputElement | null;
+                const bloqueSelect = document.getElementById("bloque-sugerido") as HTMLSelectElement | null;
+                
+                const handleBloqueOptions = () => {
+                    if (!carreraInput || !bloqueSelect) return;
+                    const carreraVal = carreraInput.value.toLowerCase();
+                    const normalize = (str: string) => str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+                    const carreraNorm = normalize(carreraVal);
+
+                    let filteredOptions: string[] = [];
+                    if (carreraNorm.includes("licenciatura")) {
+                        const nums = Array.from({length: 16}, (_, i) => String(i + 1));
+                        filteredOptions = [...nums, "Actualización"];
+                    } else if (carreraNorm.includes("maestria")) {
+                        const nums = Array.from({length: 5}, (_, i) => String(i + 1));
+                        filteredOptions = [...nums, "Seminario", "Actualización"];
+                    } else {
+                        filteredOptions = bloqueOptionsFull;
+                    }
+
+                    const currentVal = bloqueSelect.dataset.currentVal 
+                                        ? bloqueSelect.dataset.currentVal.toLowerCase().replace(/\s+/g, '-') 
+                                        : bloqueSelect.value;
+                    
+                    bloqueSelect.innerHTML = "";
+                    filteredOptions.forEach(opt => {
+                        const normalizedOpt = opt.toLowerCase().replace(/\s+/g, '-');
+                        const optionEl = document.createElement('option');
+                        optionEl.value = normalizedOpt;
+                        optionEl.textContent = opt;
+                        if (normalizedOpt === currentVal) {
+                            optionEl.selected = true;
+                        }
+                        bloqueSelect.appendChild(optionEl);
+                    });
+                     bloqueSelect.addEventListener('change', () => {
+                         bloqueSelect.dataset.currentVal = bloqueSelect.value;
+                     });
+                };
+                
+                if(carreraInput) {
+                    carreraInput.addEventListener('input', handleBloqueOptions);
+                    carreraInput.addEventListener('blur', handleBloqueOptions);
+                }
+
+                // Discount Logic
+                const tieneDescuentoCk = document.getElementById("tiene_descuento") as HTMLInputElement | null;
+                const descuentoContainer = document.getElementById("descuento-container");
+                if (tieneDescuentoCk && descuentoContainer) {
+                    tieneDescuentoCk.addEventListener("change", () => {
+                        if (tieneDescuentoCk.checked) {
+                            descuentoContainer.classList.remove("hidden");
+                        } else {
+                            descuentoContainer.classList.add("hidden");
+                            const descValInput = document.getElementById("descuento-valor") as HTMLInputElement | null;
+                            if (descValInput) descValInput.value = "";
+                        }
+                    });
+                }
+
+                // Init
+                setupAutocomplete("campus-origen", "campus-origen-suggestions", campusOptions);
+                setupAutocomplete("campus-destino", "campus-destino-suggestions", campusOptions);
+                setupAutocomplete("carrera", "carrera-suggestions", carreraOptions);
+                setupAutocomplete("descuento-valor", "descuento-suggestions", descuentoOptions);
+                
+                handleBloqueOptions();
+
+                // Save
+                const saveBtn = document.getElementById("btn-save-transfer-changes");
+                if (saveBtn) {
+                     // Remove old listener if any (not easily possible without ref, but okay for page load)
+                     const newSaveBtn = saveBtn.cloneNode(true) as HTMLButtonElement;
+                     saveBtn.replaceWith(newSaveBtn);
+                     
+                     newSaveBtn.addEventListener("click", async () => {
+                         const originalText = newSaveBtn.textContent || "Guardar cambios";
+                         newSaveBtn.textContent = "Guardando...";
+                         newSaveBtn.disabled = true;
+
+                         const payload = {
+                             ticketId: (window as any).ticketViewData.ticketId,
+                             prioridad: (document.getElementById("prioridad") as HTMLSelectElement)?.value,
+                             estatusId: (document.getElementById("estatusId") as HTMLSelectElement)?.value,
+                             atiendeId: (document.querySelector("select[name='atiendeId']") as HTMLSelectElement)?.value,
+                             
+                             matricula: (document.getElementById("matricula") as HTMLInputElement)?.value,
+                             alumno: (document.getElementById("alumno") as HTMLInputElement)?.value,
+                             campusOrigen: (document.getElementById("campus-origen") as HTMLInputElement)?.value,
+                             campusDestino: (document.getElementById("campus-destino") as HTMLInputElement)?.value,
+                             carrera: (document.getElementById("carrera") as HTMLInputElement)?.value,
+                             nuevo_ingreso: (document.getElementById("nuevo_ingreso") as HTMLInputElement)?.checked,
+                             tiene_descuento: (document.getElementById("tiene_descuento") as HTMLInputElement)?.checked,
+                             descuento_nombre: (document.getElementById("descuento-valor") as HTMLInputElement)?.value,
+                             bloque_nombre: (document.getElementById("bloque-sugerido") as HTMLSelectElement)?.value,
+                             
+                             auditor_docsId: (document.querySelector("select[name='auditor_docsId']") as HTMLSelectElement)?.value,
+                             auditor_reqId: (document.querySelector("select[name='auditor_reqId']") as HTMLSelectElement)?.value,
+                             validacion_docs: (document.querySelector("input[name='validacion_docs']") as HTMLInputElement)?.checked,
+                             descripcion_docs: (document.querySelector("textarea[name='descripcion_docs']") as HTMLTextAreaElement)?.value,
+                             validacion_edocta: (document.querySelector("input[name='validacion_edocta']") as HTMLInputElement)?.checked,
+                             descripcion_edocta: (document.querySelector("textarea[name='descripcion_edocta']") as HTMLTextAreaElement)?.value,
+                             validacion_calif: (document.querySelector("input[name='validacion_calif']") as HTMLInputElement)?.checked,
+                             descripcion_calif: (document.querySelector("textarea[name='descripcion_calif']") as HTMLTextAreaElement)?.value
+                         };
+
+                         try {
+                             const res = await fetch("/api/tickets/update", {
+                                 method: "PATCH",
+                                 headers: { "Content-Type": "application/json" },
+                                 body: JSON.stringify(payload)
+                             });
+                             if (!res.ok) throw new Error("Error updating ticket");
+                             toast.success("Ticket actualizado correctamente");
+                             setTimeout(() => window.location.reload(), 1000);
+                         } catch (e) {
+                             console.error(e);
+                             toast.error("Error al actualizar");
+                             newSaveBtn.textContent = originalText;
+                             newSaveBtn.disabled = false;
+                         }
+                     });
+                }
+            }
+        };
+        initTransferLogic();
     });
+
 </script>

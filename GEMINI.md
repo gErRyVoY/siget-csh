@@ -116,6 +116,15 @@ Cuando el usuario me pida leer este archivo (`GEMINI.md`) al inicio de una sesi�
 
 # Historial de Cambios (Log)
 
+## 2026-01-22 (Sesión 14 - Parte 2)
+*   **Adjuntos y Archivos:**
+    *   **Corrección:** Se reparó el error 500 al descargar adjuntos (`key=undefined`) implementando un nuevo endpoint `/api/tickets/attachment`.
+    *   **UI:** Nueva visualización en lista con icono y nombres separados por coma.
+*   **Visualización de Ticket:**
+    *   **Carrera:** Se corrigió el nombre de la carrera para incluir el nivel académico (ej. "Licenciatura en", "Maestría en") consultando la relación `Oferta`.
+*   **Layout:**
+    *   **Header Sticky:** Se implementó un encabezado fijo (`h-screen` en wrapper, `overflow-hidden` en contenedor y `overflow-y-auto` en `main`) para que no desaparezca al hacer scroll.
+
 ## 2026-01-21 (Sesión 14 - Fixes de UI y Layout)
 *   **Layout & Scroll:**
     *   **Corrección:** Se reemplazó `h-screen` por `h-full` en el wrapper de `MainLayout` para solucionar problemas de scrollbar no deseado o cortado.

@@ -53,6 +53,58 @@ export const PATCH: APIRoute = async ({ request, locals }) => {
         if (typeof afectado_nombre === 'string') updateData.afectado_nombre = afectado_nombre;
         if (typeof descripcion === 'string') updateData.descripcion = descripcion;
 
+        // --- Traslado Logic ---
+        const ticketWithTraslado = await prisma.ticket.findUnique({
+            where: { id: ticketId },
+            include: { traslados: true }
+        });
+
+        // Fields specific to Traslado
+        const {
+            matricula,
+            alumno,
+            origenId,
+            destinoId,
+            carreraId,
+            nuevo_ingreso,
+            bloque_nombre,
+            bloqueId,
+            descuentoId,
+            auditor_docsId,
+            auditor_reqId,
+            validacion_docs,
+            descripcion_docs,
+            validacion_edocta,
+            descripcion_edocta,
+            validacion_calif,
+            descripcion_calif
+        } = updateDataInput;
+
+        let trasladoUpdateData: any = {};
+        if (matricula) trasladoUpdateData.matricula = matricula;
+        if (alumno) trasladoUpdateData.alumno = alumno;
+        if (origenId) trasladoUpdateData.origenId = Number(origenId);
+        if (destinoId) trasladoUpdateData.destinoId = Number(destinoId);
+        if (carreraId) trasladoUpdateData.carreraId = Number(carreraId);
+        if (typeof nuevo_ingreso === 'boolean') trasladoUpdateData.nuevo_ingreso = nuevo_ingreso;
+        if (bloque_nombre) trasladoUpdateData.bloque_nombre = bloque_nombre;
+        if (bloqueId) trasladoUpdateData.bloqueId = bloqueId === 'null' ? null : Number(bloqueId); // Handle null
+        if (descuentoId) trasladoUpdateData.descuentoId = Number(descuentoId);
+
+        // Auditors & Validations
+        if (auditor_docsId !== undefined) trasladoUpdateData.auditor_docsId = auditor_docsId ? Number(auditor_docsId) : null;
+        if (auditor_reqId !== undefined) trasladoUpdateData.auditor_reqId = auditor_reqId ? Number(auditor_reqId) : null;
+
+        if (typeof validacion_docs === 'boolean') trasladoUpdateData.validacion_docs = validacion_docs;
+        if (descripcion_docs) trasladoUpdateData.descripcion_docs = descripcion_docs;
+
+        if (typeof validacion_edocta === 'boolean') trasladoUpdateData.validacion_edocta = validacion_edocta;
+        if (descripcion_edocta) trasladoUpdateData.descripcion_edocta = descripcion_edocta;
+
+        if (typeof validacion_calif === 'boolean') trasladoUpdateData.validacion_calif = validacion_calif;
+        if (descripcion_calif) trasladoUpdateData.descripcion_calif = descripcion_calif;
+
+
         // Auto-set status to 'Nuevo' (2) if assignee changes and status is not explicitly provided
         if (updateDataInput.atiendeId && Number(updateDataInput.atiendeId) !== ticketBeforeUpdate.atiendeId) {
             if (!updateDataInput.estatusId) {
@@ -78,6 +130,14 @@ export const PATCH: APIRoute = async ({ request, locals }) => {
                 data: updateData,
                 include: { estatus: true, atiende: true }
             });
+
+            if (ticketWithTraslado?.traslados?.[0] && Object.keys(trasladoUpdateData).length > 0) {
+                await tx.traslado.update({
+                    where: { id: ticketWithTraslado.traslados[0].id },
+                    data: trasladoUpdateData
+                });
+                // We could track changes for transfer fields here too if we wanted detailed logs
+            }
 
             const fieldChanges: { field: string, oldValue: any, newValue: any }[] = [];
 

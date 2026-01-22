@@ -12,7 +12,7 @@ const empresas = await prisma.empresa.findMany({
 });
 ---
 
-<MainLayout title="Administración de Usuarios">
+<MainLayout title="Administración de usuarios">
   <div class="max-w-7xl mx-auto">
     <h1 class="text-xl font-bold mb-4">Selecciona una empresa</h1>
     <div
@@ -97,14 +97,14 @@ const empresas = await prisma.empresa.findMany({
             <button
               type="button"
               id="select-file-btn"
-              class="bg-secondary text-secondary-foreground hover:bg-secondary/90 px-4 py-2 rounded-md text-sm font-semibold transition-colors"
+              class="bg-secondary text-secondary-foreground hover:bg-secondary/90 px-4 py-2 rounded-md text-sm font-semibold transition-colors cursor-pointer"
             >
-              Seleccionar Archivo
+              Seleccionar archivo
             </button>
             <button
               type="button"
               id="google-drive-btn"
-              class="bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 px-3 py-2 rounded-md flex items-center gap-2 text-sm font-medium transition-colors"
+              class="bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 px-3 py-2 rounded-md flex items-center gap-2 text-sm font-medium transition-colors cursor-pointer"
               title="Seleccionar desde Google Drive"
             >
               <img

@@ -26,6 +26,15 @@ y este proyecto adhiere a [Versionado Semántico](https://semver.org/lang/es/).
 *   **Dashboard:** Ajuste de altura (`h-full`) en `StatCard` para asegurar uniformidad en el grid.
 *   **Traslados:** Optimización de tag de imagen (`Img` -> `img`) para mejor compatibilidad.
 
+## 2026-01-22 (Sesión 14 - Parte 2)
+*   **Adjuntos y Archivos:**
+    *   **Corrección:** Se reparó el error 500 al descargar adjuntos (`key=undefined`) implementando un nuevo endpoint `/api/tickets/attachment`.
+    *   **UI:** Nueva visualización en lista con icono y nombres separados por coma.
+*   **Visualización de Ticket:**
+    *   **Carrera:** Se corrigió el nombre de la carrera para incluir el nivel académico (ej. "Licenciatura en", "Maestría en") consultando la relación `Oferta`.
+*   **Layout:**
+    *   **Header Sticky:** Se implementó un encabezado fijo (`h-screen` en wrapper, `overflow-hidden` en contenedor y `overflow-y-auto` en `main`) para que no desaparezca al hacer scroll.
+
 ## 2026-01-19 (Sesión 13 - Parte 2)
 *   **Base de Datos (Empresa):**
     *   Se añadió la columna `activa` (bool) a la tabla `Empresa`.

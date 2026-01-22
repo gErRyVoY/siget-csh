@@ -23,6 +23,7 @@ export const POST: APIRoute = async ({ request }) => {
             'descuento-valor': descuentoValor,
             escolarizada,
             'bloque-sugerido': bloqueSugerido,
+            comentarios,
         } = data;
 
         // Parse Bloque
@@ -35,7 +36,7 @@ export const POST: APIRoute = async ({ request }) => {
         }
 
         // --- Validation ---
-        if (!matricula || !nombreCompleto || !campusOrigen || !campusDestino || !carrera) {
+        if (!matricula || !nombreCompleto || !campusOrigen || !campusDestino || !carrera || !bloqueSugerido) {
             return new Response(JSON.stringify({ message: 'Faltan campos requeridos.' }), { status: 400 });
         }
 
@@ -144,6 +145,11 @@ export const POST: APIRoute = async ({ request }) => {
         });
         const atiendeId = assignmentResult.agentId;
 
+        let descripcionTicket = `Traslado solicitado de ${campusOrigen} a ${campusDestino} para la carrera ${carrera}.`;
+        if (comentarios) {
+            descripcionTicket += `\n\nComentarios:\n${comentarios}`;
+        }
+
         // Create Transaction
         const [nuevoTicket] = await prisma.$transaction(async (tx: any) => {
             // 1. Create Ticket
@@ -156,7 +162,7 @@ export const POST: APIRoute = async ({ request }) => {
                     prioridad: 'Media',
                     categoriaId: categoria.id,
                     subcategoriaId: subcategoria.id,
-                    descripcion: `Traslado solicitado de ${campusOrigen} a ${campusDestino} para la carrera ${carrera}.`,
+                    descripcion: descripcionTicket,
                     afectado_clave: matricula,
                     afectado_nombre: nombreCompleto,
                     cicloId: activeCycle?.id,

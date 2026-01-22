@@ -385,6 +385,7 @@ export function initFileUploads() {
 }
 
 export function initHistoryToggles() {
+    console.log('initHistoryToggles running. Found links:', document.querySelectorAll('.attachment-link').length);
     let activeDropdown: HTMLElement | null = null;
     const closeActiveDropdown = () => {
         if (activeDropdown) {
