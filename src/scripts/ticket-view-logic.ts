@@ -216,14 +216,16 @@ export function initEditForm() {
         const data = {
             ticketId: ticketId,
             estatusId: finalStatusId,
-            prioridad: formData.get('prioridad'),
-            atiendeId: formData.get('atiendeId'),
-            archivado: (form.elements.namedItem('archivado') as HTMLInputElement).checked,
             newComment: newComment,
             newFiles: uploadedFileKeys,
-            afectado_clave: formData.get('afectado_clave'),
-            afectado_nombre: formData.get('afectado_nombre'),
-            descripcion: formData.get('descripcion'),
+            ...Object.fromEntries(formData),
+            // Checkboxes needing explicit boolean handling
+            archivado: (form.elements.namedItem('archivado') as HTMLInputElement)?.checked ?? false,
+            nuevo_ingreso: (document.getElementById('nuevo_ingreso') as HTMLInputElement)?.checked ?? false,
+            tiene_descuento: (document.getElementById('tiene_descuento') as HTMLInputElement)?.checked ?? false,
+            validacion_docs: (document.querySelector('input[name="validacion_docs"]') as HTMLInputElement)?.checked ?? false,
+            validacion_edocta: (document.querySelector('input[name="validacion_edocta"]') as HTMLInputElement)?.checked ?? false,
+            validacion_calif: (document.querySelector('input[name="validacion_calif"]') as HTMLInputElement)?.checked ?? false,
         };
 
         try {

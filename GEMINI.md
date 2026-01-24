@@ -1,8 +1,8 @@
 # Plan de Trabajo (SIGET-CSH)
 
-**Tarea Actual:** Optimización Final, Descuentos Dinámicos y Sync Repositorio.
+**Tarea Actual:** Seguridad, Validación de Vistas y Optimización (Semana Próxima).
 
-**Estado:** Completado - Autocomplete de descuentos, Ciclos y limpieza de UI implementados.
+**Estado:** Completado - Historial de traslados unificado y correcciones de UI/Layout.
 
 **Pasos Completados:**
 - ✅ Análisis completo del proyecto (tecnologías, código, BD, UI/UX)
@@ -14,15 +14,16 @@
 - ✅ Implementación completa de RBAC Híbrido (BD, Lógica, UI)
 - ✅ Mejoras de UI en listas de tickets (Diseño responsivo, limpieza de columnas)
 - ✅ Refactorización completa de página de Traslados (UI/UX + Carga de Archivos)
+- ✅ Lógica unificada de guardado e historial detallado para tickets de traslado
 
-**Pasos Siguientes:**
-1.  **Optimización y Limpieza:**
-    - Revisar código muerto tras refactorizaciones
-    - Pruebas de carga para SSE
-    - Implementar carga masiva de usuarios (csv)? (Posible futuro)
-2.  **Seguridad y Validación de Vistas (Próximo Objetivo):**
-    - **Proteger Rutas/Vistas:** Separar explícitamente las vistas de Admin CSH y Admin Marketing.
-    - **Validación de Vistas:** Auditar y validar las vistas de tickets y traslados para asegurar que cada rol (Admin, Usuario) vea solo lo que le corresponde.
+**Pasos Siguientes (Semana Próxima):**
+1.  **Seguridad y Validación (Prioridad Alta):**
+    - Refinamiento de `middleware.ts` para separar estrictamente Admin CSH de Admin Marketing.
+    - Auditoría de vistas para asegurar que elementos sensibles solo sean visibles para roles autorizados.
+2.  **Optimización y Limpieza:**
+    - Revisión de código muerto y endpoints en desuso.
+    - Pruebas de carga y reconexión para el sistema SSE.
+
 
 **Documentos de Referencia:**
 - `CHANGELOG.md`: Registro de cambios del proyecto

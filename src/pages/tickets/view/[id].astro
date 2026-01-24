@@ -16,12 +16,29 @@ import {
     bloqueOptions,
 } from "@/config/form-options";
 
-// Fetch discounts for options
-const descuentos = await prisma.descuento.findMany({
-    where: { activo: true },
-    select: { descripcion: true },
+// Fetch options for autocomplete with IDs
+const allCampuses = await prisma.empresa.findMany({
+    where: { activa: true },
+    select: { id: true, nombre: true }
 });
-const descuentoOptions = descuentos.map((d) => d.descripcion);
+const allCarreras = await prisma.carrera.findMany({
+    where: { activo: true },
+    include: { oferta: true }
+});
+const mappedCarreras = allCarreras.map(c => {
+     let label = c.descripcion;
+     if (c.oferta.descripcion.includes("Licenciatura")) label = `Licenciatura en ${label}`;
+     else if (c.oferta.descripcion.includes("Maestría")) label = `Maestría en ${label}`;
+     else if (c.oferta.descripcion.includes("Doctorado")) label = `Doctorado en ${label}`;
+     return { id: c.id, label };
+});
+const allDescuentos = await prisma.descuento.findMany({
+    where: { activo: true },
+    select: { id: true, descripcion: true }
+});
+
+const mappedCampuses = allCampuses.map(c => ({ id: c.id, label: c.nombre }));
+const mappedDescuentos = allDescuentos.map(d => ({ id: d.id, label: d.descripcion }));
 
 const { id } = Astro.params;
 if (!id) {
@@ -195,6 +212,23 @@ const fieldMap: Record<string, string> = {
     afectado_clave: afectadoLabel,
     afectado_nombre: nombreLabel,
     descripcion: "Descripción",
+    // Traslados keys
+    matricula: "Matrícula",
+    alumno: "Nombre Alumno",
+    nuevo_ingreso: "Nuevo Ingreso",
+    bloque_nombre: "Bloque",
+    origen_nombre: "Campus Origen",
+    destino_nombre: "Campus Destino",
+    carrera_nombre: "Carrera",
+    descuento_nombre: "Descuento",
+    validacion_docs: "Validación Documentos",
+    descripcion_docs: "Comentarios Documentos",
+    validacion_edocta: "Validación Adeudo Financiero",
+    descripcion_edocta: "Comentarios Edo. Cta.",
+    validacion_calif: "Validación Adeudo Escolar",
+    descripcion_calif: "Comentarios Académicos",
+    auditor_docs: "Auditor Documentos",
+    auditor_req: "Auditor Requisitos/Adeudos",
 };
 
 const isTraslado = ticket.traslados && ticket.traslados.length > 0;
@@ -260,15 +294,20 @@ console.log("CAREER DEBUG:", { ofertaDesc, carreraOriginal: traslado?.carrera?.d
 
         <form 
             id="edit-ticket-form"
-            data-campus-options={JSON.stringify(campusOptions)}
-            data-carrera-options={JSON.stringify(carreraOptions)}
+            data-campus-list={JSON.stringify(mappedCampuses)}
+            data-carrera-list={JSON.stringify(mappedCarreras)}
+            data-descuento-list={JSON.stringify(mappedDescuentos)}
             data-bloque-options={JSON.stringify(bloqueOptions)}
-            data-descuento-options={JSON.stringify(descuentoOptions)}
         >
             <div class="bg-card border border-secondary rounded-lg p-4 mb-6">
                 {isTraslado && traslado ? (
                     /* --- VISTA TRASLADOS (EDITABLE) --- */
                     <div class="space-y-6">
+                        {/* Hidden Inputs for IDs */}
+                        <input type="hidden" name="origenId" id="origenId" value={traslado.origenId ?? ''} />
+                        <input type="hidden" name="destinoId" id="destinoId" value={traslado.destinoId ?? ''} />
+                        <input type="hidden" name="carreraId" id="carreraId" value={traslado.carreraId ?? ''} />
+                        <input type="hidden" name="descuentoId" id="descuentoId" value={traslado.descuentoId ?? ''} />
                         {/* Header: Back Button & Status & Save */}
                         <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
                             <div class="flex justify-end items-center lg:justify-start gap-4 w-full">
@@ -335,7 +374,7 @@ console.log("CAREER DEBUG:", { ofertaDesc, carreraOriginal: traslado?.carrera?.d
                             </div>
                         </div>
 
-                         <form id="transfer-edit-form" class="space-y-6">
+                         <div id="transfer-edit-fields" class="space-y-6">
                             {/* Student Info */}
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-6 border-b border-border pb-6">
                                 <div>
@@ -366,6 +405,7 @@ console.log("CAREER DEBUG:", { ofertaDesc, carreraOriginal: traslado?.carrera?.d
                              <div class="grid grid-cols-1 md:grid-cols-2 gap-6 border-b border-border pb-6">
                                 <div class="relative">
                                     <label for="campus-origen" class="block text-xs font-medium text-muted-foreground mb-1">Campus origen</label>
+                                    <input type="hidden" id="origenId" name="origenId" value={traslado.origenId || ''} />
                                     <input 
                                         type="text" 
                                         id="campus-origen" 
@@ -379,6 +419,7 @@ console.log("CAREER DEBUG:", { ofertaDesc, carreraOriginal: traslado?.carrera?.d
                                 </div>
                                 <div class="relative">
                                     <label for="campus-destino" class="block text-xs font-medium text-muted-foreground mb-1">Campus destino</label>
+                                    <input type="hidden" id="destinoId" name="destinoId" value={traslado.destinoId || ''} />
                                     <input 
                                         type="text" 
                                         id="campus-destino" 
@@ -395,6 +436,7 @@ console.log("CAREER DEBUG:", { ofertaDesc, carreraOriginal: traslado?.carrera?.d
                             {/* Career */}
                             <div class="border-b border-border pb-6 relative">
                                 <label for="carrera" class="block text-xs font-medium text-muted-foreground mb-1">Carrera</label>
+                                <input type="hidden" id="carreraId" name="carreraId" value={traslado.carreraId || ''} />
                                 <input 
                                     type="text" 
                                     id="carrera" 
@@ -436,6 +478,7 @@ console.log("CAREER DEBUG:", { ofertaDesc, carreraOriginal: traslado?.carrera?.d
                                         <label for="tiene_descuento" class="text-xs font-medium text-muted-foreground">¿Tiene descuento?</label>
                                     </div>
                                     <div id="descuento-container" class={`relative ${!!traslado.descuento ? '' : 'hidden'}`}>
+                                        <input type="hidden" id="descuentoId" name="descuentoId" value={traslado.descuentoId || ''} />
                                         <input 
                                             type="text" 
                                             id="descuento-valor" 
@@ -454,7 +497,7 @@ console.log("CAREER DEBUG:", { ofertaDesc, carreraOriginal: traslado?.carrera?.d
                                     <label for="bloque-sugerido" class="block text-xs font-medium text-muted-foreground mb-2 h-5">Bloque sugerido</label>
                                     <select 
                                         id="bloque-sugerido" 
-                                        name="bloque-sugerido" 
+                                        name="bloque_nombre" 
                                         class="w-full rounded-md border-border bg-input px-3 py-2 text-sm"
                                         disabled={!isPrivileged && !isOwner}
                                         data-current-val={traslado.bloque_nombre || traslado.bloque?.descripcion}
@@ -463,7 +506,7 @@ console.log("CAREER DEBUG:", { ofertaDesc, carreraOriginal: traslado?.carrera?.d
                                     </select>
                                 </div>
                             </div>
-                        </form>
+                        </div>
                         
                         {/* Initial Comment & Attachments (Read Only Section) */}
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 border-b border-border pb-6">
@@ -851,18 +894,7 @@ console.log("CAREER DEBUG:", { ofertaDesc, carreraOriginal: traslado?.carrera?.d
                                 (entry.archivos as any).newFiles &&
                                 (entry.archivos as any).newFiles.length > 0;
                             const fieldChanges =
-                                (entry.cambios as any)?.fieldChanges?.filter(
-                                    (c: any) =>
-                                        [
-                                            "prioridad",
-                                            "atiendeId",
-                                            "estatusId",
-                                            "archivado",
-                                            "afectado_clave",
-                                            "afectado_nombre",
-                                            "descripcion",
-                                        ].includes(c.field),
-                                ) || [];
+                                (entry.cambios as any)?.fieldChanges || [];
                             return (
                                 <li
                                     class="flex gap-4 border-t border-border pt-4 first:pt-0 first:border-t-0"

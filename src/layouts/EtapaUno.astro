@@ -1,0 +1,124 @@
+---
+const { URL_HEADER, URL_FOOTER } = Astro.props;
+---
+
+<html>
+    <head>
+        <base target="_top" />
+        <style>
+            body {
+                color: #000;
+                font-family: Verdana, Geneva, Tahoma, sans-serif;
+                font-size: 14px;
+                line-height: 1.6;
+            }
+            .container {
+                border: 1px solid #fff;
+                margin: 0;
+                max-width: 800px;
+                overflow: hidden;
+                text-align: center;
+                width: 100%;
+            }
+            .content {
+                padding: 8px;
+            }
+            .footer,
+            .header {
+                text-align: center;
+                line-height: 1.1;
+            }
+            .footer img,
+            .header img {
+                max-width: 100%;
+                height: auto;
+            }
+            ul {
+                list-style: none;
+                margin: 0;
+                padding: 0;
+                width: 100%;
+            }
+            li {
+                margin: 0;
+                padding: 0;
+                width: 100%;
+            }
+        </style>
+    </head>
+    <body>
+        <center>
+            <div class="container">
+                <div class="header">
+                    <img src="<?= URL_HEADER ?>" alt="Header" />
+                </div>
+                <div class="content">
+                    <p>Estimados colaboradores:</p>
+                    <p><b>Campus <!--?= destino_capitalizado ?--></b></p>
+                    <p>
+                        De acuerdo con el <b>ticket #<!--?= folio ?--></b> tenemos
+                        la solicitud de un traslado con la siguiente informaci&oacute;n:
+                    </p>
+                    <p>A continuaci&oacute;n, los detalles del alumno:</p>
+                    <ul>
+                        <li><strong>Nombre:</strong> <!--?= alumno ?--></li>
+                        <li>
+                            <strong>Matr&iacute;cula:</strong>
+                            <!--?= matricula ?-->
+                        </li>
+                        <li><strong>Carrera:</strong> <!--?= carrera ?--></li>
+                        <li>
+                            <strong>Bloque a cursar:</strong>
+                            <!--?= bloque ?-->
+                        </li>
+                        <li>
+                            <strong>Campus origen:</strong>
+                            <!--?= origen ?-->
+                        </li>
+                        <li>
+                            <strong>Campus destino:</strong>
+                            <!--?= destino ?-->
+                        </li>
+                    </ul>
+                    <p>
+                        Te pedimos nos apoyes con la siguiente
+                        informaci&oacute;n para proporcionarle al<br />alumno
+                        las opciones disponibles para poder incorporarse a <b
+                            >Campus <!--?= destino_capitalizado ?--></b
+                        >:
+                    </p>
+                    <p style="font-size: 20px;">
+                        <b>
+                            Plan de pagos<br />
+                            Clave(s) de grupos(s)<br />
+                            Horario(s)
+                        </b>
+                    </p>
+                    <p>
+                        Quedamos en espera de la retroalimentación a la brevedad
+                        posible,<br />para continuar con el proceso de traslado.
+                    </p>
+                    <p><!--?!= kardex ?--></p>
+                    <p>
+                        <b style="font-style: italic;"
+                            >Se copia a colaboradores de campus origen para el
+                            seguimiento.</b>
+                    </p>
+                    <p>Cualquier duda o comentario estamos en contacto.</p>
+                </div>
+                <div class="footer">
+                    <img src="<?= URL_FOOTER ?>" alt="Footer" />
+                    <p style="font-size:x-small; color: #000;">
+                        <a
+                            href="https://www.humanitas.edu.mx/aviso-de-privacidad"
+                            target="_blank"><b>AVISO DE PRIVACIDAD</b></a
+                        >
+                    </p>
+                    <p style="font-size:x-small">
+                        <b>OVG</b>
+                    </p>
+                </div>
+            </div>
+        </center>
+    </body>
+</html>
