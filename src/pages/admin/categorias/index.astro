@@ -1,0 +1,570 @@
+---
+import MainLayout from "@/layouts/MainLayout.astro";
+import { prisma } from "@/lib/db";
+import { getSession } from "auth-astro/server";
+
+const session = await getSession(Astro.request);
+const user = session?.user;
+
+if (!user) {
+    return Astro.redirect("/login");
+}
+
+// Fetch all categories with their subcategories (deep nesting)
+const categories = await prisma.categoria.findMany({
+    orderBy: { nombre: "asc" },
+    include: {
+        subcategoria_categorias: {
+            include: {
+                subcategoria: {
+                    include: {
+                        parent_subcategoria: true,
+                        subcategorias: {
+                            include: {
+                                subcategorias: {
+                                    include: {
+                                        subcategorias: {
+                                            include: {
+                                                subcategorias: {
+                                                    include: {
+                                                        subcategorias: true,
+                                                    },
+                                                },
+                                            },
+                                        },
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+            },
+        },
+    },
+});
+
+// Build hierarchical structure with recursive approach
+interface CategoryRow {
+    categoria: string;
+    niveles: string[];
+    showCategoria: boolean;
+}
+
+const rows: CategoryRow[] = [];
+const MAX_LEVELS = 10; // Support up to 10 levels of subcategories
+
+// Recursive function to traverse subcategory tree
+function traverseSubcategories(
+    categoria: string,
+    subcategory: any,
+    currentPath: string[],
+    level: number,
+) {
+    const newPath = [...currentPath, subcategory.nombre];
+
+    if (subcategory.subcategorias && subcategory.subcategorias.length > 0) {
+        // Has children, continue traversing
+        const sortedChildren = subcategory.subcategorias.sort(
+            (a: any, b: any) => a.nombre.localeCompare(b.nombre),
+        );
+        sortedChildren.forEach((child: any) => {
+            traverseSubcategories(categoria, child, newPath, level + 1);
+        });
+    } else {
+        // Leaf node, create row
+        const niveles = new Array(MAX_LEVELS).fill("-");
+        newPath.forEach((name, idx) => {
+            niveles[idx] = name;
+        });
+        rows.push({
+            categoria,
+            niveles,
+            showCategoria: true,
+        });
+    }
+}
+
+categories.forEach((cat) => {
+    const subcats = cat.subcategoria_categorias.map((sc) => sc.subcategoria);
+
+    // Get only level 1 subcategories (those without parent)
+    const level1Subs = subcats
+        .filter((s) => s.parent_subcategoriaId === null)
+        .sort((a, b) => a.nombre.localeCompare(b.nombre));
+
+    if (level1Subs.length === 0) {
+        // Category with no subcategories
+        const niveles = new Array(MAX_LEVELS).fill("-");
+        rows.push({
+            categoria: cat.nombre,
+            niveles,
+            showCategoria: true,
+        });
+    } else {
+        level1Subs.forEach((sub1) => {
+            traverseSubcategories(cat.nombre, sub1, [], 0);
+        });
+    }
+});
+
+// Mark rows to avoid repetition for each column independently
+interface DisplayRow extends CategoryRow {
+    showNiveles: boolean[];
+}
+
+const displayRows: DisplayRow[] = rows.map((row) => ({
+    ...row,
+    showNiveles: new Array(MAX_LEVELS).fill(true),
+}));
+
+// Track last values for each column
+let lastCategoria = "";
+const lastNiveles = new Array(MAX_LEVELS).fill("");
+
+displayRows.forEach((row) => {
+    // Check categoria
+    if (row.categoria === lastCategoria) {
+        row.showCategoria = false;
+    } else {
+        lastCategoria = row.categoria;
+        row.showCategoria = true;
+        // Reset nivel tracking when category changes
+        lastNiveles.fill("");
+    }
+
+    // Check each nivel
+    row.niveles.forEach((nivel, idx) => {
+        if (nivel === lastNiveles[idx]) {
+            row.showNiveles[idx] = false;
+        } else {
+            lastNiveles[idx] = nivel;
+            row.showNiveles[idx] = true;
+            // Reset subsequent levels when this level changes
+            for (let i = idx + 1; i < MAX_LEVELS; i++) {
+                lastNiveles[i] = "";
+            }
+        }
+    });
+});
+
+// Determine actual max level used
+let maxLevelUsed = 0;
+displayRows.forEach((row) => {
+    for (let i = 0; i < row.niveles.length; i++) {
+        if (row.niveles[i] !== "-") {
+            maxLevelUsed = Math.max(maxLevelUsed, i + 1);
+        }
+    }
+});
+
+// Collect unique values for filters
+const uniqueCategorias = Array.from(
+    new Set(displayRows.map((r) => r.categoria)),
+).sort();
+
+const uniqueNiveles: string[][] = [];
+for (let i = 0; i < maxLevelUsed; i++) {
+    const unique = Array.from(
+        new Set(displayRows.map((r) => r.niveles[i]).filter((v) => v !== "-")),
+    ).sort();
+    uniqueNiveles.push(unique);
+}
+---
+
+<MainLayout title="Gestión de Categorías">
+    <div class="max-w-7xl mx-auto space-y-6">
+        <div class="flex justify-between items-center">
+            <h1 class="text-2xl font-bold">Gestión de Categorías</h1>
+        </div>
+
+        <div class="bg-card border border-border rounded-lg overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm text-left">
+                    <thead
+                        class="bg-muted text-muted-foreground uppercase text-xs"
+                    >
+                        <tr>
+                            <th class="p-3 relative">
+                                <div class="flex items-center justify-between gap-2">
+                                    <span>Categoría</span>
+                                    <button
+                                        class="filter-dropdown-trigger hover:bg-muted-foreground/20 p-1 rounded"
+                                        data-column="categoria"
+                                    >
+                                        <svg
+                                            xmlns="http://www.w3.org/2000/svg"
+                                            class="h-4 w-4"
+                                            viewBox="0 0 20 20"
+                                            fill="currentColor"
+                                        >
+                                            <path
+                                                fill-rule="evenodd"
+                                                d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+                                                clip-rule="evenodd"></path>
+                                        </svg>
+                                    </button>
+                                </div>
+                                <!-- Dropdown -->
+                                <div
+                                    class="filter-dropdown hidden absolute top-full left-0 mt-1 bg-card border border-border rounded-md shadow-lg z-50 min-w-[200px] max-h-64 overflow-y-auto"
+                                    data-column="categoria"
+                                >
+                                    <div class="p-2 space-y-1">
+                                        {
+                                            uniqueCategorias.map((cat) => (
+                                                <label class="flex items-center gap-2 text-sm hover:bg-muted/50 p-1 rounded cursor-pointer categoria-option">
+                                                    <input
+                                                        type="checkbox"
+                                                        class="filter-checkbox"
+                                                        data-column="categoria"
+                                                        data-value={cat}
+                                                        checked
+                                                    />
+                                                    <span class="normal-case">
+                                                        {cat}
+                                                    </span>
+                                                </label>
+                                            ))
+                                        }
+                                    </div>
+                                </div>
+                            </th>
+                            {
+                                Array.from({ length: maxLevelUsed }).map(
+                                    (_, i) => (
+                                        <th class="p-3 relative">
+                                            <div class="flex items-center justify-between gap-2">
+                                                <span>
+                                                    Subcategoría {i + 1}
+                                                </span>
+                                                <button
+                                                    class="filter-dropdown-trigger hover:bg-muted-foreground/20 p-1 rounded"
+                                                    data-column={`nivel${i}`}
+                                                >
+                                                    <svg
+                                                        xmlns="http://www.w3.org/2000/svg"
+                                                        class="h-4 w-4"
+                                                        viewBox="0 0 20 20"
+                                                        fill="currentColor"
+                                                    >
+                                                        <path
+                                                            fill-rule="evenodd"
+                                                            d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+                                                            clip-rule="evenodd"
+                                                        />
+                                                    </svg>
+                                                </button>
+                                            </div>
+                                            <!-- Dropdown -->
+                                            <div
+                                                class="filter-dropdown hidden absolute top-full left-0 mt-1 bg-card border border-border rounded-md shadow-lg z-50 min-w-[200px] max-h-64 overflow-y-auto"
+                                                data-column={`nivel${i}`}
+                                            >
+                                                <div
+                                                    class="p-2 space-y-1"
+                                                    data-nivel-index={i}
+                                                >
+                                                    <label class="flex items-center gap-2 text-sm hover:bg-muted/50 p-1 rounded cursor-pointer font-semibold">
+                                                        <input
+                                                            type="checkbox"
+                                                            class="filter-all"
+                                                            data-column={`nivel${i}`}
+                                                            checked
+                                                        />
+                                                        <span>Todos</span>
+                                                    </label>
+                                                    {uniqueNiveles[i].map(
+                                                        (nivel) => (
+                                                            <label class="flex items-center gap-2 text-sm hover:bg-muted/50 p-1 rounded cursor-pointer filter-option">
+                                                                <input
+                                                                    type="checkbox"
+                                                                    class="filter-checkbox"
+                                                                    data-column={`nivel${i}`}
+                                                                    data-value={
+                                                                        nivel
+                                                                    }
+                                                                    checked
+                                                                />
+                                                                <span class="normal-case">
+                                                                    {nivel}
+                                                                </span>
+                                                            </label>
+                                                        ),
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </th>
+                                    ),
+                                )
+                            }
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-border">
+                        {
+                            displayRows.map((row, rowIdx) => (
+                                <tr
+                                    class="hover:bg-muted/50 table-row"
+                                    data-categoria={row.categoria}
+                                    data-niveles={JSON.stringify(
+                                        row.niveles.slice(0, maxLevelUsed),
+                                    )}
+                                >
+                                    <td
+                                        class:list={[
+                                            "p-3 font-medium",
+                                            !row.showCategoria && "bg-muted/30",
+                                        ]}
+                                    >
+                                        {row.showCategoria
+                                            ? row.categoria
+                                            : "-"}
+                                    </td>
+                                    {row.niveles
+                                        .slice(0, maxLevelUsed)
+                                        .map((nivel, idx) => (
+                                            <td
+                                                class:list={[
+                                                    "p-3 text-muted-foreground",
+                                                    (!row.showNiveles[idx] ||
+                                                        nivel === "-") &&
+                                                        "bg-muted/30",
+                                                ]}
+                                            >
+                                                {row.showNiveles[idx]
+                                                    ? nivel
+                                                    : "-"}
+                                            </td>
+                                        ))}
+                                </tr>
+                            ))
+                        }
+                        {
+                            displayRows.length === 0 && (
+                                <tr>
+                                    <td
+                                        colspan={maxLevelUsed + 1}
+                                        class="p-6 text-center text-muted-foreground"
+                                    >
+                                        No hay categorías registradas.
+                                    </td>
+                                </tr>
+                            )
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</MainLayout>
+
+<script>
+    // Cascading filter logic
+    function setupFilters() {
+        const filterDropdownTriggers = document.querySelectorAll(
+            ".filter-dropdown-trigger",
+        );
+        const filterDropdowns = document.querySelectorAll(".filter-dropdown");
+        const filterCheckboxes = document.querySelectorAll(".filter-checkbox");
+        const filterAllCheckboxes = document.querySelectorAll(".filter-all");
+        const tableRows = document.querySelectorAll(".table-row");
+
+        // Toggle dropdown visibility
+        filterDropdownTriggers.forEach((trigger) => {
+            trigger.addEventListener("click", (e) => {
+                e.stopPropagation();
+                const column = (trigger as HTMLElement).dataset.column;
+                const dropdown = document.querySelector(
+                    `.filter-dropdown[data-column="${column}"]`,
+                );
+
+                // Close all other dropdowns
+                filterDropdowns.forEach((d) => {
+                    if (d !== dropdown) {
+                        d.classList.add("hidden");
+                    }
+                });
+
+                dropdown?.classList.toggle("hidden");
+            });
+        });
+
+        // Close dropdowns when clicking outside
+        document.addEventListener("click", (e) => {
+            if (
+                !(e.target as HTMLElement).closest(".filter-dropdown") &&
+                !(e.target as HTMLElement).closest(
+                    ".filter-dropdown-trigger",
+                )
+            ) {
+                filterDropdowns.forEach((d) => d.classList.add("hidden"));
+            }
+        });
+
+        // Prevent dropdown from closing when clicking inside
+        filterDropdowns.forEach((dropdown) => {
+            dropdown.addEventListener("click", (e) => {
+                e.stopPropagation();
+            });
+        });
+
+        // Handle "Todos" checkboxes
+        filterAllCheckboxes.forEach((allCheckbox) => {
+            allCheckbox.addEventListener("change", (e) => {
+                const target = e.target as HTMLInputElement;
+                const column = target.dataset.column;
+                const checkboxes = document.querySelectorAll(
+                    `.filter-checkbox[data-column="${column}"]`,
+                );
+                checkboxes.forEach((cb) => {
+                    (cb as HTMLInputElement).checked = target.checked;
+                });
+                applyFilters();
+                // Only update cascading options if this is NOT the category filter
+                if (column !== "categoria") {
+                    updateCascadingOptions();
+                }
+            });
+        });
+
+        // Handle individual checkboxes
+        filterCheckboxes.forEach((checkbox) => {
+            checkbox.addEventListener("change", () => {
+                const column = (checkbox as HTMLInputElement).dataset.column!;
+                updateAllCheckbox(column);
+                applyFilters();
+                // Only update cascading options if this is NOT the category filter
+                if (column !== "categoria") {
+                    updateCascadingOptions();
+                }
+            });
+        });
+
+        function updateAllCheckbox(column: string) {
+            const checkboxes = Array.from(
+                document.querySelectorAll(
+                    `.filter-checkbox[data-column="${column}"]`,
+                ),
+            ) as HTMLInputElement[];
+            const allCheckbox = document.querySelector(
+                `.filter-all[data-column="${column}"]`,
+            ) as HTMLInputElement;
+
+            const allChecked = checkboxes.every((cb) => cb.checked);
+            const noneChecked = checkboxes.every((cb) => !cb.checked);
+
+            if (allChecked) {
+                allCheckbox.checked = true;
+                allCheckbox.indeterminate = false;
+            } else if (noneChecked) {
+                allCheckbox.checked = false;
+                allCheckbox.indeterminate = false;
+            } else {
+                allCheckbox.indeterminate = true;
+            }
+        }
+
+        function applyFilters() {
+            // Get selected values for each column
+            const selectedCategoria = Array.from(
+                document.querySelectorAll(
+                    '.filter-checkbox[data-column="categoria"]:checked',
+                ),
+            )
+                .map((cb) => (cb as HTMLInputElement).dataset.value)
+                .filter((v): v is string => v !== undefined);
+
+            const selectedNiveles: string[][] = [];
+            let nivelIdx = 0;
+            while (
+                document.querySelector(
+                    `.filter-checkbox[data-column="nivel${nivelIdx}"]`,
+                )
+            ) {
+                const selected = Array.from(
+                    document.querySelectorAll(
+                        `.filter-checkbox[data-column="nivel${nivelIdx}"]:checked`,
+                    ),
+                )
+                    .map((cb) => (cb as HTMLInputElement).dataset.value)
+                    .filter((v): v is string => v !== undefined);
+                selectedNiveles.push(selected);
+                nivelIdx++;
+            }
+
+            // Filter rows
+            tableRows.forEach((row) => {
+                const categoria = (row as HTMLElement).dataset.categoria!;
+                const niveles = JSON.parse(
+                    (row as HTMLElement).dataset.niveles!,
+                );
+
+                let show = selectedCategoria.includes(categoria);
+
+                if (show) {
+                    for (let i = 0; i < selectedNiveles.length; i++) {
+                        if (
+                            niveles[i] !== "-" &&
+                            !selectedNiveles[i].includes(niveles[i])
+                        ) {
+                            show = false;
+                            break;
+                        }
+                    }
+                }
+
+                (row as HTMLElement).style.display = show ? "" : "none";
+            });
+        }
+
+        function updateCascadingOptions() {
+            // Get visible rows
+            const visibleRows = Array.from(tableRows).filter(
+                (row) => (row as HTMLElement).style.display !== "none",
+            );
+
+            // Update each nivel dropdown based on visible rows
+            // NOTE: We only update subcategory (nivel) dropdowns, not the main category dropdown
+            const nivelDropdowns = document.querySelectorAll(
+                '[data-nivel-index]',
+            );
+
+            nivelDropdowns.forEach((dropdown) => {
+                const nivelIndex = parseInt(
+                    (dropdown as HTMLElement).dataset.nivelIndex!,
+                );
+
+                // Collect visible values for this level
+                const visibleValues = new Set<string>();
+                visibleRows.forEach((row) => {
+                    const niveles = JSON.parse(
+                        (row as HTMLElement).dataset.niveles!,
+                    );
+                    if (niveles[nivelIndex] && niveles[nivelIndex] !== "-") {
+                        visibleValues.add(niveles[nivelIndex]);
+                    }
+                });
+
+                // Show/hide ONLY subcategory options (with .filter-option class)
+                // Category options (with .categoria-option class) are NEVER hidden
+                const options = dropdown.querySelectorAll(".filter-option");
+                options.forEach((option) => {
+                    const checkbox = option.querySelector(
+                        "input",
+                    ) as HTMLInputElement;
+                    const value = checkbox.dataset.value!;
+
+                    if (visibleValues.has(value)) {
+                        (option as HTMLElement).style.display = "";
+                    } else {
+                        (option as HTMLElement).style.display = "none";
+                    }
+                });
+            });
+        }
+
+        // Initialize
+        applyFilters();
+    }
+
+    document.addEventListener("astro:page-load", setupFilters);
+</script>

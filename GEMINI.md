@@ -1,8 +1,8 @@
 # Plan de Trabajo (SIGET-CSH)
 
-**Tarea Actual:** Seguridad, Validación de Vistas y Optimización (Semana Próxima).
+**Tarea Actual:** Seguridad, Validación de Vistas y Optimización.
 
-**Estado:** Completado - Historial de traslados unificado y correcciones de UI/Layout.
+**Estado:** Completado - Vista de Gestión de Categorías con filtros en cascada.
 
 **Pasos Completados:**
 - ✅ Análisis completo del proyecto (tecnologías, código, BD, UI/UX)
@@ -15,6 +15,7 @@
 - ✅ Mejoras de UI en listas de tickets (Diseño responsivo, limpieza de columnas)
 - ✅ Refactorización completa de página de Traslados (UI/UX + Carga de Archivos)
 - ✅ Lógica unificada de guardado e historial detallado para tickets de traslado
+- ✅ Vista administrativa de categorías con filtros jerárquicos en cascada
 
 **Pasos Siguientes (Semana Próxima):**
 1.  **Seguridad y Validación (Prioridad Alta):**
@@ -116,6 +117,18 @@ Cuando el usuario me pida leer este archivo (`GEMINI.md`) al inicio de una sesi�
 5.  **Confirmar Rol y Esperar Instrucción:** Re-afirmar internamente mi rol como "ScrumBot" y esperar la siguiente instrucción del usuario para proceder.
 
 # Historial de Cambios (Log)
+
+## 2026-02-11 (Sesión 16 - Gestión de Categorías)
+*   **Nueva Vista (`/admin/categorias`):**
+    *   **Tabla Jerárquica:** Creada vista para visualizar categorías y subcategorías con soporte para hasta 5 niveles de anidamiento.
+    *   **Eliminación de Repeticiones:** Lógica recursiva que reemplaza nombres repetidos con `-` y fondo gris, evaluando cada columna independientemente.
+    *   **Columnas Dinámicas:** La tabla genera columnas automáticamente según el nivel máximo de subcategorías.
+*   **Filtros en Cascada (Encabezados):**
+    *   Dropdowns con checkboxes directamente en los encabezados de cada columna.
+    *   Las opciones de subcategorías se actualizan dinámicamente según las filas visibles.
+    *   Checkbox "Todos" con soporte para estado indeterminado en subcategorías.
+*   **Sidebar:** Enlace "Categorías" añadido al menú Admin y Marketing.
+*   **Ordenamiento:** Subcategorías en `/admin/tickets` ordenadas por ID ascendente.
 
 ## 2026-01-22 (Sesión 14 - Parte 2)
 *   **Adjuntos y Archivos:**

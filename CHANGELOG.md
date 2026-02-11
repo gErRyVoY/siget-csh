@@ -6,7 +6,21 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 y este proyecto adhiere a [Versionado Semántico](https://semver.org/lang/es/).
 
 
-
+## 2026-02-11 (Sesión 16 - Gestión de Categorías)
+*   **Nueva Vista Administrativa (`/admin/categorías`):**
+    *   **Página:** Se creó una nueva vista para visualizar categorías y subcategorías en formato jerárquico de tabla.
+    *   **Consulta Profunda:** La query de Prisma obtiene hasta 5 niveles de subcategorías anidadas.
+    *   **Eliminación de Repeticiones:** Se implementó lógica recursiva que reemplaza nombres repetidos con `-` y fondo gris claro (`bg-muted/30`), evaluando cada columna de forma independiente.
+    *   **Columnas Dinámicas:** La tabla genera automáticamente las columnas de subcategoría según el nivel máximo encontrado en los datos.
+    *   **Encabezados:** Renombrados de "Subcategoría Nivel X" a "Subcategoría X".
+*   **Filtros Interactivos en Encabezados:**
+    *   **Dropdowns:** Cada columna tiene un botón desplegable con checkboxes para filtrar.
+    *   **Cascada:** Los filtros de subcategorías se actualizan dinámicamente mostrando solo las opciones relevantes según las filas visibles.
+    *   **"Todos":** Checkbox "Todos" con estado indeterminado en las subcategorías.
+*   **Integración en Sidebar:**
+    *   Se añadió el enlace "Categorías" al menú de administración y al menú del Director de Marketing.
+*   **Ordenamiento de Subcategorías:**
+    *   Se cambió el `orderBy` en `/admin/tickets` de `nombre: "asc"` a `id: "asc"` para ordenar subcategorías por ID.
 
 ## 2026-01-24 (Sesión 15 - Historial Unificado de Traslados)
 *   **Historial de Tickets:**

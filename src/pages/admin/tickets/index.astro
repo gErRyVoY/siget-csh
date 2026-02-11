@@ -39,7 +39,7 @@ if (isMarketing) {
             },
             activo: true,
         },
-        orderBy: { nombre: "asc" },
+        orderBy: { id: "asc" },
         include: {
             parent_subcategoria: true, // To show hierarchy if any
         },
@@ -51,7 +51,7 @@ if (isMarketing) {
     });
     subcategories = await prisma.subcategoria.findMany({
         where: { activo: true },
-        orderBy: { nombre: "asc" },
+        orderBy: { id: "asc" },
         include: {
             subcategoria_categorias: { include: { categoria: true } },
             parent_subcategoria: true,
