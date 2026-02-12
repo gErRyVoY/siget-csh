@@ -2,7 +2,7 @@
 
 **Tarea Actual:** Seguridad, Validación de Vistas y Optimización.
 
-**Estado:** Completado - Vista de Gestión de Categorías con filtros en cascada.
+**Estado:** Completado - Refinamiento de logica de filtrado y Botón Restablecer en Categorías.
 
 **Pasos Completados:**
 - ✅ Análisis completo del proyecto (tecnologías, código, BD, UI/UX)
@@ -16,6 +16,8 @@
 - ✅ Refactorización completa de página de Traslados (UI/UX + Carga de Archivos)
 - ✅ Lógica unificada de guardado e historial detallado para tickets de traslado
 - ✅ Vista administrativa de categorías con filtros jerárquicos en cascada
+- ✅ Refinamiento de lógica de filtrado (ocultar filas vacías)
+- ✅ Implementación de botón "Restablecer" filtros
 
 **Pasos Siguientes (Semana Próxima):**
 1.  **Seguridad y Validación (Prioridad Alta):**
@@ -117,6 +119,13 @@ Cuando el usuario me pida leer este archivo (`GEMINI.md`) al inicio de una sesi�
 5.  **Confirmar Rol y Esperar Instrucción:** Re-afirmar internamente mi rol como "ScrumBot" y esperar la siguiente instrucción del usuario para proceder.
 
 # Historial de Cambios (Log)
+
+## 2026-02-12 (Sesión 16 - Parte 2 - Refinamiento de Categorías)
+*   **Mejoras en Filtrado (`/admin/categorias`):**
+    *   **Lógica de Ocultamiento Inteligente:** Ahora se ocultan automáticamente las filas que no tienen información visible (es decir, donde tanto la categoría como todas las subcategorías muestran "-"), manteniendo la tabla limpia.
+    *   **Filtros Contextuales:** Los dropdowns de subcategorías ahora solo muestran las opciones que están realmente visibles en la tabla, adaptándose dinámicamente a los filtros aplicados en niveles superiores.
+*   **UX:**
+    *   **Botón Restablecer:** Se añadió un botón "Restablecer" en el encabezado para limpiar rápidamente todos los filtros y mostrar la tabla completa.
 
 ## 2026-02-11 (Sesión 16 - Gestión de Categorías)
 *   **Nueva Vista (`/admin/categorias`):**

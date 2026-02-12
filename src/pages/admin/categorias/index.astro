@@ -175,6 +175,13 @@ for (let i = 0; i < maxLevelUsed; i++) {
     <div class="max-w-7xl mx-auto space-y-6">
         <div class="flex justify-between items-center">
             <h1 class="text-2xl font-bold">Gestión de Categorías</h1>
+            <button
+                type="button"
+                id="reset-filters-button"
+                class="bg-muted-foreground text-white hover:bg-muted-foreground/80 px-4 py-2 rounded-md text-sm font-semibold h-10"
+            >
+                Restablecer
+            </button>
         </div>
 
         <div class="bg-card border border-border rounded-lg overflow-hidden">
@@ -305,6 +312,7 @@ for (let i = 0; i < maxLevelUsed; i++) {
                                 <tr
                                     class="hover:bg-muted/50 table-row"
                                     data-categoria={row.categoria}
+                                    data-show-categoria={row.showCategoria}
                                     data-niveles={JSON.stringify(
                                         row.niveles.slice(0, maxLevelUsed),
                                     )}
@@ -364,8 +372,6 @@ for (let i = 0; i < maxLevelUsed; i++) {
             ".filter-dropdown-trigger",
         );
         const filterDropdowns = document.querySelectorAll(".filter-dropdown");
-        const filterCheckboxes = document.querySelectorAll(".filter-checkbox");
-        const filterAllCheckboxes = document.querySelectorAll(".filter-all");
         const tableRows = document.querySelectorAll(".table-row");
 
         // Toggle dropdown visibility
@@ -375,16 +381,32 @@ for (let i = 0; i < maxLevelUsed; i++) {
                 const column = (trigger as HTMLElement).dataset.column;
                 const dropdown = document.querySelector(
                     `.filter-dropdown[data-column="${column}"]`,
-                );
-
+                ) as HTMLElement | null;
+                
                 // Close all other dropdowns
                 filterDropdowns.forEach((d) => {
                     if (d !== dropdown) {
                         d.classList.add("hidden");
+                        // Reset positioning
+                        (d as HTMLElement).style.position = "";
+                        (d as HTMLElement).style.top = "";
+                        (d as HTMLElement).style.left = "";
                     }
                 });
-
+                
+                const wasHidden = dropdown?.classList.contains("hidden");
                 dropdown?.classList.toggle("hidden");
+                
+                // If opening dropdown, position it using fixed coordinates
+                if (dropdown && !dropdown.classList.contains("hidden")) {
+                    // Get the parent th element for proper column alignment
+                    const thElement = trigger.closest("th") as HTMLElement;
+                    const rect = thElement ? thElement.getBoundingClientRect() : trigger.getBoundingClientRect();
+                    dropdown.style.position = "fixed";
+                    dropdown.style.top = `${rect.bottom + 4}px`;
+                    dropdown.style.left = `${rect.left}px`;
+                    dropdown.style.zIndex = "9999";
+                }
             });
         });
 
@@ -392,11 +414,15 @@ for (let i = 0; i < maxLevelUsed; i++) {
         document.addEventListener("click", (e) => {
             if (
                 !(e.target as HTMLElement).closest(".filter-dropdown") &&
-                !(e.target as HTMLElement).closest(
-                    ".filter-dropdown-trigger",
-                )
+                !(e.target as HTMLElement).closest(".filter-dropdown-trigger")
             ) {
-                filterDropdowns.forEach((d) => d.classList.add("hidden"));
+                filterDropdowns.forEach((d) => {
+                    d.classList.add("hidden");
+                    // Reset positioning
+                    (d as HTMLElement).style.position = "";
+                    (d as HTMLElement).style.top = "";
+                    (d as HTMLElement).style.left = "";
+                });
             }
         });
 
@@ -407,35 +433,48 @@ for (let i = 0; i < maxLevelUsed; i++) {
             });
         });
 
-        // Handle "Todos" checkboxes
-        filterAllCheckboxes.forEach((allCheckbox) => {
-            allCheckbox.addEventListener("change", (e) => {
-                const target = e.target as HTMLInputElement;
-                const column = target.dataset.column;
-                const checkboxes = document.querySelectorAll(
-                    `.filter-checkbox[data-column="${column}"]`,
-                );
-                checkboxes.forEach((cb) => {
-                    (cb as HTMLInputElement).checked = target.checked;
-                });
+        // --- CATEGORY checkboxes: options NEVER hidden ---
+        const categoriaCheckboxes = document.querySelectorAll(
+            '.filter-checkbox[data-column="categoria"]',
+        ) as NodeListOf<HTMLInputElement>;
+
+        categoriaCheckboxes.forEach((cb) => {
+            cb.addEventListener("change", () => {
                 applyFilters();
-                // Only update cascading options if this is NOT the category filter
-                if (column !== "categoria") {
-                    updateCascadingOptions();
-                }
+                updateCascadingOptions();
             });
         });
 
-        // Handle individual checkboxes
-        filterCheckboxes.forEach((checkbox) => {
-            checkbox.addEventListener("change", () => {
-                const column = (checkbox as HTMLInputElement).dataset.column!;
+        // --- SUBCATEGORY "Todos" checkboxes ---
+        const filterAllCheckboxes = document.querySelectorAll(
+            ".filter-all",
+        ) as NodeListOf<HTMLInputElement>;
+
+        filterAllCheckboxes.forEach((allCb) => {
+            allCb.addEventListener("change", () => {
+                const column = allCb.dataset.column!;
+                const checkboxes = document.querySelectorAll(
+                    `.filter-checkbox[data-column="${column}"]`,
+                ) as NodeListOf<HTMLInputElement>;
+                checkboxes.forEach((cb) => {
+                    cb.checked = allCb.checked;
+                });
+                applyFilters();
+                updateCascadingOptions();
+            });
+        });
+
+        // --- SUBCATEGORY individual checkboxes ---
+        const nivelCheckboxes = document.querySelectorAll(
+            '.filter-checkbox:not([data-column="categoria"])',
+        ) as NodeListOf<HTMLInputElement>;
+
+        nivelCheckboxes.forEach((cb) => {
+            cb.addEventListener("change", () => {
+                const column = cb.dataset.column!;
                 updateAllCheckbox(column);
                 applyFilters();
-                // Only update cascading options if this is NOT the category filter
-                if (column !== "categoria") {
-                    updateCascadingOptions();
-                }
+                updateCascadingOptions();
             });
         });
 
@@ -447,7 +486,9 @@ for (let i = 0; i < maxLevelUsed; i++) {
             ) as HTMLInputElement[];
             const allCheckbox = document.querySelector(
                 `.filter-all[data-column="${column}"]`,
-            ) as HTMLInputElement;
+            ) as HTMLInputElement | null;
+
+            if (!allCheckbox) return;
 
             const allChecked = checkboxes.every((cb) => cb.checked);
             const noneChecked = checkboxes.every((cb) => !cb.checked);
@@ -464,15 +505,15 @@ for (let i = 0; i < maxLevelUsed; i++) {
         }
 
         function applyFilters() {
-            // Get selected values for each column
-            const selectedCategoria = Array.from(
-                document.querySelectorAll(
-                    '.filter-checkbox[data-column="categoria"]:checked',
-                ),
-            )
-                .map((cb) => (cb as HTMLInputElement).dataset.value)
-                .filter((v): v is string => v !== undefined);
+            // Get selected categories
+            const selectedCategoria: string[] = [];
+            categoriaCheckboxes.forEach((cb) => {
+                if (cb.checked && cb.dataset.value) {
+                    selectedCategoria.push(cb.dataset.value);
+                }
+            });
 
+            // Get selected niveles
             const selectedNiveles: string[][] = [];
             let nivelIdx = 0;
             while (
@@ -480,85 +521,195 @@ for (let i = 0; i < maxLevelUsed; i++) {
                     `.filter-checkbox[data-column="nivel${nivelIdx}"]`,
                 )
             ) {
-                const selected = Array.from(
-                    document.querySelectorAll(
+                const selected: string[] = [];
+                document
+                    .querySelectorAll(
                         `.filter-checkbox[data-column="nivel${nivelIdx}"]:checked`,
-                    ),
-                )
-                    .map((cb) => (cb as HTMLInputElement).dataset.value)
-                    .filter((v): v is string => v !== undefined);
+                    )
+                    .forEach((cb) => {
+                        const val = (cb as HTMLInputElement).dataset.value;
+                        if (val) selected.push(val);
+                    });
                 selectedNiveles.push(selected);
                 nivelIdx++;
             }
 
-            // Filter rows
+            // Apply filters to each row
             tableRows.forEach((row) => {
-                const categoria = (row as HTMLElement).dataset.categoria!;
-                const niveles = JSON.parse(
-                    (row as HTMLElement).dataset.niveles!,
-                );
+                const el = row as HTMLElement;
+                const categoria = el.dataset.categoria!;
+                const niveles = JSON.parse(el.dataset.niveles!);
 
-                let show = selectedCategoria.includes(categoria);
-
-                if (show) {
-                    for (let i = 0; i < selectedNiveles.length; i++) {
-                        if (
-                            niveles[i] !== "-" &&
-                            !selectedNiveles[i].includes(niveles[i])
-                        ) {
-                            show = false;
-                            break;
+                // Get all td elements in this row
+                const cells = el.querySelectorAll("td");
+                
+                // Check if category is selected
+                const categoriaSelected = selectedCategoria.includes(categoria);
+                
+                // Update category cell (first td)
+                if (cells[0]) {
+                    if (categoriaSelected) {
+                        // Restore original value if it was showing
+                        const originalText = cells[0].getAttribute("data-original-text");
+                        if (originalText !== null) {
+                            cells[0].textContent = originalText;
                         }
+                        cells[0].classList.remove("bg-muted/30");
+                    } else {
+                        // Store original if not already stored
+                        if (!cells[0].hasAttribute("data-original-text")) {
+                            cells[0].setAttribute("data-original-text", cells[0].textContent || "");
+                        }
+                        cells[0].textContent = "-";
+                        cells[0].classList.add("bg-muted/30");
                     }
                 }
 
-                (row as HTMLElement).style.display = show ? "" : "none";
+                // Track if ALL subcategory levels are filtered (to hide row)
+                let allNivelesFiltered = true;
+
+                // Update subcategory cells
+                niveles.forEach((nivel: string, idx: number) => {
+                    const cell = cells[idx + 1]; // +1 because first cell is category
+                    if (!cell) return;
+
+                    const isOriginallyDash = nivel === "-";
+                    const isSelected = selectedNiveles[idx] && selectedNiveles[idx].includes(nivel);
+
+                    if (isOriginallyDash || isSelected) {
+                        // Show original value
+                        const originalText = cell.getAttribute("data-original-text");
+                        if (originalText !== null) {
+                            cell.textContent = originalText;
+                        }
+                        cell.classList.remove("bg-muted/30");
+                        
+                        // If this level has a real value (not "-"), it's not filtered
+                        if (!isOriginallyDash) {
+                            allNivelesFiltered = false;
+                        }
+                    } else {
+                        // Value is filtered - show as "-"
+                        if (!cell.hasAttribute("data-original-text")) {
+                            cell.setAttribute("data-original-text", cell.textContent || "");
+                        }
+                        cell.textContent = "-";
+                        cell.classList.add("bg-muted/30");
+                    }
+                });
+
+                // Determine if row should be hidden:
+                // 1. Hide if category is not selected
+                // 2. Hide if ALL visible cells show "-" (no meaningful information)
+                
+                let shouldHide = false;
+                
+                if (!categoriaSelected) {
+                    // Category not selected - hide row
+                    shouldHide = true;
+                } else {
+                    // Category is selected - check if ALL visible cells show "-"
+                    // This includes both the category cell and all subcategory cells
+                    let hasVisibleContent = false;
+                    
+                    // Check all cells in the row
+                    for (let i = 0; i < cells.length; i++) {
+                        const cellText = cells[i].textContent?.trim();
+                        if (cellText && cellText !== "-") {
+                            hasVisibleContent = true;
+                            break;
+                        }
+                    }
+                    
+                    // Hide if no cell has visible content (all show "-")
+                    if (!hasVisibleContent) {
+                        shouldHide = true;
+                    }
+                }
+                
+                el.style.display = shouldHide ? "none" : "";
             });
         }
 
         function updateCascadingOptions() {
             // Get visible rows
-            const visibleRows = Array.from(tableRows).filter(
-                (row) => (row as HTMLElement).style.display !== "none",
-            );
+            const visibleRows: HTMLElement[] = [];
+            tableRows.forEach((row) => {
+                if ((row as HTMLElement).style.display !== "none") {
+                    visibleRows.push(row as HTMLElement);
+                }
+            });
 
-            // Update each nivel dropdown based on visible rows
-            // NOTE: We only update subcategory (nivel) dropdowns, not the main category dropdown
-            const nivelDropdowns = document.querySelectorAll(
-                '[data-nivel-index]',
-            );
-
-            nivelDropdowns.forEach((dropdown) => {
-                const nivelIndex = parseInt(
-                    (dropdown as HTMLElement).dataset.nivelIndex!,
-                );
-
-                // Collect visible values for this level
-                const visibleValues = new Set<string>();
-                visibleRows.forEach((row) => {
-                    const niveles = JSON.parse(
-                        (row as HTMLElement).dataset.niveles!,
+            // Update ONLY subcategory (nivel) dropdowns — NEVER category
+            document
+                .querySelectorAll("[data-nivel-index]")
+                .forEach((dropdown) => {
+                    const nivelIndex = parseInt(
+                        (dropdown as HTMLElement).dataset.nivelIndex!,
                     );
-                    if (niveles[nivelIndex] && niveles[nivelIndex] !== "-") {
-                        visibleValues.add(niveles[nivelIndex]);
-                    }
+
+                    // Collect visible values for this level by reading actual cell content
+                    const visibleValues = new Set<string>();
+                    visibleRows.forEach((row) => {
+                        // Get all cells in this row
+                        const cells = row.querySelectorAll("td");
+                        // nivelIndex + 1 because first cell (index 0) is category
+                        const cell = cells[nivelIndex + 1];
+                        
+                        if (cell) {
+                            const cellText = cell.textContent?.trim();
+                            // Only add if cell has visible content (not "-" or empty)
+                            if (cellText && cellText !== "-") {
+                                visibleValues.add(cellText);
+                            }
+                        }
+                    });
+
+                    // Show/hide ONLY .filter-option elements
+                    dropdown
+                        .querySelectorAll(".filter-option")
+                        .forEach((option) => {
+                            const checkbox = option.querySelector(
+                                "input",
+                            ) as HTMLInputElement;
+                            const value = checkbox.dataset.value!;
+                            (option as HTMLElement).style.display =
+                                visibleValues.has(value) ? "" : "none";
+                        });
+
+                    // Update "Todos" checkbox for this nivel
+                    updateAllCheckbox(`nivel${nivelIndex}`);
+                });
+        }
+
+        // Reset button logic
+        const resetButton = document.getElementById("reset-filters-button");
+        if (resetButton) {
+            resetButton.addEventListener("click", () => {
+                // Check all individual checkboxes
+                document.querySelectorAll(".filter-checkbox").forEach((cb) => {
+                    (cb as HTMLInputElement).checked = true;
                 });
 
-                // Show/hide ONLY subcategory options (with .filter-option class)
-                // Category options (with .categoria-option class) are NEVER hidden
-                const options = dropdown.querySelectorAll(".filter-option");
-                options.forEach((option) => {
-                    const checkbox = option.querySelector(
-                        "input",
-                    ) as HTMLInputElement;
-                    const value = checkbox.dataset.value!;
-
-                    if (visibleValues.has(value)) {
-                        (option as HTMLElement).style.display = "";
-                    } else {
-                        (option as HTMLElement).style.display = "none";
-                    }
+                // Check and reset all "Todos" checkboxes
+                document.querySelectorAll(".filter-all").forEach((cb) => {
+                    const input = cb as HTMLInputElement;
+                    input.checked = true;
+                    input.indeterminate = false;
                 });
+
+                // Hide all dropdowns
+                filterDropdowns.forEach((d) => {
+                    d.classList.add("hidden");
+                    // Reset positioning
+                    (d as HTMLElement).style.position = "";
+                    (d as HTMLElement).style.top = "";
+                    (d as HTMLElement).style.left = "";
+                });
+
+                // Re-apply filters to show everything
+                applyFilters();
+                updateCascadingOptions();
             });
         }
 
