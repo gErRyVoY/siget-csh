@@ -43,40 +43,44 @@ export const onRequest = defineMiddleware(async (context, next) => {
   }
 
   // --- Lógica de Control de Acceso (RBAC) ---
-  const userRole = session.user?.rol?.rol;
+  const userSecciones = session.user?.secciones || [];
+  
+  // Mapa de rutas a seciones necesarias.
+  // El orden no importa tanto, pero verificaremos buscando la ruta más específica.
+  const sectionRouteMap: Record<string, string> = {
+    "/tickets/soporte/nuevo-ticket-csh": "crear_ticket_csh",
+    "/tickets/soporte/traslado": "proceso_traslados",
+    "/tickets/marketing/nuevo": "crear_ticket_marketing",
+    "/tickets/soporte/usuario": "soporte_mis_tickets",
+    "/tickets/soporte": "soporte_dashboard", // Podría ser soporte_todos o soporte_dashboard dependiendo de qué es /tickets/soporte index, pero asumimos que requiere soporte_dashboard
+    "/tickets/marketing/usuario": "marketing_mis_tickets",
+    "/tickets/marketing/dashboard": "marketing_dashboard",
+    "/tickets/marketing": "marketing_todos",
+    "/admin/correos/crear": "admin_correos_crear",
+    "/admin/correos/actualizar": "admin_correos_actualizar",
+    "/admin/categorias": "admin_siget_categorias",
+    "/admin/ciclos": "admin_siget_ciclos",
+    "/admin/secciones": "admin_siget_secciones",
+    "/admin/tickets": "admin_siget_tickets",
+    "/admin/usuarios": "admin_siget_usuarios",
+  };
 
-  // Definir rutas restringidas
-  const adminRoutes = ["/admin"];
-  const marketingRoutes = ["/tickets/marketing"];
-  const supportRoutes = ["/tickets/soporte"]; // Ajustar si es necesario
+  // Convert map to array sorted by path length descending to match most specific path first.
+  const sortedRoutes = Object.keys(sectionRouteMap).sort((a, b) => b.length - a.length);
 
-  // 1. Restricción para "/admin"
-  if (pathname.startsWith("/admin")) {
-    // Director Marketing puede ver /admin/tickets y /admin/usuarios (pero usuarios tiene su propia lógica interna o subrutas)
-    // "Diseñador", "Community manager", "Editor" NO pueden ver /admin
-    if (["Diseñador", "Community manager", "Editor"].includes(userRole || "")) {
-      return context.redirect("/?unauthorized=true");
+  // Buscar coincidencia en la ruta
+  for (const route of sortedRoutes) {
+    if (pathname.startsWith(route)) {
+        const requiredSection = sectionRouteMap[route];
+        
+        // Si el usuario no tiene la sección en su JWT, denegar el acceso.
+        // Esto también captura el caso en donde la sección esté apagada globalmente 
+        // porque auth.config.ts ya omite las inhabilitadas globalmente.
+        if (!userSecciones.includes(requiredSection)) {
+             return context.redirect("/?unauthorized=true");
+        }
+        break; // Detener la verificación porque logramos el match más específico
     }
-    // Otros roles: Validar si tienen permiso general (opcional, si confías en el Sidebar)
-    // Pero como buena práctica, validamos permiso 'ver_seccion_admin' o 'ver_seccion_marketing' para sus áreas
-    // Aquí simplificaré usando el permiso que ya viene en sesión si existe, o lógica de roles.
-    // El prompt especificaba redirección con toast.
-  }
-
-  // 1. Restricción para Administración
-  if (pathname.startsWith("/admin")) {
-    const isMarketingDirector = userRole === "Director Marketing";
-    const isMarketingStaff = ["Diseñador", "Community manager", "Editor"].includes(userRole || "");
-
-    // Staff de Marketing NO tiene acceso a NADA de admin
-    if (isMarketingStaff) {
-      return context.redirect("/tickets/marketing/dashboard?unauthorized=true");
-    }
-
-    // Director Marketing tiene acceso limitado (Tickets, Usuarios)
-    // Si intenta entrar a correos u otras cosas futuras...
-    // Por ahora el prompt solo pedía bloquear a Diseñador/etc de /admin/tickets.
-    // Asumimos que los permisos 'ver_seccion_admin' controlan a los demás.
   }
 
 

@@ -2,31 +2,25 @@
 
 **Tarea Actual:** Seguridad, Validación de Vistas y Optimización.
 
-**Estado:** Completado - Refinamiento de logica de filtrado y Botón Restablecer en Categorías.
+**Estado:** Completado - Refinamiento total de RBAC Híbrido, UI Toggles y Navegación Dinámica.
 
 **Pasos Completados:**
 - ✅ Análisis completo del proyecto (tecnologías, código, BD, UI/UX)
-- ✅ Creación de planes de implementación detallados
-- ✅ Limpieza de dependencias obsoletas
-- ✅ Creado sistema de changelog estructurado (`CHANGELOG.md`)
-- ✅ Implementación de sistema de toasts personalizado
-- ✅ Implementación de toggle de tema claro/oscuro con persistencia
-- ✅ Implementación completa de RBAC Híbrido (BD, Lógica, UI)
-- ✅ Mejoras de UI en listas de tickets (Diseño responsivo, limpieza de columnas)
-- ✅ Refactorización completa de página de Traslados (UI/UX + Carga de Archivos)
-- ✅ Lógica unificada de guardado e historial detallado para tickets de traslado
+- ... (hitos anteriores consolidados)
 - ✅ Vista administrativa de categorías con filtros jerárquicos en cascada
-- ✅ Refinamiento de lógica de filtrado (ocultar filas vacías)
-- ✅ Implementación de botón "Restablecer" filtros
 - ✅ Sistema de Toggles Rápidos en vista de lista de usuarios
-- ✅ Implementación de RBAC Híbrido por Secciones (UI Dinámica + DB Toggles en Perfil)
+- ✅ Implementación completa de RBAC Híbrido por Secciones (Lógica JWT + DB Auth)
+- ✅ Reestructuración de Perfil de Usuarios (`editar/[id].astro`) con visibilidad total de permisos heredados vs explícitos.
+- ✅ Refactorización completa y ordenamiento alfabético de la barra lateral dinámica (`Sidebar.astro`).
+- ✅ Implementación de auto-scroll suave en menús expansibles de la barra lateral.
+- ✅ Bloqueo de scroll global (`overflow-hidden`) en el layout principal para inmovilizar cabeceras.
 
-**Pasos Siguientes (Semana Próxima):**
+**Pasos Siguientes (Próxima Iteración):**
 1.  **Seguridad Adicional y Middleware:**
-    - Refinamiento de `middleware.ts` para aplicar las nuevas secciones a nivel de ruta y no solo UI.
+    - Terminar validación del `middleware.ts` para proteger absolutamente todas las rutas backend/frontend en base al token de Secciones Híbridas.
 2.  **Optimización y Limpieza:**
-    - Revisión de código muerto y endpoints en desuso.
     - Pruebas de carga y reconexión para el sistema SSE.
+    - Puesta en producción / Traspaso a AWS ECR.
 
 
 **Documentos de Referencia:**
@@ -120,6 +114,14 @@ Cuando el usuario me pida leer este archivo (`GEMINI.md`) al inicio de una sesi�
 5.  **Confirmar Rol y Esperar Instrucción:** Re-afirmar internamente mi rol como "ScrumBot" y esperar la siguiente instrucción del usuario para proceder.
 
 # Historial de Cambios (Log)
+
+## 2026-03-18 (Sesión 17 - RBAC Híbrido Frontend y Scroll UI)
+*   **Sidebar (`Sidebar.astro`):**
+    *   **Refactorización:** Las opciones ahora se renderizan leyendo exclusivamente de las "secciones" configuradas vía JWT (RBAC dinámico puro).
+    *   **Organización:** Se ordenaron alfabéticamente todos submenús y el bloque "Otros".
+    *   **UX:** Se implementó `scrollIntoView` suave al expandir menús grandes como "SiGeT".
+*   **Perfil (`/admin/usuarios/editar/[id].astro`):** Se reparó la estructura DOM de los Toggles (`peer-checked`) para que su animación funcione apropiadamente.
+*   **Layout General:** Cabecera inamovible lograda al bloquear el body con `overflow-hidden` permitiendo flujo solo en internal wrapper.
 
 ## 2026-03-17 (Sesión 17 - RBAC Híbrido y Permisos Híbridos)
 *   **Base de Datos y Prisma:**

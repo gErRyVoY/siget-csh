@@ -81,6 +81,7 @@ const NOTIFICATION_FULL_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="24
     <body
         data-user-id={session?.user?.id}
         data-user-role={session?.user?.rol?.id}
+        class="h-screen w-full overflow-hidden m-0 p-0"
     >
         <div
             id="dashboard-wrapper"
@@ -90,7 +91,7 @@ const NOTIFICATION_FULL_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="24
 
             <div
                 id="main-content"
-                class="relative flex-1 flex flex-col h-full overflow-hidden
+                class="relative flex-1 flex flex-col h-full overflow-hidden min-w-0
                     transition-[padding-left] duration-300 ease-in-out
                     pl-0 md:pl-64 group-data-[sidebar-collapsed=false]:pl-64 group-data-[sidebar-collapsed=true]:pl-0"
             >
@@ -152,7 +153,7 @@ const NOTIFICATION_FULL_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="24
                 </header>
 
                 <main
-                    class="p-4 flex-1 w-full h-full overflow-y-auto overflow-x-hidden"
+                    class="p-4 flex-1 min-w-0 h-full overflow-y-auto overflow-x-auto"
                 >
                     <div
                         class="group-data-[sidebar-collapsed=false]:max-md:hidden"

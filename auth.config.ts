@@ -176,17 +176,28 @@ export default defineConfig({
           // Guardar solo los nombres de los permisos en el token
           token.permisos = dbUser.rol.permisos.map(p => p.nombre);
 
-          // Consolidar secciones heredadas del rol y específicas del usuario
-          const seccionesRol = dbUser.rol.permisos_seccion
+          // Obtener identificadores base de Rol, considerando seccion.activo
+          const seccionesRolList = dbUser.rol.permisos_seccion
             .filter(ps => ps.activo && ps.seccion.activo)
             .map(ps => ps.seccion.identificador);
           
-          const seccionesUsuario = dbUser.permisos_seccion
-            .filter(ps => ps.activo && ps.seccion.activo)
-            .map(ps => ps.seccion.identificador);
+          let seccionesAprobadas = new Set(seccionesRolList);
 
-          // Combinar y eliminar duplicados usando un Set
-          token.secciones = Array.from(new Set([...seccionesRol, ...seccionesUsuario]));
+          // Procesar las reglas manuales del usuario
+          dbUser.permisos_seccion.forEach(ps => {
+            if (!ps.seccion.activo) return; // Ignorar secciones deshabilitadas globalmente
+            
+            if (ps.activo) {
+              // Otorgar permiso explicito
+              seccionesAprobadas.add(ps.seccion.identificador);
+            } else {
+              // Revocar permiso manual (excepción negativa)
+              seccionesAprobadas.delete(ps.seccion.identificador);
+            }
+          });
+
+          // Convertir de Set a Array
+          token.secciones = Array.from(seccionesAprobadas);
         }
       }
       return token;

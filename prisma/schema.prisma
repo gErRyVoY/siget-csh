@@ -435,6 +435,7 @@ model Seccion {
   nombre           String                  @db.VarChar(100)
   identificador    String                  @unique @db.VarChar(100)
   grupo            String?                 @db.VarChar(50)
+  subgrupo         String?                 @db.VarChar(50)
   descripcion      String?                 @db.Text
   activo           Boolean                 @default(true)
   permisos_rol     PermisoRolSeccion[]

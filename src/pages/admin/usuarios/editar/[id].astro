@@ -18,7 +18,7 @@ const [user, empresas, roles, secciones] = await Promise.all([
   }),
   prisma.empresa.findMany({ orderBy: { nombre: "asc" } }),
   prisma.rol.findMany({ orderBy: { rol: "asc" } }),
-  prisma.seccion.findMany({ orderBy: { grupo: "asc", nombre: "asc" } })
+  prisma.seccion.findMany({ orderBy: [{ grupo: "asc" }, { nombre: "asc" }] })
 ]);
 
 if (!user) {
@@ -107,14 +107,21 @@ const horarioString = JSON.stringify(user.horario_disponibilidad);
 
 // Permisos (Secciones Híbridas)
 const userRoleSections = user.rol?.permisos_seccion.filter(ps => ps.activo).map(ps => ps.seccionId) || [];
-const userSpecificSectionsActive = user.permisos_seccion.filter(ps => ps.activo).map(ps => ps.seccionId);
+const explicitPermissions = user.permisos_seccion.reduce((acc, ps) => {
+  acc[ps.seccionId] = ps.activo;
+  return acc;
+}, {} as Record<number, boolean>);
 
 // Agrupar secciones para UI
-const groupedSecciones: { [key: string]: typeof secciones } = {};
+const orderGrupos = ["Abrir ticket", "Tickets soporte", "Tickets marketing", "Otros", "Administrador"];
+const groupedSecciones: { [key: string]: { [key: string]: typeof secciones } } = {};
+
 secciones.forEach(sec => {
   const group = sec.grupo || 'Otros';
-  if (!groupedSecciones[group]) groupedSecciones[group] = [];
-  groupedSecciones[group].push(sec);
+  const subgroup = sec.subgrupo || 'General';
+  if (!groupedSecciones[group]) groupedSecciones[group] = {};
+  if (!groupedSecciones[group][subgroup]) groupedSecciones[group][subgroup] = [];
+  groupedSecciones[group][subgroup].push(sec);
 });
 ---
 
@@ -280,40 +287,47 @@ secciones.forEach(sec => {
         
         <!-- NEW SECCIONES LAYOUT -->
         <div class="border-t border-border mt-8 pt-6">
-          <h2 class="text-xl font-bold mb-4">Permisos Híbridos (Secciones)</h2>
-          <p class="text-sm text-muted-foreground mb-6">
-            Los permisos con etiqueta "Heredado" se obtienen automáticamente del rol establecido. Sin embargo, como administrador puedes otorgar explícitamente acceso a secciones adicionales para este usuario habilitando los interruptores libres.
-          </p>
+          <h2 class="text-xl font-bold mb-6">Secciones que puede ver el usuario:</h2>
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {Object.entries(groupedSecciones).map(([grupo, secs]) => (
-              <div class="bg-card border rounded-lg p-4 shadow-sm">
-                <h3 class="text-xs font-semibold text-muted-foreground mb-4 uppercase tracking-wider">{grupo}</h3>
-                <div class="space-y-4">
-                  {secs.map(seccion => {
-                    const isInherited = userRoleSections.includes(seccion.id);
-                    const isExplicitlyActive = userSpecificSectionsActive.includes(seccion.id);
-                    const isChecked = isInherited || isExplicitlyActive;
-
-                    return (
-                      <div class="flex items-center justify-between gap-4">
-                        <label for={`sec-${seccion.id}`} class="text-sm cursor-pointer select-none truncate pr-2 flex-1" title={seccion.nombre}>
-                          {seccion.nombre}
-                        </label>
-                        
-                        {isInherited ? (
-                          <span class="text-[10px] font-medium bg-secondary text-secondary-foreground px-2 py-1 rounded">Heredado</span>
-                        ) : (
-                          <label class="relative inline-flex items-center cursor-pointer shrink-0" title="Otorgar acceso">
-                            <input type="checkbox" id={`sec-${seccion.id}`} class="sr-only peer section-toggle" data-seccion-id={seccion.id} data-usuario-id={user.id} checked={isChecked} disabled={!canEdit} />
-                            <div class="w-9 h-5 bg-muted peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary opacity-50 peer-checked:opacity-100 disabled:opacity-30 disabled:cursor-not-allowed"></div>
-                          </label>
+            {orderGrupos.map(grupo => {
+              if (!groupedSecciones[grupo]) return null;
+              
+              const subgroups = groupedSecciones[grupo];
+              return (
+                <div class="bg-card border rounded-lg p-4 shadow-sm">
+                  <h3 class="text-xs font-semibold text-muted-foreground mb-4 uppercase tracking-wider">{grupo}</h3>
+                  <div class="space-y-6">
+                    {Object.entries(subgroups).map(([subgroupName, secs]) => (
+                      <div class="space-y-3">
+                        {subgroupName !== 'General' && (
+                          <h4 class="text-[11px] font-bold text-muted-foreground border-b pb-1 uppercase">{subgroupName}</h4>
                         )}
+                        <div class="space-y-3 pl-1">
+                          {secs.map(seccion => {
+                            const isInherited = userRoleSections.includes(seccion.id);
+                            const explicitState = explicitPermissions[seccion.id];
+                            const isChecked = explicitState !== undefined ? explicitState : isInherited;
+
+                            return (
+                              <div class="flex items-center justify-between gap-4">
+                                <label for={`sec-${seccion.id}`} class="text-sm cursor-pointer select-none truncate pr-2 flex-1" title={seccion.nombre}>
+                                  {seccion.nombre}
+                                </label>
+                                <label class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full toggle-wrapper group" data-inherited={isInherited ? 'true' : 'false'} title={isChecked ? "Revocar acceso" : "Otorgar acceso"}>
+                                  <input type="checkbox" id={`sec-${seccion.id}`} class="sr-only peer section-toggle" data-seccion-id={seccion.id} data-usuario-id={user.id} checked={isChecked} disabled={!canEdit} />
+                                  <div class="toggle-bg h-5 w-9 absolute rounded-full transition-all peer-focus:outline-none opacity-50 peer-checked:opacity-100 disabled:opacity-30 peer-disabled:cursor-not-allowed border-box bg-muted-foreground border border-transparent group-data-[inherited=false]:peer-checked:bg-primary group-data-[inherited=true]:peer-checked:bg-secondary group-data-[inherited=true]:border-secondary group-data-[inherited=true]:peer-checked:border-transparent"></div>
+                                  <div class="toggle-knob absolute top-[2px] left-[2px] bg-white border border-gray-300 rounded-full h-4 w-4 transition-transform peer-checked:translate-x-[16px] peer-checked:border-white z-10"></div>
+                                </label>
+                              </div>
+                            );
+                          })}
+                        </div>
                       </div>
-                    );
-                  })}
+                    ))}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
         <!-- END NEW SECCIONES LAYOUT -->
@@ -391,4 +405,4 @@ secciones.forEach(sec => {
       });
     });
   });
-</script>
+

@@ -120,29 +120,50 @@ async function main() {
   console.log('Seeding secciones...');
   await prisma.seccion.createMany({
     data: [
-      { id: 1, nombre: 'Abrir ticket CSH', identificador: 'crear_ticket_csh', grupo: 'Crear' },
-      { id: 2, nombre: 'Proceso de traslados', identificador: 'proceso_traslados', grupo: 'Herramientas' },
-      { id: 3, nombre: 'Ticket Marketing', identificador: 'crear_ticket_marketing', grupo: 'Crear' },
-      { id: 4, nombre: 'Asistencia remota', identificador: 'asistencia_remota', grupo: 'Herramientas' },
-      { id: 5, nombre: 'Base de conocimientos', identificador: 'base_conocimientos', grupo: 'Herramientas' },
-      { id: 6, nombre: 'Horario de atención', identificador: 'horario_atencion', grupo: 'Herramientas' },
-      { id: 7, nombre: 'Panel Soporte', identificador: 'panel_soporte', grupo: 'Tickets' },
-      { id: 8, nombre: 'Panel Marketing', identificador: 'panel_marketing', grupo: 'Tickets' },
-      { id: 9, nombre: 'Admin: Correos', identificador: 'admin_correos', grupo: 'Administración' },
-      { id: 10, nombre: 'Admin: SiGeT', identificador: 'admin_siget', grupo: 'Administración' },
-      { id: 11, nombre: 'Admin: Marketing', identificador: 'admin_marketing', grupo: 'Administración' },
+      { id: 1, nombre: 'CSH', identificador: 'crear_ticket_csh', grupo: 'Abrir ticket' },
+      { id: 2, nombre: 'Traslado', identificador: 'proceso_traslados', grupo: 'Abrir ticket' },
+      { id: 3, nombre: 'Marketing', identificador: 'crear_ticket_marketing', grupo: 'Abrir ticket' },
+      
+      { id: 4, nombre: 'Mis tickets', identificador: 'soporte_mis_tickets', grupo: 'Tickets soporte' },
+      { id: 5, nombre: 'Dashboard', identificador: 'soporte_dashboard', grupo: 'Tickets soporte' },
+      { id: 6, nombre: 'Todos', identificador: 'soporte_todos', grupo: 'Tickets soporte' },
+      
+      { id: 7, nombre: 'Mis tickets', identificador: 'marketing_mis_tickets', grupo: 'Tickets marketing' },
+      { id: 8, nombre: 'Dashboard', identificador: 'marketing_dashboard', grupo: 'Tickets marketing' },
+      { id: 9, nombre: 'Todos', identificador: 'marketing_todos', grupo: 'Tickets marketing' },
+      
+      { id: 10, nombre: 'Plataforma Humanitas', identificador: 'plataforma_humanitas', grupo: 'Otros' },
+      { id: 11, nombre: 'Asistencia remota', identificador: 'asistencia_remota', grupo: 'Otros' },
+      { id: 12, nombre: 'Base de conocimientos', identificador: 'base_conocimientos', grupo: 'Otros' },
+      { id: 13, nombre: 'Horario de atención', identificador: 'horario_atencion', grupo: 'Otros' },
+      
+      { id: 14, nombre: 'Crear', identificador: 'admin_correos_crear', grupo: 'Administrador', subgrupo: 'Correos institucionales' },
+      { id: 15, nombre: 'Actualizar', identificador: 'admin_correos_actualizar', grupo: 'Administrador', subgrupo: 'Correos institucionales' },
+      
+      { id: 16, nombre: 'Categorías', identificador: 'admin_siget_categorias', grupo: 'Administrador', subgrupo: 'SiGeT' },
+      { id: 17, nombre: 'Ciclos', identificador: 'admin_siget_ciclos', grupo: 'Administrador', subgrupo: 'SiGeT' },
+      { id: 18, nombre: 'Secciones', identificador: 'admin_siget_secciones', grupo: 'Administrador', subgrupo: 'SiGeT' },
+      { id: 19, nombre: 'Tickets', identificador: 'admin_siget_tickets', grupo: 'Administrador', subgrupo: 'SiGeT' },
+      { id: 20, nombre: 'Usuarios', identificador: 'admin_siget_usuarios', grupo: 'Administrador', subgrupo: 'SiGeT' },
     ],
   });
 
   const allRoles = await prisma.rol.findMany();
 
-  // Definir secciones por rol (lógica heredada de Sidebar.astro)
-  // 1: CSH, 2: Traslados, 3: Ticket Mkt, 4: Asistencia, 5: Base, 6: Horario, 7: Soporte, 8: Panel Mkt, 9: Admin Correo, 10: Admin Siget, 11: Admin Mkt
-  const secDesarrollador = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-  const secSoporte = [1, 2, 4, 5, 6, 7, 9, 10];
-  const secEstandar = [1, 2, 4, 5, 6, 7];
-  const secMarketingStaff = [1, 3, 4, 6, 8];
-  const secMarketingDirector = [1, 3, 6, 8, 11];
+  // Definir secciones por rol acorde al nuevo mapeo
+  // Grupos completos
+  const allAbrirTicket = [1, 2, 3];
+  const allTicketsSoporte = [4, 5, 6];
+  const allTicketsMarketing = [7, 8, 9];
+  const allOtros = [10, 11, 12, 13];
+  const allAdminCorreos = [14, 15];
+  const allAdminSiget = [16, 17, 18, 19, 20];
+
+  const secDesarrollador = [...allAbrirTicket, ...allTicketsSoporte, ...allTicketsMarketing, ...allOtros, ...allAdminCorreos, ...allAdminSiget];
+  const secSoporte = [1, 2, ...allTicketsSoporte, ...allOtros, ...allAdminCorreos, 16, 17, 19, 20]; // Sin Permiso 'Secciones' -> 18, ni Tickets Mkt
+  const secEstandar = [1, 2, 4, 10, 11, 12, 13]; // Solo abrir y mis tickets, y herramientas básicas
+  const secMarketingStaff = [1, 3, 7, 10, 13]; // Tickets Mkt y herramientas básicas
+  const secMarketingDirector = [1, 3, ...allTicketsMarketing, 10, 13];
 
   const rolesConPermisos = [
     // Desarrollador (todos los permisos globales)
@@ -159,7 +180,7 @@ async function main() {
     { rolId: 12, permisoIds: [1], seccionIds: secMarketingStaff }, // Diseñador
     { rolId: 13, permisoIds: [1], seccionIds: secMarketingStaff }, // Community Manager
     { rolId: 17, permisoIds: [1], seccionIds: secMarketingStaff }, // Editor
-    { rolId: 11, permisoIds: [1, 4], seccionIds: secMarketingDirector }, // Director de Marketing (Sin admin global)
+    { rolId: 11, permisoIds: [1, 4], seccionIds: secMarketingDirector }, // Director de Marketing
   ];
 
   for (const { rolId, permisoIds, seccionIds } of rolesConPermisos) {

@@ -37,18 +37,18 @@ const secciones = session?.user?.secciones ?? [];
 
 const canViewAllTickets = permisos.includes("ver_todos_tickets");
 
-// Secciones dinámicas
 const canCreateTicketCSH = secciones.includes("crear_ticket_csh");
 const canSeeTraslados = secciones.includes("proceso_traslados");
 const canCreateTicketMarketing = secciones.includes("crear_ticket_marketing");
 const canSeeAsistencia = secciones.includes("asistencia_remota");
 const canSeeBaseConocimientos = secciones.includes("base_conocimientos");
 const canSeeHorario = secciones.includes("horario_atencion");
-const canSeeSoporteAdmin = secciones.includes("panel_soporte");
-const canSeeMarketingAdmin = secciones.includes("panel_marketing");
-const canSeeAdminCorreos = secciones.includes("admin_correos");
-const canSeeAdminSiget = secciones.includes("admin_siget");
-const canSeeAdminMarketing = secciones.includes("admin_marketing");
+
+const canSeeSoporteAdmin = ["soporte_mis_tickets", "soporte_dashboard", "soporte_todos"].some(id => secciones.includes(id));
+const canSeeMarketingAdmin = ["marketing_mis_tickets", "marketing_dashboard", "marketing_todos"].some(id => secciones.includes(id));
+const canSeeAdminCorreos = ["admin_correos_crear", "admin_correos_actualizar"].some(id => secciones.includes(id));
+const canSeeAdminSiget = ["admin_siget_categorias", "admin_siget_ciclos", "admin_siget_secciones", "admin_siget_tickets", "admin_siget_usuarios"].some(id => secciones.includes(id));
+const canSeeAdminMarketing = false; // Director Marketing ya no tiene un menú administrativo codificado de forma estática, requiere los permisos granulares.
 
 const cshHref = "/tickets/soporte/nuevo-ticket-csh";
 const isCshActive = pathname === cshHref;
@@ -75,14 +75,14 @@ let ticketSections = [
     ...(canSeeSoporteAdmin ? [{
         title: "Tickets soporte",
         items: [
-            {
+            ...(secciones.includes("soporte_dashboard") ? [{ href: `/`, label: "Dashboard", icon: DashboardIcon }] : []),
+            ...(secciones.includes("soporte_mis_tickets") ? [{
                 href: `/tickets/soporte/usuario`,
                 label: "Mis tickets",
                 icon: MyTicketsIcon,
                 reload: true,
-            },
-            { href: `/`, label: "Dashboard", icon: DashboardIcon },
-            ...(canViewAllTickets ? [{
+            }] : []),
+            ...(secciones.includes("soporte_todos") ? [{
                 href: "/tickets/soporte",
                 label: "Todos",
                 icon: AllTicketsIcon,
@@ -93,21 +93,21 @@ let ticketSections = [
     ...(canSeeMarketingAdmin ? [{
         title: "Tickets marketing",
         items: [
-            {
-                href: `/tickets/marketing/usuario`,
-                label: "Mis tickets",
-                icon: MyTicketsIcon,
-            },
-            {
+            ...(secciones.includes("marketing_dashboard") ? [{
                 href: `/tickets/marketing/dashboard`,
                 label: "Dashboard",
                 icon: DashboardIcon,
-            },
-            {
+            }] : []),
+            ...(secciones.includes("marketing_mis_tickets") ? [{
+                href: `/tickets/marketing/usuario`,
+                label: "Mis tickets",
+                icon: MyTicketsIcon,
+            }] : []),
+            ...(secciones.includes("marketing_todos") ? [{
                 href: "/tickets/marketing",
                 label: "Todos",
                 icon: AllTicketsIcon,
-            },
+            }] : []),
         ],
     }] : []),
 ];
@@ -116,41 +116,46 @@ const adminSections = [
     ...(canSeeAdminCorreos ? [{
         title: "Correos institucionales",
         items: [
-            {
-                href: "/admin/correos/crear",
-                label: "Crear",
-                icon: CreateMailIcon,
-            },
-            {
+            ...(secciones.includes("admin_correos_actualizar") ? [{
                 href: "/admin/correos/actualizar",
                 label: "Actualizar",
                 icon: UpdateMailIcon,
-            },
+            }] : []),
+            ...(secciones.includes("admin_correos_crear") ? [{
+                href: "/admin/correos/crear",
+                label: "Crear",
+                icon: CreateMailIcon,
+            }] : []),
         ],
     }] : []),
     ...(canSeeAdminSiget ? [{
         title: "SiGeT",
         items: [
-            {
-                href: "/admin/tickets",
-                label: "Tickets",
-                icon: ManageTicketsIcon,
-            },
-            {
+            ...(secciones.includes("admin_siget_categorias") ? [{
                 href: "/admin/categorias",
                 label: "Categorías",
                 icon: ManageTicketsIcon,
-            },
-            {
-                href: "/admin/usuarios",
-                label: "Usuarios",
-                icon: ManageUsersIcon,
-            },
-            {
+            }] : []),
+            ...(secciones.includes("admin_siget_ciclos") ? [{
                 href: "/admin/ciclos",
                 label: "Ciclos",
                 icon: ManageTicketsIcon,
-            },
+            }] : []),
+            ...(secciones.includes("admin_siget_secciones") ? [{
+                href: "/admin/secciones",
+                label: "Secciones",
+                icon: ManageTicketsIcon,
+            }] : []),
+            ...(secciones.includes("admin_siget_tickets") ? [{
+                href: "/admin/tickets",
+                label: "Tickets",
+                icon: ManageTicketsIcon,
+            }] : []),
+            ...(secciones.includes("admin_siget_usuarios") ? [{
+                href: "/admin/usuarios",
+                label: "Usuarios",
+                icon: ManageUsersIcon,
+            }] : []),
         ],
     }] : []),
     ...(canSeeAdminMarketing ? [{
@@ -224,6 +229,25 @@ const adminSections = [
         </>
         )}
 
+        {
+            canCreateTicketMarketing && (
+                <a
+                    href="/tickets/marketing/nuevo"
+                    class:list={[
+                        "w-full flex items-center gap-3 rounded-md px-4 py-2.5 text-sm font-semibold transition-colors duration-500 focus-visible:outline-none focus-visible:ring-1",
+                        pathname === "/tickets/marketing/nuevo"
+                            ? "bg-secondary text-secondary-foreground"
+                            : "bg-primary text-primary-foreground hover:bg-secondary/90 hover:text-secondary-foreground",
+                    ]}
+                >
+                    <AddTicketMkt class="h-5 w-5" />
+                    <span class="group-data-[sidebar-collapsed=true]:hidden">
+                        Marketing
+                    </span>
+                </a>
+            )
+        }
+
         {/* Link a Traslado */}
         {
             canSeeTraslados && (
@@ -244,25 +268,6 @@ const adminSections = [
             )
         }
 
-        {
-            canCreateTicketMarketing && (
-                <a
-                    href="/tickets/marketing/nuevo"
-                    class:list={[
-                        "w-full flex items-center gap-3 rounded-md px-4 py-2.5 text-sm font-semibold transition-colors duration-500 focus-visible:outline-none focus-visible:ring-1",
-                        pathname === "/tickets/marketing/nuevo"
-                            ? "bg-secondary text-secondary-foreground"
-                            : "bg-primary text-primary-foreground hover:bg-secondary/90 hover:text-secondary-foreground",
-                    ]}
-                >
-                    <AddTicketMkt class="h-5 w-5" />
-                    <span class="group-data-[sidebar-collapsed=true]:hidden">
-                        Marketing
-                    </span>
-                </a>
-            )
-        }
-
         <div class="border-t border-border my-3"></div>
 
         {
@@ -277,7 +282,6 @@ const adminSections = [
         }
 
         <div class="py-2 border-t border-b border-border">
-            <PlataformaHumanitas />
             {
                 mainNavItems.map((item) => (
                     <NavItem
@@ -290,6 +294,7 @@ const adminSections = [
                     />
                 ))
             }
+            <PlataformaHumanitas />
         </div>
 
         {
@@ -339,6 +344,13 @@ const adminSections = [
                         isOpening ? "open" : "closed",
                     );
                     trigger.setAttribute("aria-expanded", String(isOpening));
+                    
+                    if (isOpening) {
+                        // Esperar a que la transición del menú expansible termine (aprox 300ms)
+                        setTimeout(() => {
+                            section.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                        }, 300);
+                    }
                 }
             });
         });

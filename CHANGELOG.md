@@ -6,6 +6,18 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 y este proyecto adhiere a [Versionado Semántico](https://semver.org/lang/es/).
 
 
+## 2026-03-18 (Sesión 17 - Estabilización de Permisos y Sidebar)
+*   **Sidebar (`Sidebar.astro`):**
+    *   **Refactorización:** Las opciones ahora se renderizan leyendo exclusivamente de las "secciones" configuradas vía JWT (RBAC dinámico puro) en lugar de variables globales "hardcodeadas".
+    *   **Organización:** Se ordenaron alfabéticamente todos los sub-elementos de los menús (ej. *Dashboard, Mis Tickets, Todos*) y del grupo "Otros".
+    *   **UX (Auto-Scroll):** Se restauró el auto-desplazamiento suave (`scrollIntoView`) para que al expandir menús grandes como "SiGeT" la vista baje sola si es necesario.
+*   **Toggles Perfil (`/admin/usuarios/editar/[id].astro`):**
+    *   Se corrigió la jerarquía DOM de los interruptores gráficos estilo Tailwind para que intercepten bien la pseudo-clase `peer-checked` y el círculo ruede de izquierda a derecha.
+*   **Layout General (`MainLayout.astro`):**
+    *   Cabecera inamovible (Sticky Header) garantizada fijando el body con `overflow-hidden` y permitiendo el movimiento interno del main content con `overflow-x-auto`.
+*   **Carga CSV (`import-csv.ts`):**
+    *   Se documentó la plena compatibilidad entre la API y el RBAC dinámico jerárquico.
+
 ## 2026-02-12 (Sesión 16 - Parte 2 - Refinamiento de Categorías)
 *   **Mejoras en Filtrado (`/admin/categorias`):**
     *   **Lógica de Ocultamiento Inteligente:** Ahora se ocultan automáticamente las filas que no tienen información visible (es decir, donde tanto la categoría como todas las subcategorías muestran "-"), manteniendo la tabla limpia.
