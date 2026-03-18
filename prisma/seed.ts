@@ -15,6 +15,9 @@ async function main() {
   await prisma.subcategoriaCategorias.deleteMany({});
   await prisma.subcategoria.deleteMany({});
   await prisma.categoria.deleteMany({});
+  await prisma.permisoUsuarioSeccion.deleteMany({});
+  await prisma.permisoRolSeccion.deleteMany({});
+  await prisma.seccion.deleteMany({});
   await prisma.logs.deleteMany({});
   await prisma.usuario.deleteMany({});
   await prisma.permiso.deleteMany({}); // Limpiar permisos
@@ -110,26 +113,56 @@ async function main() {
     ],
   });
 
-  // --- Conectar Permisos a Roles ---
-  console.log('Connecting permissions to roles...');
+  // --- Conectar Permisos y Secciones a Roles ---
+  console.log('Connecting permissions and sections to roles...');
+
+  // Secciones Base
+  console.log('Seeding secciones...');
+  await prisma.seccion.createMany({
+    data: [
+      { id: 1, nombre: 'Abrir ticket CSH', identificador: 'crear_ticket_csh', grupo: 'Crear' },
+      { id: 2, nombre: 'Proceso de traslados', identificador: 'proceso_traslados', grupo: 'Herramientas' },
+      { id: 3, nombre: 'Ticket Marketing', identificador: 'crear_ticket_marketing', grupo: 'Crear' },
+      { id: 4, nombre: 'Asistencia remota', identificador: 'asistencia_remota', grupo: 'Herramientas' },
+      { id: 5, nombre: 'Base de conocimientos', identificador: 'base_conocimientos', grupo: 'Herramientas' },
+      { id: 6, nombre: 'Horario de atención', identificador: 'horario_atencion', grupo: 'Herramientas' },
+      { id: 7, nombre: 'Panel Soporte', identificador: 'panel_soporte', grupo: 'Tickets' },
+      { id: 8, nombre: 'Panel Marketing', identificador: 'panel_marketing', grupo: 'Tickets' },
+      { id: 9, nombre: 'Admin: Correos', identificador: 'admin_correos', grupo: 'Administración' },
+      { id: 10, nombre: 'Admin: SiGeT', identificador: 'admin_siget', grupo: 'Administración' },
+      { id: 11, nombre: 'Admin: Marketing', identificador: 'admin_marketing', grupo: 'Administración' },
+    ],
+  });
+
+  const allRoles = await prisma.rol.findMany();
+
+  // Definir secciones por rol (lógica heredada de Sidebar.astro)
+  // 1: CSH, 2: Traslados, 3: Ticket Mkt, 4: Asistencia, 5: Base, 6: Horario, 7: Soporte, 8: Panel Mkt, 9: Admin Correo, 10: Admin Siget, 11: Admin Mkt
+  const secDesarrollador = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+  const secSoporte = [1, 2, 4, 5, 6, 7, 9, 10];
+  const secEstandar = [1, 2, 4, 5, 6, 7];
+  const secMarketingStaff = [1, 3, 4, 6, 8];
+  const secMarketingDirector = [1, 3, 6, 8, 11];
+
   const rolesConPermisos = [
-    // Desarrollador (todos los permisos)
-    { rolId: 6, permisoIds: [1, 2, 3, 4] },
+    // Desarrollador (todos los permisos globales)
+    { rolId: 6, permisoIds: [1, 2, 3, 4], seccionIds: secDesarrollador },
     // Director CSH (todos los permisos)
-    { rolId: 1, permisoIds: [1, 2, 3, 4] },
+    { rolId: 1, permisoIds: [1, 2, 3, 4], seccionIds: secDesarrollador },
+    // Roles de Soporte
+    { rolId: 2, permisoIds: [2, 3, 4], seccionIds: secSoporte },
+    { rolId: 3, permisoIds: [2, 3, 4], seccionIds: secSoporte },
+    { rolId: 4, permisoIds: [2, 3, 4], seccionIds: secSoporte },
+    { rolId: 5, permisoIds: [2, 4], seccionIds: secSoporte }, // Auditor
+    { rolId: 16, permisoIds: [2, 3, 4], seccionIds: secSoporte }, // Ingeniero Hubspot
     // Roles de Marketing
-    { rolId: 12, permisoIds: [1] }, // Diseñador
-    { rolId: 13, permisoIds: [1] }, // Community Manager
-    // Director de Marketing (ve marketing y admin, pero no edita usuarios)
-    { rolId: 11, permisoIds: [1, 2, 4] },
-    // Roles de Soporte (ven todo, pero no marketing)
-    { rolId: 2, permisoIds: [2, 3, 4] },
-    { rolId: 3, permisoIds: [2, 3, 4] },
-    { rolId: 4, permisoIds: [2, 3, 4] },
-    { rolId: 5, permisoIds: [2, 4] }, // Auditor no edita usuarios
+    { rolId: 12, permisoIds: [1], seccionIds: secMarketingStaff }, // Diseñador
+    { rolId: 13, permisoIds: [1], seccionIds: secMarketingStaff }, // Community Manager
+    { rolId: 17, permisoIds: [1], seccionIds: secMarketingStaff }, // Editor
+    { rolId: 11, permisoIds: [1, 4], seccionIds: secMarketingDirector }, // Director de Marketing (Sin admin global)
   ];
 
-  for (const { rolId, permisoIds } of rolesConPermisos) {
+  for (const { rolId, permisoIds, seccionIds } of rolesConPermisos) {
     await prisma.rol.update({
       where: { id: rolId },
       data: {
@@ -138,6 +171,30 @@ async function main() {
         },
       },
     });
+    
+    // Conectar secciones
+    for (const sid of seccionIds) {
+      await prisma.permisoRolSeccion.create({
+        data: {
+          rolId: rolId,
+          seccionId: sid
+        }
+      });
+    }
+  }
+
+  // A los roles estándar no listados arriba (Director Campus, Ejecutivos, Contador, etc.), darles las secciones estándar
+  for (const rol of allRoles) {
+    if (!rolesConPermisos.some(r => r.rolId === rol.id)) {
+      for (const sid of secEstandar) {
+        await prisma.permisoRolSeccion.create({
+          data: {
+            rolId: rol.id,
+            seccionId: sid
+          }
+        });
+      }
+    }
   }
 
   // --- Insertar Usuario ---

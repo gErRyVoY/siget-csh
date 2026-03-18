@@ -33,58 +33,46 @@ const { id = "invitado" } = Astro.params;
 
 // Permisos del sistema RBAC
 const permisos = session?.user?.permisos ?? [];
-const canSeeMarketing = permisos.includes("ver_seccion_marketing");
-const canSeeAdmin = permisos.includes("ver_seccion_admin");
-const canSeeAllTickets = permisos.includes("ver_todos_tickets");
+const secciones = session?.user?.secciones ?? [];
+
+const canViewAllTickets = permisos.includes("ver_todos_tickets");
+
+// Secciones dinámicas
+const canCreateTicketCSH = secciones.includes("crear_ticket_csh");
+const canSeeTraslados = secciones.includes("proceso_traslados");
+const canCreateTicketMarketing = secciones.includes("crear_ticket_marketing");
+const canSeeAsistencia = secciones.includes("asistencia_remota");
+const canSeeBaseConocimientos = secciones.includes("base_conocimientos");
+const canSeeHorario = secciones.includes("horario_atencion");
+const canSeeSoporteAdmin = secciones.includes("panel_soporte");
+const canSeeMarketingAdmin = secciones.includes("panel_marketing");
+const canSeeAdminCorreos = secciones.includes("admin_correos");
+const canSeeAdminSiget = secciones.includes("admin_siget");
+const canSeeAdminMarketing = secciones.includes("admin_marketing");
 
 const cshHref = "/tickets/soporte/nuevo-ticket-csh";
 const isCshActive = pathname === cshHref;
 
-const isMarketingDirector = session?.user?.rol?.rol === "Director Marketing";
-
-const isMarketingStaff = ["Diseñador", "Community manager", "Editor"].includes(
-    session?.user?.rol?.rol || "",
-);
-
-const isMarketingRole = isMarketingDirector || isMarketingStaff;
-
 const mainNavItems = [
-    {
-        href: "/traslados",
-        label: "Proceso de traslados",
-        icon: UserTransferIcon,
-    },
-    {
+    ...(canSeeAsistencia ? [{
         href: "https://my.anydesk.com/download/DftqvrQy/AnyDesk_Universidad_Humanitas.exe",
         label: "Asistencia remota",
         icon: RemoteSupportIcon,
-    },
-    {
+    }] : []),
+    ...(canSeeBaseConocimientos ? [{
         href: "/base-de-conocimientos",
         label: "Base de conocimientos",
         icon: KnowledgeBaseIcon,
-    },
-    {
+    }] : []),
+    ...(canSeeHorario ? [{
         href: "/horario-de-atencion",
         label: "Horario de atención",
         icon: OfficeHours,
-    },
-].filter((item) => {
-    // Director Marketing: Solo Horario
-    if (isMarketingDirector) {
-        return item.label === "Horario de atención";
-    }
-    // Staff Marketing: Horario y Asistencia remota
-    if (isMarketingStaff) {
-        return ["Horario de atención", "Asistencia remota"].includes(
-            item.label,
-        );
-    }
-    return true;
-});
+    }] : []),
+];
 
 let ticketSections = [
-    {
+    ...(canSeeSoporteAdmin ? [{
         title: "Tickets soporte",
         items: [
             {
@@ -94,15 +82,15 @@ let ticketSections = [
                 reload: true,
             },
             { href: `/`, label: "Dashboard", icon: DashboardIcon },
-            {
+            ...(canViewAllTickets ? [{
                 href: "/tickets/soporte",
                 label: "Todos",
                 icon: AllTicketsIcon,
                 reload: true,
-            },
+            }] : []),
         ],
-    },
-    {
+    }] : []),
+    ...(canSeeMarketingAdmin ? [{
         title: "Tickets marketing",
         items: [
             {
@@ -121,37 +109,11 @@ let ticketSections = [
                 icon: AllTicketsIcon,
             },
         ],
-    },
+    }] : []),
 ];
 
-if (!canSeeMarketing) {
-    // Ocultar la sección de marketing si no tiene el permiso
-    ticketSections = ticketSections.filter(
-        (section) => section.title !== "Tickets marketing",
-    );
-}
-
-if (!canSeeAllTickets) {
-    // En la sección de soporte, dejar solo "Mis tickets" si no tiene permiso para ver todos
-    ticketSections = ticketSections.map((section) => {
-        if (section.title === "Tickets soporte") {
-            section.items = section.items.filter(
-                (item) => item.label === "Mis tickets",
-            );
-        }
-        return section;
-    });
-}
-
-// Ocultar sección de soporte general para roles de marketing
-if (isMarketingRole) {
-    ticketSections = ticketSections.filter(
-        (section) => section.title !== "Tickets soporte",
-    );
-}
-
 const adminSections = [
-    {
+    ...(canSeeAdminCorreos ? [{
         title: "Correos institucionales",
         items: [
             {
@@ -165,8 +127,8 @@ const adminSections = [
                 icon: UpdateMailIcon,
             },
         ],
-    },
-    {
+    }] : []),
+    ...(canSeeAdminSiget ? [{
         title: "SiGeT",
         items: [
             {
@@ -190,12 +152,9 @@ const adminSections = [
                 icon: ManageTicketsIcon,
             },
         ],
-    },
-];
-
-const marketingAdminSections = [
-    {
-        title: "SiGeT",
+    }] : []),
+    ...(canSeeAdminMarketing ? [{
+        title: "SiGeT (Admin Marketing)",
         items: [
             {
                 href: "/admin/tickets",
@@ -207,7 +166,6 @@ const marketingAdminSections = [
                 label: "Categorías",
                 icon: ManageTicketsIcon,
             },
-            // Acceso directo a usuarios corporativo para Marketing
             {
                 href: "/admin/usuarios/corporativo",
                 label: "Usuarios",
@@ -219,7 +177,7 @@ const marketingAdminSections = [
                 icon: ManageTicketsIcon,
             },
         ],
-    },
+    }] : [])
 ];
 ---
 
@@ -244,30 +202,31 @@ const marketingAdminSections = [
     </a>
 
     <nav class="flex-1 py-4 px-2 space-y-1 overflow-y-auto">
-        <div
-            class="px-2 mb-2 text-sm font-semibold text-muted-foreground group-data-[sidebar-collapsed=true]:hidden"
-        >
-            Abrir ticket
-        </div>
-        {/* Mostrar CSH Ticket para todos (Incluido Staff, que ahora lo ve) */}
-        <a
-            href={cshHref}
-            class:list={[
-                "w-full flex items-center gap-3 rounded-md px-4 py-2.5 text-sm font-semibold transition-colors duration-500 focus-visible:outline-none focus-visible:ring-1",
-                isCshActive
-                    ? "bg-secondary text-secondary-foreground"
-                    : "bg-primary text-primary-foreground hover:bg-secondary/90 hover:text-secondary-foreground",
-            ]}
-        >
-            <AddTicket class="h-5 w-5" />
-            <span class="group-data-[sidebar-collapsed=true]:hidden">
-                C S H
-            </span>
-        </a>
+        { canCreateTicketCSH && (
+        <>
+            <div class="px-2 mb-2 text-sm font-semibold text-muted-foreground group-data-[sidebar-collapsed=true]:hidden">
+                Abrir ticket
+            </div>
+            <a
+                href={cshHref}
+                class:list={[
+                    "w-full flex items-center gap-3 rounded-md px-4 py-2.5 text-sm font-semibold transition-colors duration-500 focus-visible:outline-none focus-visible:ring-1",
+                    isCshActive
+                        ? "bg-secondary text-secondary-foreground"
+                        : "bg-primary text-primary-foreground hover:bg-secondary/90 hover:text-secondary-foreground",
+                ]}
+            >
+                <AddTicket class="h-5 w-5" />
+                <span class="group-data-[sidebar-collapsed=true]:hidden">
+                    C S H
+                </span>
+            </a>
+        </>
+        )}
 
-        {/* Link a Traslado para todos excepto Marketing */}
+        {/* Link a Traslado */}
         {
-            !isMarketingRole && (
+            canSeeTraslados && (
                 <a
                     href="/tickets/soporte/traslado"
                     class:list={[
@@ -285,9 +244,8 @@ const marketingAdminSections = [
             )
         }
 
-        {/* <NewTicketMkt /> Replaced by page */}
         {
-            canSeeMarketing && (
+            canCreateTicketMarketing && (
                 <a
                     href="/tickets/marketing/nuevo"
                     class:list={[
@@ -335,33 +293,12 @@ const marketingAdminSections = [
         </div>
 
         {
-            canSeeAdmin && (
+            (canSeeAdminCorreos || canSeeAdminSiget || canSeeAdminMarketing) && (
                 <>
                     <div class="px-2 pt-2 text-sm font-semibold text-muted-foreground group-data-[sidebar-collapsed=true]:hidden">
                         Administrador
                     </div>
                     {adminSections.map((section) => (
-                        <CollapsibleNavSection
-                            title={section.title}
-                            items={section.items}
-                            pathname={pathname}
-                            matchMode="prefix"
-                        />
-                    ))}
-                </>
-            )
-        }
-
-        {
-            /* Marketing Admin Section (SiGeT) - Visible only for Marketing Director */
-        }
-        {
-            !canSeeAdmin && isMarketingDirector && (
-                <>
-                    <div class="px-2 pt-2 text-sm font-semibold text-muted-foreground group-data-[sidebar-collapsed=true]:hidden">
-                        Administrador
-                    </div>
-                    {marketingAdminSections.map((section) => (
                         <CollapsibleNavSection
                             title={section.title}
                             items={section.items}

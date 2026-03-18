@@ -18,11 +18,12 @@
 - ✅ Vista administrativa de categorías con filtros jerárquicos en cascada
 - ✅ Refinamiento de lógica de filtrado (ocultar filas vacías)
 - ✅ Implementación de botón "Restablecer" filtros
+- ✅ Sistema de Toggles Rápidos en vista de lista de usuarios
+- ✅ Implementación de RBAC Híbrido por Secciones (UI Dinámica + DB Toggles en Perfil)
 
 **Pasos Siguientes (Semana Próxima):**
-1.  **Seguridad y Validación (Prioridad Alta):**
-    - Refinamiento de `middleware.ts` para separar estrictamente Admin CSH de Admin Marketing.
-    - Auditoría de vistas para asegurar que elementos sensibles solo sean visibles para roles autorizados.
+1.  **Seguridad Adicional y Middleware:**
+    - Refinamiento de `middleware.ts` para aplicar las nuevas secciones a nivel de ruta y no solo UI.
 2.  **Optimización y Limpieza:**
     - Revisión de código muerto y endpoints en desuso.
     - Pruebas de carga y reconexión para el sistema SSE.
@@ -119,6 +120,28 @@ Cuando el usuario me pida leer este archivo (`GEMINI.md`) al inicio de una sesi�
 5.  **Confirmar Rol y Esperar Instrucción:** Re-afirmar internamente mi rol como "ScrumBot" y esperar la siguiente instrucción del usuario para proceder.
 
 # Historial de Cambios (Log)
+
+## 2026-03-17 (Sesión 17 - RBAC Híbrido y Permisos Híbridos)
+*   **Base de Datos y Prisma:**
+    *   **Nuevos Modelos:** Se introdujeron `Seccion`, `PermisoRolSeccion`, y `PermisoUsuarioSeccion` en el esquema para soportar permisos heredados de roles más "excepciones" por usuario individual.
+    *   **Migración:** Se generó y aplicó exitosamente la migración relacional hacia el nuevo modelo híbrido.
+    *   **Seeding Avanzado:** Se actualizaron todos los roles del sistema (Director, Staff, Soporte, etc.) inyectando permisos base vinculados a secciones específicas de la interfaz en lugar de nombres "hardcoded".
+*   **Gestión de Permisos Dinámicos (Auth.js):**
+    *   Se actualizó `auth.config.ts` para inyectar en el token JWT un set consolidado y desduplicado llamado `secciones`, que agrupa tanto los permisos del rol del usuario como los otorgados manualmente.
+*   **Refactorización Completa del Sidebar (`Sidebar.astro`):**
+    *   Se reemplazaron todos los chequeos inflexibles (`isMarketingDirector`, `isAdmin`) por validaciones dinámicas dependientes 100% de los `session.user.secciones` (ej. `canSeeTraslados`, `canSeeAdminCorreos`).
+    *   Se consolidó el "Modo Administrador" en un único flujo de renderizado condicional.
+*   **Perfil de Usuario - Toggles Híbridos (`/admin/usuarios/editar/[id].astro`):**
+    *   **UI:** Nueva interfaz avanzada de permisos cruzados en la vista de edición. Los permisos heredados muestran estado (badge visual) ineditable. Las secciones opcionales/extra ofrecen **Toggle Switches** interactivos.
+    *   **Optimistic UI:** Se agregó actualización inmediata al UI asíncrona (con notificación `toast`) ejecutando sentencias PATCH hacia la ruta especial `/api/admin/usuarios/secciones`.
+    *   **Seguridad:** El nuevo endpoint `/api/admin/usuarios/secciones.ts` aplica operaciones de Upsert y Logging integral con cada cambio explícito de permiso.
+
+## 2026-03-17 (Sesión 17 - Toggles Rápidos de Usuarios)
+*   **Mejoras en Listado de Usuarios (`/admin/usuarios/[campus].astro`):**
+    *   **Toggles Interactivos:** Se reemplazaron los badges de estado estáticos por toggle switches de Tailwind CSS interactivos para las columnas "Activo" y "Vacaciones".
+    *   **Actualizaciones Optimistas:** La UI se actualiza inmediatamente al hacer clic (cambio de color y texto) para una mejor experiencia de usuario.
+    *   **Notificaciones:** Se integró el sistema de `toast` para notificar al usuario sobre el éxito o error de la actualización en la base de datos a través de la API `PATCH /api/admin/usuarios`.
+    *   **Corrección de Navegación:** Se aplicó `stopPropagation()` a los toggles para que al interactuar con ellos no se dispare el evento de fila que redirigía a la página de edición del usuario.
 
 ## 2026-02-12 (Sesión 16 - Parte 2 - Refinamiento de Categorías)
 *   **Mejoras en Filtrado (`/admin/categorias`):**

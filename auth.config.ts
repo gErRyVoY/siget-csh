@@ -153,8 +153,18 @@ export default defineConfig({
             rol: {
               include: {
                 permisos: true, // Incluir los permisos del rol
+                permisos_seccion: {
+                  include: {
+                    seccion: true
+                  }
+                }
               },
             },
+            permisos_seccion: {
+              include: {
+                seccion: true
+              }
+            }
           },
         });
 
@@ -165,6 +175,18 @@ export default defineConfig({
           token.image = dbUser.image;
           // Guardar solo los nombres de los permisos en el token
           token.permisos = dbUser.rol.permisos.map(p => p.nombre);
+
+          // Consolidar secciones heredadas del rol y específicas del usuario
+          const seccionesRol = dbUser.rol.permisos_seccion
+            .filter(ps => ps.activo && ps.seccion.activo)
+            .map(ps => ps.seccion.identificador);
+          
+          const seccionesUsuario = dbUser.permisos_seccion
+            .filter(ps => ps.activo && ps.seccion.activo)
+            .map(ps => ps.seccion.identificador);
+
+          // Combinar y eliminar duplicados usando un Set
+          token.secciones = Array.from(new Set([...seccionesRol, ...seccionesUsuario]));
         }
       }
       return token;
@@ -178,6 +200,7 @@ export default defineConfig({
         session.user.image = token.image as string | null;
         // Asignar los permisos a la sesión
         session.user.permisos = token.permisos as string[];
+        session.user.secciones = token.secciones as string[];
         // Asignar access token
         session.accessToken = token.accessToken as string;
       }
@@ -195,6 +218,7 @@ declare module "@auth/core/types" {
       empresa?: Empresa;
       image?: string | null;
       permisos?: string[]; // Añadir permisos a la sesión
+      secciones?: string[]; // Secciones permitidas
     };
   }
 }
@@ -207,5 +231,6 @@ declare module "@auth/core/jwt" {
     empresa?: Empresa;
     image?: string | null;
     permisos?: string[]; // Añadir permisos al token
+    secciones?: string[]; // Secciones permitidas
   }
 }

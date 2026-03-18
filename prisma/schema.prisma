@@ -33,6 +33,7 @@ model Rol {
   usuarios           Usuario[]
   permisos           Permiso[]            @relation()
   permisos_categoria PermisoCategoria[]
+  permisos_seccion   PermisoRolSeccion[]
 
   @@map("rol")
 }
@@ -85,6 +86,7 @@ model Usuario {
   trl_coord                Boolean   @default(false)
   notificaciones_correo    NotificacionesCorreo[]
   logs                     Logs[]
+  permisos_seccion         PermisoUsuarioSeccion[]
 
   @@map("usuario")
 }
@@ -422,4 +424,53 @@ enum EstatusCorreo {
   Enviado
   Pendiente
   Fallido
+}
+
+// ==========================================
+// Módulo de Permisos por Secciones (RBAC)
+// ==========================================
+
+model Seccion {
+  id               Int                     @id @default(autoincrement())
+  nombre           String                  @db.VarChar(100)
+  identificador    String                  @unique @db.VarChar(100)
+  grupo            String?                 @db.VarChar(50)
+  descripcion      String?                 @db.Text
+  activo           Boolean                 @default(true)
+  permisos_rol     PermisoRolSeccion[]
+  permisos_usuario PermisoUsuarioSeccion[]
+
+  @@map("seccion")
+}
+
+model PermisoRolSeccion {
+  id         Int      @id @default(autoincrement())
+  rolId      Int
+  seccionId  Int
+  activo     Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  rol        Rol      @relation(fields: [rolId], references: [id], onDelete: Cascade)
+  seccion    Seccion  @relation(fields: [seccionId], references: [id], onDelete: Cascade)
+
+  @@unique([rolId, seccionId])
+  @@index([rolId, activo])
+  @@map("permiso_rol_seccion")
+}
+
+model PermisoUsuarioSeccion {
+  id         Int      @id @default(autoincrement())
+  usuarioId  Int
+  seccionId  Int
+  activo     Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  usuario    Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  seccion    Seccion  @relation(fields: [seccionId], references: [id], onDelete: Cascade)
+
+  @@unique([usuarioId, seccionId])
+  @@index([usuarioId, activo])
+  @@map("permiso_usuario_seccion")
 }
