@@ -1,0 +1,828 @@
+---
+import MainLayout from "@/layouts/MainLayout.astro";
+import { prisma } from "@/lib/db";
+import { getSession } from "auth-astro/server";
+
+const session = await getSession(Astro.request);
+// Basic admin check
+const seccionesUser = session?.user?.secciones ?? [];
+if (!seccionesUser.includes("admin_roles")) {
+  return Astro.redirect("/");
+}
+
+const url = new URL(Astro.request.url);
+const selectedRoleIdString = url.searchParams.get("id");
+let selectedRoleId = selectedRoleIdString
+  ? parseInt(selectedRoleIdString, 10)
+  : null;
+
+const [rolesList, seccionesRaw, categoriasMaster] = await Promise.all([
+  prisma.rol.findMany({ orderBy: { rol: "asc" } }),
+  prisma.seccion.findMany({ orderBy: [{ grupo: "asc" }, { nombre: "asc" }] }),
+  prisma.categoria.findMany({
+    where: { activo: true },
+    include: {
+      subcategoria_categorias: {
+        where: { activo: true, subcategoria: { activo: true } },
+        include: { subcategoria: true },
+        orderBy: { subcategoria: { nombre: "asc" } },
+      },
+    },
+    orderBy: { nombre: "asc" },
+  }),
+]);
+
+// If an ID is provided but doesn't match any role, nullify it
+if (selectedRoleId && !rolesList.find((r) => r.id === selectedRoleId)) {
+  selectedRoleId = null;
+}
+
+// Load specifics for the selected role
+let selectedRoleData: any = null;
+let roleSectionsEnabled: Record<number, boolean> = {};
+let roleCategoriesEnabled: Record<string, boolean> = {};
+let usersByCompany: Record<string, any> = {};
+
+if (selectedRoleId) {
+  selectedRoleData = await prisma.rol.findUnique({
+    where: { id: selectedRoleId },
+    include: {
+      permisos_seccion: true,
+      permisos_categoria: true,
+      usuarios: {
+        include: { empresa: true },
+        orderBy: { nombres: "asc" },
+      },
+    },
+  });
+
+  if (selectedRoleData) {
+    selectedRoleData.permisos_seccion.forEach((ps: any) => {
+      roleSectionsEnabled[ps.seccionId] = ps.activo;
+    });
+
+    selectedRoleData.permisos_categoria.forEach((pc: any) => {
+      const key = pc.subcategoriaId
+        ? `${pc.categoriaId}-${pc.subcategoriaId}`
+        : `${pc.categoriaId}-null`;
+      roleCategoriesEnabled[key] = pc.activo;
+    });
+
+    if (selectedRoleData.usuarios) {
+      selectedRoleData.usuarios.forEach((u: any) => {
+        const compName = u.empresa.nombre;
+        if (!usersByCompany[compName]) usersByCompany[compName] = [];
+        usersByCompany[compName].push(u);
+      });
+    }
+  }
+}
+
+// Group sections for UI
+const orderGrupos = [
+  "Abrir ticket",
+  "Tickets soporte",
+  "Tickets marketing",
+  "Otros",
+  "Administrador",
+];
+const groupedSecciones: {
+  [key: string]: { [key: string]: typeof seccionesRaw };
+} = {};
+seccionesRaw.forEach((sec) => {
+  const group = sec.grupo || "Otros";
+  const subgroup = sec.subgrupo || "General";
+  if (!groupedSecciones[group]) groupedSecciones[group] = {};
+  if (!groupedSecciones[group][subgroup])
+    groupedSecciones[group][subgroup] = [];
+  groupedSecciones[group][subgroup].push(sec);
+});
+---
+
+<MainLayout title="Control y configuración de roles">
+  <div class="max-w-4xl mx-auto space-y-6">
+    <div
+      class="flex items-end justify-between gap-4 bg-card border rounded-lg p-6 shadow-sm"
+    >
+      <div class="flex-1" id="select-role-state">
+        <label for="roleSelector" class="block text-sm font-medium mb-1"
+          >Rol a configurar</label
+        >
+        <div class="flex gap-4 items-center">
+          <select
+            id="roleSelector"
+            class="block w-full max-w-sm rounded-md border-border bg-input p-2 accent-secondary focus:outline-none focus:ring-1 focus:ring-secondary"
+            onchange="window.location.href = '?id=' + this.value;"
+          >
+            <option value="" disabled selected={!selectedRoleId}
+              >Elige un rol</option
+            >
+            {
+              rolesList.map((rol) => (
+                <option value={rol.id} selected={rol.id === selectedRoleId}>
+                  {rol.rol} {!rol.activo ? "(inactivo)" : ""}
+                </option>
+              ))
+            }
+          </select>
+          <button
+            id="btn-show-clone"
+            type="button"
+            class="bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-2 flex items-center h-10 rounded-md text-sm font-semibold transition-colors"
+          >
+            Nuevo rol
+          </button>
+          {
+            selectedRoleId && selectedRoleData && (
+              <div class="flex items-center gap-2 border-l border-border pl-4">
+                <span class="text-sm text-muted-foreground mr-1">Estado:</span>
+                <label
+                  class="relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center justify-center rounded-full toggle-wrapper-role group"
+                  title={
+                    selectedRoleData.activo ? "Inactivar rol" : "Activar rol"
+                  }
+                >
+                  <input
+                    type="checkbox"
+                    id={`role-active-toggle`}
+                    class="sr-only peer"
+                    data-rol-id={selectedRoleData.id}
+                    checked={selectedRoleData.activo}
+                  />
+                  <div class="toggle-bg h-6 w-11 absolute rounded-full transition-all peer-focus:outline-none opacity-80 peer-checked:opacity-100 disabled:opacity-30 border-box bg-muted-foreground peer-checked:bg-primary" />
+                  <div class="toggle-knob absolute top-[2px] left-[2px] bg-white border border-gray-300 rounded-full h-5 w-5 transition-transform peer-checked:translate-x-[20px] peer-checked:border-white z-10" />
+                </label>
+                <span class="text-sm font-medium" id="role-status-text">
+                  {selectedRoleData.activo ? "Activo" : "Inactivo"}
+                </span>
+              </div>
+            )
+          }
+        </div>
+      </div>
+
+      <!-- Clone State -->
+      <div class="flex-1 hidden" id="clone-role-state">
+        <label class="block text-sm font-medium mb-1"
+          >Gestión de Nuevo Rol (Clonar Permisos)</label
+        >
+        <div
+          class="flex flex-col sm:flex-row gap-4 items-start sm:items-center"
+        >
+          <input
+            type="text"
+            id="newRoleName"
+            placeholder="Nombre del nuevo rol"
+            class="block w-full max-w-xs rounded-md border-border bg-input p-2 accent-secondary focus:outline-none focus:ring-1 focus:ring-secondary uppercase"
+            maxlength="30"
+            pattern="[a-zA-Z\s]+"
+            title="Solo letras permitidas"
+          />
+          <select
+            id="roleToClone"
+            class="block w-full max-w-xs rounded-md border-border bg-input p-2 accent-secondary focus:outline-none focus:ring-1 focus:ring-secondary"
+          >
+            <option value="" disabled selected>Clonar desde...</option>
+            {rolesList.map((rol) => <option value={rol.id}>{rol.rol}</option>)}
+          </select>
+          <div class="flex gap-2 isolate">
+            <button
+              id="btn-save-clone"
+              type="button"
+              class="bg-muted-foreground text-white hover:bg-muted-foreground/80 px-4 py-2 flex items-center h-10 rounded-md text-sm font-semibold transition-colors whitespace-nowrap z-10"
+            >
+              Guardar
+            </button>
+            <button
+              id="btn-cancel-clone"
+              type="button"
+              class="bg-transparent border border-border text-muted-foreground hover:bg-muted/50 px-3 py-2 flex items-center h-10 rounded-md text-sm font-semibold transition-colors whitespace-nowrap z-0"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {
+      selectedRoleId && selectedRoleData && (
+        <div
+          class="space-y-6"
+          id="role-permissions-container"
+          data-role-id={selectedRoleId}
+        >
+          {/* Seccion de Usuarios del Rol */}
+          {selectedRoleData.usuarios.length > 0 && (
+            <details class="group mt-8 mb-4 main-accordion rounded-md border border-border bg-card shadow-sm">
+              <summary class="flex items-center justify-between cursor-pointer list-none select-none outline-none h-[50px] px-4 hover:bg-secondary hover:text-white transition-colors group-open:bg-secondary group-open:text-white ui-summary group-open:rounded-t-md group-open:rounded-b-none rounded-md">
+                <h2 class="text-sm font-medium">
+                  Usuarios que tienen este rol asignado (
+                  {selectedRoleData.usuarios.length}):
+                </h2>
+                <div class="transform transition-transform duration-200 group-open:rotate-180">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    class="text-current"
+                  >
+                    <path d="m6 9 6 6 6-6" />
+                  </svg>
+                </div>
+              </summary>
+              <div class="p-4 border-t border-border bg-card rounded-b-md space-y-6">
+                {Object.keys(usersByCompany)
+                  .sort((a, b) => a.localeCompare(b))
+                  .map((compName) => (
+                    <div class="bg-card border rounded-lg p-4 shadow-sm">
+                      <h3 class="text-xs font-semibold text-muted-foreground mb-3 uppercase tracking-wider border-b pb-2">
+                        {compName}
+                      </h3>
+                      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                        {(usersByCompany[compName] as any[]).map((u: any) => (
+                          <div class="flex items-center justify-between gap-4 p-2 bg-muted/20 border border-muted rounded-md hover:border-primary transition-colors">
+                            <div class="flex-1 min-w-0 pr-2">
+                              <p
+                                class="text-[13px] font-medium truncate"
+                                title={`${u.nombres} ${u.apellidos}`}
+                              >
+                                {u.nombres} {u.apellidos}
+                              </p>
+                              <p
+                                class="text-[11px] text-muted-foreground truncate"
+                                title={u.mail}
+                              >
+                                {u.mail}
+                              </p>
+                            </div>
+                            <div
+                              class="shrink-0 flex items-center pr-1"
+                              title="Revocar a Visitante"
+                            >
+                              <label class="relative inline-flex h-5 w-9 cursor-pointer items-center justify-center rounded-full toggle-wrapper-user">
+                                <input
+                                  type="checkbox"
+                                  class="sr-only peer user-revoke-toggle"
+                                  data-usuario-id={u.id}
+                                  checked={true}
+                                />
+                                <div class="toggle-bg h-5 w-9 absolute rounded-full transition-all peer-focus:outline-none opacity-80 peer-checked:opacity-100 disabled:opacity-30 border-box bg-muted-foreground peer-checked:bg-primary" />
+                                <div class="toggle-knob absolute top-[2px] left-[2px] bg-white border border-gray-300 rounded-full h-4 w-4 transition-transform peer-checked:translate-x-[16px] peer-checked:border-white z-10" />
+                              </label>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            </details>
+          )}
+
+          <details class="group mt-4 main-accordion rounded-md border border-border bg-card shadow-sm">
+            <summary class="flex items-center justify-between cursor-pointer list-none select-none outline-none h-[50px] px-4 hover:bg-secondary hover:text-white transition-colors group-open:bg-secondary group-open:text-white ui-summary group-open:rounded-t-md group-open:rounded-b-none rounded-md">
+              <h2 class="text-sm font-medium">
+                Secciones que puede ver el rol:
+              </h2>
+              <div class="transform transition-transform duration-200 group-open:rotate-180">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  class="text-current"
+                >
+                  <path d="m6 9 6 6 6-6" />
+                </svg>
+              </div>
+            </summary>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-4 border-t border-border bg-card rounded-b-md">
+              {orderGrupos.map((grupo) => {
+                if (!groupedSecciones[grupo]) return null;
+
+                const subgroups = groupedSecciones[grupo];
+                return (
+                  <div class="bg-card border rounded-lg p-4 shadow-[0_1px_3px_0_rgba(0,0,0,0.05)]">
+                    <h3 class="text-xs font-semibold text-muted-foreground mb-4 uppercase tracking-wider">
+                      {grupo}
+                    </h3>
+                    <div class="space-y-6">
+                      {Object.entries(subgroups).map(([subgroupName, secs]) => (
+                        <div class="space-y-3">
+                          {subgroupName !== "General" && (
+                            <h4 class="text-[11px] font-bold text-muted-foreground border-b pb-1 uppercase">
+                              {subgroupName}
+                            </h4>
+                          )}
+                          <div class="space-y-3 pl-1">
+                            {secs.map((seccion) => {
+                              // For Roles, explicitState is the only truth. No inheritance at this level.
+                              const explicitState =
+                                roleSectionsEnabled[seccion.id];
+                              const isChecked = explicitState === true; // Default to false if undefined
+
+                              return (
+                                <div class="flex items-center justify-between gap-4">
+                                  <label
+                                    for={`sec-${seccion.id}`}
+                                    class="text-sm cursor-pointer select-none truncate pr-2 flex-1"
+                                    title={seccion.nombre}
+                                  >
+                                    {seccion.nombre}
+                                  </label>
+                                  <label
+                                    class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full toggle-wrapper group"
+                                    data-inherited="false"
+                                    title={
+                                      isChecked
+                                        ? "Revocar acceso"
+                                        : "Otorgar acceso"
+                                    }
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      id={`sec-${seccion.id}`}
+                                      class="sr-only peer section-toggle"
+                                      data-seccion-id={seccion.id}
+                                      checked={isChecked}
+                                    />
+                                    <div class="toggle-bg h-5 w-9 absolute rounded-full transition-all peer-focus:outline-none opacity-50 peer-checked:opacity-100 disabled:opacity-30 peer-disabled:cursor-not-allowed border-box bg-muted-foreground border border-transparent peer-checked:bg-primary" />
+                                    <div class="toggle-knob absolute top-[2px] left-[2px] bg-white border border-gray-300 rounded-full h-4 w-4 transition-transform peer-checked:translate-x-[16px] peer-checked:border-white z-10" />
+                                  </label>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </details>
+
+          <details class="group mt-4 mb-4 main-accordion rounded-md border border-border bg-card shadow-sm">
+            <summary class="flex items-center justify-between cursor-pointer list-none select-none outline-none h-[50px] px-4 hover:bg-secondary hover:text-white transition-colors group-open:bg-secondary group-open:text-white ui-summary group-open:rounded-t-md group-open:rounded-b-none rounded-md">
+              <h2 class="text-sm font-medium">
+                Categorías y subcategorías que puede atender:
+              </h2>
+              <div class="transform transition-transform duration-200 group-open:rotate-180">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  class="text-current"
+                >
+                  <path d="m6 9 6 6 6-6" />
+                </svg>
+              </div>
+            </summary>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 p-2 border-t border-border bg-card rounded-b-md">
+              {categoriasMaster.map((cat) => {
+                const catKey = `${cat.id}-null`;
+                const explicitStateCat = roleCategoriesEnabled[catKey];
+                const isCheckedCat = explicitStateCat === true; // No inheritance
+
+                let activeSubCount = 0;
+                let totalSubs = cat.subcategoria_categorias.length;
+                cat.subcategoria_categorias.forEach((subRel) => {
+                  const subKey = `${cat.id}-${subRel.subcategoria.id}`;
+                  // For a Role, it has access if explicitly recorded.
+                  // For UI, if category is true, we visually consider it true if no explicit override exists.
+                  // Actually, here it is the defining entity! If a Role has subcategoria=null (isCheckedCat),
+                  // it implies all active subs unless explicitly revoked.
+                  const explicitStateSub = roleCategoriesEnabled[subKey];
+                  const isCheckedSub =
+                    explicitStateSub !== undefined
+                      ? explicitStateSub
+                      : isCheckedCat;
+                  if (isCheckedSub) activeSubCount++;
+                });
+
+                const isFullCategory =
+                  totalSubs === 0
+                    ? isCheckedCat
+                    : activeSubCount === totalSubs && isCheckedCat;
+                const isPartialCategory = activeSubCount > 0 && !isFullCategory;
+                const showCheckedUiCat = isFullCategory || isPartialCategory;
+
+                return (
+                  <details class="group/cat bg-card border rounded-lg shadow-sm">
+                    <summary class="flex items-center justify-between gap-4 p-3 cursor-pointer list-none select-none outline-none hover:bg-muted/50 transition-colors rounded-lg group-open/cat:rounded-b-none border-b border-transparent group-open/cat:border-border group-open/cat:bg-muted/10">
+                      <div class="flex items-center gap-2 flex-1 overflow-hidden">
+                        <div class="transform transition-transform duration-200 group-open/cat:rotate-180 shrink-0 text-muted-foreground mr-1">
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="16"
+                            height="16"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            class="text-current"
+                          >
+                            <path d="m6 9 6 6 6-6" />
+                          </svg>
+                        </div>
+                        <span class="text-[13px] font-bold uppercase truncate text-primary">
+                          {cat.nombre}
+                        </span>
+                      </div>
+                      <div class="shrink-0" onclick="event.stopPropagation();">
+                        <label
+                          class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full toggle-wrapper group/catbtn"
+                          data-full={isFullCategory ? "true" : "false"}
+                          title={
+                            showCheckedUiCat
+                              ? "Revocar categoría entera"
+                              : "Permitir categoría entera"
+                          }
+                        >
+                          <input
+                            type="checkbox"
+                            id={`cat-${cat.id}`}
+                            class="sr-only peer category-toggle main-category-toggle"
+                            data-categoria-id={cat.id}
+                            checked={showCheckedUiCat}
+                          />
+                          <div class="toggle-bg h-5 w-9 absolute rounded-full transition-all peer-focus:outline-none opacity-50 peer-checked:opacity-100 disabled:opacity-30 border-box bg-muted-foreground border border-transparent group-data-[full=false]/catbtn:peer-checked:bg-primary group-data-[full=true]/catbtn:peer-checked:bg-secondary group-data-[full=true]/catbtn:border-secondary group-data-[full=true]/catbtn:peer-checked:border-transparent" />
+                          <div
+                            class="toggle-knob absolute top-[2px] left-[2px] bg-white border border-gray-300 rounded-full h-4 w-4 transition-transform z-10"
+                            class:list={[
+                              {
+                                "translate-x-[16px] border-white":
+                                  showCheckedUiCat,
+                              },
+                            ]}
+                          />
+                        </label>
+                      </div>
+                    </summary>
+                    {cat.subcategoria_categorias.length > 0 ? (
+                      <div class="p-3 space-y-3 pl-8 bg-card rounded-b-lg">
+                        {cat.subcategoria_categorias.map((subRel) => {
+                          const subcat = subRel.subcategoria;
+                          const subKey = `${cat.id}-${subcat.id}`;
+                          const explicitStateSub =
+                            roleCategoriesEnabled[subKey];
+                          const isCheckedSub =
+                            explicitStateSub !== undefined
+                              ? explicitStateSub
+                              : isCheckedCat;
+
+                          return (
+                            <div class="flex items-center justify-between gap-4">
+                              <label
+                                for={`sub-${cat.id}-${subcat.id}`}
+                                class="text-[13px] cursor-pointer select-none truncate pr-2 flex-1 text-muted-foreground"
+                                title={subcat.nombre}
+                              >
+                                {subcat.nombre}
+                              </label>
+                              <label
+                                class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full toggle-wrapper group/sub"
+                                data-inherited={isCheckedCat ? "true" : "false"}
+                                title={
+                                  isCheckedSub
+                                    ? "Revocar acceso"
+                                    : "Otorgar acceso"
+                                }
+                              >
+                                <input
+                                  type="checkbox"
+                                  id={`sub-${cat.id}-${subcat.id}`}
+                                  class="sr-only peer category-toggle"
+                                  data-categoria-id={cat.id}
+                                  data-subcategoria-id={subcat.id}
+                                  checked={isCheckedSub}
+                                />
+                                <div class="toggle-bg h-5 w-9 absolute rounded-full transition-all peer-focus:outline-none opacity-50 peer-checked:opacity-100 border-box bg-muted-foreground border border-transparent group-data-[inherited=false]/sub:peer-checked:bg-primary group-data-[inherited=true]/sub:peer-checked:bg-secondary group-data-[inherited=true]/sub:border-secondary group-data-[inherited=true]/sub:peer-checked:border-transparent" />
+                                <div class="toggle-knob absolute top-[2px] left-[2px] bg-white border border-gray-300 rounded-full h-4 w-4 transition-transform peer-checked:translate-x-[16px] peer-checked:border-white z-10" />
+                              </label>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div class="p-3 pl-8 bg-card rounded-b-lg text-[13px] text-muted-foreground italic">
+                        Sin subcategorías
+                      </div>
+                    )}
+                  </details>
+                );
+              })}
+            </div>
+          </details>
+        </div>
+      )
+    }
+  </div>
+</MainLayout>
+
+<script>
+  import { toast } from "@/lib/toast";
+
+  document.addEventListener("astro:page-load", () => {
+    // Single open behavior for main accordions
+    const accordions = document.querySelectorAll(".main-accordion");
+    accordions.forEach((acc) => {
+      acc.addEventListener("toggle", (e) => {
+        if ((acc as HTMLDetailsElement).open) {
+          accordions.forEach((other) => {
+            if (other !== acc && (other as HTMLDetailsElement).open) {
+              (other as HTMLDetailsElement).open = false;
+            }
+          });
+        }
+      });
+    });
+
+    // Clone UI Logic
+    const btnShowClone = document.getElementById("btn-show-clone");
+    const btnCancelClone = document.getElementById("btn-cancel-clone");
+    const selectState = document.getElementById("select-role-state");
+    const cloneState = document.getElementById("clone-role-state");
+
+    btnShowClone?.addEventListener("click", () => {
+      selectState?.classList.add("hidden");
+      cloneState?.classList.remove("hidden");
+      cloneState?.classList.add("flex");
+    });
+
+    btnCancelClone?.addEventListener("click", () => {
+      cloneState?.classList.add("hidden");
+      cloneState?.classList.remove("flex");
+      selectState?.classList.remove("hidden");
+      const newNameInput = document.getElementById(
+        "newRoleName",
+      ) as HTMLInputElement;
+      if (newNameInput) newNameInput.value = "";
+    });
+
+    const btnSaveClone = document.getElementById("btn-save-clone");
+    btnSaveClone?.addEventListener("click", async () => {
+      const nuevoRolNombre = (
+        document.getElementById("newRoleName") as HTMLInputElement
+      )?.value;
+      const clonarRolId = (
+        document.getElementById("roleToClone") as HTMLSelectElement
+      )?.value;
+
+      if (!nuevoRolNombre || !nuevoRolNombre.trim().match(/^[a-zA-Z\s]+$/)) {
+        return toast.error(
+          "El nombre del rol es requerido y solo debe contener letras.",
+        );
+      }
+      if (!clonarRolId) {
+        return toast.error("Por favor, selecciona un rol base.");
+      }
+
+      const isDuplicate = Array.from(
+        (document.getElementById("roleToClone") as HTMLSelectElement).options,
+      ).some(
+        (opt) => opt.text.toUpperCase() === nuevoRolNombre.trim().toUpperCase(),
+      );
+      if (isDuplicate) {
+        return toast.error("Ya existe un rol con este nombre.");
+      }
+
+      btnSaveClone.textContent = "Guardando...";
+      (btnSaveClone as HTMLButtonElement).disabled = true;
+
+      try {
+        const res = await fetch("/api/admin/roles/create", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            nuevoRolNombre: nuevoRolNombre.trim(),
+            clonarRolId,
+          }),
+        });
+
+        if (!res.ok) {
+          throw new Error((await res.json()).message || "Error al crear rol");
+        }
+
+        const data = await res.json();
+        toast.success("Rol creado exitosamente");
+        setTimeout(() => (window.location.href = `?id=${data.id}`), 1000);
+      } catch (error: any) {
+        console.error(error);
+        toast.error(error.message);
+        btnSaveClone.textContent = "Guardar";
+        (btnSaveClone as HTMLButtonElement).disabled = false;
+      }
+    });
+
+    // Current role ID scope
+    const container = document.getElementById("role-permissions-container");
+    if (!container) return; // Wait until a role is selected
+    const rolId = container.dataset.roleId;
+
+    // Toggles Sections
+    const sectionToggles = document.querySelectorAll(".section-toggle");
+    sectionToggles.forEach((toggle) => {
+      toggle.addEventListener("change", async (e) => {
+        const input = e.target as HTMLInputElement;
+        const seccionId = input.dataset.seccionId;
+        const activo = input.checked;
+
+        try {
+          const res = await fetch("/api/admin/roles/secciones", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ rolId, seccionId, activo }),
+          });
+          if (!res.ok) throw new Error((await res.json()).message);
+          toast.success("Sección actualizada");
+        } catch (error: any) {
+          input.checked = !activo;
+          toast.error(error.message || "Error al actualizar sección");
+        }
+      });
+    });
+
+    // Toggles Categories
+    const catToggles = document.querySelectorAll(".category-toggle");
+    catToggles.forEach((toggle) => {
+      toggle.addEventListener("change", async (e) => {
+        const input = e.target as HTMLInputElement;
+        const categoriaId = input.dataset.categoriaId;
+        const subcategoriaId = input.dataset.subcategoriaId || null;
+        const activo = input.checked;
+
+        if (!subcategoriaId) {
+          const childSubs = document.querySelectorAll(
+            `.category-toggle[data-categoria-id="${categoriaId}"][data-subcategoria-id]`,
+          );
+          childSubs.forEach((child) => {
+            const childInput = child as HTMLInputElement;
+            childInput.checked = activo;
+            const parentLabel = childInput.closest(".toggle-wrapper");
+            if (parentLabel)
+              parentLabel.setAttribute(
+                "data-inherited",
+                activo ? "true" : "false",
+              );
+          });
+
+          const btnLabel = input.closest(".toggle-wrapper");
+          if (btnLabel)
+            btnLabel.setAttribute("data-full", activo ? "true" : "false");
+
+          const knob = btnLabel?.querySelector(".toggle-knob");
+          if (knob) {
+            if (activo)
+              knob.classList.add("translate-x-[16px]", "border-white");
+            else knob.classList.remove("translate-x-[16px]", "border-white");
+          }
+        } else {
+          const childSubs = Array.from(
+            document.querySelectorAll(
+              `.category-toggle[data-categoria-id="${categoriaId}"][data-subcategoria-id]`,
+            ),
+          );
+          const totalSubs = childSubs.length;
+          const activeSubs = childSubs.filter(
+            (c) => (c as HTMLInputElement).checked,
+          ).length;
+
+          const parentToggle = document.querySelector(
+            `.main-category-toggle[data-categoria-id="${categoriaId}"]`,
+          ) as HTMLInputElement;
+          if (parentToggle) {
+            const parentLabel = parentToggle.closest(".toggle-wrapper");
+            const knob = parentLabel?.querySelector(".toggle-knob");
+
+            let isFull = false;
+            let isPartial = false;
+            if (activeSubs === totalSubs) {
+              parentToggle.checked = true;
+              isFull = true;
+            } else if (activeSubs > 0) {
+              parentToggle.checked = true;
+              isPartial = true;
+            } else {
+              parentToggle.checked = false;
+            }
+
+            if (parentLabel)
+              parentLabel.setAttribute("data-full", isFull ? "true" : "false");
+            if (knob) {
+              if (isFull || isPartial)
+                knob.classList.add("translate-x-[16px]", "border-white");
+              else knob.classList.remove("translate-x-[16px]", "border-white");
+            }
+          }
+        }
+
+        try {
+          const res = await fetch("/api/admin/roles/categorias", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              rolId,
+              categoriaId,
+              subcategoriaId,
+              activo,
+            }),
+          });
+          if (!res.ok) throw new Error((await res.json()).message);
+          toast.success("Categoría actualizada");
+        } catch (error: any) {
+          input.checked = !activo;
+          // Note: Visual revert logic for cascade is missing here to keep it simple, usually requires refresh on error.
+          toast.error(error.message || "Error al actualizar categoría");
+        }
+      });
+    });
+
+    // Toggle Status Role
+    const roleActiveToggle = document.getElementById(
+      "role-active-toggle",
+    ) as HTMLInputElement;
+    if (roleActiveToggle) {
+      roleActiveToggle.addEventListener("change", async (e) => {
+        const activo = roleActiveToggle.checked;
+        const statusText = document.getElementById("role-status-text");
+        const currentRolId = roleActiveToggle.dataset.rolId;
+
+        try {
+          const res = await fetch("/api/admin/roles/toggle-active", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ rolId: currentRolId, activo }),
+          });
+          if (!res.ok) throw new Error((await res.json()).message);
+
+          toast.success(`Rol marcado como ${activo ? "Activo" : "Inactivo"}`);
+          if (statusText)
+            statusText.textContent = activo ? "Activo" : "Inactivo";
+
+          // Small reload to update dropdown names visually
+          setTimeout(() => window.location.reload(), 1000);
+        } catch (err: any) {
+          roleActiveToggle.checked = !activo;
+          toast.error(err.message || "Error al actualizar estado del rol");
+        }
+      });
+    }
+
+    // Revoke Users
+    const userToggles = document.querySelectorAll(".user-revoke-toggle");
+    userToggles.forEach((toggle) => {
+      toggle.addEventListener("change", async (e) => {
+        const input = e.target as HTMLInputElement;
+        const usuarioId = input.dataset.usuarioId;
+        const activo = input.checked;
+
+        if (!activo) {
+          // trying to turn it off
+          if (
+            confirm(
+              "¿Estás seguro de revocar este Rol y enviar al usuario a 'Visitante'? Se borrarán permanentemente sus excepciones de acceso.",
+            )
+          ) {
+            try {
+              const res = await fetch("/api/admin/roles/revoke-user", {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ usuarioId }),
+              });
+              if (!res.ok) throw new Error((await res.json()).message);
+
+              toast.success("Rol revocado. Recargando...");
+              setTimeout(() => window.location.reload(), 1000);
+            } catch (err: any) {
+              input.checked = true; // revert
+              toast.error(err.message || "Error al revocar rol");
+            }
+          } else {
+            input.checked = true; // cancel
+          }
+        }
+      });
+    });
+  });
+</script>

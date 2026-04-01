@@ -70,7 +70,7 @@ async function findAgentsBySpecificAssignment(catId: number, subId?: number | nu
     const assignments = await prisma.asignacionesCategorias.findMany({
         where: {
             categoriaId: catId,
-            subcategoriaId: subId ?? null,
+            subcategoriaId: subId ? { in: [subId, null] } : null,
             activo: true
         },
         include: {
@@ -90,7 +90,7 @@ async function findAgentsByRolePermissions(catId: number, subId?: number | null)
     const permissions = await prisma.permisoCategoria.findMany({
         where: {
             categoriaId: catId,
-            subcategoriaId: subId ?? null,
+            subcategoriaId: subId ? { in: [subId, null] } : null,
             activo: true
         },
         select: { rolId: true }
@@ -100,13 +100,28 @@ async function findAgentsByRolePermissions(catId: number, subId?: number | null)
 
     const roleIds = permissions.map(p => p.rolId);
 
-    return await prisma.usuario.findMany({
+    const users = await prisma.usuario.findMany({
         where: {
             rolId: { in: roleIds },
             activo: true,
             vacaciones: false
         },
-        include: { rol: true }
+        include: { rol: true, asignaciones_categorias: true }
+    });
+
+    // Filtrar a los que tienen la AsignacionCategoria explícitamente en "activo: false" (excepción manual)
+    return users.filter(user => {
+        // ¿Revocó explícitamente la categoría entera?
+        const explicitCat = user.asignaciones_categorias.find(a => a.categoriaId === catId && a.subcategoriaId === null);
+        if (explicitCat && explicitCat.activo === false) return false;
+
+        // ¿Revocó explícitamente la subcategoría específica?
+        if (subId) {
+            const explicitSub = user.asignaciones_categorias.find(a => a.categoriaId === catId && a.subcategoriaId === subId);
+            if (explicitSub && explicitSub.activo === false) return false;
+        }
+
+        return true;
     }) as AgentWithRelations[];
 }
 

@@ -47,7 +47,7 @@ const canSeeHorario = secciones.includes("horario_atencion");
 const canSeeSoporteAdmin = ["soporte_mis_tickets", "soporte_dashboard", "soporte_todos"].some(id => secciones.includes(id));
 const canSeeMarketingAdmin = ["marketing_mis_tickets", "marketing_dashboard", "marketing_todos"].some(id => secciones.includes(id));
 const canSeeAdminCorreos = ["admin_correos_crear", "admin_correos_actualizar"].some(id => secciones.includes(id));
-const canSeeAdminSiget = ["admin_siget_categorias", "admin_siget_ciclos", "admin_siget_secciones", "admin_siget_tickets", "admin_siget_usuarios"].some(id => secciones.includes(id));
+const canSeeAdminSiget = ["admin_siget_categorias", "admin_siget_ciclos", "admin_siget_secciones", "admin_siget_tickets", "admin_siget_usuarios", "admin_roles"].some(id => secciones.includes(id));
 const canSeeAdminMarketing = false; // Director Marketing ya no tiene un menú administrativo codificado de forma estática, requiere los permisos granulares.
 
 const cshHref = "/tickets/soporte/nuevo-ticket-csh";
@@ -140,6 +140,11 @@ const adminSections = [
                 href: "/admin/ciclos",
                 label: "Ciclos",
                 icon: ManageTicketsIcon,
+            }] : []),
+            ...(secciones.includes("admin_roles") ? [{
+                href: "/admin/roles",
+                label: "Roles",
+                icon: ManageUsersIcon,
             }] : []),
             ...(secciones.includes("admin_siget_secciones") ? [{
                 href: "/admin/secciones",

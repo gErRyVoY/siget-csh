@@ -142,6 +142,7 @@ export const POST: APIRoute = async ({ request }) => {
         const assignmentResult = await findBestAgentHybrid({
             solicitanteId,
             categoriaId: categoria.id,
+            subcategoriaId: subcategoria.id,
         });
         const atiendeId = assignmentResult.agentId;
 

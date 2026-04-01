@@ -109,7 +109,15 @@ export function initializeUserEditForm() {
                     throw new Error(errorData.message || 'Error al actualizar el usuario');
                 }
 
-                toast.success('Usuario actualizado correctamente');
+                const originalRolIdText = form.dataset.originalRolId;
+                if (originalRolIdText && data.rolId !== parseInt(originalRolIdText, 10)) {
+                    toast.success('Rol modificado. Recargando permisos para aplicar exclusiones...', {
+                        duration: 3000
+                    });
+                    setTimeout(() => window.location.reload(), 1500);
+                } else {
+                    toast.success('Usuario actualizado correctamente');
+                }
 
             } catch (error: any) {
                 console.error('Submit error:', error);

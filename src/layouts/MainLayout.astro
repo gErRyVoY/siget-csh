@@ -297,12 +297,17 @@ const NOTIFICATION_FULL_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="24
                         const bgColor =
                             statusHexColors[statusName] || "#a1a1aa";
 
+                        const lastComment = ticket.historial_solicitudes && ticket.historial_solicitudes.length > 0 
+                            ? ticket.historial_solicitudes[0].comentario 
+                            : null;
+                        const subtitle = lastComment || ticket.descripcion;
+                        
                         item.innerHTML = `
                             <div class="flex justify-between items-start mb-1">
                                 <span class="font-medium text-sm text-foreground">Ticket #${ticket.id}</span>
                                 <span class="text-xs px-2 py-0.5 rounded-full text-white" style="background-color: ${bgColor}">${statusName}</span>
                             </div>
-                            <p class="text-sm text-muted-foreground line-clamp-2 mb-1">${ticket.descripcion}</p>
+                            <p class="text-sm text-muted-foreground line-clamp-2 mb-1">${subtitle}</p>
                             <div class="flex justify-between items-center text-xs text-muted-foreground/70">
                                 <span>${ticket.solicitante.nombres} ${ticket.solicitante.apellidos}</span>
                                 <span>${ticket.categoria.nombre}</span>
@@ -459,7 +464,13 @@ const NOTIFICATION_FULL_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="24
                             return;
                         }
 
-                        toast.info(data.message, {
+                        let messageContent = data.message;
+                        if (data.comment) {
+                             messageContent = `<strong>${data.message}</strong><br><span style="opacity: 0.85; font-size: 0.85em;">${data.comment}</span>`;
+                        }
+
+                        toast.info(messageContent, {
+                            allowHtml: true,
                             action: {
                                 label: "Ver",
                                 onClick: () => {

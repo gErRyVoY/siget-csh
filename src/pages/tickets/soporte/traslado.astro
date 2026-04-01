@@ -316,85 +316,85 @@ const descuentoOptions = descuentos.map((d) => d.descripcion);
                     </div>
 
                     <!-- File upload section -->
-                    <div class="space-y-4 pt-4 border-t border-border">
-                        <label
-                            class="block text-sm font-medium text-foreground"
-                        >
-                            Archivos adjuntos
-                        </label>
-
+                    <div class="space-y-4">
                         <div
-                            id="drop-zone"
-                            class="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 text-center hover:bg-muted/50 transition-colors cursor-pointer relative"
+                            class="grid grid-cols-1 md:grid-cols-2 gap-4 w-full items-stretch"
                         >
-                            <p class="text-sm text-muted-foreground mb-4">
-                                Arrastre sus archivos aquí o haga clic para
-                                seleccionar
-                            </p>
+                            <div class="space-y-2 h-full">
+                                <div
+                                    id="drop-zone"
+                                    class="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 flex flex-col items-center justify-center hover:bg-muted/50 transition-colors cursor-pointer relative h-full min-h-[120px]"
+                                >
+                                    <p
+                                        class="text-sm text-muted-foreground text-center"
+                                    >
+                                        Arrastre sus archivos aquí
+                                    </p>
+                                    <div
+                                        id="attachment-area"
+                                        class="text-left w-full mt-auto"
+                                    >
+                                    </div>
+                                </div>
+                            </div>
+
                             <div
-                                id="attachment-area"
-                                class="space-y-2 text-left"
+                                class="flex flex-col justify-end items-end gap-2 rounded-lg border border-transparent"
                             >
+                                <div
+                                    id="action-buttons-container"
+                                    class="flex flex-wrap justify-end items-center gap-2 w-full"
+                                >
+                                    <button
+                                        type="button"
+                                        id="upload-files-button"
+                                        class="bg-muted-foreground text-white hover:bg-muted-foreground/80 px-4 py-2 rounded-md text-sm font-semibold shrink-0 h-10"
+                                    >
+                                        Seleccionar
+                                    </button>
+                                    <button
+                                        type="button"
+                                        id="google-drive-button"
+                                        class="bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 rounded-md flex items-center justify-center h-10 w-10 shrink-0"
+                                        title="Adjuntar desde Google Drive"
+                                    >
+                                        <img
+                                            src="/Google_Drive_icon.svg"
+                                            width="24"
+                                            height="24"
+                                            alt="Google Drive"
+                                        />
+                                    </button>
+                                    <a
+                                        href="/"
+                                        class="px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors shrink-0 flex items-center justify-center h-10"
+                                        >Cancelar</a
+                                    >
+                                    <button
+                                        type="submit"
+                                        id="nuevo-traslado-submit"
+                                        class="bg-primary text-primary-foreground hover:bg-primary/90 px-6 py-2 rounded-md text-sm font-semibold shrink-0 h-10 disabled:opacity-50 disabled:cursor-not-allowed"
+                                        disabled
+                                    >
+                                        Enviar solicitud
+                                    </button>
+                                </div>
+                                <p
+                                    id="help-text"
+                                    class="text-xs text-secondary text-right w-full mt-1"
+                                >
+                                    * Máximo 5MB cada uno. Formatos permitidos:
+                                    jpg, png, pdf, docx, xlsx
+                                </p>
                             </div>
                         </div>
-
-                        <div
-                            class="flex flex-wrap justify-between items-center gap-4"
-                        >
-                            <div class="flex gap-2">
-                                <button
-                                    type="button"
-                                    id="upload-files-button"
-                                    class="bg-muted-foreground text-white hover:bg-muted-foreground/80 px-4 py-2 rounded-md text-sm font-semibold h-10"
-                                >
-                                    Adjuntar
-                                </button>
-                                <button
-                                    type="button"
-                                    id="google-drive-button"
-                                    class="bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 px-2 rounded-md flex items-center justify-center h-10 w-10"
-                                    title="Adjuntar desde Google Drive"
-                                >
-                                    <img
-                                        src="/Google_Drive_icon.svg"
-                                        width="24"
-                                        height="24"
-                                        alt="Google Drive"
-                                    />
-                                </button>
-                            </div>
-                            <p
-                                class="text-xs text-muted-foreground text-right w-full md:w-auto"
-                            >
-                                * Máx 5MB. jpg, png, pdf, docx, xlsx
-                            </p>
-                        </div>
-                        <input
-                            type="file"
-                            id="file-input"
-                            multiple
-                            class="hidden"
-                        />
                     </div>
-
-                    <!-- Actions -->
-                    <div
-                        class="flex justify-end pt-4 border-t border-border mt-6"
-                    >
-                        <a
-                            href="/"
-                            class="mr-4 px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-                            >Cancelar</a
-                        >
-                        <button
-                            type="submit"
-                            id="nuevo-traslado-submit"
-                            class="bg-primary text-primary-foreground hover:bg-primary/90 px-6 py-2 rounded-md text-sm font-semibold shadow transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                            disabled
-                        >
-                            Enviar solicitud
-                        </button>
-                    </div>
+                    <input
+                        type="file"
+                        id="file-input"
+                        multiple
+                        class="hidden"
+                    />
                 </form>
             </div>
         </div>
@@ -834,34 +834,61 @@ const descuentoOptions = descuentos.map((d) => d.descripcion);
 
         // Init Google Scripts
         const initGoogleDrive = () => {
-            const script1 = document.createElement("script");
-            script1.src = "https://apis.google.com/js/api.js";
-            script1.async = true;
-            script1.defer = true;
-            script1.onload = () => {
-                window.gapi.load("client:picker", async () => {
-                    await window.gapi.client.load(
-                        "https://www.googleapis.com/discovery/v1/apis/drive/v3/rest",
-                    );
-                    pickerInited = true;
-                });
-            };
-            document.body.appendChild(script1);
+            if (
+                !document.querySelector(
+                    'script[src="https://apis.google.com/js/api.js"]',
+                )
+            ) {
+                const script1 = document.createElement("script");
+                script1.src = "https://apis.google.com/js/api.js";
+                script1.async = true;
+                script1.defer = true;
+                script1.onload = () => {
+                    window.gapi.load("client:picker", async () => {
+                        await window.gapi.client.load(
+                            "https://www.googleapis.com/discovery/v1/apis/drive/v3/rest",
+                        );
+                        pickerInited = true;
+                    });
+                };
+                document.body.appendChild(script1);
+            } else {
+                pickerInited = true;
+            }
 
-            const script2 = document.createElement("script");
-            script2.src = "https://accounts.google.com/gsi/client";
-            script2.async = true;
-            script2.defer = true;
-            script2.onload = () => {
-                if (!window.google) return;
-                tokenClient = window.google.accounts.oauth2.initTokenClient({
-                    client_id: GOOGLE_CLIENT_ID,
-                    scope: SCOPES,
-                    callback: "",
-                });
-                gisInited = true;
-            };
-            document.body.appendChild(script2);
+            if (
+                !document.querySelector(
+                    'script[src="https://accounts.google.com/gsi/client"]',
+                )
+            ) {
+                const script2 = document.createElement("script");
+                script2.src = "https://accounts.google.com/gsi/client";
+                script2.async = true;
+                script2.defer = true;
+                script2.onload = () => {
+                    if (!window.google) return;
+                    tokenClient = window.google.accounts.oauth2.initTokenClient(
+                        {
+                            client_id: GOOGLE_CLIENT_ID,
+                            scope: SCOPES,
+                            callback: "",
+                        },
+                    );
+                    gisInited = true;
+                };
+                document.body.appendChild(script2);
+            } else {
+                if (window.google?.accounts) {
+                    tokenClient = window.google.accounts.oauth2.initTokenClient(
+                        {
+                            client_id: GOOGLE_CLIENT_ID,
+                            scope: SCOPES,
+                            callback: "",
+                        },
+                    );
+                    gisInited = true;
+                }
+            }
         };
 
         const handleAuthClick = () => {

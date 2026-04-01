@@ -153,6 +153,16 @@ export const PATCH: APIRoute = async ({ request }) => {
 
     // Use a transaction to guarantee atomicity
     const updatedUser = await prisma.$transaction(async (tx) => {
+      // Reseteo de permisos: Si el rol cambia, purgar todas las excepciones del usuario (tanto secciones como categorías)
+      if (updateDataInput.rolId !== undefined && userBeforeUpdate.rolId !== parseInt(updateDataInput.rolId, 10)) {
+        await tx.permisoUsuarioSeccion.deleteMany({
+          where: { usuarioId: userIdToUpdate }
+        });
+        await tx.asignacionesCategorias.deleteMany({
+          where: { atiendeId: userIdToUpdate }
+        });
+      }
+
       const userAfterUpdate = await tx.usuario.update({
         where: { id: userIdToUpdate }, // Strictly update only the user with this ID
         data: updateData,

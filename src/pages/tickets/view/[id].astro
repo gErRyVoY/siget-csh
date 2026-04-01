@@ -298,8 +298,11 @@ console.log("CAREER DEBUG:", { ofertaDesc, carreraOriginal: traslado?.carrera?.d
             data-carrera-list={JSON.stringify(mappedCarreras)}
             data-descuento-list={JSON.stringify(mappedDescuentos)}
             data-bloque-options={JSON.stringify(bloqueOptions)}
+            data-api-key={import.meta.env.PUBLIC_GOOGLE_API_KEY}
+            data-client-id={import.meta.env.PUBLIC_GOOGLE_CLIENT_ID}
+            data-app-id={import.meta.env.PUBLIC_GOOGLE_APP_ID}
         >
-            <div class="bg-card border border-secondary rounded-lg p-4 mb-6">
+            <div class="bg-card border border-secondary rounded-lg p-4 mb-4">
                 {isTraslado && traslado ? (
                     /* --- VISTA TRASLADOS (EDITABLE) --- */
                     <div class="space-y-6">
@@ -763,6 +766,7 @@ console.log("CAREER DEBUG:", { ofertaDesc, carreraOriginal: traslado?.carrera?.d
                                 <div>
                                     <label for="atiendeId" class="block text-xs font-medium text-muted-foreground">Atiende</label>
                                     <select id="atiendeId" name="atiendeId" class="mt-1 block w-full rounded-md border-border bg-input p-2 text-sm">
+                                        <option value="">No asignado</option>
                                         {agents.map((agent) => (
                                             <option value={agent.id} selected={agent.id === ticket.atiendeId}>{`${agent.nombres} ${agent.apellidos}`}</option>
                                         ))}
@@ -770,8 +774,12 @@ console.log("CAREER DEBUG:", { ofertaDesc, carreraOriginal: traslado?.carrera?.d
                                 </div>
                                 <div class="pt-4">
                                     <div class="flex items-center gap-2">
-                                        <input type="checkbox" id="archivado" name="archivado" class="h-4 w-4 rounded" checked={ticket.archivado} />
-                                        <label for="archivado" class="text-sm font-medium">Archivado</label>
+                                        <label class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full toggle-wrapper group">
+                                            <input type="checkbox" id="archivado" name="archivado" class="sr-only peer" checked={ticket.archivado} />
+                                            <div class="toggle-bg h-5 w-9 absolute rounded-full transition-all peer-focus:outline-none opacity-50 peer-checked:opacity-100 disabled:opacity-30 peer-disabled:cursor-not-allowed bg-muted-foreground peer-checked:bg-primary" />
+                                            <div class="toggle-knob absolute top-[2px] left-[2px] bg-white border border-gray-300 rounded-full h-4 w-4 transition-transform peer-checked:translate-x-[16px] peer-checked:border-white z-10" />
+                                        </label>
+                                        <span class="text-sm font-medium">Archivado</span>
                                     </div>
                                 </div>
                             </div>
@@ -803,71 +811,68 @@ console.log("CAREER DEBUG:", { ofertaDesc, carreraOriginal: traslado?.carrera?.d
                 )}
             </div>
 
-            <div class="flex justify-between items-start gap-4 mb-4 w-full">
-                <div class="grow space-y-2">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4 w-full items-stretch">
+                <div class="space-y-2 h-full">
                     <div
                         id="drop-zone"
-                        class="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 text-center hover:bg-muted/50 transition-colors cursor-pointer relative"
+                        class="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 flex flex-col items-center justify-center hover:bg-muted/50 transition-colors cursor-pointer relative h-full min-h-[120px]"
                     >
-                        <p class="text-sm text-muted-foreground mb-4">
-                            Arrastre sus archivos aquí o haga clic para
-                            seleccionar
+                        <p class="text-sm text-muted-foreground mb-4 text-center">
+                            Arrastre sus archivos aquí
                         </p>
-                        <div id="attachment-area" class="space-y-2 text-left">
+                        <div id="attachment-area" class="space-y-2 text-left w-full mt-auto">
                         </div>
                     </div>
                 </div>
-            </div>
 
-            <div
-                id="action-buttons-container"
-                class="flex flex-wrap justify-end items-center gap-4"
-            >
-                <div class="flex gap-2 w-[176px]">
-                    <button
-                        type="button"
-                        id="upload-files-button"
-                        class="bg-muted-foreground text-white hover:bg-muted-foreground/80 px-4 py-2 rounded-md text-sm font-semibold grow h-10"
+                <div class="flex flex-col justify-end items-end gap-2 rounded-lg border border-transparent">
+                    <div
+                        id="action-buttons-container"
+                        class="flex flex-wrap justify-end items-center gap-2 w-full"
                     >
-                        Adjuntar
-                    </button>
-                    <button
-                        type="button"
-                        id="google-drive-button"
-                        class="bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 px-2 rounded-md flex items-center justify-center h-10 w-10"
-                        title="Adjuntar desde Google Drive"
+                        <button
+                            type="button"
+                            id="upload-files-button"
+                            class="bg-muted-foreground text-white hover:bg-muted-foreground/80 px-3 md:px-4 py-2 rounded-md text-sm font-semibold shrink-0 h-10"
+                        >
+                            Seleccionar
+                        </button>
+                        <button
+                            type="button"
+                            id="google-drive-button"
+                            class="bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 rounded-md flex items-center justify-center h-10 w-10 shrink-0"
+                            title="Adjuntar desde Google Drive"
+                        >
+                            <img
+                                src="/Google_Drive_icon.svg"
+                                width="24"
+                                height="24"
+                                alt="Google Drive"
+                            />
+                        </button>
+                        <button
+                            type="button"
+                            id="delete-files-button"
+                            class="hidden bg-secondary text-white hover:bg-secondary/80 px-4 py-2 rounded-md text-sm font-semibold shrink-0 h-10"
+                        >
+                            Borrar archivos
+                        </button>
+                        <button
+                            type="submit"
+                            id="submit-button"
+                            class="bg-primary text-white hover:bg-primary/80 px-6 py-2 rounded-md text-sm font-semibold shrink-0 h-10"
+                        >
+                            Guardar cambios
+                        </button>
+                    </div>
+                    <p
+                        id="help-text"
+                        class="text-xs text-secondary text-right w-full mt-1"
                     >
-                        <img
-                            src="/Google_Drive_icon.svg"
-                            width="24"
-                            height="24"
-                            alt="Google Drive"
-                        />
-                    </button>
+                        * Máximo 5MB cada uno. Formatos permitidos: jpg, png, pdf, docx, xlsx
+                    </p>
                 </div>
-
-                <button
-                    type="submit"
-                    id="submit-button"
-                    class="bg-primary text-white hover:bg-primary/80 px-8 py-2 rounded-md text-sm font-semibold w-[176px] h-10"
-                >
-                    Guardar cambios
-                </button>
-                <button
-                    type="button"
-                    id="delete-files-button"
-                    class="hidden bg-secondary text-white hover:bg-secondary/80 px-8 py-2 rounded-md text-sm font-semibold w-[176px] h-10"
-                >
-                    Borrar archivos
-                </button>
             </div>
-            <p
-                id="help-text"
-                class="text-sm text-secondary w-full text-right mb-8 mt-2"
-            >
-                * Máximo 5MB cada uno. Formatos permitidos: jpg, png, pdf, docx,
-                xlsx
-            </p>
         </form>
         <input type="file" id="file-input" multiple class="hidden" />
 

@@ -44,7 +44,12 @@ export const GET: APIRoute = async ({ request }) => {
                 include: {
                     solicitante: { select: { nombres: true, apellidos: true } },
                     estatus: { select: { nombre: true, id: true } },
-                    categoria: { select: { nombre: true } }
+                    categoria: { select: { nombre: true } },
+                    historial_solicitudes: {
+                        orderBy: { fecha_cambio: 'desc' },
+                        take: 1,
+                        select: { comentario: true }
+                    }
                 }
             });
 

@@ -3,6 +3,10 @@ import MainLayout from "@/layouts/MainLayout.astro";
 import { prisma } from "@/lib/db";
 import { formatDate } from "date-fns";
 import { es } from "date-fns/locale";
+import { ensureActiveCycle } from "@/services/cycleService";
+
+// Check dates and assign active cycle synchronously
+await ensureActiveCycle();
 
 // Fetch cycles
 const ciclos = await prisma.ciclo.findMany({
@@ -10,12 +14,8 @@ const ciclos = await prisma.ciclo.findMany({
 });
 ---
 
-<MainLayout title="Administración de ciclos">
+<MainLayout title="Administración de ciclos escolares">
     <div class="space-y-6">
-        <div class="flex justify-between items-center">
-            <h1 class="text-3xl font-bold tracking-tight">Ciclos escolares</h1>
-        </div>
-
         <div class="rounded-md border bg-background">
             <table class="w-full text-sm">
                 <thead>
@@ -80,15 +80,17 @@ const ciclos = await prisma.ciclo.findMany({
                                     </span>
                                 </td>
                                 <td class="p-4 align-middle">
-                                    <button
-                                        class="toggle-btn inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-3"
-                                        data-id={ciclo.id}
-                                        data-active={ciclo.activo.toString()}
-                                    >
-                                        {ciclo.activo
-                                            ? "Desactivar"
-                                            : "Activar"}
-                                    </button>
+                                    <label class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full toggle-wrapper group">
+                                        <input
+                                            type="checkbox"
+                                            class="sr-only peer toggle-btn"
+                                            data-id={ciclo.id}
+                                            data-active={ciclo.activo.toString()}
+                                            checked={ciclo.activo}
+                                        />
+                                        <div class="toggle-bg h-5 w-9 absolute rounded-full transition-all peer-focus:outline-none opacity-50 peer-checked:opacity-100 disabled:opacity-30 peer-disabled:cursor-not-allowed bg-muted-foreground peer-checked:bg-primary" />
+                                        <div class="toggle-knob absolute top-[2px] left-[2px] bg-white border border-gray-300 rounded-full h-4 w-4 transition-transform peer-checked:translate-x-[16px] peer-checked:border-white z-10" />
+                                    </label>
                                 </td>
                             </tr>
                         ))
@@ -127,13 +129,13 @@ const ciclos = await prisma.ciclo.findMany({
     import { toast } from "@/lib/toast";
 
     document.querySelectorAll(".toggle-btn").forEach((btn) => {
-        btn.addEventListener("click", async (e) => {
-            const button = e.currentTarget as HTMLButtonElement;
-            const id = button.dataset.id;
-            const currentActive = button.dataset.active === "true";
+        btn.addEventListener("change", async (e) => {
+            const input = e.target as HTMLInputElement;
+            const id = input.dataset.id;
+            const currentActive = input.dataset.active === "true";
 
             // Optimistic UI update could be risky here if logic fails, let's wait for response.
-            button.disabled = true;
+            input.disabled = true;
 
             try {
                 const res = await fetch("/api/admin/ciclos/toggle", {
@@ -153,7 +155,8 @@ const ciclos = await prisma.ciclo.findMany({
             } catch (error) {
                 console.error(error);
                 toast.error("Error al actualizar el estatus");
-                button.disabled = false;
+                input.checked = currentActive; // revert visually
+                input.disabled = false;
             }
         });
     });

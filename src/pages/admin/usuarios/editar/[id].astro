@@ -7,18 +7,30 @@ import { getSession } from "auth-astro/server";
 const { id } = Astro.params;
 const session = await getSession(Astro.request);
 
-const [user, empresas, roles, secciones] = await Promise.all([
+const [user, empresas, roles, secciones, categoriasMaster] = await Promise.all([
   prisma.usuario.findUnique({
     where: { id: parseInt(id as string, 10) },
-    include: { 
-      empresa: true, 
-      rol: { include: { permisos_seccion: true } },
-      permisos_seccion: true 
+    include: {
+      empresa: true,
+      rol: { include: { permisos_seccion: true, permisos_categoria: true } },
+      permisos_seccion: true,
+      asignaciones_categorias: true,
     },
   }),
   prisma.empresa.findMany({ orderBy: { nombre: "asc" } }),
   prisma.rol.findMany({ orderBy: { rol: "asc" } }),
-  prisma.seccion.findMany({ orderBy: [{ grupo: "asc" }, { nombre: "asc" }] })
+  prisma.seccion.findMany({ orderBy: [{ grupo: "asc" }, { nombre: "asc" }] }),
+  prisma.categoria.findMany({
+    where: { activo: true },
+    include: {
+      subcategoria_categorias: {
+        where: { activo: true, subcategoria: { activo: true } },
+        include: { subcategoria: true },
+        orderBy: { subcategoria: { nombre: 'asc'} }
+      }
+    },
+    orderBy: { nombre: 'asc' }
+  })
 ]);
 
 if (!user) {
@@ -97,74 +109,93 @@ empresas.forEach((empresa) => {
 });
 const groupOrder = ["Oficina", "Social", "Campus"];
 
-// Filter Roles for Marketing Team
+// Filter Roles for Marketing Team and strip Inactive roles
 const displayedRoles = isRoleSelectFiltered
-  ? roles.filter((r) => MARKETING_TEAM_ROLES.includes(r.rol))
-  : roles;
+  ? roles.filter((r) => MARKETING_TEAM_ROLES.includes(r.rol) && (r.activo || r.id === user.rolId))
+  : roles.filter((r) => r.activo || r.id === user.rolId);
 
 // Safely stringify the schedule for the client-side script
 const horarioString = JSON.stringify(user.horario_disponibilidad);
 
 // Permisos (Secciones Híbridas)
-const userRoleSections = user.rol?.permisos_seccion.filter(ps => ps.activo).map(ps => ps.seccionId) || [];
-const explicitPermissions = user.permisos_seccion.reduce((acc, ps) => {
-  acc[ps.seccionId] = ps.activo;
-  return acc;
-}, {} as Record<number, boolean>);
+const userRoleSections =
+  user.rol?.permisos_seccion
+    .filter((ps) => ps.activo)
+    .map((ps) => ps.seccionId) || [];
+const explicitPermissions = user.permisos_seccion.reduce(
+  (acc, ps) => {
+    acc[ps.seccionId] = ps.activo;
+    return acc;
+  },
+  {} as Record<number, boolean>,
+);
+
+// Permisos Híbridos (Categorías) por Asignación Explícita
+const assignedUserCategories: Record<string, boolean> = {};
+user.asignaciones_categorias?.forEach((ac) => {
+  const catKey = ac.subcategoriaId ? `${ac.categoriaId}-${ac.subcategoriaId}` : `${ac.categoriaId}-null`;
+  assignedUserCategories[catKey] = ac.activo;
+});
+
+// Permisos (Categorías) Heredados por Rol
+const inheritedCategories: Record<string, boolean> = {};
+user.rol?.permisos_categoria?.forEach((pc) => {
+  const catKey = pc.subcategoriaId ? `${pc.categoriaId}-${pc.subcategoriaId}` : `${pc.categoriaId}-null`;
+  if (pc.activo) {
+      inheritedCategories[catKey] = true;
+  }
+});
 
 // Agrupar secciones para UI
-const orderGrupos = ["Abrir ticket", "Tickets soporte", "Tickets marketing", "Otros", "Administrador"];
-const groupedSecciones: { [key: string]: { [key: string]: typeof secciones } } = {};
+const orderGrupos = [
+  "Abrir ticket",
+  "Tickets soporte",
+  "Tickets marketing",
+  "Otros",
+  "Administrador",
+];
+const groupedSecciones: { [key: string]: { [key: string]: typeof secciones } } =
+  {};
 
-secciones.forEach(sec => {
-  const group = sec.grupo || 'Otros';
-  const subgroup = sec.subgrupo || 'General';
+secciones.forEach((sec) => {
+  const group = sec.grupo || "Otros";
+  const subgroup = sec.subgrupo || "General";
   if (!groupedSecciones[group]) groupedSecciones[group] = {};
-  if (!groupedSecciones[group][subgroup]) groupedSecciones[group][subgroup] = [];
+  if (!groupedSecciones[group][subgroup])
+    groupedSecciones[group][subgroup] = [];
   groupedSecciones[group][subgroup].push(sec);
 });
 ---
 
-<MainLayout title={`Editar Usuario: ${concatenatedName}`}>
+<MainLayout title={`Editar usuario: ${concatenatedName}`}>
   <div class="max-w-4xl mx-auto">
-    <h1 class="text-2xl font-bold mb-6">Editar usuario</h1>
     <form
       id="edit-user-form"
       class="bg-card border rounded-lg p-4 space-y-6"
       data-user-id={user.id}
       data-horario={horarioString}
+      data-original-rol-id={user.rolId}
     >
       <fieldset disabled={!canEdit} class="space-y-6">
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
-            <label class="block text-sm font-medium text-muted-foreground"
-              >Nombre completo</label
-            >
-            <p class="mt-1 text-lg">{concatenatedName}</p>
+            <label class="block text-sm font-medium mb-1">Nombre completo</label>
+            <p class="text-lg">{concatenatedName}</p>
           </div>
           <div>
-            <label class="block text-sm font-medium text-muted-foreground"
-              >Email</label
-            >
-            <p class="mt-1 text-lg">{user.mail}</p>
+            <label class="block text-sm font-medium mb-1">Email</label>
+            <p class="text-lg">{user.mail}</p>
           </div>
           <div>
-            <label class="block text-sm font-medium text-muted-foreground"
-              >Último inicio de sesión</label
-            >
-            <p class="mt-1 text-lg">{formattedLastLogin}</p>
+            <label class="block text-sm font-medium mb-1">Último inicio de sesión</label>
+            <p class="text-lg">{formattedLastLogin}</p>
           </div>
-        </div>
-        <div class="border-t border-border"></div>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
-            <label for="empresaId" class="block text-sm font-medium"
-              >Empresa</label
-            >
+            <label for="empresaId" class="block text-sm font-medium mb-1">Empresa</label>
             <select
               id="empresaId"
               name="empresaId"
-              class="mt-1 block w-full rounded-md border-border bg-input p-2 accent-secondary focus:outline-none focus:ring-1 focus:ring-secondary disabled:opacity-50 disabled:cursor-not-allowed"
+              class="block w-full rounded-md border-border bg-input p-2 accent-secondary focus:outline-none focus:ring-1 focus:ring-secondary disabled:opacity-50 disabled:cursor-not-allowed"
               disabled={!canEdit || isEmpresaReadOnly}
             >
               {
@@ -183,154 +214,290 @@ secciones.forEach(sec => {
               }
             </select>
           </div>
+        </div>
+
+        <div class="border-t border-border mt-4 mb-4"></div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
           <div>
-            <label for="rolId" class="block text-sm font-medium">Rol</label>
+            <label for="rolId" class="block text-sm font-medium mb-1">Rol</label>
             <select
               id="rolId"
               name="rolId"
-              class="mt-1 block w-full rounded-md border-border bg-input p-2 accent-secondary focus:outline-none focus:ring-1 focus:ring-secondary disabled:opacity-50 disabled:cursor-not-allowed"
+              class="block w-full rounded-md border-border bg-input p-2 accent-secondary focus:outline-none focus:ring-1 focus:ring-secondary disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {
                 displayedRoles.map((rol) => (
                   <option value={rol.id} selected={rol.id === user.rolId}>
-                    {rol.rol}
+                    {rol.rol} {!rol.activo ? "(inactivo)" : ""}
                   </option>
                 ))
               }
             </select>
           </div>
-        </div>
 
-        <!-- NEW CHECKBOX LAYOUT -->
-        <div
-          class="grid grid-cols-2 md:flex md:flex-row md:items-center md:gap-6 pt-2"
-        >
-          <!-- Left Group (Mobile Col 1) -->
-          <div class="flex flex-col gap-4 md:flex-row md:gap-6">
-            <div class="flex items-center">
-              <input
-                type="checkbox"
-                id="activo"
-                name="activo"
-                class="h-4 w-4 rounded border-border text-primary focus:ring-primary disabled:opacity-50"
-                checked={user.activo}
-              />
-              <label for="activo" class="ml-3 block text-sm font-medium"
-                >Activo</label
-              >
+          <!-- NEW CHECKBOX LAYOUT (TOGGLES 2x2 GRID) -->
+          <div class="grid grid-cols-2 gap-x-6 gap-y-4">
+            <!-- Toggle: Activo -->
+            <div class="flex items-center justify-between gap-2 border border-border/60 bg-muted/10 px-3 py-2 rounded-md">
+              <label for="activo" class="text-sm font-medium select-none truncate">Activo</label>
+              <label class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full toggle-wrapper group">
+                <input
+                  type="checkbox"
+                  id="activo"
+                  name="activo"
+                  class="sr-only peer"
+                  checked={user.activo}
+                  disabled={!canEdit}
+                />
+                <div class="toggle-bg h-5 w-9 absolute rounded-full transition-all peer-focus:outline-none opacity-50 peer-checked:opacity-100 disabled:opacity-30 peer-disabled:cursor-not-allowed bg-muted-foreground peer-checked:bg-primary" />
+                <div class="toggle-knob absolute top-[2px] left-[2px] bg-white border border-gray-300 rounded-full h-4 w-4 transition-transform peer-checked:translate-x-[16px] peer-checked:border-white z-10" />
+              </label>
             </div>
-            <div class="flex items-center">
-              <input
-                type="checkbox"
-                id="vacaciones"
-                name="vacaciones"
-                class="h-4 w-4 rounded border-border text-primary focus:ring-primary disabled:opacity-50"
-                checked={user.vacaciones}
-              />
-              <label for="vacaciones" class="ml-3 block text-sm font-medium"
-                >De vacaciones</label
-              >
+            <!-- Toggle: De vacaciones -->
+            <div class="flex items-center justify-between gap-2 border border-border/60 bg-muted/10 px-3 py-2 rounded-md">
+              <label for="vacaciones" class="text-sm font-medium select-none truncate">De vacaciones</label>
+              <label class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full toggle-wrapper group">
+                <input
+                  type="checkbox"
+                  id="vacaciones"
+                  name="vacaciones"
+                  class="sr-only peer"
+                  checked={user.vacaciones}
+                  disabled={!canEdit}
+                />
+                <div class="toggle-bg h-5 w-9 absolute rounded-full transition-all peer-focus:outline-none opacity-50 peer-checked:opacity-100 disabled:opacity-30 peer-disabled:cursor-not-allowed bg-muted-foreground peer-checked:bg-primary" />
+                <div class="toggle-knob absolute top-[2px] left-[2px] bg-white border border-gray-300 rounded-full h-4 w-4 transition-transform peer-checked:translate-x-[16px] peer-checked:border-white z-10" />
+              </label>
             </div>
-          </div>
 
-          <!-- Right Group (Mobile Col 2) -->
-          {
-            !areAuditorChecksHidden && (
-              <div class="flex flex-col gap-4 md:flex-row md:gap-6">
-                <div class="flex items-center">
-                  <input
-                    type="checkbox"
-                    id="auditor_docs"
-                    name="auditor_docs"
-                    class="h-4 w-4 rounded border-border text-primary focus:ring-primary disabled:opacity-50"
-                    checked={user.auditor_docs}
-                  />
-                  <label
-                    for="auditor_docs"
-                    class="ml-3 block text-sm font-medium"
-                  >
-                    Auditor de Documentos
+            {!areAuditorChecksHidden && (
+              <>
+                <!-- Toggle: Auditor Docs -->
+                <div class="flex items-center justify-between gap-2 border border-border/60 bg-muted/10 px-3 py-2 rounded-md">
+                  <label for="auditor_docs" class="text-sm font-medium select-none truncate">Auditor Docs</label>
+                  <label class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full toggle-wrapper group">
+                    <input
+                      type="checkbox"
+                      id="auditor_docs"
+                      name="auditor_docs"
+                      class="sr-only peer"
+                      checked={user.auditor_docs}
+                      disabled={!canEdit}
+                    />
+                    <div class="toggle-bg h-5 w-9 absolute rounded-full transition-all peer-focus:outline-none opacity-50 peer-checked:opacity-100 disabled:opacity-30 peer-disabled:cursor-not-allowed bg-muted-foreground peer-checked:bg-primary" />
+                    <div class="toggle-knob absolute top-[2px] left-[2px] bg-white border border-gray-300 rounded-full h-4 w-4 transition-transform peer-checked:translate-x-[16px] peer-checked:border-white z-10" />
                   </label>
                 </div>
-                <div class="flex items-center">
-                  <input
-                    type="checkbox"
-                    id="auditor_req"
-                    name="auditor_req"
-                    class="h-4 w-4 rounded border-border text-primary focus:ring-primary disabled:opacity-50"
-                    checked={user.auditor_req}
-                  />
-                  <label
-                    for="auditor_req"
-                    class="ml-3 block text-sm font-medium"
-                  >
-                    Auditor de Requisitos
+                <!-- Toggle: Auditor Reqs -->
+                <div class="flex items-center justify-between gap-2 border border-border/60 bg-muted/10 px-3 py-2 rounded-md">
+                  <label for="auditor_req" class="text-sm font-medium select-none truncate">Auditor Reqs</label>
+                  <label class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full toggle-wrapper group">
+                    <input
+                      type="checkbox"
+                      id="auditor_req"
+                      name="auditor_req"
+                      class="sr-only peer"
+                      checked={user.auditor_req}
+                      disabled={!canEdit}
+                    />
+                    <div class="toggle-bg h-5 w-9 absolute rounded-full transition-all peer-focus:outline-none opacity-50 peer-checked:opacity-100 disabled:opacity-30 peer-disabled:cursor-not-allowed bg-muted-foreground peer-checked:bg-primary" />
+                    <div class="toggle-knob absolute top-[2px] left-[2px] bg-white border border-gray-300 rounded-full h-4 w-4 transition-transform peer-checked:translate-x-[16px] peer-checked:border-white z-10" />
                   </label>
                 </div>
-              </div>
-            )
-          }
-        </div>
-        <!-- END NEW CHECKBOX LAYOUT -->
-
-        <div class="md:col-span-2">
-          <label class="block text-sm font-medium"
-            >Horario de Disponibilidad</label
-          >
-          <div
-            class="mt-2 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-4"
-            id="horarios-container"
-          >
-            <!-- Horarios Semanales se insertan aquí -->
+              </>
+            )}
           </div>
         </div>
-        
-        <!-- NEW SECCIONES LAYOUT -->
-        <div class="border-t border-border mt-8 pt-6">
-          <h2 class="text-xl font-bold mb-6">Secciones que puede ver el usuario:</h2>
-          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {orderGrupos.map(grupo => {
-              if (!groupedSecciones[grupo]) return null;
-              
-              const subgroups = groupedSecciones[grupo];
-              return (
-                <div class="bg-card border rounded-lg p-4 shadow-sm">
-                  <h3 class="text-xs font-semibold text-muted-foreground mb-4 uppercase tracking-wider">{grupo}</h3>
-                  <div class="space-y-6">
-                    {Object.entries(subgroups).map(([subgroupName, secs]) => (
-                      <div class="space-y-3">
-                        {subgroupName !== 'General' && (
-                          <h4 class="text-[11px] font-bold text-muted-foreground border-b pb-1 uppercase">{subgroupName}</h4>
-                        )}
-                        <div class="space-y-3 pl-1">
-                          {secs.map(seccion => {
-                            const isInherited = userRoleSections.includes(seccion.id);
-                            const explicitState = explicitPermissions[seccion.id];
-                            const isChecked = explicitState !== undefined ? explicitState : isInherited;
 
-                            return (
-                              <div class="flex items-center justify-between gap-4">
-                                <label for={`sec-${seccion.id}`} class="text-sm cursor-pointer select-none truncate pr-2 flex-1" title={seccion.nombre}>
-                                  {seccion.nombre}
-                                </label>
-                                <label class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full toggle-wrapper group" data-inherited={isInherited ? 'true' : 'false'} title={isChecked ? "Revocar acceso" : "Otorgar acceso"}>
-                                  <input type="checkbox" id={`sec-${seccion.id}`} class="sr-only peer section-toggle" data-seccion-id={seccion.id} data-usuario-id={user.id} checked={isChecked} disabled={!canEdit} />
-                                  <div class="toggle-bg h-5 w-9 absolute rounded-full transition-all peer-focus:outline-none opacity-50 peer-checked:opacity-100 disabled:opacity-30 peer-disabled:cursor-not-allowed border-box bg-muted-foreground border border-transparent group-data-[inherited=false]:peer-checked:bg-primary group-data-[inherited=true]:peer-checked:bg-secondary group-data-[inherited=true]:border-secondary group-data-[inherited=true]:peer-checked:border-transparent"></div>
-                                  <div class="toggle-knob absolute top-[2px] left-[2px] bg-white border border-gray-300 rounded-full h-4 w-4 transition-transform peer-checked:translate-x-[16px] peer-checked:border-white z-10"></div>
-                                </label>
-                              </div>
-                            );
-                          })}
+        <!-- HORARIOS COLLAPSIBLE -->
+        <details class="group mt-6 main-accordion overflow-hidden rounded-md border border-border bg-card">
+          <summary class="flex items-center justify-between cursor-pointer list-none select-none outline-none h-[50px] px-4 hover:bg-secondary hover:text-white transition-colors group-open:bg-secondary group-open:text-white ui-summary">
+            <h2 class="text-sm font-medium">Horario de disponibilidad</h2>
+            <div class="transform transition-transform duration-200 group-open:rotate-180">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-current"><path d="m6 9 6 6 6-6"/></svg>
+            </div>
+          </summary>
+          <div class="md:col-span-2 p-4 border-t border-border bg-card">
+            <div
+              class="mt-2 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-4"
+              id="horarios-container"
+            >
+              <!-- Horarios Semanales se insertan aquí -->
+            </div>
+          </div>
+        </details>
+        <!-- END HORARIOS COLLAPSIBLE -->
+
+        <!-- NEW SECCIONES LAYOUT COLLAPSIBLE -->
+        <details class="group mt-4 main-accordion overflow-hidden rounded-md border border-border bg-card">
+          <summary class="flex items-center justify-between cursor-pointer list-none select-none outline-none h-[50px] px-4 hover:bg-secondary hover:text-white transition-colors group-open:bg-secondary group-open:text-white ui-summary">
+            <h2 class="text-sm font-medium">
+              Secciones que puede ver el usuario:
+            </h2>
+            <div class="transform transition-transform duration-200 group-open:rotate-180">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-current"><path d="m6 9 6 6 6-6"/></svg>
+            </div>
+          </summary>
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-4 border-t border-border bg-card">
+            {
+              orderGrupos.map((grupo) => {
+                if (!groupedSecciones[grupo]) return null;
+
+                const subgroups = groupedSecciones[grupo];
+                return (
+                  <div class="bg-card border rounded-lg p-4 shadow-sm">
+                    <h3 class="text-xs font-semibold text-muted-foreground mb-4 uppercase tracking-wider">
+                      {grupo}
+                    </h3>
+                    <div class="space-y-6">
+                      {Object.entries(subgroups).map(([subgroupName, secs]) => (
+                        <div class="space-y-3">
+                          {subgroupName !== "General" && (
+                            <h4 class="text-[11px] font-bold text-muted-foreground border-b pb-1 uppercase">
+                              {subgroupName}
+                            </h4>
+                          )}
+                          <div class="space-y-3 pl-1">
+                            {secs.map((seccion) => {
+                              const isInherited = userRoleSections.includes(
+                                seccion.id,
+                              );
+                              const explicitState =
+                                explicitPermissions[seccion.id];
+                              const isChecked =
+                                explicitState !== undefined
+                                  ? explicitState
+                                  : isInherited;
+
+                              return (
+                                <div class="flex items-center justify-between gap-4">
+                                  <label
+                                    for={`sec-${seccion.id}`}
+                                    class="text-sm cursor-pointer select-none truncate pr-2 flex-1"
+                                    title={seccion.nombre}
+                                  >
+                                    {seccion.nombre}
+                                  </label>
+                                  <label
+                                    class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full toggle-wrapper group"
+                                    data-inherited={
+                                      isInherited ? "true" : "false"
+                                    }
+                                    title={
+                                      isChecked
+                                        ? "Revocar acceso"
+                                        : "Otorgar acceso"
+                                    }
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      id={`sec-${seccion.id}`}
+                                      class="sr-only peer section-toggle"
+                                      data-seccion-id={seccion.id}
+                                      data-usuario-id={user.id}
+                                      checked={isChecked}
+                                      disabled={!canEdit}
+                                    />
+                                    <div class="toggle-bg h-5 w-9 absolute rounded-full transition-all peer-focus:outline-none opacity-50 peer-checked:opacity-100 disabled:opacity-30 peer-disabled:cursor-not-allowed border-box bg-muted-foreground border border-transparent group-data-[inherited=false]:peer-checked:bg-primary group-data-[inherited=true]:peer-checked:bg-secondary group-data-[inherited=true]:border-secondary group-data-[inherited=true]:peer-checked:border-transparent" />
+                                    <div class="toggle-knob absolute top-[2px] left-[2px] bg-white border border-gray-300 rounded-full h-4 w-4 transition-transform peer-checked:translate-x-[16px] peer-checked:border-white z-10" />
+                                  </label>
+                                </div>
+                              );
+                            })}
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })
+            }
           </div>
-        </div>
+        </details>
         <!-- END NEW SECCIONES LAYOUT -->
+
+        <!-- CATEGORIAS COLLAPSIBLE -->
+        <details class="group mt-4 mb-4 main-accordion rounded-md border border-border bg-card">
+          <summary class="flex items-center justify-between cursor-pointer list-none select-none outline-none h-[50px] px-4 hover:bg-secondary hover:text-white transition-colors group-open:bg-secondary group-open:text-white ui-summary group-open:rounded-t-md group-open:rounded-b-none rounded-md">
+            <h2 class="text-sm font-medium">
+              Categorías y subcategorías que puede atender:
+            </h2>
+            <div class="transform transition-transform duration-200 group-open:rotate-180">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-current"><path d="m6 9 6 6 6-6"/></svg>
+            </div>
+          </summary>
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 p-2 border-t border-border bg-card rounded-b-md">
+            {
+              categoriasMaster.map(cat => {
+                const catKey = `${cat.id}-null`;
+                const isInheritedCat = inheritedCategories[catKey] === true;
+                const explicitStateCat = assignedUserCategories[catKey];
+                const isCheckedCat = explicitStateCat !== undefined ? explicitStateCat : isInheritedCat;
+
+                let activeSubCount = 0;
+                let totalSubs = cat.subcategoria_categorias.length;
+                cat.subcategoria_categorias.forEach(subRel => {
+                  const subKey = `${cat.id}-${subRel.subcategoria.id}`;
+                  const isInheritedSub = inheritedCategories[subKey] === true || isInheritedCat || explicitStateCat === true;
+                  const explicitStateSub = assignedUserCategories[subKey];
+                  const isCheckedSub = explicitStateSub !== undefined ? explicitStateSub : isInheritedSub;
+                  if (isCheckedSub) activeSubCount++;
+                });
+
+                const isFullCategory = totalSubs === 0 ? isCheckedCat : (activeSubCount === totalSubs && isCheckedCat);
+                const isPartialCategory = activeSubCount > 0 && !isFullCategory;
+                const showCheckedUiCat = isFullCategory || isPartialCategory;
+
+                return (
+                  <details class="group/cat bg-card border rounded-lg shadow-sm">
+                    <summary class="flex items-center justify-between gap-4 p-3 cursor-pointer list-none select-none outline-none hover:bg-muted/50 transition-colors rounded-lg group-open/cat:rounded-b-none border-b border-transparent group-open/cat:border-border group-open/cat:bg-muted/10">
+                      <div class="flex items-center gap-2 flex-1 overflow-hidden">
+                        <div class="transform transition-transform duration-200 group-open/cat:rotate-180 shrink-0 text-muted-foreground mr-1">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-current"><path d="m6 9 6 6 6-6"/></svg>
+                        </div>
+                        <span class="text-[13px] font-bold uppercase truncate text-primary">{cat.nombre}</span>
+                      </div>
+                      <div class="shrink-0" onclick="event.stopPropagation();">
+                        <label class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full toggle-wrapper group/catbtn" data-full={isFullCategory ? "true" : "false"} title={showCheckedUiCat ? "Revocar categoría entera" : "Permitir categoría entera"}>
+                          <input type="checkbox" id={`cat-${cat.id}`} class="sr-only peer category-toggle main-category-toggle" data-categoria-id={cat.id} data-usuario-id={user.id} checked={showCheckedUiCat} disabled={!canEdit}/>
+                          <div class="toggle-bg h-5 w-9 absolute rounded-full transition-all peer-focus:outline-none opacity-50 peer-checked:opacity-100 disabled:opacity-30 peer-disabled:cursor-not-allowed bg-muted-foreground border border-transparent group-data-[full=false]/catbtn:peer-checked:bg-primary group-data-[full=true]/catbtn:peer-checked:bg-secondary group-data-[full=true]/catbtn:border-secondary group-data-[full=true]/catbtn:peer-checked:border-transparent" />
+                          <div class="toggle-knob absolute top-[2px] left-[2px] bg-white border border-gray-300 rounded-full h-4 w-4 transition-transform z-10" class:list={[{'translate-x-[16px] border-white': showCheckedUiCat}]} />
+                        </label>
+                      </div>
+                    </summary>
+                    {cat.subcategoria_categorias.length > 0 ? (
+                      <div class="p-3 space-y-3 pl-8 bg-card rounded-b-lg">
+                        {cat.subcategoria_categorias.map(subRel => {
+                          const subcat = subRel.subcategoria;
+                          const subKey = `${cat.id}-${subcat.id}`;
+                          const isInheritedSub = inheritedCategories[subKey] === true || isInheritedCat || explicitStateCat === true;
+                          const explicitStateSub = assignedUserCategories[subKey];
+                          const isCheckedSub = explicitStateSub !== undefined ? explicitStateSub : isInheritedSub;
+                          return (
+                            <div class="flex items-center justify-between gap-4">
+                              <label for={`sub-${cat.id}-${subcat.id}`} class="text-[13px] cursor-pointer select-none truncate pr-2 flex-1 text-muted-foreground" title={subcat.nombre}>{subcat.nombre}</label>
+                              <label class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full toggle-wrapper group/sub" data-inherited={isInheritedSub ? "true" : "false"} title={isCheckedSub ? "Revocar acceso" : "Otorgar acceso"}>
+                                <input type="checkbox" id={`sub-${cat.id}-${subcat.id}`} class="sr-only peer category-toggle" data-categoria-id={cat.id} data-subcategoria-id={subcat.id} data-usuario-id={user.id} checked={isCheckedSub} disabled={!canEdit}/>
+                                <div class="toggle-bg h-5 w-9 absolute rounded-full transition-all peer-focus:outline-none opacity-50 peer-checked:opacity-100 disabled:opacity-30 peer-disabled:cursor-not-allowed border-box bg-muted-foreground border border-transparent group-data-[inherited=false]/sub:peer-checked:bg-primary group-data-[inherited=true]/sub:peer-checked:bg-secondary group-data-[inherited=true]/sub:border-secondary group-data-[inherited=true]/sub:peer-checked:border-transparent" />
+                                <div class="toggle-knob absolute top-[2px] left-[2px] bg-white border border-gray-300 rounded-full h-4 w-4 transition-transform peer-checked:translate-x-[16px] peer-checked:border-white z-10" />
+                              </label>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    ) : (
+                      <div class="p-3 pl-8 bg-card rounded-b-lg text-[13px] text-muted-foreground italic">
+                        Sin subcategorías
+                      </div>
+                    )}
+                  </details>
+                );
+              })
+            }
+          </div>
+        </details>
+        <!-- END CATEGORIAS COLLAPSIBLE -->
 
         {
           canEdit && (
@@ -376,9 +543,9 @@ secciones.forEach(sec => {
     initializeUserEditForm();
 
     // Toggle logic for explicit section permissions
-    const toggles = document.querySelectorAll('.section-toggle');
-    toggles.forEach(toggle => {
-      toggle.addEventListener('change', async (e) => {
+    const toggles = document.querySelectorAll(".section-toggle");
+    toggles.forEach((toggle) => {
+      toggle.addEventListener("change", async (e) => {
         const input = e.target as HTMLInputElement;
         const seccionId = input.dataset.seccionId;
         const usuarioId = input.dataset.usuarioId;
@@ -386,23 +553,129 @@ secciones.forEach(sec => {
 
         try {
           // Optimistic UI change is natural to the checkbox, so we just run the query
-          const res = await fetch('/api/admin/usuarios/secciones', {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ usuarioId, seccionId, activo })
+          const res = await fetch("/api/admin/usuarios/secciones", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ usuarioId, seccionId, activo }),
           });
 
           if (!res.ok) {
-            throw new Error((await res.json()).message || "Error al actualizar la sección");
+            throw new Error(
+              (await res.json()).message || "Error al actualizar la sección",
+            );
           }
 
-          toast.success(activo ? "Permiso otorgado correctamente" : "Permiso retirado correctamente");
-        } catch (error) {
+          toast.success("Permiso actualizado correctamente");
+        } catch (error: any) {
           console.error(error);
-          input.checked = !activo; // Revert checkbox if it fails
-          toast.error(error instanceof Error ? error.message : "No se pudo actualizar el permiso");
+          input.checked = !activo; // revert UI
+          toast.error(error.message || "No se pudo actualizar el permiso");
+        }
+      });
+    });
+
+    // Single open behavior for main accordions
+    const accordions = document.querySelectorAll('.main-accordion');
+    accordions.forEach(acc => {
+      acc.addEventListener('toggle', (e) => {
+        if ((acc as HTMLDetailsElement).open) {
+          accordions.forEach(other => {
+            if (other !== acc && (other as HTMLDetailsElement).open) {
+              (other as HTMLDetailsElement).open = false;
+            }
+          });
+        }
+      });
+    });
+
+    // Toggle logic for explicit category/subcategory permissions
+    const catToggles = document.querySelectorAll(".category-toggle");
+    catToggles.forEach((toggle) => {
+      toggle.addEventListener("change", async (e) => {
+        const input = e.target as HTMLInputElement;
+        const categoriaId = input.dataset.categoriaId;
+        const subcategoriaId = input.dataset.subcategoriaId || null;
+        const usuarioId = input.dataset.usuarioId;
+        const activo = input.checked;
+
+        // Visual cascade: if a category is unchecked/checked, cascade visual state to its subcategories instantly
+        if (!subcategoriaId) {
+           const childSubs = document.querySelectorAll(`.category-toggle[data-categoria-id="${categoriaId}"][data-subcategoria-id]`);
+           childSubs.forEach(child => {
+             const childInput = child as HTMLInputElement;
+             childInput.checked = activo;
+             const parentLabel = childInput.closest('.toggle-wrapper');
+             if (parentLabel) parentLabel.setAttribute('data-inherited', activo ? 'true' : 'false');
+           });
+           
+           const btnLabel = input.closest('.toggle-wrapper');
+           if (btnLabel) {
+               btnLabel.setAttribute('data-full', activo ? 'true' : 'false');
+           }
+           
+           // Actualizar el knob del parent (porque usamos class:list condicionado)
+           const knob = btnLabel?.querySelector('.toggle-knob');
+           if (knob) {
+                if (activo) {
+                    knob.classList.add('translate-x-[16px]', 'border-white');
+                } else {
+                    knob.classList.remove('translate-x-[16px]', 'border-white');
+                }
+           }
+        } else {
+            // Update parent dynamically based on partial vs full
+            const childSubs = Array.from(document.querySelectorAll(`.category-toggle[data-categoria-id="${categoriaId}"][data-subcategoria-id]`));
+            const totalSubs = childSubs.length;
+            const activeSubs = childSubs.filter(c => (c as HTMLInputElement).checked).length;
+            
+            const parentToggle = document.querySelector(`.main-category-toggle[data-categoria-id="${categoriaId}"]`) as HTMLInputElement;
+            if (parentToggle) {
+                const parentLabel = parentToggle.closest('.toggle-wrapper');
+                const knob = parentLabel?.querySelector('.toggle-knob');
+                
+                let isFull = false;
+                let isPartial = false;
+                
+                if (activeSubs === totalSubs) {
+                    parentToggle.checked = true;
+                    isFull = true;
+                } else if (activeSubs > 0) {
+                    parentToggle.checked = true;
+                    isPartial = true;
+                } else {
+                    parentToggle.checked = false;
+                }
+                
+                if (parentLabel) parentLabel.setAttribute('data-full', isFull ? 'true' : 'false');
+                
+                if (knob) {
+                    if (isFull || isPartial) {
+                        knob.classList.add('translate-x-[16px]', 'border-white');
+                    } else {
+                        knob.classList.remove('translate-x-[16px]', 'border-white');
+                    }
+                }
+            }
+        }
+
+        try {
+          const res = await fetch("/api/admin/usuarios/categorias", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ usuarioId, categoriaId, subcategoriaId, activo }),
+          });
+
+          if (!res.ok) {
+            throw new Error((await res.json()).message || "Error al actualizar la categoría");
+          }
+          
+          toast.success("Permiso actualizado correctamente");
+        } catch (error: any) {
+          console.error(error);
+          input.checked = !activo; // revert UI
+          toast.error(error.message || "No se pudo actualizar el permiso");
         }
       });
     });
   });
-
+</script>

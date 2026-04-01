@@ -30,6 +30,7 @@ model Rol {
   rol                String               @db.VarChar(50)
   descripcion        String?              @db.Text
   nivel_soporte      NivelSoporte
+  activo             Boolean              @default(true)
   usuarios           Usuario[]
   permisos           Permiso[]            @relation()
   permisos_categoria PermisoCategoria[]

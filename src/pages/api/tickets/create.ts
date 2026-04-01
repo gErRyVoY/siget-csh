@@ -3,6 +3,7 @@ import { getSession } from 'auth-astro/server';
 import { prisma } from '../../../lib/db';
 import { sendNotification } from '../notifications/sse';
 import { findBestAgentHybrid } from '../../../services/ticketAssignmentService';
+import { ensureActiveCycle } from '../../../services/cycleService';
 
 export const POST: APIRoute = async ({ request }) => {
   const session = await getSession(request);
@@ -12,6 +13,8 @@ export const POST: APIRoute = async ({ request }) => {
   }
 
   try {
+    await ensureActiveCycle();
+    
     const data = await request.json();
     const { categoriaId, subcategoriaId, descripcion, afectado_clave, afectado_nombre } = data;
     const parsedCategoriaId = parseInt(categoriaId, 10);

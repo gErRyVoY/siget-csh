@@ -15,7 +15,13 @@ let statuses: any[];
 
 const MAX_FILE_SIZE_MB = 5;
 const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
-const ALLOWED_FORMATS = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'];
+const ALLOWED_FORMATS = [
+    'image/jpeg',
+    'image/png',
+    'application/pdf',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+];
 
 let stagedFiles: { file: File; id: number; isValid: boolean; reason: string | null; }[] = [];
 let isDeleteSelectionMode = false;
@@ -471,9 +477,9 @@ let accessToken: string | null = null;
 let pickerInited = false;
 let gisInited = false;
 
-const GOOGLE_API_KEY = import.meta.env.PUBLIC_GOOGLE_API_KEY;
-const GOOGLE_CLIENT_ID = import.meta.env.PUBLIC_GOOGLE_CLIENT_ID;
-const GOOGLE_APP_ID = import.meta.env.PUBLIC_GOOGLE_APP_ID;
+let GOOGLE_API_KEY: string | undefined;
+let GOOGLE_CLIENT_ID: string | undefined;
+let GOOGLE_APP_ID: string | undefined;
 
 // Scopes for Drive API (drive.file is safer, but we need to download)
 // drive.readonly allows reading all files, which is needed if we want to pick any file.
@@ -482,31 +488,53 @@ const GOOGLE_APP_ID = import.meta.env.PUBLIC_GOOGLE_APP_ID;
 const SCOPES = 'https://www.googleapis.com/auth/drive.readonly';
 
 export function initGoogleDrive() {
-    const script1 = document.createElement('script');
-    script1.src = 'https://apis.google.com/js/api.js';
-    script1.async = true;
-    script1.defer = true;
-    script1.onload = () => {
-        gapi.load('client:picker', async () => {
-            await gapi.client.load('https://www.googleapis.com/discovery/v1/apis/drive/v3/rest');
-            pickerInited = true;
-        });
-    };
-    document.body.appendChild(script1);
+    const form = document.getElementById('edit-ticket-form') as HTMLFormElement;
+    if (form) {
+        GOOGLE_API_KEY = form.dataset.apiKey;
+        GOOGLE_CLIENT_ID = form.dataset.clientId;
+        GOOGLE_APP_ID = form.dataset.appId;
+    }
 
-    const script2 = document.createElement('script');
-    script2.src = 'https://accounts.google.com/gsi/client';
-    script2.async = true;
-    script2.defer = true;
-    script2.onload = () => {
-        tokenClient = google.accounts.oauth2.initTokenClient({
-            client_id: GOOGLE_CLIENT_ID,
-            scope: SCOPES,
-            callback: '', // defined later
-        });
-        gisInited = true;
-    };
-    document.body.appendChild(script2);
+    if (!document.querySelector('script[src="https://apis.google.com/js/api.js"]')) {
+        const script1 = document.createElement('script');
+        script1.src = 'https://apis.google.com/js/api.js';
+        script1.async = true;
+        script1.defer = true;
+        script1.onload = () => {
+            gapi.load('client:picker', async () => {
+                await gapi.client.load('https://www.googleapis.com/discovery/v1/apis/drive/v3/rest');
+                pickerInited = true;
+            });
+        };
+        document.body.appendChild(script1);
+    } else {
+        pickerInited = true;
+    }
+
+    if (!document.querySelector('script[src="https://accounts.google.com/gsi/client"]')) {
+        const script2 = document.createElement('script');
+        script2.src = 'https://accounts.google.com/gsi/client';
+        script2.async = true;
+        script2.defer = true;
+        script2.onload = () => {
+            tokenClient = google.accounts.oauth2.initTokenClient({
+                client_id: GOOGLE_CLIENT_ID,
+                scope: SCOPES,
+                callback: '', // defined later
+            });
+            gisInited = true;
+        };
+        document.body.appendChild(script2);
+    } else {
+        if ((window as any).google?.accounts) {
+            tokenClient = google.accounts.oauth2.initTokenClient({
+                client_id: GOOGLE_CLIENT_ID,
+                scope: SCOPES,
+                callback: '', // defined later
+            });
+            gisInited = true;
+        }
+    }
 }
 
 function handleAuthClick() {
@@ -553,6 +581,7 @@ function createPicker() {
     view.setSelectFolderEnabled(false);
     view.setParent('root'); // Start at root to show "My Drive" structure
 
+    const origin = window.location.protocol + '//' + window.location.host;
     const picker = new google.picker.PickerBuilder()
         .enableFeature(google.picker.Feature.NAV_HIDDEN)
         .enableFeature(google.picker.Feature.MULTISELECT_ENABLED)
@@ -561,6 +590,7 @@ function createPicker() {
         .addView(view)
         .addView(new google.picker.DocsUploadView())
         .setDeveloperKey(GOOGLE_API_KEY)
+        .setOrigin(origin)
         .setCallback(pickerCallback)
         .build();
     picker.setVisible(true);

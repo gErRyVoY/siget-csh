@@ -45,7 +45,15 @@ export const PATCH: APIRoute = async ({ request, locals }) => {
         const updateData: Prisma.TicketUpdateInput = {};
         if (updateDataInput.estatusId) updateData.estatus = { connect: { id: Number(updateDataInput.estatusId) } };
         if (updateDataInput.solicitanteId) updateData.solicitante = { connect: { id: Number(updateDataInput.solicitanteId) } };
-        if (updateDataInput.atiendeId) updateData.atiende = { connect: { id: Number(updateDataInput.atiendeId) } };
+        
+        if ('atiendeId' in updateDataInput) {
+            const parsedAtiendeId = Number(updateDataInput.atiendeId);
+            if (parsedAtiendeId > 0) {
+                updateData.atiende = { connect: { id: parsedAtiendeId } };
+            } else if (ticketBeforeUpdate.atiendeId !== null) {
+                updateData.atiende = { disconnect: true };
+            }
+        }
         if (updateDataInput.prioridad) updateData.prioridad = updateDataInput.prioridad as Prioridad;
         if (typeof updateDataInput.archivado === 'boolean') updateData.archivado = updateDataInput.archivado;
 
@@ -268,8 +276,8 @@ export const PATCH: APIRoute = async ({ request, locals }) => {
                 fieldChanges.push({ field: 'prioridad', oldValue: ticketBeforeUpdate.prioridad, newValue: ticketAfterUpdate.prioridad });
             }
             if (ticketBeforeUpdate.atiendeId !== ticketAfterUpdate.atiendeId) {
-                const oldAgent = ticketBeforeUpdate.atiende ? `${ticketBeforeUpdate.atiende.nombres} ${ticketBeforeUpdate.atiende.apellidos}` : 'Sin asignar';
-                const newAgent = ticketAfterUpdate.atiende ? `${ticketAfterUpdate.atiende.nombres} ${ticketAfterUpdate.atiende.apellidos}` : 'Sin asignar';
+                const oldAgent = ticketBeforeUpdate.atiende ? `${ticketBeforeUpdate.atiende.nombres} ${ticketBeforeUpdate.atiende.apellidos}` : 'No asignado';
+                const newAgent = ticketAfterUpdate.atiende ? `${ticketAfterUpdate.atiende.nombres} ${ticketAfterUpdate.atiende.apellidos}` : 'No asignado';
                 fieldChanges.push({ field: 'atiendeId', oldValue: oldAgent, newValue: newAgent });
             }
             if (ticketBeforeUpdate.archivado !== ticketAfterUpdate.archivado) {
@@ -314,7 +322,8 @@ export const PATCH: APIRoute = async ({ request, locals }) => {
             type: 'ticket_updated' as const,
             message: `El ticket #${ticketId} ha sido actualizado`,
             ticketId: ticketId,
-            originatorId: String(session.user.id)
+            originatorId: String(session.user.id),
+            comment: newComment || undefined
         };
 
         const targetUsers: number[] = [];
