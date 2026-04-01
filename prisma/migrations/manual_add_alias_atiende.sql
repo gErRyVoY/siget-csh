@@ -1,0 +1,3 @@
+ALTER TABLE "public"."rol" ADD COLUMN IF NOT EXISTS "atiendeTicketsCsh" BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE "public"."rol" ADD COLUMN IF NOT EXISTS "atiendeTicketsMkt" BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE "public"."usuario" ADD COLUMN IF NOT EXISTS "alias" VARCHAR(50);

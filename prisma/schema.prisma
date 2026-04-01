@@ -26,15 +26,17 @@ model Empresa {
 }
 
 model Rol {
-  id                 Int                  @id @default(autoincrement())
-  rol                String               @db.VarChar(50)
-  descripcion        String?              @db.Text
-  nivel_soporte      NivelSoporte
-  activo             Boolean              @default(true)
-  usuarios           Usuario[]
-  permisos           Permiso[]            @relation()
-  permisos_categoria PermisoCategoria[]
-  permisos_seccion   PermisoRolSeccion[]
+  id                   Int                  @id @default(autoincrement())
+  rol                  String               @db.VarChar(50)
+  descripcion          String?              @db.Text
+  nivel_soporte        NivelSoporte
+  activo               Boolean              @default(true)
+  atiendeTicketsCsh    Boolean              @default(false)
+  atiendeTicketsMkt    Boolean              @default(false)
+  usuarios             Usuario[]
+  permisos             Permiso[]            @relation()
+  permisos_categoria   PermisoCategoria[]
+  permisos_seccion     PermisoRolSeccion[]
 
   @@map("rol")
 }
@@ -65,6 +67,7 @@ model Usuario {
   mail                     String                   @db.VarChar(60) @unique
   nombres                  String                   @db.VarChar(50)
   apellidos                String                   @db.VarChar(50)
+  alias                    String?                  @db.VarChar(50)
   image                    String?                  @db.Text
   empresaId                Int
   rolId                    Int

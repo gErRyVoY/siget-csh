@@ -1,0 +1,240 @@
+---
+import MainLayout from "@/layouts/MainLayout.astro";
+import { getSession } from "auth-astro/server";
+import { prisma } from "@/lib/db";
+
+const session = await getSession(Astro.request);
+if (!session || !session.user) {
+  return Astro.redirect("/login");
+}
+
+const userId = Number(session.user.id);
+const dbUser = await prisma.usuario.findUnique({
+  where: { id: userId },
+  include: { rol: true }
+});
+
+if (!dbUser) {
+  return Astro.redirect("/login");
+}
+
+const atiendeTickets = dbUser.rol.atiendeTicketsCsh || dbUser.rol.atiendeTicketsMkt;
+
+if (!atiendeTickets) {
+  return Astro.redirect("/");
+}
+
+const horarioString = JSON.stringify(dbUser.horario_disponibilidad ?? {});
+---
+
+<MainLayout title="Editar Perfil">
+  <div class="max-w-3xl mx-auto py-8 px-4">
+    <div class="mb-6">
+      <h1 class="text-3xl font-bold">Personalizar Perfil</h1>
+      <p class="text-muted-foreground mt-2">
+        Configura tu alias, estatus de vacaciones y horario de disponibilidad.
+      </p>
+    </div>
+
+    <form
+      id="edit-profile-form"
+      class="bg-card border rounded-lg p-6 space-y-8 shadow-sm"
+      data-user-id={dbUser.id}
+      data-horario={horarioString}
+    >
+      <!-- Section 1: General Settings -->
+      <section>
+        <h2 class="text-xl font-semibold mb-4 border-b pb-2">Configuración General</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div class="space-y-2">
+            <label for="alias" class="block text-sm font-medium">Alias (Opcional)</label>
+            <input
+              type="text"
+              id="alias"
+              name="alias"
+              value={dbUser.alias ?? ""}
+              placeholder="Ej. Juan P."
+              class="w-full rounded-md border-border bg-input p-2 accent-secondary focus:outline-none focus:ring-1 focus:ring-secondary"
+            />
+            <p class="text-xs text-muted-foreground">
+              Este nombre se mostrará en lugar de tu nombre completo en la plataforma.
+            </p>
+          </div>
+
+          <div class="space-y-2 flex flex-col justify-center">
+            <label class="block text-sm font-medium mb-1">Estatus de Vacaciones</label>
+            <div class="flex items-center gap-3">
+              <label class="relative inline-flex h-6 w-11 cursor-pointer items-center justify-center rounded-full group" title="Activar/Desactivar Vacaciones">
+                <input
+                  type="checkbox"
+                  id="vacaciones"
+                  name="vacaciones"
+                  class="sr-only peer"
+                  checked={dbUser.vacaciones}
+                />
+                <div class="h-6 w-11 absolute rounded-full transition-all peer-focus:outline-none opacity-80 peer-checked:opacity-100 bg-muted-foreground peer-checked:bg-secondary" />
+                <div class="absolute top-[2px] left-[2px] bg-white border border-gray-300 rounded-full h-5 w-5 transition-transform peer-checked:translate-x-[20px] peer-checked:border-white z-10" />
+              </label>
+              <span class="text-sm font-medium" id="vacaciones-status-text">
+                {dbUser.vacaciones ? "De Vacaciones" : "En Oficina"}
+              </span>
+            </div>
+            <p class="text-xs text-muted-foreground mt-1">
+              Si estás de vacaciones, no se te asignarán nuevos tickets automáticamente.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section 2: Horario -->
+      <section>
+        <h2 class="text-xl font-semibold border-b pb-2">Horario de Disponibilidad</h2>
+        <p class="text-sm text-muted-foreground my-4">
+          Configura tus horas de trabajo. Fuera de este horario, el sistema de asignación inteligente considerará tu indisponibilidad temporal.
+        </p>
+        <div id="horarios-container" class="grid grid-cols-1 md:grid-cols-2 gap-6 p-4 bg-muted/30 rounded-lg border border-border">
+          <!-- Generado por JS -->
+        </div>
+      </section>
+
+      <!-- Footer Buttons -->
+      <div class="flex justify-end gap-4 pt-4 border-t">
+        <button
+          type="button"
+          onclick="window.history.back()"
+          class="bg-muted-foreground text-white hover:bg-muted-foreground/80 px-6 py-2 rounded-md text-sm font-semibold transition-colors"
+        >
+          Cancelar
+        </button>
+        <button
+          type="submit"
+          id="btn-save-profile"
+          class="bg-primary text-primary-foreground hover:bg-primary/90 px-6 py-2 rounded-md text-sm font-semibold transition-colors flex items-center gap-2"
+        >
+          Guardar Cambios
+        </button>
+      </div>
+    </form>
+  </div>
+</MainLayout>
+
+<script>
+  import { toast } from "@/lib/toast";
+
+  document.addEventListener("astro:page-load", () => {
+    const form = document.getElementById("edit-profile-form") as HTMLFormElement;
+    if (!form) return;
+
+    const horarioString = form.dataset.horario;
+    let horario = {};
+    try {
+      horario = horarioString ? JSON.parse(horarioString) : {};
+    } catch {
+      horario = {};
+    }
+
+    const dias = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
+
+    function generarOpciones(inicio: number, fin: number, intervalo: number): string {
+      let opciones = '';
+      for (let h = inicio; h <= fin; h++) {
+        for (let m = 0; m < 60; m += intervalo) {
+          if (h === fin && m > 0) continue;
+          const hora = h.toString().padStart(2, '0');
+          const minuto = m.toString().padStart(2, '0');
+          opciones += `<option value="${hora}:${minuto}">${hora}:${minuto}</option>`;
+        }
+      }
+      return opciones;
+    }
+
+    const opcionesInicio = generarOpciones(7, 12, 30);
+    const opcionesFin = generarOpciones(13, 20, 30);
+
+    const container = document.getElementById('horarios-container');
+    if (container) {
+      container.innerHTML = dias.map(dia => {
+        const normalizedDia = dia.normalize("NFD").replace(/[̀-ͯ]/g, "");
+        return `
+          <div class="space-y-1 bg-card p-3 rounded-md border shadow-sm">
+              <label class="block text-sm font-semibold capitalize mb-2 text-primary">${dia}</label>
+              <div class="flex items-center gap-2">
+                  <select id="${normalizedDia}-inicio" name="${normalizedDia}-inicio" class="block w-full rounded-md border-border bg-input p-2 text-sm accent-secondary focus:outline-none focus:ring-1 focus:ring-secondary">
+                      <option value="No disponible">Descanso</option>
+                      ${opcionesInicio}
+                  </select>
+                  <span class="text-muted-foreground">a</span>
+                  <select id="${normalizedDia}-fin" name="${normalizedDia}-fin" class="block w-full rounded-md border-border bg-input p-2 text-sm accent-secondary focus:outline-none focus:ring-1 focus:ring-secondary">
+                      <option value="No disponible">Descanso</option>
+                      ${opcionesFin}
+                  </select>
+              </div>
+          </div>
+        `;
+      }).join('');
+
+      dias.forEach(dia => {
+        const normalizedDia = dia.normalize("NFD").replace(/[̀-ͯ]/g, "");
+        // @ts-ignore
+        const horarioDia = horario && horario[normalizedDia] ? horario[normalizedDia] : { inicio: 'No disponible', fin: 'No disponible' };
+        const inicioSelect = document.getElementById(`${normalizedDia}-inicio`) as HTMLSelectElement;
+        const finSelect = document.getElementById(`${normalizedDia}-fin`) as HTMLSelectElement;
+        if (inicioSelect) inicioSelect.value = horarioDia.inicio;
+        if (finSelect) finSelect.value = horarioDia.fin;
+      });
+    }
+
+    // Toggle text updater
+    const vacToggle = document.getElementById("vacaciones") as HTMLInputElement;
+    const vacText = document.getElementById("vacaciones-status-text");
+    vacToggle?.addEventListener("change", () => {
+      if (vacText) vacText.textContent = vacToggle.checked ? "De Vacaciones" : "En Oficina";
+    });
+
+    // Form submission
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById("btn-save-profile") as HTMLButtonElement;
+      if (btn) btn.disabled = true;
+
+      const formData = new FormData(form);
+      const horarioData: Record<string, { inicio: string, fin: string }> = {};
+
+      dias.forEach(dia => {
+        const normalizedDia = dia.normalize("NFD").replace(/[̀-ͯ]/g, "");
+        const inicio = formData.get(`${normalizedDia}-inicio`) as string;
+        const fin = formData.get(`${normalizedDia}-fin`) as string;
+        if (inicio !== 'No disponible' && fin !== 'No disponible') {
+          horarioData[normalizedDia] = { inicio, fin };
+        }
+      });
+
+      const data = {
+        alias: formData.get("alias"),
+        vacaciones: vacToggle.checked,
+        horario_disponibilidad: Object.keys(horarioData).length > 0 ? horarioData : null,
+      };
+
+      try {
+        const res = await fetch("/api/user/profile", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data),
+        });
+
+        if (!res.ok) {
+          throw new Error((await res.json()).message || "Error al actualizar perfil");
+        }
+
+        toast.success("Perfil actualizado correctamente");
+        // Recargar para que los cambios se reflejen en el token JWT y el layout superior
+        setTimeout(() => window.location.reload(), 1500);
+      } catch (err: any) {
+        toast.error(err.message || "Error al guardar los cambios");
+      } finally {
+        if (btn) btn.disabled = false;
+      }
+    });
+
+  });
+</script>

@@ -173,6 +173,8 @@ export default defineConfig({
           token.rol = dbUser.rol;
           token.empresa = dbUser.empresa;
           token.image = dbUser.image;
+          token.alias = (dbUser as any).alias ?? undefined;
+          token.vacaciones = dbUser.vacaciones;
           // Guardar solo los nombres de los permisos en el token
           token.permisos = dbUser.rol.permisos.map(p => p.nombre);
 
@@ -198,6 +200,9 @@ export default defineConfig({
 
           // Convertir de Set a Array
           token.secciones = Array.from(seccionesAprobadas);
+          // Flags de atención a tickets
+          token.atiendeTicketsCsh = (dbUser.rol as any).atiendeTicketsCsh ?? false;
+          token.atiendeTicketsMkt = (dbUser.rol as any).atiendeTicketsMkt ?? false;
         }
       }
       return token;
@@ -209,6 +214,13 @@ export default defineConfig({
         session.user.rol = token.rol as Rol;
         session.user.empresa = token.empresa as Empresa;
         session.user.image = token.image as string | null;
+        session.user.alias = token.alias as string | undefined;
+        session.user.vacaciones = (token.vacaciones as boolean | undefined) ?? false;
+        // Propagate flags from rol (stored in token)
+        if (session.user.rol) {
+          (session.user.rol as any).atiendeTicketsCsh = (token as any).atiendeTicketsCsh ?? false;
+          (session.user.rol as any).atiendeTicketsMkt = (token as any).atiendeTicketsMkt ?? false;
+        }
         // Asignar los permisos a la sesión
         session.user.permisos = token.permisos as string[];
         session.user.secciones = token.secciones as string[];
@@ -223,11 +235,15 @@ export default defineConfig({
 declare module "@auth/core/types" {
   interface Session {
     accessToken?: string;
-    user: Omit<DefaultSession["user"], "id" | "image"> & {
+    user: Omit<DefaultSession["user"], "id" | "image" | "name" | "email"> & {
       id?: string | number;
-      rol?: Rol;
+      name?: string | null;
+      email?: string | null;
+      rol?: Rol & { atiendeTicketsCsh?: boolean; atiendeTicketsMkt?: boolean };
       empresa?: Empresa;
       image?: string | null;
+      alias?: string;
+      vacaciones?: boolean;
       permisos?: string[]; // Añadir permisos a la sesión
       secciones?: string[]; // Secciones permitidas
     };
@@ -241,6 +257,8 @@ declare module "@auth/core/jwt" {
     rol?: Rol;
     empresa?: Empresa;
     image?: string | null;
+    alias?: string;
+    vacaciones?: boolean;
     permisos?: string[]; // Añadir permisos al token
     secciones?: string[]; // Secciones permitidas
   }

@@ -134,27 +134,61 @@ seccionesRaw.forEach((sec) => {
           </button>
           {
             selectedRoleId && selectedRoleData && (
-              <div class="flex items-center gap-2 border-l border-border pl-4">
-                <span class="text-sm text-muted-foreground mr-1">Estado:</span>
-                <label
-                  class="relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center justify-center rounded-full toggle-wrapper-role group"
-                  title={
-                    selectedRoleData.activo ? "Inactivar rol" : "Activar rol"
-                  }
-                >
-                  <input
-                    type="checkbox"
-                    id={`role-active-toggle`}
-                    class="sr-only peer"
-                    data-rol-id={selectedRoleData.id}
-                    checked={selectedRoleData.activo}
-                  />
-                  <div class="toggle-bg h-6 w-11 absolute rounded-full transition-all peer-focus:outline-none opacity-80 peer-checked:opacity-100 disabled:opacity-30 border-box bg-muted-foreground peer-checked:bg-primary" />
-                  <div class="toggle-knob absolute top-[2px] left-[2px] bg-white border border-gray-300 rounded-full h-5 w-5 transition-transform peer-checked:translate-x-[20px] peer-checked:border-white z-10" />
-                </label>
-                <span class="text-sm font-medium" id="role-status-text">
-                  {selectedRoleData.activo ? "Activo" : "Inactivo"}
-                </span>
+              <div class="flex items-center gap-4 border-l border-border pl-4 flex-wrap">
+                <div class="flex items-center gap-1.5">
+                  <span class="text-sm text-muted-foreground">Estado:</span>
+                  <label
+                    class="relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center justify-center rounded-full toggle-wrapper-role group"
+                    title={selectedRoleData.activo ? "Inactivar rol" : "Activar rol"}
+                  >
+                    <input
+                      type="checkbox"
+                      id="role-active-toggle"
+                      class="sr-only peer"
+                      data-rol-id={selectedRoleData.id}
+                      checked={selectedRoleData.activo}
+                    />
+                    <div class="toggle-bg h-6 w-11 absolute rounded-full transition-all peer-focus:outline-none opacity-80 peer-checked:opacity-100 disabled:opacity-30 border-box bg-muted-foreground peer-checked:bg-primary" />
+                    <div class="toggle-knob absolute top-[2px] left-[2px] bg-white border border-gray-300 rounded-full h-5 w-5 transition-transform peer-checked:translate-x-[20px] peer-checked:border-white z-10" />
+                  </label>
+                  <span class="text-sm font-medium" id="role-status-text">
+                    {selectedRoleData.activo ? "Activo" : "Inactivo"}
+                  </span>
+                </div>
+                <div class="flex items-center gap-1.5 border-l border-border pl-4">
+                  <span class="text-xs text-muted-foreground whitespace-nowrap">Atiende CSH:</span>
+                  <label
+                    class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full group"
+                    title="¿Atiende tickets CSH?"
+                  >
+                    <input
+                      type="checkbox"
+                      class="sr-only peer role-flag-toggle"
+                      data-rol-id={selectedRoleData.id}
+                      data-flag="atiendeTicketsCsh"
+                      checked={(selectedRoleData as any).atiendeTicketsCsh}
+                    />
+                    <div class="h-5 w-9 absolute rounded-full transition-all opacity-80 peer-checked:opacity-100 bg-muted-foreground peer-checked:bg-secondary" />
+                    <div class="absolute top-[2px] left-[2px] bg-white border border-gray-300 rounded-full h-4 w-4 transition-transform peer-checked:translate-x-[16px] peer-checked:border-white z-10" />
+                  </label>
+                </div>
+                <div class="flex items-center gap-1.5">
+                  <span class="text-xs text-muted-foreground whitespace-nowrap">Atiende Mkt:</span>
+                  <label
+                    class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full group"
+                    title="¿Atiende tickets Marketing?"
+                  >
+                    <input
+                      type="checkbox"
+                      class="sr-only peer role-flag-toggle"
+                      data-rol-id={selectedRoleData.id}
+                      data-flag="atiendeTicketsMkt"
+                      checked={(selectedRoleData as any).atiendeTicketsMkt}
+                    />
+                    <div class="h-5 w-9 absolute rounded-full transition-all opacity-80 peer-checked:opacity-100 bg-muted-foreground peer-checked:bg-secondary" />
+                    <div class="absolute top-[2px] left-[2px] bg-white border border-gray-300 rounded-full h-4 w-4 transition-transform peer-checked:translate-x-[16px] peer-checked:border-white z-10" />
+                  </label>
+                </div>
               </div>
             )
           }
@@ -821,6 +855,30 @@ seccionesRaw.forEach((sec) => {
           } else {
             input.checked = true; // cancel
           }
+        }
+      });
+    });
+
+    // Role flags (atiendeTicketsCsh / atiendeTicketsMkt)
+    const roleFlagToggles = document.querySelectorAll(".role-flag-toggle");
+    roleFlagToggles.forEach((toggle) => {
+      toggle.addEventListener("change", async (e) => {
+        const input = e.target as HTMLInputElement;
+        const rolId = input.dataset.rolId;
+        const field = input.dataset.flag;
+        const value = input.checked;
+
+        try {
+          const res = await fetch("/api/admin/roles/toggle-flags", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ rolId, field, value }),
+          });
+          if (!res.ok) throw new Error((await res.json()).message);
+          toast.success("Flag actualizado");
+        } catch (err: any) {
+          input.checked = !value;
+          toast.error(err.message || "Error al actualizar flag");
         }
       });
     });
