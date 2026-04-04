@@ -47,7 +47,7 @@ const canSeeHorario = secciones.includes("horario_atencion");
 const canSeeSoporteAdmin = ["soporte_mis_tickets", "soporte_dashboard", "soporte_todos"].some(id => secciones.includes(id));
 const canSeeMarketingAdmin = ["marketing_mis_tickets", "marketing_dashboard", "marketing_todos"].some(id => secciones.includes(id));
 const canSeeAdminCorreos = ["admin_correos_crear", "admin_correos_actualizar"].some(id => secciones.includes(id));
-const canSeeAdminSiget = ["admin_siget_categorias", "admin_siget_ciclos", "admin_siget_secciones", "admin_siget_tickets", "admin_siget_usuarios", "admin_roles"].some(id => secciones.includes(id));
+const canSeeAdminSiget = ["admin_siget_categorias", "admin_siget_ciclos", "admin_siget_secciones", "admin_siget_tickets", "admin_siget_usuarios", "admin_siget_roles"].some(id => secciones.includes(id));
 const canSeeAdminMarketing = false; // Director Marketing ya no tiene un menú administrativo codificado de forma estática, requiere los permisos granulares.
 
 const cshHref = "/tickets/soporte/nuevo-ticket-csh";
@@ -141,7 +141,7 @@ const adminSections = [
                 label: "Ciclos",
                 icon: ManageTicketsIcon,
             }] : []),
-            ...(secciones.includes("admin_roles") ? [{
+            ...(secciones.includes("admin_siget_roles") ? [{
                 href: "/admin/roles",
                 label: "Roles",
                 icon: ManageUsersIcon,
@@ -237,10 +237,10 @@ const adminSections = [
         {
             canCreateTicketMarketing && (
                 <a
-                    href="/tickets/marketing/nuevo"
+                    href="/tickets/marketing/nuevo-ticket-marketing"
                     class:list={[
                         "w-full flex items-center gap-3 rounded-md px-4 py-2.5 text-sm font-semibold transition-colors duration-500 focus-visible:outline-none focus-visible:ring-1",
-                        pathname === "/tickets/marketing/nuevo"
+                        pathname === "/tickets/marketing/nuevo-ticket-marketing"
                             ? "bg-secondary text-secondary-foreground"
                             : "bg-primary text-primary-foreground hover:bg-secondary/90 hover:text-secondary-foreground",
                     ]}

@@ -6,6 +6,11 @@ El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1
 y este proyecto adhiere a [Versionado Semántico](https://semver.org/lang/es/).
 
 
+## 2026-04-02 (Sesión 21 - Integración de Vistas y Asignaciones de Marketing)
+*   **Gestión de Tickets (Marketing):**
+    *   **Vistas Diferenciadas:** La ruta `/tickets/marketing/usuario` ahora aplica estrictamente el filtro `atiendeId` para mostrar únicamente los tickets que el agente de Marketing tiene vigentes bajo su responsabilidad.
+    *   **Asignaciones Condicionadas:** En la vista de detalle de ticket (`view/[id].astro`), si la categoría es Marketing (ID 12), el menú desplegable para reasignar ("Atiende") prefiltra exclusivamente a los usuarios de la empresa "Corporativo" que tienen los roles: 'Community manager', 'Director Marketing', 'Diseñador' o 'Editor'.
+
 ## 2026-03-18 (Sesión 17 - Estabilización de Permisos y Sidebar)
 *   **Sidebar (`Sidebar.astro`):**
     *   **Refactorización:** Las opciones ahora se renderizan leyendo exclusivamente de las "secciones" configuradas vía JWT (RBAC dinámico puro) en lugar de variables globales "hardcodeadas".

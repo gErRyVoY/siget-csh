@@ -3,34 +3,28 @@ import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log("Running manual migration...");
+  console.log("Running manual migration to fix cycle dates in DB...");
   
-  // Use $executeRawUnsafe to run our ALTER TABLE statements
+  // Arreglar el Ciclo 2026-3 (que terminaba el 04-01T00:00:00 y dejaba hueco)
   await prisma.$executeRawUnsafe(
-    `ALTER TABLE "public"."rol" ADD COLUMN IF NOT EXISTS "atiendeTicketsCsh" BOOLEAN NOT NULL DEFAULT false`
+    `UPDATE "public"."ciclo" SET "fecha_fin" = '2026-04-01 00:00:00' WHERE "id" = 1`
   );
-  console.log("✅ Added atiendeTicketsCsh to rol");
+  console.log("✅ Ciclo 1 (2026-3) finalizado");
 
+  // Adelantar el inicio del Ciclo 2026-4 (empezaba apenas el 04-02T00:00:00) para cubrir el 1 de abril.
   await prisma.$executeRawUnsafe(
-    `ALTER TABLE "public"."rol" ADD COLUMN IF NOT EXISTS "atiendeTicketsMkt" BOOLEAN NOT NULL DEFAULT false`
+    `UPDATE "public"."ciclo" SET "fecha_inicio" = '2026-04-01 00:00:00' WHERE "id" = 2`
   );
-  console.log("✅ Added atiendeTicketsMkt to rol");
-
+  console.log("✅ Ciclo 2 (2026-4) actualizado para iniciar el 1 de Abril");
+  
+  // Arreglar la subsecuencia
   await prisma.$executeRawUnsafe(
-    `ALTER TABLE "public"."usuario" ADD COLUMN IF NOT EXISTS "alias" VARCHAR(50)`
+    `UPDATE "public"."ciclo" SET "fecha_inicio" = '2026-07-01 00:00:00', "fecha_fin" = '2026-09-24 00:00:00' WHERE "id" = 3`
   );
-  console.log("✅ Added alias to usuario");
+  console.log("✅ Ciclo 3 (2027-1) alineado");
 
-  // Verify
-  const cols = await prisma.$queryRawUnsafe<Array<{table_name: string, column_name: string}>>(`
-    SELECT table_name, column_name 
-    FROM information_schema.columns 
-    WHERE table_schema = 'public' 
-      AND table_name IN ('rol','usuario') 
-      AND column_name IN ('atiendeTicketsCsh','atiendeTicketsMkt','alias')
-    ORDER BY table_name, column_name
-  `);
-  console.log("Verification:", cols);
+  const results = await prisma.$queryRawUnsafe(`SELECT id, ciclo, fecha_inicio, fecha_fin, activo FROM "public"."ciclo" ORDER BY id`);
+  console.log("Current Rows:", results);
 }
 
 main()

@@ -20,7 +20,7 @@ const descuentoOptions = descuentos.map((d) => d.descripcion);
 ---
 
 <MainLayout title="Solicitud de nuevo traslado">
-    <div class="max-w-3xl mx-auto">
+    <div class="max-w-3xl">
         <div class="bg-card text-card-foreground rounded-xl border shadow-sm">
             <div class="p-6 border-b border-border flex items-center gap-4">
                 <div class="p-2 bg-primary/10 rounded-lg text-primary">
@@ -28,9 +28,11 @@ const descuentoOptions = descuentos.map((d) => d.descripcion);
                 </div>
                 <div>
                     <!-- <h1 class="text-2xl font-bold">Solicitud de Traslado</h1> -->
-                    <p class="text-lg text-muted-foreground mt-1">
-                        Completa el formulario para iniciar el proceso de
-                        traslado.
+                    <p class="text-lg mt-1">
+                        Ingresa la <span class="font-bold text-secondary"
+                            >matrícula</span
+                        > y <span class="font-bold text-secondary">campus</span> del
+                        alumno para autocomplementar la información.
                     </p>
                 </div>
             </div>
@@ -47,58 +49,6 @@ const descuentoOptions = descuentos.map((d) => d.descripcion);
                     data-google-client-id={GOOGLE_CLIENT_ID}
                     data-google-app-id={GOOGLE_APP_ID}
                 >
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <!-- Matrícula -->
-                        <div>
-                            <label
-                                for="matricula"
-                                class="block text-sm font-medium text-foreground mb-1"
-                            >
-                                Matrícula <span class="text-destructive">*</span
-                                >
-                            </label>
-                            <input
-                                type="text"
-                                id="matricula"
-                                name="matricula"
-                                pattern="[a-zA-Z0-9]+"
-                                class="w-full rounded-md border-border bg-input px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                                placeholder="Ej: 123456"
-                                required
-                            />
-                            <p
-                                id="matricula-error"
-                                class="text-destructive text-xs mt-1 hidden"
-                            >
-                            </p>
-                        </div>
-
-                        <!-- Nombre Completo -->
-                        <div>
-                            <label
-                                for="nombre-completo"
-                                class="block text-sm font-medium text-foreground mb-1"
-                            >
-                                Nombre completo <span class="text-destructive"
-                                    >*</span
-                                >
-                            </label>
-                            <input
-                                type="text"
-                                id="nombre-completo"
-                                name="nombre-completo"
-                                class="w-full rounded-md border-border bg-input px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                                placeholder="Nombre completo del alumno"
-                                required
-                            />
-                            <p
-                                id="nombre-completo-error"
-                                class="text-destructive text-xs mt-1 hidden"
-                            >
-                            </p>
-                        </div>
-                    </div>
-
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <!-- Campus origen -->
                         <div class="relative">
@@ -157,6 +107,58 @@ const descuentoOptions = descuentos.map((d) => d.descripcion);
                             </div>
                             <p
                                 id="campus-destino-error"
+                                class="text-destructive text-xs mt-1 hidden"
+                            >
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <!-- Matrícula -->
+                        <div>
+                            <label
+                                for="matricula"
+                                class="block text-sm font-medium text-foreground mb-1"
+                            >
+                                Matrícula <span class="text-destructive">*</span
+                                >
+                            </label>
+                            <input
+                                type="text"
+                                id="matricula"
+                                name="matricula"
+                                pattern="[a-zA-Z0-9]+"
+                                class="w-full rounded-md border-border bg-input px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                placeholder="Ej: 123456"
+                                required
+                            />
+                            <p
+                                id="matricula-error"
+                                class="text-destructive text-xs mt-1 hidden"
+                            >
+                            </p>
+                        </div>
+
+                        <!-- Nombre Completo -->
+                        <div>
+                            <label
+                                for="nombre-completo"
+                                class="block text-sm font-medium text-foreground mb-1"
+                            >
+                                Nombre completo <span class="text-destructive"
+                                    >*</span
+                                >
+                            </label>
+                            <input
+                                type="text"
+                                id="nombre-completo"
+                                name="nombre-completo"
+                                class="w-full rounded-md border-border bg-input px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                placeholder="Nombre completo del alumno"
+                                required
+                            />
+                            <p
+                                id="nombre-completo-error"
                                 class="text-destructive text-xs mt-1 hidden"
                             >
                             </p>
@@ -389,6 +391,21 @@ const descuentoOptions = descuentos.map((d) => d.descripcion);
                             </div>
                         </div>
                     </div>
+
+                    <input type="hidden" id="mail" name="mail" />
+                    <input
+                        type="hidden"
+                        id="mail_escuela"
+                        name="mail_escuela"
+                    />
+                    <input type="hidden" id="telefono" name="telefono" />
+                    <input type="hidden" id="tel_movil" name="tel_movil" />
+                    <input
+                        type="hidden"
+                        id="plan_pago_api"
+                        name="plan_pago_api"
+                    />
+
                     <input
                         type="file"
                         id="file-input"
@@ -482,6 +499,21 @@ const descuentoOptions = descuentos.map((d) => d.descripcion);
             "google-drive-button",
         );
         const attachmentArea = document.getElementById("attachment-area");
+
+        // Hidden Inputs
+        const mailInput = document.getElementById("mail") as HTMLInputElement;
+        const mailEscuelaInput = document.getElementById(
+            "mail_escuela",
+        ) as HTMLInputElement;
+        const telefonoInput = document.getElementById(
+            "telefono",
+        ) as HTMLInputElement;
+        const telMovilInput = document.getElementById(
+            "tel_movil",
+        ) as HTMLInputElement;
+        const planPagoApiInput = document.getElementById(
+            "plan_pago_api",
+        ) as HTMLInputElement;
 
         // --- FILE CONFIG ---
         const MAX_FILE_SIZE_MB = 5;
@@ -1099,6 +1131,68 @@ const descuentoOptions = descuentos.map((d) => d.descripcion);
             }
         }
 
+        function formatName(str: string) {
+            if (!str) return "";
+            return str.toLowerCase().split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+        }
+
+        function formatCarrera(str: string) {
+            if (!str) return "";
+            return str.toLowerCase().split(' ').map(w => {
+                if(["en", "y", "de", "la", "el"].includes(w)) return w;
+                return w.charAt(0).toUpperCase() + w.slice(1);
+            }).join(' ').trim();
+        }
+
+        async function consultarDetalleAlumno() {
+            const matricula = matriculaInput.value.trim();
+            const campus = campusOrigenInput.value.trim();
+
+            if (matricula && campus && campusOptions.includes(campus)) {
+                try {
+                    const url = `https://pz3bmmqsty.us-east-1.awsapprunner.com/api/alumnos/consultar-detalle?campus=${encodeURIComponent(campus)}&matricula=${encodeURIComponent(matricula)}`;
+                    const res = await fetch(url);
+                    let json;
+                    try {
+                        json = await res.json();
+                    } catch (e) {}
+
+                    if (res.ok && json?.status === "success" && json?.data) {
+                        const data = json.data;
+
+                        if (data.Alumno) {
+                            nombreInput.value = formatName(data.Alumno);
+                            validate(["nombre-completo"]);
+                        }
+                        if (data.carrera) {
+                            let rawCarrera = data.carrera;
+                            if (rawCarrera.toUpperCase().includes('ESCOLARIZADO')) {
+                                rawCarrera = rawCarrera.replace(/ESCOLARIZADO/i, '').replace(/  +/g, ' ').trim();
+                                escolarizadaCheckbox.checked = true;
+                                escolarizadaCheckbox.dispatchEvent(new Event('change'));
+                            }
+                            carreraInput.value = formatCarrera(rawCarrera);
+                            validate(["carrera"]);
+                            handleEscolarizadaLogic();
+                            handleBloqueOptions();
+                        }
+
+                        mailInput.value = data.mail || "";
+                        mailEscuelaInput.value = data.mail_escuela || "";
+                        telefonoInput.value = data.telefono || "";
+                        telMovilInput.value = data.tel_movil || "";
+                        planPagoApiInput.value = data.plan_pago || "";
+
+                        toast.success("Datos del alumno autocompletados.");
+                    } else if (json?.detail) {
+                        toast.error("Valida el campus con el área de soporte.");
+                    }
+                } catch (e) {
+                    console.error("Error fetching alumno details", e);
+                }
+            }
+        }
+
         matriculaInput.addEventListener("input", () => {
             duplicateError = ""; // Reset on edit
             validate([]);
@@ -1106,6 +1200,7 @@ const descuentoOptions = descuentos.map((d) => d.descripcion);
         matriculaInput.addEventListener("blur", async () => {
             validate(["matricula"]);
             await checkDuplicateMatricula();
+            await consultarDetalleAlumno();
         });
 
         // For Name, show errors immediately on input if invalid chars found
@@ -1114,9 +1209,10 @@ const descuentoOptions = descuentos.map((d) => d.descripcion);
         });
 
         // For inputs that might need blur validation to be sure
-        campusOrigenInput.addEventListener("blur", () =>
-            validate(["campus-origen"]),
-        );
+        campusOrigenInput.addEventListener("blur", async () => {
+            validate(["campus-origen"]);
+            await consultarDetalleAlumno();
+        });
         campusDestinoInput.addEventListener("blur", () =>
             validate(["campus-destino"]),
         );
@@ -1207,6 +1303,11 @@ const descuentoOptions = descuentos.map((d) => d.descripcion);
                 escolarizada: formData.get("escolarizada") === "on",
                 "bloque-sugerido": formData.get("bloque-sugerido"),
                 comentarios: formData.get("comentarios"),
+                mail: formData.get("mail"),
+                mail_escuela: formData.get("mail_escuela"),
+                telefono: formData.get("telefono"),
+                tel_movil: formData.get("tel_movil"),
+                plan_pago_api: formData.get("plan_pago_api"),
             };
 
             try {

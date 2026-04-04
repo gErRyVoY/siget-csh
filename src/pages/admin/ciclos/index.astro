@@ -30,11 +30,11 @@ const ciclos = await prisma.ciclo.findMany({
                         >
                         <th
                             class="h-12 px-4 text-left align-middle font-medium text-muted-foreground"
-                            >Fecha Inicio</th
+                            >Fecha inicio</th
                         >
                         <th
                             class="h-12 px-4 text-left align-middle font-medium text-muted-foreground"
-                            >Fecha Fin</th
+                            >Fecha fin</th
                         >
                         <th
                             class="h-12 px-4 text-left align-middle font-medium text-muted-foreground"
@@ -72,8 +72,8 @@ const ciclos = await prisma.ciclo.findMany({
                                     <span
                                         class={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 ${
                                             ciclo.activo
-                                                ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
-                                                : "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-400"
+                                                ? "bg-secondary text-primary-foreground"
+                                                : "bg-muted-foreground text-white"
                                         }`}
                                     >
                                         {ciclo.activo ? "Activo" : "Inactivo"}

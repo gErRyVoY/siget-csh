@@ -52,15 +52,15 @@ export const POST: APIRoute = async ({ request }) => {
         case 'Usuario':
           prioridad = 'Baja';
           break;
-        case 'S-1':
-        case 'S-2':
+        case 'S_1':
+        case 'S_2':
         case 'Desarrollador':
         case 'Coordinador':
         case 'Contador':
         case 'Marketing':
           prioridad = 'Media';
           break;
-        case 'S-3':
+        case 'S_3':
         case 'Director':
           prioridad = 'Alta';
           break;

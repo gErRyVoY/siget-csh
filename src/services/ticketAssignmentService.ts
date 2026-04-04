@@ -70,8 +70,8 @@ async function findAgentsBySpecificAssignment(catId: number, subId?: number | nu
     const assignments = await prisma.asignacionesCategorias.findMany({
         where: {
             categoriaId: catId,
-            subcategoriaId: subId ? { in: [subId, null] } : null,
-            activo: true
+            activo: true,
+            ...(subId ? { OR: [{ subcategoriaId: subId }, { subcategoriaId: null }] } : { subcategoriaId: null })
         },
         include: {
             atiende: {
@@ -90,8 +90,8 @@ async function findAgentsByRolePermissions(catId: number, subId?: number | null)
     const permissions = await prisma.permisoCategoria.findMany({
         where: {
             categoriaId: catId,
-            subcategoriaId: subId ? { in: [subId, null] } : null,
-            activo: true
+            activo: true,
+            ...(subId ? { OR: [{ subcategoriaId: subId }, { subcategoriaId: null }] } : { subcategoriaId: null })
         },
         select: { rolId: true }
     });
@@ -209,6 +209,11 @@ async function findAgentByFallback(
     solicitanteId: number,
     categoriaId: number
 ): Promise<number | null> {
+    // Si la categoría es Marketing (12), NO hacer fallback al equipo general de CSH.
+    if (categoriaId === 12) {
+        return null;
+    }
+
     // Buscar agentes de soporte general (S-1) que estén disponibles
     const fallbackAgents = await prisma.usuario.findMany({
         where: {

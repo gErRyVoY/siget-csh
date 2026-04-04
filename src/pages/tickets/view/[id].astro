@@ -163,11 +163,24 @@ statuses = await prisma.estatus.findMany({
     where: { nombre: { in: ALLOWED_STATUSES } },
 });
 
+const MARKETING_CATEGORY_ID = 12;
+
 if (isPrivileged) {
     // Privileged users see all agents
-    agents = await prisma.usuario.findMany({
-        where: { rolId: { in: PRIVILEGED_ROLES }, activo: true },
-    });
+    if (ticket.categoriaId === MARKETING_CATEGORY_ID) {
+        agents = await prisma.usuario.findMany({
+            where: {
+                empresa: { nombre: "Corporativo" },
+                rol: { rol: { in: ['Community manager', 'Director Marketing', 'Diseñador', 'Editor'] } },
+                activo: true
+            },
+            orderBy: { nombres: "asc" }
+        });
+    } else {
+        agents = await prisma.usuario.findMany({
+            where: { rolId: { in: PRIVILEGED_ROLES }, activo: true },
+        });
+    }
 } else {
     // Regular users only see the current agent (if any)
     if (ticket.atiende) {

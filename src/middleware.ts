@@ -50,7 +50,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
   const sectionRouteMap: Record<string, string> = {
     "/tickets/soporte/nuevo-ticket-csh": "crear_ticket_csh",
     "/tickets/soporte/traslado": "proceso_traslados",
-    "/tickets/marketing/nuevo": "crear_ticket_marketing",
+    "/tickets/marketing/nuevo-ticket-marketing": "crear_ticket_marketing",
     "/tickets/soporte/usuario": "soporte_mis_tickets",
     "/tickets/soporte": "soporte_dashboard", // Podría ser soporte_todos o soporte_dashboard dependiendo de qué es /tickets/soporte index, pero asumimos que requiere soporte_dashboard
     "/tickets/marketing/usuario": "marketing_mis_tickets",

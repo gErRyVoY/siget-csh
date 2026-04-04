@@ -33,9 +33,7 @@ const userId = user.id ? parseInt(String(user.id)) || 0 : 0;
 const finalWhere: any = {
     AND: [
         { categoriaId: MARKETING_CATEGORY_ID },
-        {
-            OR: [{ solicitanteId: userId }, { atiendeId: userId }],
-        },
+        { atiendeId: userId },
     ],
 };
 

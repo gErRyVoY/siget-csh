@@ -6,7 +6,7 @@ import { getSession } from "auth-astro/server";
 const session = await getSession(Astro.request);
 // Basic admin check
 const seccionesUser = session?.user?.secciones ?? [];
-if (!seccionesUser.includes("admin_roles")) {
+if (!seccionesUser.includes("admin_siget_roles")) {
   return Astro.redirect("/");
 }
 

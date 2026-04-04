@@ -275,6 +275,10 @@ model Traslado {
   auditor_reqId  Int?
   especial       Boolean   @default(false)
   nuevo_ingreso  Boolean   @default(false)
+  mail           String?   @db.VarChar(100)
+  mail_escuela   String?   @db.VarChar(100)
+  telefono       String?   @db.VarChar(20)
+  tel_movil      String?   @db.VarChar(20)
 
   // Validacion Auditor Documentos
   validacion_docs        Boolean   @default(false)

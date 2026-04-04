@@ -24,6 +24,11 @@ export const POST: APIRoute = async ({ request }) => {
             escolarizada,
             'bloque-sugerido': bloqueSugerido,
             comentarios,
+            mail,
+            mail_escuela,
+            telefono,
+            tel_movil,
+            plan_pago_api,
         } = data;
 
         // Parse Bloque
@@ -84,6 +89,19 @@ export const POST: APIRoute = async ({ request }) => {
             where: { descripcion: { contains: cleanCarreraName, mode: 'insensitive' } }
         });
         const carreraId = carreraEntity?.id || 1;
+
+        // 3.5 Resolve Plan de Pago from API string
+        let planpagoId: number | null = null;
+        if (plan_pago_api) {
+            const planes = await prisma.planPago.findMany({ where: { activo: true } });
+            const upperApi = String(plan_pago_api).toUpperCase();
+            for (const p of planes) {
+                if (upperApi.includes(p.nombre.toUpperCase())) {
+                    planpagoId = p.id;
+                    break;
+                }
+            }
+        }
 
         // 4. Auditors ... (unchanged code for auditors logic, assuming it's above or I include it)
         // Find User with auditor_docs = true. 
@@ -183,6 +201,11 @@ export const POST: APIRoute = async ({ request }) => {
                     bloqueId: null, // Optional now
                     bloque_nombre: bloqueSugerido ? String(bloqueSugerido) : null,
                     descuentoId,
+                    planpagoId: planpagoId,
+                    mail: mail ? String(mail) : null,
+                    mail_escuela: mail_escuela ? String(mail_escuela) : null,
+                    telefono: telefono ? String(telefono) : null,
+                    tel_movil: tel_movil ? String(tel_movil) : null,
                     auditor_docsId: auditorDocs?.id,
                     auditor_reqId: auditorReq?.id,
                 }

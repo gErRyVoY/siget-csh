@@ -6,7 +6,7 @@ import { getSession } from "auth-astro/server";
 // Body: { rolId, field: 'atiendeTicketsCsh' | 'atiendeTicketsMkt', value: boolean }
 export const PATCH: APIRoute = async ({ request }) => {
   const session = await getSession(request);
-  if (!session?.user?.secciones?.includes("admin_roles")) {
+  if (!session?.user?.secciones?.includes("admin_siget_roles")) {
     return new Response(JSON.stringify({ message: "No autorizado" }), { status: 401 });
   }
 
