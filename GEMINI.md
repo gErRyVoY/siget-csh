@@ -1,26 +1,28 @@
 # Plan de Trabajo (SIGET-CSH)
 
-**Tarea Actual:** Personalización de Perfil de Usuario y Asignación Condicional de Tickets.
+**Tarea Actual:** Migración de Infraestructura a Cloudflare Pages y Cloudflare D1 (Serverless)
 
-**Estado:** Completado - Se implementó la vista, se añadieron los campos necesarios y la UI está reaccionando dinámicamente.
+**Estado:** Iniciando Fase 1 - Configuración de Entorno y Preparación de Prisma.
 
 **Pasos Completados:**
-- ✅ Añadidas columnas `alias` (Usuario), `atiendeTicketsCsh` y `atiendeTicketsMkt` (Rol) a la base de datos vía SQL directo para evitar la congelación del cliente `dev`.
-- ✅ Actualizado el sistema de Roles (`auth.config.ts`) para incluir y propagar los nuevos campos sin alterar el `DefaultSession["user"]` negativamente.
-- ✅ Menú desplegable global de Astro (`UserProfile.astro`) reestructurado para ofrecer lógicas diferenciadas según si el rol del usuario actualizador tiene flags para atender tickets.
-- ✅ Creada nueva interfaz `/user/perfil` exclusiva para agentes de CSH / Marketing con gestión de horarios, *toggle* de vacaciones rápidas ("En Oficina" / "De Vacaciones") y creación de Alias.
-- ✅ Interfaz de `/admin/roles` mejorada con *Toggles* compactos adicionales para declarar globalmente si los usuarios de un rol pueden fungir como receptores de tickets.
+- ✅ Creada rama aislada `cloudflare-deploy` para mantener `main` intacto durante el experimento.
+- ✅ Decisión arquitectónica completada: Nos decantamos por una solución 100% Serverless (Edge) usando Cloudflare Pages para SSR y Cloudflare D1 (SQLite) en vez de AWS App Runner + RDS.
+- ✅ Historial de base de código limpio y respaldado.
 
-**Pasos Siguientes (Próxima Iteración):**
-1.  **Seguridad Adicional y Middleware:**
-    - Terminar validación del `middleware.ts` para proteger absolutamente todas las rutas backend/frontend en base al token de Secciones Híbridas.
-    - Lógica de Soporte de Niveles: Implementar `nivel_soporte` de manera dinámica.
-2.  **Lógica de Asignación Avanzada (Refactor final):**
-    - Refactorizar las reglas de creación y asignación inteligente (`create.ts` / `update.ts`) para honrar a totalidad las variables nativas creadas: `vacaciones`, `atiendeTicketsCsh/Mkt` y `horario_disponibilidad`.
+**Pasos Siguientes (Migración D1 + Pages):**
+1.  **Adaptador Astro:** Integrar `@astrojs/cloudflare` en `astro.config.mjs`.
+2.  **Migración de Prisma:**
+    - Hacer un backup/export de los datos semilla importantes en `seed.ts`.
+    - Cambiar el proveedor en `schema.prisma` de `"postgresql"` a `"sqlite"`.
+    - Regenerar el cliente Prisma adaptado a D1.
+3.  **Configuración Cloudflare:**
+    - Crear `wrangler.toml` para las variables locales y el binding de D1.
+    - Adaptar los endpoints de la API (si hay incompatibilidades menores de SQL).
+4.  **Despliegue y Pruebas:** Deploy al entorno de dev de Cloudflare Pages y configuración de Secrets.
 
 **Documentos de Referencia:**
 - `CHANGELOG.md`: Registro de cambios del proyecto
-- Artifacts: Planes de implementación detallados en `.gemini/antigravity/brain/`
+- Artifacts: Plan de migración Cloudflare en `implementation_plan_cloudflare.md` y checklist en `task.md`.
 
 ---
 *Este plan se actualizará al finalizar cada tarea.*

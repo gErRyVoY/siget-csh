@@ -5,6 +5,12 @@ Todos los cambios notables en este proyecto serán documentados en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Versionado Semántico](https://semver.org/lang/es/).
 
+## 2026-04-04 (Sesión 22 - Preparación y Rama para Cloudflare Edge SSR)
+*   **Gestión de Infraestructura (Serverless):**
+    *   **Cambio Arquitectónico:** Aprobación de la migración de AWS App Runner + PostgreSQL hacia un modelo 100% Edge usando **Cloudflare Pages**, respaldado de forma óptima por **Cloudflare D1** (SQLite).
+    *   **Aislamiento de Ramas:** Creación de la rama paralela `cloudflare-deploy` para ejecutar el set-up y adaptación de adaptadores de Astro y scripts de BD sin penalizar la aplicación estable actual contenida en `main`.
+*   **Bugs Corregidos en `main`:**
+    *   Resuelto un problema donde el identificador obsoleto `admin_roles` causaba redirecciones prohibiendo observar el panel de Roles. El identificador global de API y páginas Front se ha pulido a `admin_siget_roles`.
 
 ## 2026-04-02 (Sesión 21 - Integración de Vistas y Asignaciones de Marketing)
 *   **Gestión de Tickets (Marketing):**

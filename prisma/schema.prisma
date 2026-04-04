@@ -2,19 +2,20 @@
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
 model Empresa {
   id                Int        @id @default(autoincrement())
-  nombre            String     @db.VarChar(50)
-  slug              String     @db.VarChar(50) @unique
-  tipo              TipoEmpresa
+  nombre            String
+  slug              String     @unique
+  tipo              String
   activa            Boolean    @default(true)
   usuarios          Usuario[]
   tickets           Ticket[]
@@ -26,24 +27,24 @@ model Empresa {
 }
 
 model Rol {
-  id                   Int                  @id @default(autoincrement())
-  rol                  String               @db.VarChar(50)
-  descripcion          String?              @db.Text
-  nivel_soporte        NivelSoporte
-  activo               Boolean              @default(true)
-  atiendeTicketsCsh    Boolean              @default(false)
-  atiendeTicketsMkt    Boolean              @default(false)
-  usuarios             Usuario[]
-  permisos             Permiso[]            @relation()
-  permisos_categoria   PermisoCategoria[]
-  permisos_seccion     PermisoRolSeccion[]
+  id                 Int                 @id @default(autoincrement())
+  rol                String
+  descripcion        String?
+  nivel_soporte      String
+  activo             Boolean             @default(true)
+  atiendeTicketsCsh  Boolean             @default(false)
+  atiendeTicketsMkt  Boolean             @default(false)
+  usuarios           Usuario[]
+  permisos           Permiso[]           @relation()
+  permisos_categoria PermisoCategoria[]
+  permisos_seccion   PermisoRolSeccion[]
 
   @@map("rol")
 }
 
 model Oferta {
   id          Int       @id @default(autoincrement())
-  descripcion String    @db.VarChar(50)
+  descripcion String
   carreras    Carrera[]
 
   @@map("oferta")
@@ -51,8 +52,8 @@ model Oferta {
 
 model Carrera {
   id          Int        @id @default(autoincrement())
-  clave       String     @db.VarChar(10)
-  descripcion String     @db.VarChar(150)
+  clave       String
+  descripcion String
   ofertaId    Int
   activo      Boolean    @default(true)
   oferta      Oferta     @relation(fields: [ofertaId], references: [id])
@@ -63,43 +64,43 @@ model Carrera {
 }
 
 model Usuario {
-  id                       Int                      @id @default(autoincrement())
-  mail                     String                   @db.VarChar(60) @unique
-  nombres                  String                   @db.VarChar(50)
-  apellidos                String                   @db.VarChar(50)
-  alias                    String?                  @db.VarChar(50)
-  image                    String?                  @db.Text
-  empresaId                Int
-  rolId                    Int
-  activo                   Boolean                  @default(true)
-  vacaciones               Boolean                  @default(false)
-  ultimo_login             DateTime                 @default(now()) @db.Timestamp(6)
-  horario_disponibilidad   Json?                    @db.JsonB
-  carga_actual             Int                      @default(0)
-  auditor_docs             Boolean                  @default(false)
-  auditor_req              Boolean                  @default(false)
-  empresa                  Empresa                  @relation(fields: [empresaId], references: [id])
-  rol                      Rol                      @relation(fields: [rolId], references: [id])
-  asignaciones_categorias  AsignacionesCategorias[]
-  tickets_solicitados      Ticket[]                 @relation("Solicitante")
-  tickets_atendidos        Ticket[]                 @relation("Atiende")
-  historial_solicitudes    HistorialSolicitud[]
-  traslados_auditor_docs   Traslado[]               @relation("AuditorDocs")
-  traslados_auditor_req    Traslado[]               @relation("AuditorReq")
-  trl_mail                 Boolean   @default(false)
-  trl_coord                Boolean   @default(false)
-  notificaciones_correo    NotificacionesCorreo[]
-  logs                     Logs[]
-  permisos_seccion         PermisoUsuarioSeccion[]
+  id                      Int                      @id @default(autoincrement())
+  mail                    String                   @unique
+  nombres                 String
+  apellidos               String
+  alias                   String?
+  image                   String?
+  empresaId               Int
+  rolId                   Int
+  activo                  Boolean                  @default(true)
+  vacaciones              Boolean                  @default(false)
+  ultimo_login            DateTime                 @default(now())
+  horario_disponibilidad  String?
+  carga_actual            Int                      @default(0)
+  auditor_docs            Boolean                  @default(false)
+  auditor_req             Boolean                  @default(false)
+  empresa                 Empresa                  @relation(fields: [empresaId], references: [id])
+  rol                     Rol                      @relation(fields: [rolId], references: [id])
+  asignaciones_categorias AsignacionesCategorias[]
+  tickets_solicitados     Ticket[]                 @relation("Solicitante")
+  tickets_atendidos       Ticket[]                 @relation("Atiende")
+  historial_solicitudes   HistorialSolicitud[]
+  traslados_auditor_docs  Traslado[]               @relation("AuditorDocs")
+  traslados_auditor_req   Traslado[]               @relation("AuditorReq")
+  trl_mail                Boolean                  @default(false)
+  trl_coord               Boolean                  @default(false)
+  notificaciones_correo   NotificacionesCorreo[]
+  logs                    Logs[]
+  permisos_seccion        PermisoUsuarioSeccion[]
 
   @@map("usuario")
 }
 
 model Logs {
   id        Int      @id @default(autoincrement())
-  accion    String   @db.VarChar(50)
-  fecha     DateTime @default(now()) @db.Timestamp(6)
-  detalles  Json?    @db.JsonB
+  accion    String
+  fecha     DateTime @default(now())
+  detalles  String?
   usuarioId Int
   usuario   Usuario  @relation(fields: [usuarioId], references: [id])
 
@@ -108,9 +109,9 @@ model Logs {
 
 model Ciclo {
   id           Int      @id @default(autoincrement())
-  ciclo        String   @db.VarChar(10)
-  fecha_inicio DateTime @db.Timestamp(6)
-  fecha_fin    DateTime @db.Timestamp(6)
+  ciclo        String
+  fecha_inicio DateTime
+  fecha_fin    DateTime
   activo       Boolean  @default(false)
   bloques      Bloque[]
   tickets      Ticket[]
@@ -119,18 +120,18 @@ model Ciclo {
 }
 
 model Bloque {
-  id          Int      @id @default(autoincrement())
-  clave       String   @db.VarChar(60) @unique
+  id          Int        @id @default(autoincrement())
+  clave       String     @unique
   grado       Grado
   carreraId   Int
-  descripcion String   @db.VarChar(120)
-  dias        String   @db.VarChar(50)
-  hora        String   @db.VarChar(50)
+  descripcion String
+  dias        String
+  hora        String
   cicloId     Int
   campusId    Int
-  carrera     Carrera  @relation(fields: [carreraId], references: [id])
-  ciclo       Ciclo    @relation(fields: [cicloId], references: [id])
-  campus      Empresa  @relation(fields: [campusId], references: [id])
+  carrera     Carrera    @relation(fields: [carreraId], references: [id])
+  ciclo       Ciclo      @relation(fields: [cicloId], references: [id])
+  campus      Empresa    @relation(fields: [campusId], references: [id])
   traslados   Traslado[]
 
   @@map("bloque")
@@ -138,7 +139,7 @@ model Bloque {
 
 model Descuento {
   id          Int        @id @default(autoincrement())
-  descripcion String     @db.VarChar(50)
+  descripcion String
   monto       Int
   activo      Boolean    @default(true)
   traslados   Traslado[]
@@ -148,8 +149,8 @@ model Descuento {
 
 model Estatus {
   id                    Int                  @id @default(autoincrement())
-  nombre                String               @db.VarChar(50)
-  descripcion           String?              @db.Text
+  nombre                String
+  descripcion           String?
   tickets               Ticket[]
   historial_solicitudes HistorialSolicitud[]
 
@@ -157,30 +158,30 @@ model Estatus {
 }
 
 model Categoria {
-  id                        Int                          @id @default(autoincrement())
-  nombre                    String                       @db.VarChar(100)
-  nivel_soporte_requerido   NivelSoporte?
-  activo                    Boolean                      @default(true)
-  tickets                   Ticket[]
-  subcategoria_categorias   SubcategoriaCategorias[]
-  asignaciones_categorias   AsignacionesCategorias[]
-  roles_permitidos          PermisoCategoria[]
+  id                      Int                      @id @default(autoincrement())
+  nombre                  String
+  nivel_soporte_requerido String?
+  activo                  Boolean                  @default(true)
+  tickets                 Ticket[]
+  subcategoria_categorias SubcategoriaCategorias[]
+  asignaciones_categorias AsignacionesCategorias[]
+  roles_permitidos        PermisoCategoria[]
 
   @@map("categoria")
 }
 
 model Subcategoria {
-  id                        Int                         @id @default(autoincrement())
-  nombre                    String                      @db.VarChar(100)
-  parent_subcategoriaId     Int?
-  nivel_soporte_requerido   NivelSoporte?
-  activo                    Boolean                     @default(true)
-  parent_subcategoria       Subcategoria?               @relation("SubcategoriaHierarchy", fields: [parent_subcategoriaId], references: [id])
-  subcategorias             Subcategoria[]              @relation("SubcategoriaHierarchy")
-  tickets                   Ticket[]
-  subcategoria_categorias   SubcategoriaCategorias[]
-  asignaciones_categorias   AsignacionesCategorias[]
-  roles_permitidos          PermisoCategoria[]
+  id                      Int                      @id @default(autoincrement())
+  nombre                  String
+  parent_subcategoriaId   Int?
+  nivel_soporte_requerido String?
+  activo                  Boolean                  @default(true)
+  parent_subcategoria     Subcategoria?            @relation("SubcategoriaHierarchy", fields: [parent_subcategoriaId], references: [id])
+  subcategorias           Subcategoria[]           @relation("SubcategoriaHierarchy")
+  tickets                 Ticket[]
+  subcategoria_categorias SubcategoriaCategorias[]
+  asignaciones_categorias AsignacionesCategorias[]
+  roles_permitidos        PermisoCategoria[]
 
   @@map("subcategoria")
 }
@@ -197,18 +198,18 @@ model SubcategoriaCategorias {
 }
 
 model AsignacionesCategorias {
-  id             Int           @id @default(autoincrement())
+  id             Int      @id @default(autoincrement())
   atiendeId      Int
   categoriaId    Int?
   subcategoriaId Int?
-  activo         Boolean       @default(true)
-  prioridad      Int           @default(5)
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
+  activo         Boolean  @default(true)
+  prioridad      Int      @default(5)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
-  atiende        Usuario       @relation(fields: [atiendeId], references: [id], onDelete: Cascade)
-  categoria      Categoria?    @relation(fields: [categoriaId], references: [id], onDelete: Cascade)
-  subcategoria   Subcategoria? @relation(fields: [subcategoriaId], references: [id], onDelete: Cascade)
+  atiende      Usuario       @relation(fields: [atiendeId], references: [id], onDelete: Cascade)
+  categoria    Categoria?    @relation(fields: [categoriaId], references: [id], onDelete: Cascade)
+  subcategoria Subcategoria? @relation(fields: [subcategoriaId], references: [id], onDelete: Cascade)
 
   @@unique([atiendeId, categoriaId, subcategoriaId])
   @@index([categoriaId, subcategoriaId, activo])
@@ -218,21 +219,21 @@ model AsignacionesCategorias {
 
 model Ticket {
   id                    Int                    @id @default(autoincrement())
-  fechaalta             DateTime               @default(now()) @db.Timestamp(6)
-  fechaact              DateTime               @default(now()) @db.Timestamp(6)
+  fechaalta             DateTime               @default(now())
+  fechaact              DateTime               @default(now())
   estatusId             Int
   categoriaId           Int
   subcategoriaId        Int?
   solicitanteId         Int
   atiendeId             Int?
   prioridad             Prioridad
-  descripcion           String?                @db.Text
-  afectado_clave        String?                @db.VarChar(20)
-  afectado_nombre       String?                @db.VarChar(150)
+  descripcion           String?
+  afectado_clave        String?
+  afectado_nombre       String?
   empresaId             Int
   cicloId               Int?
   archivado             Boolean                @default(false)
-  archivos              Json?                  @db.JsonB
+  archivos              String?
   estatus               Estatus                @relation(fields: [estatusId], references: [id])
   categoria             Categoria              @relation(fields: [categoriaId], references: [id])
   subcategoria          Subcategoria?          @relation(fields: [subcategoriaId], references: [id])
@@ -249,8 +250,8 @@ model Ticket {
 
 model PlanPago {
   id          Int        @id @default(autoincrement())
-  nombre      String     @db.VarChar(50)
-  descripcion String?    @db.Text
+  nombre      String
+  descripcion String?
   activo      Boolean    @default(true)
   traslados   Traslado[]
 
@@ -258,47 +259,47 @@ model PlanPago {
 }
 
 model Traslado {
-  id             Int       @id @default(autoincrement())
-  ticketId       Int       @unique
-  folio          String    @db.VarChar(10) @unique
-  matricula      String    @db.VarChar(10)
-  alumno         String    @db.VarChar(100)
+  id             Int     @id @default(autoincrement())
+  ticketId       Int     @unique
+  folio          String  @unique
+  matricula      String
+  alumno         String
   origenId       Int
   destinoId      Int
   carreraId      Int
   descuentoId    Int
   bloqueId       Int?
-  bloque_nombre  String?   @db.VarChar(20)
-  actualizacion  Boolean   @default(false)
+  bloque_nombre  String?
+  actualizacion  Boolean @default(false)
   planpagoId     Int?
   auditor_docsId Int?
   auditor_reqId  Int?
-  especial       Boolean   @default(false)
-  nuevo_ingreso  Boolean   @default(false)
-  mail           String?   @db.VarChar(100)
-  mail_escuela   String?   @db.VarChar(100)
-  telefono       String?   @db.VarChar(20)
-  tel_movil      String?   @db.VarChar(20)
+  especial       Boolean @default(false)
+  nuevo_ingreso  Boolean @default(false)
+  mail           String?
+  mail_escuela   String?
+  telefono       String?
+  tel_movil      String?
 
   // Validacion Auditor Documentos
-  validacion_docs        Boolean   @default(false)
-  descripcion_docs       String?   @db.Text
+  validacion_docs  Boolean @default(false)
+  descripcion_docs String?
 
   // Validacion Auditor Requisitos (Calificaciones y Estado de Cuenta)
-  validacion_calif       Boolean   @default(false)
-  descripcion_calif      String?   @db.Text
-  validacion_edocta      Boolean   @default(false)
-  descripcion_edocta     String?   @db.Text
+  validacion_calif   Boolean @default(false)
+  descripcion_calif  String?
+  validacion_edocta  Boolean @default(false)
+  descripcion_edocta String?
 
-  ticket         Ticket    @relation(fields: [ticketId], references: [id])
-  origen         Empresa   @relation("Origen", fields: [origenId], references: [id])
-  destino        Empresa   @relation("Destino", fields: [destinoId], references: [id])
-  carrera        Carrera   @relation(fields: [carreraId], references: [id])
-  descuento      Descuento @relation(fields: [descuentoId], references: [id])
-  bloque         Bloque?    @relation(fields: [bloqueId], references: [id])
-  planpago       PlanPago? @relation(fields: [planpagoId], references: [id])
-  auditor_docs   Usuario?  @relation("AuditorDocs", fields: [auditor_docsId], references: [id])
-  auditor_req    Usuario?  @relation("AuditorReq", fields: [auditor_reqId], references: [id])
+  ticket       Ticket    @relation(fields: [ticketId], references: [id])
+  origen       Empresa   @relation("Origen", fields: [origenId], references: [id])
+  destino      Empresa   @relation("Destino", fields: [destinoId], references: [id])
+  carrera      Carrera   @relation(fields: [carreraId], references: [id])
+  descuento    Descuento @relation(fields: [descuentoId], references: [id])
+  bloque       Bloque?   @relation(fields: [bloqueId], references: [id])
+  planpago     PlanPago? @relation(fields: [planpagoId], references: [id])
+  auditor_docs Usuario?  @relation("AuditorDocs", fields: [auditor_docsId], references: [id])
+  auditor_req  Usuario?  @relation("AuditorReq", fields: [auditor_reqId], references: [id])
 
   @@map("traslado")
 }
@@ -308,10 +309,10 @@ model HistorialSolicitud {
   ticketId     Int
   estatusId    Int
   usuarioId    Int
-  fecha_cambio DateTime @default(now()) @db.Timestamp(6)
-  comentario   String?  @db.Text
-  cambios      Json?    @db.JsonB
-  archivos     Json?    @db.JsonB
+  fecha_cambio DateTime @default(now())
+  comentario   String?
+  cambios      String?
+  archivos     String?
   ticket       Ticket   @relation(fields: [ticketId], references: [id])
   estatus      Estatus  @relation(fields: [estatusId], references: [id])
   usuario      Usuario  @relation(fields: [usuarioId], references: [id])
@@ -321,8 +322,8 @@ model HistorialSolicitud {
 
 model PlantillaCorreo {
   id                    Int                    @id @default(autoincrement())
-  nombre                String                 @db.VarChar(100)
-  contenido             String?                @db.Text
+  nombre                String
+  contenido             String?
   tipo                  TipoPlantillaCorreo
   activo                Boolean                @default(false)
   notificaciones_correo NotificacionesCorreo[]
@@ -334,10 +335,10 @@ model NotificacionesCorreo {
   id             Int             @id @default(autoincrement())
   ticketId       Int
   destinatarioId Int
-  fecha_envio    DateTime        @default(now()) @db.Timestamp(6)
+  fecha_envio    DateTime        @default(now())
   plantillaId    Int
   estatus        EstatusCorreo
-  mensaje_error  String?         @db.Text
+  mensaje_error  String?
   ticket         Ticket          @relation(fields: [ticketId], references: [id])
   destinatario   Usuario         @relation(fields: [destinatarioId], references: [id])
   plantilla      PlantillaCorreo @relation(fields: [plantillaId], references: [id])
@@ -346,27 +347,27 @@ model NotificacionesCorreo {
 }
 
 model Permiso {
-  id          Int      @id @default(autoincrement())
-  nombre      String   @unique @db.VarChar(100)
+  id          Int     @id @default(autoincrement())
+  nombre      String  @unique
   descripcion String?
-  roles       Rol[]    @relation()
+  roles       Rol[]   @relation()
 
   @@map("permiso")
 }
 
 model PermisoCategoria {
-  id             Int           @id @default(autoincrement())
+  id             Int      @id @default(autoincrement())
   rolId          Int
   categoriaId    Int?
   subcategoriaId Int?
-  activo         Boolean       @default(true)
-  prioridad      Int           @default(0)
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
+  activo         Boolean  @default(true)
+  prioridad      Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
-  rol            Rol           @relation(fields: [rolId], references: [id], onDelete: Cascade)
-  categoria      Categoria?    @relation(fields: [categoriaId], references: [id], onDelete: Cascade)
-  subcategoria   Subcategoria? @relation(fields: [subcategoriaId], references: [id], onDelete: Cascade)
+  rol          Rol           @relation(fields: [rolId], references: [id], onDelete: Cascade)
+  categoria    Categoria?    @relation(fields: [categoriaId], references: [id], onDelete: Cascade)
+  subcategoria Subcategoria? @relation(fields: [subcategoriaId], references: [id], onDelete: Cascade)
 
   @@unique([rolId, categoriaId, subcategoriaId])
   @@index([categoriaId, subcategoriaId, activo])
@@ -374,42 +375,23 @@ model PermisoCategoria {
   @@map("permiso_categoria")
 }
 
-enum TipoEmpresa {
-  Ejecutivo
-  Magno
-  Oficina
-  Social
-}
-
-enum NivelSoporte {
-  S_1 @map("S-1")
-  S_2 @map("S-2")
-  S_3 @map("S-3")
-  Desarrollador
-  Marketing
-  Contador
-  Usuario
-  Coordinador
-  Director
-}
-
 enum Grado {
-  G_1 @map("1")
-  G_2 @map("2")
-  G_3 @map("3")
-  G_4 @map("4")
-  G_5 @map("5")
-  G_6 @map("6")
-  G_7 @map("7")
-  G_8 @map("8")
-  G_9 @map("9")
-  G_10 @map("10")
-  G_11 @map("11")
-  G_12 @map("12")
-  G_13 @map("13")
-  G_14 @map("14")
-  G_15 @map("15")
-  G_16 @map("16")
+  G_1       @map("1")
+  G_2       @map("2")
+  G_3       @map("3")
+  G_4       @map("4")
+  G_5       @map("5")
+  G_6       @map("6")
+  G_7       @map("7")
+  G_8       @map("8")
+  G_9       @map("9")
+  G_10      @map("10")
+  G_11      @map("11")
+  G_12      @map("12")
+  G_13      @map("13")
+  G_14      @map("14")
+  G_15      @map("15")
+  G_16      @map("16")
   Seminario
 }
 
@@ -440,11 +422,11 @@ enum EstatusCorreo {
 
 model Seccion {
   id               Int                     @id @default(autoincrement())
-  nombre           String                  @db.VarChar(100)
-  identificador    String                  @unique @db.VarChar(100)
-  grupo            String?                 @db.VarChar(50)
-  subgrupo         String?                 @db.VarChar(50)
-  descripcion      String?                 @db.Text
+  nombre           String
+  identificador    String                  @unique
+  grupo            String?
+  subgrupo         String?
+  descripcion      String?
   activo           Boolean                 @default(true)
   permisos_rol     PermisoRolSeccion[]
   permisos_usuario PermisoUsuarioSeccion[]
@@ -453,15 +435,15 @@ model Seccion {
 }
 
 model PermisoRolSeccion {
-  id         Int      @id @default(autoincrement())
-  rolId      Int
-  seccionId  Int
-  activo     Boolean  @default(true)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id        Int      @id @default(autoincrement())
+  rolId     Int
+  seccionId Int
+  activo    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  rol        Rol      @relation(fields: [rolId], references: [id], onDelete: Cascade)
-  seccion    Seccion  @relation(fields: [seccionId], references: [id], onDelete: Cascade)
+  rol     Rol     @relation(fields: [rolId], references: [id], onDelete: Cascade)
+  seccion Seccion @relation(fields: [seccionId], references: [id], onDelete: Cascade)
 
   @@unique([rolId, seccionId])
   @@index([rolId, activo])
@@ -469,15 +451,15 @@ model PermisoRolSeccion {
 }
 
 model PermisoUsuarioSeccion {
-  id         Int      @id @default(autoincrement())
-  usuarioId  Int
-  seccionId  Int
-  activo     Boolean  @default(true)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id        Int      @id @default(autoincrement())
+  usuarioId Int
+  seccionId Int
+  activo    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  usuario    Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
-  seccion    Seccion  @relation(fields: [seccionId], references: [id], onDelete: Cascade)
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  seccion Seccion @relation(fields: [seccionId], references: [id], onDelete: Cascade)
 
   @@unique([usuarioId, seccionId])
   @@index([usuarioId, activo])
