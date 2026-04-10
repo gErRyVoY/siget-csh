@@ -20,7 +20,11 @@ export default defineConfig({
     host: '0.0.0.0'
   },
 
-  adapter: cloudflare(),
+  adapter: cloudflare({
+    platformProxy: {
+      enabled: true
+    }
+  }),
 
   integrations: [auth()]
 });

@@ -1,5 +1,9 @@
 import { defineMiddleware } from "astro:middleware";
 import { getSession } from "auth-astro/server";
+import { PrismaClient } from '@prisma/client';
+import { PrismaD1 } from '@prisma/adapter-d1';
+
+const globalForPrisma = globalThis as unknown as { prisma: PrismaClient };
 
 // Rutas que no requieren autenticación. Todas las demás estarán protegidas.
 const publicRoutes = [
@@ -11,6 +15,21 @@ const publicRoutes = [
 export const onRequest = defineMiddleware(async (context, next) => {
 
   const { pathname } = context.url;
+
+  // Inyección de Base de Datos
+  if (context.locals.runtime?.env?.DB) {
+     const adapter = new PrismaD1(context.locals.runtime.env.DB);
+     context.locals.db = new PrismaClient({ adapter });
+  } else {
+     if (!globalForPrisma.prisma) {
+        globalForPrisma.prisma = new PrismaClient();
+     }
+     context.locals.db = globalForPrisma.prisma;
+  }
+  
+  // Guardamos la DB en el entorno global de forma temporal para proveer
+  // acceso a librerías estáticas (como auth.config.ts) durante la duración del isolate
+  (globalThis as any).edgeDb = context.locals.db;
 
   // El endpoint de la API de autenticación siempre debe ser accesible.
   if (pathname.startsWith("/api/auth")) {

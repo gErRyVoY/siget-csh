@@ -7,6 +7,6 @@ compatibility_flags = ["nodejs_compat"]
 # Prisma interactuará con D1 usando este binding
 
 [[d1_databases]]
-binding = "siget"
+binding = "DB"
 database_name = "siget"
 database_id = "c9b5a14f-b72c-4527-b3a4-eaabd4ded9b9"
