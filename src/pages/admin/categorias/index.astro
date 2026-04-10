@@ -1,6 +1,6 @@
 ---
+const { db } = Astro.locals;
 import MainLayout from "@/layouts/MainLayout.astro";
-import { prisma } from "@/lib/db";
 import { getSession } from "auth-astro/server";
 
 const session = await getSession(Astro.request);
@@ -11,7 +11,7 @@ if (!user) {
 }
 
 // Fetch all categories with their subcategories (deep nesting)
-const categories = await prisma.categoria.findMany({
+const categories = await db.categoria.findMany({
     orderBy: { nombre: "asc" },
     include: {
         subcategoria_categorias: {

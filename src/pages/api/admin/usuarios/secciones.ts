@@ -1,8 +1,8 @@
 import type { APIRoute } from 'astro';
-import { prisma } from '@/lib/db';
 import { getSession } from 'auth-astro/server';
 
-export const PATCH: APIRoute = async ({ request }) => {
+export const PATCH: APIRoute = async ({ locals,  request }) => {
+  const { db } = locals;
   const session = await getSession(request);
   if (!session || !session.user || !session.user.id) {
     return new Response(JSON.stringify({ message: 'No autorizado' }), { status: 401 });
@@ -17,7 +17,7 @@ export const PATCH: APIRoute = async ({ request }) => {
     }
 
     // Upsert the PermisoUsuarioSeccion record
-    const permiso = await prisma.permisoUsuarioSeccion.upsert({
+    const permiso = await db.permisoUsuarioSeccion.upsert({
       where: {
         usuarioId_seccionId: {
           usuarioId: parseInt(usuarioId),
@@ -32,7 +32,7 @@ export const PATCH: APIRoute = async ({ request }) => {
       }
     });
 
-    await prisma.logs.create({
+    await db.logs.create({
       data: {
         accion: `Cambio de permiso de sección para usuario ID: ${usuarioId}`,
         detalles: { adminUserId, seccionId, activo },

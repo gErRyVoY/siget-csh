@@ -1,25 +1,25 @@
 import type { APIRoute } from 'astro';
-import { prisma } from '@/lib/db';
 
-export const POST: APIRoute = async ({ request }) => {
+export const POST: APIRoute = async ({ locals,  request }) => {
+  const { db } = locals;
     try {
         const { id, activo } = await request.json();
 
         if (activo) {
             // Activate this one, deactivate others
-            await prisma.$transaction([
-                prisma.ciclo.updateMany({
+            await db.$transaction([
+                db.ciclo.updateMany({
                     where: { id: { not: id } },
                     data: { activo: false }
                 }),
-                prisma.ciclo.update({
+                db.ciclo.update({
                     where: { id },
                     data: { activo: true }
                 })
             ]);
         } else {
             // Just deactivate
-            await prisma.ciclo.update({
+            await db.ciclo.update({
                 where: { id },
                 data: { activo: false }
             });

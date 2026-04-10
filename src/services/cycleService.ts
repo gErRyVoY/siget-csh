@@ -1,5 +1,4 @@
-
-import { prisma } from '@/lib/db';
+import type { PrismaClient } from '@prisma/client';
 
 /**
  * Ensures that the 'activo' flag in the Ciclo table is consistent with the current date.
@@ -9,11 +8,11 @@ import { prisma } from '@/lib/db';
  * 3. Deactivate any other cycles that are currently active but shouldn't be.
  * 4. Return the active cycle query result.
  */
-export async function ensureActiveCycle() {
+export async function ensureActiveCycle(db: PrismaClient) {
     const now = new Date();
 
     // 1. Find the correct cycle for today
-    const correctCycle = await prisma.ciclo.findFirst({
+    const correctCycle = await db.ciclo.findFirst({
         where: {
             fecha_inicio: { lte: now },
             fecha_fin: { gte: now }
@@ -24,14 +23,14 @@ export async function ensureActiveCycle() {
         // If the correct cycle is not active, activate it
         if (!correctCycle.activo) {
             console.log(`[CycleService] Activating cycle ${correctCycle.ciclo}`);
-            await prisma.ciclo.update({
+            await db.ciclo.update({
                 where: { id: correctCycle.id },
                 data: { activo: true }
             });
         }
 
         // Deactivate others
-        await prisma.ciclo.updateMany({
+        await db.ciclo.updateMany({
             where: {
                 activo: true,
                 id: { not: correctCycle.id }
@@ -43,7 +42,7 @@ export async function ensureActiveCycle() {
     } else {
         // No cycle matches today (Gap period or Out of range)
         // Ensure everything is inactive
-        const deleted = await prisma.ciclo.updateMany({
+        const deleted = await db.ciclo.updateMany({
             where: { activo: true },
             data: { activo: false }
         });
@@ -57,6 +56,6 @@ export async function ensureActiveCycle() {
 /**
  * Gets the active cycle, ensuring consistency first.
  */
-export async function getActiveCycle() {
-    return await ensureActiveCycle();
+export async function getActiveCycle(db: PrismaClient) {
+    return await ensureActiveCycle(db);
 }

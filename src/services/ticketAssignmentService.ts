@@ -1,9 +1,10 @@
-import { prisma } from '../lib/db';
+import { PrismaClient } from '@prisma/client';
 import type { Usuario, Rol } from '@prisma/client';
 
 type AgentWithRelations = Usuario & { rol: Rol };
 
 interface AssignmentOptions {
+    db: PrismaClient;
     solicitanteId: number;
     categoriaId: number;
     subcategoriaId?: number | null;
@@ -26,12 +27,12 @@ interface AssignmentResult {
 export async function findBestAgentHybrid(
     options: AssignmentOptions
 ): Promise<AssignmentResult> {
-    const { solicitanteId, categoriaId, subcategoriaId } = options;
+    const { db, solicitanteId, categoriaId, subcategoriaId } = options;
 
     console.log(`[Assignment] Buscando agente para categoría ${categoriaId}, subcategoría ${subcategoriaId}`);
 
     // PASO 1: Buscar asignaciones ESPECÍFICAS de usuario
-    const specificAgents = await findAgentsBySpecificAssignment(categoriaId, subcategoriaId);
+    const specificAgents = await findAgentsBySpecificAssignment(db, categoriaId, subcategoriaId);
 
     if (specificAgents.length > 0) {
         const agent = await selectBestAgent(specificAgents, solicitanteId, categoriaId);
@@ -42,7 +43,7 @@ export async function findBestAgentHybrid(
     }
 
     // PASO 2: Buscar por PERMISOS DE ROL
-    const roleAgents = await findAgentsByRolePermissions(categoriaId, subcategoriaId);
+    const roleAgents = await findAgentsByRolePermissions(db, categoriaId, subcategoriaId);
 
     if (roleAgents.length > 0) {
         const agent = await selectBestAgent(roleAgents, solicitanteId, categoriaId);
@@ -53,7 +54,7 @@ export async function findBestAgentHybrid(
     }
 
     // PASO 3: Fallback (si no hay reglas, usar lógica default antigua)
-    const fallbackId = await findAgentByFallback(solicitanteId, categoriaId);
+    const fallbackId = await findAgentByFallback(db, solicitanteId, categoriaId);
     if (fallbackId) {
         console.log(`[Assignment] Agente encontrado por fallback: ${fallbackId}`);
         return { agentId: fallbackId, assignmentType: 'fallback' };
@@ -66,8 +67,8 @@ export async function findBestAgentHybrid(
 // HELPERS
 // ------------------------------------------------------------------
 
-async function findAgentsBySpecificAssignment(catId: number, subId?: number | null): Promise<AgentWithRelations[]> {
-    const assignments = await prisma.asignacionesCategorias.findMany({
+async function findAgentsBySpecificAssignment(db: PrismaClient, catId: number, subId?: number | null): Promise<AgentWithRelations[]> {
+    const assignments = await db.asignacionesCategorias.findMany({
         where: {
             categoriaId: catId,
             activo: true,
@@ -86,8 +87,8 @@ async function findAgentsBySpecificAssignment(catId: number, subId?: number | nu
         .filter(u => u.activo && !u.vacaciones) as AgentWithRelations[];
 }
 
-async function findAgentsByRolePermissions(catId: number, subId?: number | null): Promise<AgentWithRelations[]> {
-    const permissions = await prisma.permisoCategoria.findMany({
+async function findAgentsByRolePermissions(db: PrismaClient, catId: number, subId?: number | null): Promise<AgentWithRelations[]> {
+    const permissions = await db.permisoCategoria.findMany({
         where: {
             categoriaId: catId,
             activo: true,
@@ -100,7 +101,7 @@ async function findAgentsByRolePermissions(catId: number, subId?: number | null)
 
     const roleIds = permissions.map(p => p.rolId);
 
-    const users = await prisma.usuario.findMany({
+    const users = await db.usuario.findMany({
         where: {
             rolId: { in: roleIds },
             activo: true,
@@ -206,6 +207,7 @@ function filterBySchedule(agents: AgentWithRelations[]): AgentWithRelations[] {
  * Lógica de fallback (mantiene compatibilidad con lógica anterior)
  */
 async function findAgentByFallback(
+    db: PrismaClient,
     solicitanteId: number,
     categoriaId: number
 ): Promise<number | null> {
@@ -215,7 +217,7 @@ async function findAgentByFallback(
     }
 
     // Buscar agentes de soporte general (S-1) que estén disponibles
-    const fallbackAgents = await prisma.usuario.findMany({
+    const fallbackAgents = await db.usuario.findMany({
         where: {
             activo: true,
             vacaciones: false,

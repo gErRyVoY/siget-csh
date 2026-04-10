@@ -1,11 +1,13 @@
 import type { APIRoute } from 'astro';
 import { getSession } from 'auth-astro/server';
-import { prisma } from '@/lib/db';
 import { findBestAgentHybrid } from '@/services/ticketAssignmentService';
 import { sendNotification } from '../notifications/sse';
 import { ensureActiveCycle } from '@/services/cycleService';
 
-export const POST: APIRoute = async ({ request }) => {
+export const POST: APIRoute = async (context) => {
+  const { request, locals } = context;
+  const { db } = locals;
+
     const session = await getSession(request);
     if (!session || !session.user || !session.user.id) {
         return new Response(JSON.stringify({ message: 'No autorizado' }), { status: 401 });
@@ -51,8 +53,8 @@ export const POST: APIRoute = async ({ request }) => {
 
         // --- Resolve Entities ---
         // 1. Categoria "Alumno" y Subcategoria "Traslado"
-        const categoria = await prisma.categoria.findFirst({ where: { nombre: 'Alumno' } });
-        const subcategoria = await prisma.subcategoria.findFirst({ where: { nombre: 'Traslado' } });
+        const categoria = await db.categoria.findFirst({ where: { nombre: 'Alumno' } });
+        const subcategoria = await db.subcategoria.findFirst({ where: { nombre: 'Traslado' } });
 
         if (!categoria || !subcategoria) {
             console.error('Categoria "Alumno" o Subcategoria "Traslado" no encontrada.');
@@ -60,8 +62,8 @@ export const POST: APIRoute = async ({ request }) => {
         }
 
         // 2. Empresas (Campus)
-        const empresaOrigen = await prisma.empresa.findFirst({ where: { nombre: campusOrigen } });
-        const empresaDestino = await prisma.empresa.findFirst({ where: { nombre: campusDestino } });
+        const empresaOrigen = await db.empresa.findFirst({ where: { nombre: campusOrigen } });
+        const empresaDestino = await db.empresa.findFirst({ where: { nombre: campusDestino } });
 
         if (!empresaOrigen || !empresaDestino) {
             return new Response(JSON.stringify({ message: 'Campus no encontrado en el sistema.' }), { status: 400 });
@@ -71,7 +73,7 @@ export const POST: APIRoute = async ({ request }) => {
         let descuentoId = 1; // Default "N/A" (ID 1 from seed)
         if (tieneDescuento && descuentoValor) {
             // descuentoValor is now the NAME (string), not monto (int)
-            const descuento = await prisma.descuento.findFirst({ where: { descripcion: descuentoValor, activo: true } });
+            const descuento = await db.descuento.findFirst({ where: { descripcion: descuentoValor, activo: true } });
             if (descuento) {
                 descuentoId = descuento.id;
             } else {
@@ -85,7 +87,7 @@ export const POST: APIRoute = async ({ request }) => {
         // --- Resolve Carrera URL/Name to ID ---
         // Seed has short names like "Administración", form sends "Licenciatura en Administración"
         const cleanCarreraName = carrera.replace(/^(Licenciatura en |Maestría en )/g, '').trim();
-        const carreraEntity = await prisma.carrera.findFirst({
+        const carreraEntity = await db.carrera.findFirst({
             where: { descripcion: { contains: cleanCarreraName, mode: 'insensitive' } }
         });
         const carreraId = carreraEntity?.id || 1;
@@ -93,7 +95,7 @@ export const POST: APIRoute = async ({ request }) => {
         // 3.5 Resolve Plan de Pago from API string
         let planpagoId: number | null = null;
         if (plan_pago_api) {
-            const planes = await prisma.planPago.findMany({ where: { activo: true } });
+            const planes = await db.planPago.findMany({ where: { activo: true } });
             const upperApi = String(plan_pago_api).toUpperCase();
             for (const p of planes) {
                 if (upperApi.includes(p.nombre.toUpperCase())) {
@@ -105,20 +107,20 @@ export const POST: APIRoute = async ({ request }) => {
 
         // 4. Auditors ... (unchanged code for auditors logic, assuming it's above or I include it)
         // Find User with auditor_docs = true. 
-        let auditorDocs = await prisma.usuario.findFirst({
+        let auditorDocs = await db.usuario.findFirst({
             where: { auditor_docs: true, empresaId: empresaOrigen.id, activo: true }
         });
         if (!auditorDocs) {
-            auditorDocs = await prisma.usuario.findFirst({
+            auditorDocs = await db.usuario.findFirst({
                 where: { auditor_docs: true, activo: true }
             });
         }
 
-        let auditorReq = await prisma.usuario.findFirst({
+        let auditorReq = await db.usuario.findFirst({
             where: { auditor_req: true, empresaId: empresaOrigen.id, activo: true }
         });
         if (!auditorReq) {
-            auditorReq = await prisma.usuario.findFirst({
+            auditorReq = await db.usuario.findFirst({
                 where: { auditor_req: true, activo: true }
             });
         }
@@ -130,7 +132,7 @@ export const POST: APIRoute = async ({ request }) => {
 
         // Inside handler ...
         // --- Active Cycle (Auto-update) ---
-        const activeCycle = await ensureActiveCycle();
+        const activeCycle = await ensureActiveCycle(db);
 
         if (!activeCycle) {
             return new Response(JSON.stringify({ message: 'No hay un ciclo escolar activo en este momento. No se pueden crear traslados.' }), { status: 400 });
@@ -138,7 +140,7 @@ export const POST: APIRoute = async ({ request }) => {
 
         // --- Check for Duplicates (Per Cycle) ---
         // At this point activeCycle is guaranteed valid
-        const existingTrasladoInCycle = await prisma.traslado.findFirst({
+        const existingTrasladoInCycle = await db.traslado.findFirst({
             where: {
                 matricula,
                 ticket: {
@@ -158,6 +160,7 @@ export const POST: APIRoute = async ({ request }) => {
 
         // Assign Agent (Owner of the Ticket)
         const assignmentResult = await findBestAgentHybrid({
+            db,
             solicitanteId,
             categoriaId: categoria.id,
             subcategoriaId: subcategoria.id,
@@ -170,7 +173,7 @@ export const POST: APIRoute = async ({ request }) => {
         }
 
         // Create Transaction
-        const [nuevoTicket] = await prisma.$transaction(async (tx: any) => {
+        const [nuevoTicket] = await db.$transaction(async (tx: any) => {
             // 1. Create Ticket
             const ticket = await tx.ticket.create({
                 data: {

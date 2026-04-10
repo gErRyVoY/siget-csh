@@ -1,10 +1,10 @@
 import type { APIRoute } from 'astro';
 import { getSession } from 'auth-astro/server';
-import { prisma } from '@/lib/db';
 
 const PRIVILEGED_ROLES = [1, 2, 3, 4, 5, 6, 15];
 
-export const GET: APIRoute = async ({ request }) => {
+export const GET: APIRoute = async ({ locals,  request }) => {
+  const { db } = locals;
     const session = await getSession(request);
 
     if (!session || !session.user) {
@@ -26,14 +26,14 @@ export const GET: APIRoute = async ({ request }) => {
             // 1. Assigned to me AND Status = Nuevo (2)
             // 2. Status = Sin asignar (1) (All unassigned tickets? Or just those they can see? Usually all for resolvers)
 
-            const assignedNewCount = await prisma.ticket.count({
+            const assignedNewCount = await db.ticket.count({
                 where: {
                     atiendeId: userId,
                     estatusId: 2, // Nuevo
                 },
             });
 
-            const unassignedCount = await prisma.ticket.count({
+            const unassignedCount = await db.ticket.count({
                 where: {
                     estatusId: 1, // Sin asignar
                 },
@@ -59,7 +59,7 @@ export const GET: APIRoute = async ({ request }) => {
             // We don't have last_modifier on Ticket easily, but we have HistorialSolicitud.
 
             // Let's fetch tickets requested by user
-            const userTickets = await prisma.ticket.findMany({
+            const userTickets = await db.ticket.findMany({
                 where: {
                     solicitanteId: userId,
                 },

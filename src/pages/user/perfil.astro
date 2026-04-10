@@ -1,7 +1,7 @@
 ---
+const { db } = Astro.locals;
 import MainLayout from "@/layouts/MainLayout.astro";
 import { getSession } from "auth-astro/server";
-import { prisma } from "@/lib/db";
 
 const session = await getSession(Astro.request);
 if (!session || !session.user) {
@@ -9,7 +9,7 @@ if (!session || !session.user) {
 }
 
 const userId = Number(session.user.id);
-const dbUser = await prisma.usuario.findUnique({
+const dbUser = await db.usuario.findUnique({
   where: { id: userId },
   include: { rol: true },
 });

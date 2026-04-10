@@ -1,6 +1,6 @@
 ---
+const { db } = Astro.locals;
 import MainLayout from "@/layouts/MainLayout.astro";
-import { prisma } from "@/lib/db";
 import { getSession } from "auth-astro/server";
 
 const session = await getSession(Astro.request);
@@ -17,9 +17,9 @@ let selectedRoleId = selectedRoleIdString
   : null;
 
 const [rolesList, seccionesRaw, categoriasMaster] = await Promise.all([
-  prisma.rol.findMany({ orderBy: { rol: "asc" } }),
-  prisma.seccion.findMany({ orderBy: [{ grupo: "asc" }, { nombre: "asc" }] }),
-  prisma.categoria.findMany({
+  db.rol.findMany({ orderBy: { rol: "asc" } }),
+  db.seccion.findMany({ orderBy: [{ grupo: "asc" }, { nombre: "asc" }] }),
+  db.categoria.findMany({
     where: { activo: true },
     include: {
       subcategoria_categorias: {
@@ -44,7 +44,7 @@ let roleCategoriesEnabled: Record<string, boolean> = {};
 let usersByCompany: Record<string, any> = {};
 
 if (selectedRoleId) {
-  selectedRoleData = await prisma.rol.findUnique({
+  selectedRoleData = await db.rol.findUnique({
     where: { id: selectedRoleId },
     include: {
       permisos_seccion: true,

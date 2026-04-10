@@ -1,6 +1,6 @@
 ---
+const { db } = Astro.locals;
 import MainLayout from "@/layouts/MainLayout.astro";
-import { prisma } from "@/lib/db";
 import { formatDate } from "date-fns";
 import { es } from "date-fns/locale";
 import { ensureActiveCycle } from "@/services/cycleService";
@@ -9,7 +9,7 @@ import { ensureActiveCycle } from "@/services/cycleService";
 await ensureActiveCycle();
 
 // Fetch cycles
-const ciclos = await prisma.ciclo.findMany({
+const ciclos = await db.ciclo.findMany({
     orderBy: { id: "asc" },
 });
 ---

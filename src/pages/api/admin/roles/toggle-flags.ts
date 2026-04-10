@@ -1,10 +1,10 @@
 import type { APIRoute } from "astro";
-import { prisma } from "@/lib/db";
 import { getSession } from "auth-astro/server";
 
 // PATCH /api/admin/roles/toggle-flags
 // Body: { rolId, field: 'atiendeTicketsCsh' | 'atiendeTicketsMkt', value: boolean }
-export const PATCH: APIRoute = async ({ request }) => {
+export const PATCH: APIRoute = async ({ locals,  request }) => {
+  const { db } = locals;
   const session = await getSession(request);
   if (!session?.user?.secciones?.includes("admin_siget_roles")) {
     return new Response(JSON.stringify({ message: "No autorizado" }), { status: 401 });
@@ -25,7 +25,7 @@ export const PATCH: APIRoute = async ({ request }) => {
 
     const uid = parseInt(String(rolId), 10);
 
-    await prisma.$transaction(async (tx) => {
+    await db.$transaction(async (tx) => {
       await tx.rol.update({
         where: { id: uid },
         data: { [field]: Boolean(value) },

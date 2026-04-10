@@ -1,8 +1,8 @@
 import type { APIRoute } from "astro";
 import { getSession } from "auth-astro/server";
-import { prisma } from "@/lib/db";
 
-export const PATCH: APIRoute = async ({ request }) => {
+export const PATCH: APIRoute = async ({ locals,  request }) => {
+  const { db } = locals;
   const session = await getSession(request);
   if (!session?.user?.id) {
     return new Response(JSON.stringify({ message: "No autorizado" }), { status: 401 });
@@ -36,7 +36,7 @@ export const PATCH: APIRoute = async ({ request }) => {
       return new Response(JSON.stringify({ message: "Sin cambios" }), { status: 200 });
     }
 
-    const updated = await (prisma.usuario as any).update({
+    const updated = await (db.usuario as any).update({
       where: { id: usuarioId },
       data: updateData,
     });

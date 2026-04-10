@@ -1,9 +1,9 @@
 
 import type { APIRoute } from "astro";
-import { prisma } from "@/lib/db";
 import { parse } from "csv-parse/sync";
 
-export const POST: APIRoute = async ({ request }) => {
+export const POST: APIRoute = async ({ locals,  request }) => {
+  const { db } = locals;
     try {
         const formData = await request.formData();
         const file = formData.get("file") as File;
@@ -68,8 +68,8 @@ export const POST: APIRoute = async ({ request }) => {
         };
 
         // Pre-fetch roles and companies for caching to avoid N+1 queries
-        const roles = await prisma.rol.findMany();
-        const empresas = await prisma.empresa.findMany();
+        const roles = await db.rol.findMany();
+        const empresas = await db.empresa.findMany();
 
         const roleMap = new Map(roles.map((r) => [r.rol.toLowerCase(), r.id]));
         const empresaMap = new Map(empresas.map((e) => [e.slug.toLowerCase(), e.id]));
@@ -127,7 +127,7 @@ export const POST: APIRoute = async ({ request }) => {
             }
 
             // Duplicate Email Check
-            const existingUser = await prisma.usuario.findUnique({ where: { mail } });
+            const existingUser = await db.usuario.findUnique({ where: { mail } });
             if (existingUser) {
                 results.failed++;
                 results.errors.push({ row: rowNum, message: `Email '${mail}' already exists`, data: row });
@@ -135,7 +135,7 @@ export const POST: APIRoute = async ({ request }) => {
             }
 
             try {
-                await prisma.usuario.create({
+                await db.usuario.create({
                     data: {
                         nombres,
                         apellidos,

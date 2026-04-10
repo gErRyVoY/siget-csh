@@ -1,11 +1,11 @@
 ---
+const { db } = Astro.locals;
 import MainLayout from "@/layouts/MainLayout.astro";
-import { prisma } from "@/lib/db";
 import { getSession } from "auth-astro/server";
 
 const session = await getSession(Astro.request);
 
-const secciones = await prisma.seccion.findMany({
+const secciones = await db.seccion.findMany({
   orderBy: [{ grupo: "desc" }, { subgrupo: "asc" }, { nombre: "asc" }],
 });
 

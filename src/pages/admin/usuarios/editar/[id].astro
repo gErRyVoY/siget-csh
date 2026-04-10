@@ -1,6 +1,6 @@
 ---
+const { db } = Astro.locals;
 import MainLayout from "@/layouts/MainLayout.astro";
-import { prisma } from "@/lib/db";
 import type { Usuario, Empresa, Rol } from "@prisma/client";
 import { getSession } from "auth-astro/server";
 
@@ -8,7 +8,7 @@ const { id } = Astro.params;
 const session = await getSession(Astro.request);
 
 const [user, empresas, roles, secciones, categoriasMaster] = await Promise.all([
-  prisma.usuario.findUnique({
+  db.usuario.findUnique({
     where: { id: parseInt(id as string, 10) },
     include: {
       empresa: true,
@@ -17,10 +17,10 @@ const [user, empresas, roles, secciones, categoriasMaster] = await Promise.all([
       asignaciones_categorias: true,
     },
   }),
-  prisma.empresa.findMany({ orderBy: { nombre: "asc" } }),
-  prisma.rol.findMany({ orderBy: { rol: "asc" } }),
-  prisma.seccion.findMany({ orderBy: [{ grupo: "asc" }, { nombre: "asc" }] }),
-  prisma.categoria.findMany({
+  db.empresa.findMany({ orderBy: { nombre: "asc" } }),
+  db.rol.findMany({ orderBy: { rol: "asc" } }),
+  db.seccion.findMany({ orderBy: [{ grupo: "asc" }, { nombre: "asc" }] }),
+  db.categoria.findMany({
     where: { activo: true },
     include: {
       subcategoria_categorias: {

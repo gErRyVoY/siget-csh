@@ -1,7 +1,7 @@
 ---
+const { db } = Astro.locals;
 import MainLayout from "@/layouts/MainLayout.astro";
 import UserTransferIcon from "@/components/icons/UserTransferIcon.astro";
-import { prisma } from "@/lib/db";
 import {
     campusOptions,
     carreraOptions,
@@ -12,7 +12,7 @@ const GOOGLE_API_KEY = import.meta.env.PUBLIC_GOOGLE_API_KEY;
 const GOOGLE_CLIENT_ID = import.meta.env.PUBLIC_GOOGLE_CLIENT_ID;
 const GOOGLE_APP_ID = import.meta.env.PUBLIC_GOOGLE_APP_ID;
 
-const descuentos = await prisma.descuento.findMany({
+const descuentos = await db.descuento.findMany({
     where: { activo: true },
     select: { descripcion: true },
 });

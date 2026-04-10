@@ -1,6 +1,6 @@
 ---
+const { db } = Astro.locals;
 import MainLayout from "@/layouts/MainLayout.astro";
-import { prisma } from "@/lib/db";
 import { getSession } from "auth-astro/server";
 import { format, differenceInDays } from "date-fns";
 import { es } from "date-fns/locale";
@@ -81,7 +81,7 @@ const dropdownScope = {
     ...statusWhere,
 };
 
-const statuses = await prisma.estatus.findMany({
+const statuses = await db.estatus.findMany({
     orderBy: { nombre: "asc" },
 });
 
@@ -100,7 +100,7 @@ const filteredStatuses = statuses.filter((status) =>
 );
 
 // Categorías disponibles (solo las que tienen tickets en el estatus/scope actual)
-const categories = await prisma.categoria.findMany({
+const categories = await db.categoria.findMany({
     where: {
         activo: true,
         tickets: {
@@ -112,7 +112,7 @@ const categories = await prisma.categoria.findMany({
 
 // Empresas (solo si es privilegiado y tienen tickets en scope)
 const companies = isPrivileged
-    ? await prisma.empresa.findMany({
+    ? await db.empresa.findMany({
           where: {
               tickets: {
                   some: dropdownScope,
@@ -125,7 +125,7 @@ const companies = isPrivileged
 // Agentes (solo los que tienen tickets asignados en scope, o todos los posibles agentes?
 // User said: "solo deben contener los valores disponibles de la lista de tickets que se muestran"
 // So strictly filtered by tickets present.
-const agents = await prisma.usuario.findMany({
+const agents = await db.usuario.findMany({
     where: {
         rolId: { in: PRIVILEGED_ROLES },
         activo: true,
@@ -137,11 +137,11 @@ const agents = await prisma.usuario.findMany({
 });
 
 // Obtener total de tickets para paginación
-const totalTickets = await prisma.ticket.count({ where });
+const totalTickets = await db.ticket.count({ where });
 const totalPages = Math.ceil(totalTickets / pageSize);
 
 // Obtener tickets paginados
-const tickets = await prisma.ticket.findMany({
+const tickets = await db.ticket.findMany({
     where,
     include: {
         estatus: true,

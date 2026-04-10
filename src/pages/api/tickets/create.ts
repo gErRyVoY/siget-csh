@@ -1,11 +1,11 @@
 import type { APIRoute } from 'astro';
 import { getSession } from 'auth-astro/server';
-import { prisma } from '../../../lib/db';
 import { sendNotification } from '../notifications/sse';
 import { findBestAgentHybrid } from '../../../services/ticketAssignmentService';
 import { ensureActiveCycle } from '../../../services/cycleService';
 
-export const POST: APIRoute = async ({ request }) => {
+export const POST: APIRoute = async ({ locals,  request }) => {
+  const { db } = locals;
   const session = await getSession(request);
 
   if (!session || !session.user || !session.user.id) {
@@ -13,7 +13,7 @@ export const POST: APIRoute = async ({ request }) => {
   }
 
   try {
-    await ensureActiveCycle();
+    await ensureActiveCycle(db);
     
     const data = await request.json();
     const { categoriaId, subcategoriaId, descripcion, afectado_clave, afectado_nombre } = data;
@@ -35,6 +35,7 @@ export const POST: APIRoute = async ({ request }) => {
 
     // --- NUEVA LÓGICA DE ASIGNACIÓN HÍBRIDA ---
     const assignmentResult = await findBestAgentHybrid({
+      db,
       solicitanteId,
       categoriaId: parsedCategoriaId,
       subcategoriaId: parsedSubcategoriaId,
@@ -73,8 +74,8 @@ export const POST: APIRoute = async ({ request }) => {
 
     if (atiendeId) {
       // Agente encontrado
-      [nuevoTicket] = await prisma.$transaction([
-        prisma.ticket.create({
+      [nuevoTicket] = await db.$transaction([
+        db.ticket.create({
           data: {
             solicitanteId,
             atiendeId,
@@ -89,7 +90,7 @@ export const POST: APIRoute = async ({ request }) => {
             afectado_nombre: afectado_nombre || null,
           },
         }),
-        prisma.usuario.update({
+        db.usuario.update({
           where: { id: atiendeId },
           data: { carga_actual: { increment: 1 } },
         }),
@@ -98,7 +99,7 @@ export const POST: APIRoute = async ({ request }) => {
       console.log(`[Ticket ${nuevoTicket.id}] Asignado a agente ${atiendeId} (tipo: ${assignmentResult.assignmentType})`);
     } else {
       // Sin agente disponible
-      nuevoTicket = await prisma.ticket.create({
+      nuevoTicket = await db.ticket.create({
         data: {
           solicitanteId,
           atiendeId: null,

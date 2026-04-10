@@ -1,8 +1,8 @@
 import type { APIRoute } from "astro";
-import { prisma } from "@/lib/db";
 import { getSession } from "auth-astro/server";
 
-export const POST: APIRoute = async ({ request }) => {
+export const POST: APIRoute = async ({ locals,  request }) => {
+  const { db } = locals;
     const session = await getSession(request);
     if (!session || !session.user) {
         return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
@@ -20,7 +20,7 @@ export const POST: APIRoute = async ({ request }) => {
             return new Response(JSON.stringify({ error: "Missing fields" }), { status: 400 });
         }
 
-        const newSub = await prisma.subcategoria.create({
+        const newSub = await db.subcategoria.create({
             data: {
                 nombre,
                 activo: true,
@@ -43,7 +43,8 @@ export const POST: APIRoute = async ({ request }) => {
     }
 };
 
-export const GET: APIRoute = async ({ request }) => {
+export const GET: APIRoute = async ({ locals,  request }) => {
+  const { db } = locals;
     // List logic if needed via API, but normally Astro pages fetch directly.
     return new Response(JSON.stringify({ message: "Use DB direct in Astro" }), { status: 200 });
 };

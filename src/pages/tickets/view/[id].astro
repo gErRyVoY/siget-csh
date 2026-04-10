@@ -1,7 +1,7 @@
 ---
+const { db } = Astro.locals;
 import MainLayout from "@/layouts/MainLayout.astro";
 import { getSession } from "auth-astro/server";
-import { prisma } from "@/lib/db";
 import {
     type Ticket,
     type Estatus,
@@ -17,11 +17,11 @@ import {
 } from "@/config/form-options";
 
 // Fetch options for autocomplete with IDs
-const allCampuses = await prisma.empresa.findMany({
+const allCampuses = await db.empresa.findMany({
     where: { activa: true },
     select: { id: true, nombre: true }
 });
-const allCarreras = await prisma.carrera.findMany({
+const allCarreras = await db.carrera.findMany({
     where: { activo: true },
     include: { oferta: true }
 });
@@ -32,7 +32,7 @@ const mappedCarreras = allCarreras.map(c => {
      else if (c.oferta.descripcion.includes("Doctorado")) label = `Doctorado en ${label}`;
      return { id: c.id, label };
 });
-const allDescuentos = await prisma.descuento.findMany({
+const allDescuentos = await db.descuento.findMany({
     where: { activo: true },
     select: { id: true, descripcion: true }
 });
@@ -68,7 +68,7 @@ const statusColors: { [key: string]: string } = {
 
 const [ticket, ticketHistory, cshSupportUsers, cshAuditorDocs, cshAuditorReq] =
     await Promise.all([
-        prisma.ticket.findUnique({
+        db.ticket.findUnique({
             where: { id: ticketId },
             include: {
                 estatus: true,
@@ -92,7 +92,7 @@ const [ticket, ticketHistory, cshSupportUsers, cshAuditorDocs, cshAuditorReq] =
                 },
             },
         }),
-        prisma.historialSolicitud.findMany({
+        db.historialSolicitud.findMany({
             where: { ticketId: ticketId },
             include: {
                 usuario: { select: { nombres: true, apellidos: true } },
@@ -106,7 +106,7 @@ const [ticket, ticketHistory, cshSupportUsers, cshAuditorDocs, cshAuditorReq] =
         // User said: "rolId tenga uno de los que estan permitidos".
         // Usually S-1, S-2, S-3 (IDs 1, 2, 3), Developer (4), Coordinator (8), Director (9)?
         // Let's assume standard support roles for now: 1, 2, 3, 4, 8, 9.
-        prisma.usuario.findMany({
+        db.usuario.findMany({
             where: {
                 empresaId: 15,
                 activo: true,
@@ -115,11 +115,11 @@ const [ticket, ticketHistory, cshSupportUsers, cshAuditorDocs, cshAuditorReq] =
             },
         }),
         // Fetch Auditor Docs
-        prisma.usuario.findMany({
+        db.usuario.findMany({
             where: { empresaId: 15, activo: true, auditor_docs: true },
         }),
         // Fetch Auditor Req
-        prisma.usuario.findMany({
+        db.usuario.findMany({
             where: { empresaId: 15, activo: true, auditor_req: true },
         }),
     ]);
@@ -144,7 +144,7 @@ if (ticket.subcategoria) {
     while (currentSub) {
         subPath.unshift(currentSub.nombre);
         if (currentSub.parent_subcategoriaId) {
-            currentSub = await prisma.subcategoria.findUnique({
+            currentSub = await db.subcategoria.findUnique({
                 where: { id: currentSub.parent_subcategoriaId },
             });
         } else {
@@ -159,7 +159,7 @@ let agents: Usuario[] = [];
 const priorities = Object.values(Prioridad);
 
 // Fetch statuses for everyone
-statuses = await prisma.estatus.findMany({
+statuses = await db.estatus.findMany({
     where: { nombre: { in: ALLOWED_STATUSES } },
 });
 
@@ -168,7 +168,7 @@ const MARKETING_CATEGORY_ID = 12;
 if (isPrivileged) {
     // Privileged users see all agents
     if (ticket.categoriaId === MARKETING_CATEGORY_ID) {
-        agents = await prisma.usuario.findMany({
+        agents = await db.usuario.findMany({
             where: {
                 empresa: { nombre: "Corporativo" },
                 rol: { rol: { in: ['Community manager', 'Director Marketing', 'Diseñador', 'Editor'] } },
@@ -177,7 +177,7 @@ if (isPrivileged) {
             orderBy: { nombres: "asc" }
         });
     } else {
-        agents = await prisma.usuario.findMany({
+        agents = await db.usuario.findMany({
             where: { rolId: { in: PRIVILEGED_ROLES }, activo: true },
         });
     }

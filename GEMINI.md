@@ -2,18 +2,19 @@
 
 **Tarea Actual:** Migración de Infraestructura a Cloudflare Pages y Cloudflare D1 (Serverless)
 
-**Estado:** Iniciando Fase 1 - Configuración de Entorno y Preparación de Prisma.
+**Estado:** Completando Fase 1 - Migración Inyección Dependencias y Preparación de Prisma.
 
 **Pasos Completados:**
 - ✅ Creada rama aislada `cloudflare-deploy` para mantener `main` intacto durante el experimento.
 - ✅ Decisión arquitectónica completada: Nos decantamos por una solución 100% Serverless (Edge) usando Cloudflare Pages para SSR y Cloudflare D1 (SQLite) en vez de AWS App Runner + RDS.
-- ✅ Historial de base de código limpio y respaldado.
+- ✅ Extensión de Tipado en Astro Locals para la base de datos (DB).
+- ✅ Refactorización Masiva completada (+40 archivos). Se removió la instancia estática del Prisma Client (lib/db.ts) permitiendo a Astro inyectarla de forma Edge-Ready usando Middleware según el ecosistema.
+- ✅ Comprobación del Schema.prisma apuntando a SQLite.
 
 **Pasos Siguientes (Migración D1 + Pages):**
 1.  **Adaptador Astro:** Integrar `@astrojs/cloudflare` en `astro.config.mjs`.
-2.  **Migración de Prisma:**
+2.  **Migración de Prisma:** (Ya está en SQLite adaptado)
     - Hacer un backup/export de los datos semilla importantes en `seed.ts`.
-    - Cambiar el proveedor en `schema.prisma` de `"postgresql"` a `"sqlite"`.
     - Regenerar el cliente Prisma adaptado a D1.
 3.  **Configuración Cloudflare:**
     - Crear `wrangler.toml` para las variables locales y el binding de D1.

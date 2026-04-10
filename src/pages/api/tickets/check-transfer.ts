@@ -1,7 +1,7 @@
 import type { APIRoute } from 'astro';
-import { prisma } from '@/lib/db';
 
-export const GET: APIRoute = async ({ url }) => {
+export const GET: APIRoute = async ({ locals,  url }) => {
+  const { db } = locals;
     try {
         const matricula = url.searchParams.get('matricula');
 
@@ -10,7 +10,7 @@ export const GET: APIRoute = async ({ url }) => {
         }
 
         // 1. Get Active Cycle
-        const activeCycle = await prisma.ciclo.findFirst({
+        const activeCycle = await db.ciclo.findFirst({
             where: { activo: true }
         });
 
@@ -21,7 +21,7 @@ export const GET: APIRoute = async ({ url }) => {
         }
 
         // 2. Check for existing active transfer (Not Cancelled)
-        const existingTraslado = await prisma.traslado.findFirst({
+        const existingTraslado = await db.traslado.findFirst({
             where: {
                 matricula: matricula,
                 ticket: {

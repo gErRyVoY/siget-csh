@@ -1,6 +1,6 @@
 ---
+const { db } = Astro.locals;
 import MainLayout from "@/layouts/MainLayout.astro";
-import { prisma } from "@/lib/db";
 import { getSession } from "auth-astro/server";
 
 const session = await getSession(Astro.request);
@@ -28,11 +28,11 @@ let subcategories = [];
 
 if (isMarketing) {
     // Only Marketing Category
-    categories = await prisma.categoria.findMany({
+    categories = await db.categoria.findMany({
         where: { id: MARKETING_CATEGORY_ID },
     });
     // Marketing Subcategories
-    subcategories = await prisma.subcategoria.findMany({
+    subcategories = await db.subcategoria.findMany({
         where: {
             subcategoria_categorias: {
                 some: { categoriaId: MARKETING_CATEGORY_ID },
@@ -46,10 +46,10 @@ if (isMarketing) {
     });
 } else {
     // Admin sees all?
-    categories = await prisma.categoria.findMany({
+    categories = await db.categoria.findMany({
         orderBy: { nombre: "asc" },
     });
-    subcategories = await prisma.subcategoria.findMany({
+    subcategories = await db.subcategoria.findMany({
         where: { activo: true },
         orderBy: { id: "asc" },
         include: {

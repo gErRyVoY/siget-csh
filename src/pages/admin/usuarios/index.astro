@@ -1,8 +1,8 @@
 ---
+const { db } = Astro.locals;
 import MainLayout from "@/layouts/MainLayout.astro";
-import { prisma } from "@/lib/db";
 
-const empresas = await prisma.empresa.findMany({
+const empresas = await db.empresa.findMany({
   orderBy: { nombre: "asc" },
   include: {
     _count: {

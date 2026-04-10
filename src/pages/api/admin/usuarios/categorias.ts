@@ -1,10 +1,10 @@
 import type { APIRoute } from 'astro';
 import { getSession } from 'auth-astro/server';
-import { prisma } from '@/lib/db';
 
 const PRIVILEGED_ROLES = [1, 2, 3, 4, 5, 6, 15];
 
-export const PATCH: APIRoute = async ({ request }) => {
+export const PATCH: APIRoute = async ({ locals,  request }) => {
+  const { db } = locals;
     const session = await getSession(request);
     if (!session || !session.user) {
         return new Response(JSON.stringify({ message: "No autorizado" }), { status: 401 });
@@ -29,7 +29,7 @@ export const PATCH: APIRoute = async ({ request }) => {
         const catId = categoriaId ? Number(categoriaId) : null;
         const subcatId = subcategoriaId ? Number(subcategoriaId) : null;
 
-        const asignacion = await prisma.asignacionesCategorias.findFirst({
+        const asignacion = await db.asignacionesCategorias.findFirst({
             where: {
                 atiendeId: targetUsuarioId,
                 categoriaId: catId,
@@ -38,12 +38,12 @@ export const PATCH: APIRoute = async ({ request }) => {
         });
 
         if (asignacion) {
-            await prisma.asignacionesCategorias.update({
+            await db.asignacionesCategorias.update({
                 where: { id: asignacion.id },
                 data: { activo }
             });
         } else {
-            await prisma.asignacionesCategorias.create({
+            await db.asignacionesCategorias.create({
                 data: {
                     atiendeId: targetUsuarioId,
                     categoriaId: catId,
@@ -53,7 +53,7 @@ export const PATCH: APIRoute = async ({ request }) => {
             });
         }
 
-        await prisma.logs.create({
+        await db.logs.create({
             data: {
                 accion: `Actualización Permiso Categoría`,
                 detalles: { targetUsuarioId, categoriaId: catId, subcategoriaId: subcatId, activo },

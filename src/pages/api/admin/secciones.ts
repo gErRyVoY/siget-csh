@@ -1,8 +1,8 @@
 import type { APIRoute } from "astro";
-import { prisma } from "@/lib/db";
 import { getSession } from "auth-astro/server";
 
-export const PATCH: APIRoute = async ({ request }) => {
+export const PATCH: APIRoute = async ({ locals,  request }) => {
+  const { db } = locals;
   const session = await getSession(request);
 
   if (!session?.user?.id) {
@@ -21,13 +21,13 @@ export const PATCH: APIRoute = async ({ request }) => {
       return new Response(JSON.stringify({ message: "Datos incompletos o inválidos" }), { status: 400 });
     }
 
-    const updatedSeccion = await prisma.seccion.update({
+    const updatedSeccion = await db.seccion.update({
       where: { id: parseInt(seccionId, 10) },
       data: { activo },
     });
 
     // Registrar en los logs
-    await prisma.logs.create({
+    await db.logs.create({
       data: {
         accion: activo ? 'Habilitar Sección Global' : 'Inhabilitar Sección Global',
         detalles: `El administrador (ID: ${session.user.id}) ${activo ? 'habilitó' : 'inhabilitó'} la sección global: ${updatedSeccion.nombre} (ID: ${seccionId}).`,

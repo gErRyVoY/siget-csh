@@ -1,7 +1,7 @@
 ---
+const { db } = Astro.locals;
 import MainLayout from "@/layouts/MainLayout.astro";
 import { getSession } from "auth-astro/server";
-import { prisma } from "@/lib/db";
 import StatCard from "@/components/dashboard/StatCard.astro";
 
 const session = await getSession(Astro.request);
@@ -22,7 +22,7 @@ const statusColors = {
 };
 
 // conteos iniciales
-const ticketCounts = await prisma.ticket.groupBy({
+const ticketCounts = await db.ticket.groupBy({
     by: ["estatusId"],
     _count: { id: true },
     where: {
@@ -30,7 +30,7 @@ const ticketCounts = await prisma.ticket.groupBy({
     },
 });
 
-const statuses = await prisma.estatus.findMany();
+const statuses = await db.estatus.findMany();
 
 const getCount = (name: string) => {
     const status = statuses.find((s) => s.nombre === name);

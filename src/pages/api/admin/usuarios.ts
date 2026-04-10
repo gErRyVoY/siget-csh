@@ -1,10 +1,10 @@
 import type { APIRoute } from 'astro';
-import { prisma } from '@/lib/db';
 import type { Prisma, Usuario } from '@prisma/client';
 import { getSession } from 'auth-astro/server';
 
 // GET handler: Handles fetching lists of users with robust filtering.
-export const GET: APIRoute = async ({ request }) => {
+export const GET: APIRoute = async ({ locals,  request }) => {
+  const { db } = locals;
   const url = new URL(request.url);
   const params = url.searchParams;
   const userId = params.get('id');
@@ -12,7 +12,7 @@ export const GET: APIRoute = async ({ request }) => {
   // --- Fetch a Single User ---
   if (userId) {
     try {
-      const user = await prisma.usuario.findUnique({
+      const user = await db.usuario.findUnique({
         where: { id: parseInt(userId, 10) },
         include: { rol: true, empresa: true },
       });
@@ -33,7 +33,7 @@ export const GET: APIRoute = async ({ request }) => {
   }
 
   try {
-    const empresa = await prisma.empresa.findUnique({ where: { slug: campusSlug } });
+    const empresa = await db.empresa.findUnique({ where: { slug: campusSlug } });
     if (!empresa) {
       return new Response(JSON.stringify({ message: 'Empresa no encontrada' }), { status: 404 });
     }
@@ -48,7 +48,7 @@ export const GET: APIRoute = async ({ request }) => {
     const session = await getSession(request);
     if (session?.user?.id) {
       const requesterId = parseInt(session.user.id as string);
-      const requester = await prisma.usuario.findUnique({
+      const requester = await db.usuario.findUnique({
         where: { id: requesterId },
         include: { rol: true }
       });
@@ -77,8 +77,8 @@ export const GET: APIRoute = async ({ request }) => {
     const limitParam = params.get('limit');
     const limit = limitParam === 'all' ? undefined : parseInt(limitParam || '10', 10);
 
-    const totalUsers = await prisma.usuario.count({ where });
-    const users = await prisma.usuario.findMany({
+    const totalUsers = await db.usuario.count({ where });
+    const users = await db.usuario.findMany({
       where,
       skip: limit ? (page - 1) * limit : undefined,
       take: limit,
@@ -100,7 +100,8 @@ export const GET: APIRoute = async ({ request }) => {
 };
 
 // PATCH handler: Handles updating a single user securely and logging the changes.
-export const PATCH: APIRoute = async ({ request }) => {
+export const PATCH: APIRoute = async ({ locals,  request }) => {
+  const { db } = locals;
   const session = await getSession(request);
   if (!session || !session.user || !session.user.id) {
     return new Response(JSON.stringify({ message: 'No autorizado' }), { status: 401 });
@@ -121,7 +122,7 @@ export const PATCH: APIRoute = async ({ request }) => {
 
     const userIdToUpdate = id;
 
-    const userBeforeUpdate = await prisma.usuario.findUnique({ where: { id: userIdToUpdate } });
+    const userBeforeUpdate = await db.usuario.findUnique({ where: { id: userIdToUpdate } });
     if (!userBeforeUpdate) {
       return new Response(JSON.stringify({ message: 'Usuario a actualizar no encontrado' }), { status: 404 });
     }
@@ -152,7 +153,7 @@ export const PATCH: APIRoute = async ({ request }) => {
     }
 
     // Use a transaction to guarantee atomicity
-    const updatedUser = await prisma.$transaction(async (tx) => {
+    const updatedUser = await db.$transaction(async (tx) => {
       // Reseteo de permisos: Si el rol cambia, purgar todas las excepciones del usuario (tanto secciones como categorías)
       if (updateDataInput.rolId !== undefined && userBeforeUpdate.rolId !== parseInt(updateDataInput.rolId, 10)) {
         await tx.permisoUsuarioSeccion.deleteMany({
@@ -207,7 +208,8 @@ export const PATCH: APIRoute = async ({ request }) => {
 };
 
 // DELETE handler: Handles deleting a user
-export const DELETE: APIRoute = async ({ request }) => {
+export const DELETE: APIRoute = async ({ locals,  request }) => {
+  const { db } = locals;
   const session = await getSession(request);
   if (!session || !session.user || !session.user.id) {
     return new Response(JSON.stringify({ message: 'No autorizado' }), { status: 401 });
@@ -231,7 +233,7 @@ export const DELETE: APIRoute = async ({ request }) => {
   }
 
   try {
-    await prisma.$transaction(async (tx) => {
+    await db.$transaction(async (tx) => {
       const userToDelete = await tx.usuario.findUnique({ where: { id: userIdToDelete } });
       if (!userToDelete) {
         throw new Error('Usuario a eliminar no encontrado');

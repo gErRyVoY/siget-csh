@@ -1,10 +1,10 @@
 ---
+const { db } = Astro.locals;
 import MainLayout from "@/layouts/MainLayout.astro";
-import { prisma } from "@/lib/db";
 
 const { campus } = Astro.params;
 
-const empresa = await prisma.empresa.findUnique({
+const empresa = await db.empresa.findUnique({
   where: { slug: campus },
 });
 

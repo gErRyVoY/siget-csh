@@ -1,8 +1,8 @@
 import type { APIRoute } from "astro";
-import { prisma } from "@/lib/db";
 import { getSession } from "auth-astro/server";
 
-export const GET: APIRoute = async ({ request }) => {
+export const GET: APIRoute = async ({ locals,  request }) => {
+  const { db } = locals;
     const session = await getSession(request);
     if (!session || !session.user) {
         return new Response(JSON.stringify({ error: "Unauthorized" }), {
@@ -13,7 +13,7 @@ export const GET: APIRoute = async ({ request }) => {
     const MARKETING_CATEGORY_ID = 12;
 
     try {
-        const ticketCounts = await prisma.ticket.groupBy({
+        const ticketCounts = await db.ticket.groupBy({
             by: ["estatusId"],
             _count: { id: true },
             where: {
@@ -29,7 +29,7 @@ export const GET: APIRoute = async ({ request }) => {
             return 0; // Logic below
         };
 
-        const statuses = await prisma.estatus.findMany();
+        const statuses = await db.estatus.findMany();
 
         const counts: Record<string, number> = {
             nuevos: 0,

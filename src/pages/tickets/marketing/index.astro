@@ -1,6 +1,6 @@
 ---
+const { db } = Astro.locals;
 import MainLayout from "@/layouts/MainLayout.astro";
-import { prisma } from "@/lib/db";
 import { getSession } from "auth-astro/server";
 import { format, differenceInDays } from "date-fns";
 import { es } from "date-fns/locale";
@@ -71,7 +71,7 @@ if (assigneeFilter !== "all") {
 }
 
 // Obtener datos para los selectores
-const statuses = await prisma.estatus.findMany({
+const statuses = await db.estatus.findMany({
     orderBy: { nombre: "asc" },
 });
 const allowedStatuses = [
@@ -88,7 +88,7 @@ const filteredStatuses = statuses.filter((status) =>
 );
 
 // Subcategorías (Nivel 2: Diseño, Redes, Video)
-const marketingSubcategories = await prisma.subcategoria.findMany({
+const marketingSubcategories = await db.subcategoria.findMany({
     where: {
         subcategoria_categorias: {
             some: { categoriaId: MARKETING_CATEGORY_ID },
@@ -100,12 +100,12 @@ const marketingSubcategories = await prisma.subcategoria.findMany({
 });
 
 // Empresas (Todas)
-const companies = await prisma.empresa.findMany({
+const companies = await db.empresa.findMany({
     orderBy: { nombre: "asc" },
 });
 
 // Agentes (Mkt Team)
-const agents = await prisma.usuario.findMany({
+const agents = await db.usuario.findMany({
     where: {
         rol: {
             nivel_soporte: "Marketing",
@@ -116,10 +116,10 @@ const agents = await prisma.usuario.findMany({
 });
 
 // Paginación
-const totalTickets = await prisma.ticket.count({ where: finalWhere });
+const totalTickets = await db.ticket.count({ where: finalWhere });
 const totalPages = Math.ceil(totalTickets / pageSize);
 
-const tickets = await prisma.ticket.findMany({
+const tickets = await db.ticket.findMany({
     where: finalWhere,
     include: {
         estatus: true,

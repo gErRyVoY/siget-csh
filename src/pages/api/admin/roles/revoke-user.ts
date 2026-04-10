@@ -1,8 +1,8 @@
 import type { APIRoute } from "astro";
-import { prisma } from "@/lib/db";
 import { getSession } from "auth-astro/server";
 
-export const PATCH: APIRoute = async ({ request }) => {
+export const PATCH: APIRoute = async ({ locals,  request }) => {
+  const { db } = locals;
   const session = await getSession(request);
   if (!session || !session.user || !session.user.secciones?.includes("admin_siget_roles")) {
     return new Response(JSON.stringify({ message: "No autorizado" }), {
@@ -21,7 +21,7 @@ export const PATCH: APIRoute = async ({ request }) => {
 
     const uid = parseInt(usuarioId, 10);
 
-    await prisma.$transaction(async (tx) => {
+    await db.$transaction(async (tx) => {
         // Find Visitante role
         const visitanteRole = await tx.rol.findFirst({ 
             where: { rol: { equals: "Visitante", mode: "insensitive" } } 

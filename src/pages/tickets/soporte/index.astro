@@ -1,6 +1,6 @@
 ---
+const { db } = Astro.locals;
 import MainLayout from "@/layouts/MainLayout.astro";
-import { prisma } from "@/lib/db";
 import { getSession } from "auth-astro/server";
 import { format, differenceInDays } from "date-fns";
 import { es } from "date-fns/locale";
@@ -85,7 +85,7 @@ const dropdownScope = {
     ...statusWhere,
 };
 
-const statuses = await prisma.estatus.findMany({
+const statuses = await db.estatus.findMany({
     orderBy: { nombre: "asc" },
 });
 
@@ -104,7 +104,7 @@ const filteredStatuses = statuses.filter((status) =>
 );
 
 // Categorías disponibles (basadas en tickets visibles por estatus)
-const categories = await prisma.categoria.findMany({
+const categories = await db.categoria.findMany({
     where: {
         activo: true,
         tickets: {
@@ -115,7 +115,7 @@ const categories = await prisma.categoria.findMany({
 });
 
 // Obtener empresas que tienen tickets (basadas en estatus)
-const companies = await prisma.empresa.findMany({
+const companies = await db.empresa.findMany({
     where: {
         tickets: {
             some: dropdownScope,
@@ -125,7 +125,7 @@ const companies = await prisma.empresa.findMany({
 });
 
 // Obtener usuarios que tienen tickets asignados (agentes) en este scope
-const agents = await prisma.usuario.findMany({
+const agents = await db.usuario.findMany({
     where: {
         tickets_atendidos: {
             some: dropdownScope,
@@ -135,11 +135,11 @@ const agents = await prisma.usuario.findMany({
 });
 
 // Obtener total de tickets para paginación
-const totalTickets = await prisma.ticket.count({ where });
+const totalTickets = await db.ticket.count({ where });
 const totalPages = Math.ceil(totalTickets / pageSize);
 
 // Obtener tickets paginados
-const tickets = await prisma.ticket.findMany({
+const tickets = await db.ticket.findMany({
     where,
     include: {
         estatus: true,

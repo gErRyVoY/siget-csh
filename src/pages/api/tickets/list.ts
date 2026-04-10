@@ -1,11 +1,11 @@
 import type { APIRoute } from 'astro';
 import { getSession } from 'auth-astro/server';
-import { prisma } from '@/lib/db';
 import type { Prisma } from '@prisma/client';
 
 const PRIVILEGED_ROLES = [1, 2, 3, 4, 5, 6, 15];
 
-export const GET: APIRoute = async ({ request }) => {
+export const GET: APIRoute = async ({ locals,  request }) => {
+  const { db } = locals;
   const session = await getSession(request);
   if (!session || !session.user || !session.user.id) {
     return new Response(JSON.stringify({ message: 'No autorizado' }), { status: 401 });
@@ -74,8 +74,8 @@ export const GET: APIRoute = async ({ request }) => {
     const limit = limitParam === 'all' ? undefined : parseInt(limitParam || '10', 10);
 
     // --- Fetch data ---
-    const totalTickets = await prisma.ticket.count({ where });
-    const tickets = await prisma.ticket.findMany({
+    const totalTickets = await db.ticket.count({ where });
+    const tickets = await db.ticket.findMany({
       where,
       skip: limit ? (page - 1) * limit : undefined,
       take: limit,

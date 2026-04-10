@@ -1,6 +1,5 @@
 import type { APIRoute } from 'astro';
 import { getSession } from 'auth-astro/server';
-import { prisma } from '@/lib/db';
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
@@ -19,7 +18,8 @@ const s3Client = new S3Client({
     },
 });
 
-export const POST: APIRoute = async ({ request }) => {
+export const POST: APIRoute = async ({ locals,  request }) => {
+  const { db } = locals;
     const session = await getSession(request);
     if (!session || !session.user) {
         return new Response(JSON.stringify({ message: 'No autorizado' }), { status: 401 });
@@ -35,7 +35,7 @@ export const POST: APIRoute = async ({ request }) => {
         }
 
         // Fetch ticket to get company slug and check ownership
-        const ticket = await prisma.ticket.findUnique({
+        const ticket = await db.ticket.findUnique({
             where: { id: ticketId },
             include: { empresa: { select: { slug: true } } },
         });

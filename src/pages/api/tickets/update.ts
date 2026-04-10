@@ -1,12 +1,12 @@
 import type { APIRoute } from 'astro';
 import { getSession } from 'auth-astro/server';
-import { prisma } from '@/lib/db';
 import type { Prisma, Prioridad } from '@prisma/client';
 import { sendNotification } from '../notifications/sse';
 
 const PRIVILEGED_ROLES = [1, 2, 3, 4, 5, 6, 15];
 
 export const PATCH: APIRoute = async ({ request, locals }) => {
+  const { db } = locals;
     const session = await getSession(request);
     if (!session || !session.user) {
         return new Response(JSON.stringify({ message: 'No autorizado' }), { status: 401 });
@@ -26,7 +26,7 @@ export const PATCH: APIRoute = async ({ request, locals }) => {
             return new Response(JSON.stringify({ message: 'El ID del ticket no es válido' }), { status: 400 });
         }
 
-        const ticketBeforeUpdate = await prisma.ticket.findUnique({
+        const ticketBeforeUpdate = await db.ticket.findUnique({
             where: { id: ticketId },
             include: { estatus: true, atiende: true }
         });
@@ -62,7 +62,7 @@ export const PATCH: APIRoute = async ({ request, locals }) => {
         if (typeof descripcion === 'string') updateData.descripcion = descripcion;
 
         // --- Traslado Logic ---
-        const ticketWithTraslado = await prisma.ticket.findUnique({
+        const ticketWithTraslado = await db.ticket.findUnique({
             where: { id: ticketId },
             include: {
                 traslados: {
@@ -146,7 +146,7 @@ export const PATCH: APIRoute = async ({ request, locals }) => {
             (updateData as any).archivos = [...existingArchivos, ...newFiles];
         }
 
-        const updatedTicket = await prisma.$transaction(async (tx) => {
+        const updatedTicket = await db.$transaction(async (tx) => {
             const ticketAfterUpdate = await tx.ticket.update({
                 where: { id: ticketId },
                 data: updateData,

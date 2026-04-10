@@ -1,16 +1,16 @@
 import type { APIRoute } from "astro";
-import { prisma } from "@/lib/db";
 
-export const GET: APIRoute = async () => {
+export const GET: APIRoute = async (context) => {
+    const { db } = context.locals;
     const [ticketCounts, activeCycle] = await Promise.all([
-        prisma.ticket.groupBy({
+        db.ticket.groupBy({
             by: ["estatusId"],
             _count: { id: true },
         }),
-        prisma.ciclo.findFirst({ where: { activo: true } }),
+        db.ciclo.findFirst({ where: { activo: true } }),
     ]);
 
-    const statuses = await prisma.estatus.findMany();
+    const statuses = await db.estatus.findMany();
 
     const getCount = (name: string) => {
         const status = statuses.find((s) => s.nombre === name);
@@ -21,7 +21,7 @@ export const GET: APIRoute = async () => {
     };
 
     const trasladosCount = activeCycle
-        ? await prisma.ticket.count({
+        ? await db.ticket.count({
             where: {
                 subcategoriaId: 58,
                 fechaalta: {

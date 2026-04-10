@@ -1,10 +1,10 @@
 import type { APIRoute } from 'astro';
 import { getSession } from 'auth-astro/server';
-import { prisma } from '@/lib/db';
 
 const PRIVILEGED_ROLES = [1, 2, 3, 4, 5, 6, 15];
 
-export const GET: APIRoute = async ({ request }) => {
+export const GET: APIRoute = async ({ locals,  request }) => {
+  const { db } = locals;
     const session = await getSession(request);
     const url = new URL(request.url);
     const page = parseInt(url.searchParams.get('page') || '1', 10);
@@ -33,10 +33,10 @@ export const GET: APIRoute = async ({ request }) => {
             };
 
             // Get total count for pagination check
-            totalCount = await prisma.ticket.count({ where: whereCondition });
+            totalCount = await db.ticket.count({ where: whereCondition });
 
             // Get paginated items
-            tickets = await prisma.ticket.findMany({
+            tickets = await db.ticket.findMany({
                 where: whereCondition,
                 orderBy: { fechaact: 'desc' }, // Most recent first
                 take: limit,
@@ -61,7 +61,7 @@ export const GET: APIRoute = async ({ request }) => {
             // Warning: Pagination might be inexact if we filter in memory.
             // Better approach for now: Fetch user tickets ordered by update time, filter, then slice.
 
-            const userTickets = await prisma.ticket.findMany({
+            const userTickets = await db.ticket.findMany({
                 where: { solicitanteId: userId },
                 orderBy: { fechaact: 'desc' },
                 include: {
