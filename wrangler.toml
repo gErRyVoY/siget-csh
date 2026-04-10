@@ -1,0 +1,12 @@
+name = "siget-csh"
+compatibility_date = "2024-04-10"
+compatibility_flags = ["nodejs_compat"]
+
+# === Configuración de D1 ===
+# Vincula Cloudflare D1 (SQLite Serverless) a tu aplicación
+# Prisma interactuará con D1 usando este binding
+
+[[d1_databases]]
+binding = "siget"
+database_name = "siget"
+database_id = "c9b5a14f-b72c-4527-b3a4-eaabd4ded9b9"

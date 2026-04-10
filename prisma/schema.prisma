@@ -122,7 +122,7 @@ model Ciclo {
 model Bloque {
   id          Int        @id @default(autoincrement())
   clave       String     @unique
-  grado       Grado
+  grado       String
   carreraId   Int
   descripcion String
   dias        String
@@ -226,7 +226,7 @@ model Ticket {
   subcategoriaId        Int?
   solicitanteId         Int
   atiendeId             Int?
-  prioridad             Prioridad
+  prioridad             String
   descripcion           String?
   afectado_clave        String?
   afectado_nombre       String?
@@ -324,7 +324,7 @@ model PlantillaCorreo {
   id                    Int                    @id @default(autoincrement())
   nombre                String
   contenido             String?
-  tipo                  TipoPlantillaCorreo
+  tipo                  String
   activo                Boolean                @default(false)
   notificaciones_correo NotificacionesCorreo[]
 
@@ -337,7 +337,7 @@ model NotificacionesCorreo {
   destinatarioId Int
   fecha_envio    DateTime        @default(now())
   plantillaId    Int
-  estatus        EstatusCorreo
+  estatus        String
   mensaje_error  String?
   ticket         Ticket          @relation(fields: [ticketId], references: [id])
   destinatario   Usuario         @relation(fields: [destinatarioId], references: [id])
@@ -373,47 +373,6 @@ model PermisoCategoria {
   @@index([categoriaId, subcategoriaId, activo])
   @@index([rolId, activo])
   @@map("permiso_categoria")
-}
-
-enum Grado {
-  G_1       @map("1")
-  G_2       @map("2")
-  G_3       @map("3")
-  G_4       @map("4")
-  G_5       @map("5")
-  G_6       @map("6")
-  G_7       @map("7")
-  G_8       @map("8")
-  G_9       @map("9")
-  G_10      @map("10")
-  G_11      @map("11")
-  G_12      @map("12")
-  G_13      @map("13")
-  G_14      @map("14")
-  G_15      @map("15")
-  G_16      @map("16")
-  Seminario
-}
-
-enum Prioridad {
-  Baja
-  Media
-  Alta
-  Urgente
-}
-
-enum TipoPlantillaCorreo {
-  Alumno
-  Colaborador
-  Notificacion_sistema @map("Notificación sistema")
-  Automatico
-  Vacaciones
-}
-
-enum EstatusCorreo {
-  Enviado
-  Pendiente
-  Fallido
 }
 
 // ==========================================
