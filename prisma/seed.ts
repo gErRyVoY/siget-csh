@@ -1,4 +1,4 @@
-import { PrismaClient,   Prioridad, Prisma } from '@prisma/client';
+import { PrismaClient,   Prisma } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
@@ -223,10 +223,10 @@ async function main() {
   console.log('Seeding usuario...');
   await prisma.usuario.createMany({
     data: [
-      { id: 1, mail: 'gerardo.omana@humanitas.edu.mx', nombres: 'Gerardo', apellidos: 'Omaña Vazquez', empresaId: 15, rolId: 6, trl_mail: true, trl_coord: false, horario_disponibilidad: { "lunes": { "fin": "18:30", "inicio": "10:00" }, "jueves": { "fin": "17:00", "inicio": "10:00" }, "martes": { "fin": "18:30", "inicio": "10:00" }, "sabado": { "fin": "15:00", "inicio": "09:00" }, "viernes": { "fin": "16:30", "inicio": "10:00" }, "miercoles": { "fin": "15:00", "inicio": "08:30" } }, image: "https://lh3.googleusercontent.com/a-/ALV-UjXmcvhEi7AXSnIHJP2pJTizD0lzlhMwNQeR7HM3kVKj0i85LV4Q=s240-p-k-rw-no" },
-      { id: 2, mail: 'haide.herrera@humanitas.edu.mx', nombres: 'Haide', apellidos: 'Herrera', empresaId: 14, rolId: 12, trl_mail: false, trl_coord: false, horario_disponibilidad: Prisma.JsonNull, image: "https://lh3.googleusercontent.com/a-/ALV-UjUPqe4Ka1JQhFH9vqNr4SDHElvdeKhMSrWCLBX16pHRf-o8oxvy=s240-p-k-rw-no" },
-      { id: 3, mail: 'victor@humanitas.edu.mx', nombres: 'Victor', apellidos: 'Barrera', empresaId: 15, rolId: 1, trl_mail: true, trl_coord: false, horario_disponibilidad: Prisma.JsonNull, image: "https://lh3.googleusercontent.com/a-/ALV-UjXzczZnIALPW_gM9F2H4wKz1syIeeJNR4orX2M3ga9Q0Eoj8Ch5Nlef6fgd40A4Iuw1G4gE-q8b981BUu3S0Wyt_8IBte-b8mqlWsoAn89iLdPFIb2Bi8ficGNiUxGKz9qZOkXTaU_Qxp17TsDh8uuwPd3byYfF5BhWm8LIaNXXfl77NOxtjSjsFLuzvsP8VHdItGQDuGwyp5nsm2N5uPdenc3MJRm-Rh85aFUPf6FWoH_TXyXXxM0H03VBw3cIVebkPC_Bv9soG8dAOeun8kcSfB_jHJGbrYJbN4uTU3tpSgdKyU4uzJt6YJMSav6Uo7kROIOLpiKB5NC1ysBLv6Okm7HDndBNr-Ai2-c50XfqV_wLmp76fYtInKcWtYJ27xmpppVkb3f6_I8dEbZt4CrpoSlPmiC9sjf4WZ2G5W3nWIsy9Ss5BotYapihRnhzp7gSZggL0uObIzs9GjXQ8fFZdx1_rk1eBo4HGPrw_NkDeftxap3Qx40uA6zrWT5REGWHflpJFkgwVnyxis9B_dlS3-OAi2xJFElP0clD6WXXh8EOKnpN5ns7-nExpKiWcc6zi4ydrNSCVVO7hAi-oanYUH0xHgjZ9JEDl5RPyVjlReED1wobfvXtfYAX7pxRg8gp6MNE_JamSylydAiHdxLc6owtk9LkmAv0Gx_g1-WtuYEQjsM-1iJqtZDEq51GHJ-5lA4V8L3AzNxdjwBl42MfYKSipKOiEZCicgoH1R7fj6qdPq0li5hcF7_7GsHoXc0WmcymxzdjyhCQ5Qd3-wKVN9V5NkW8aRZ6WqtH_XLPxxsDzw77eNyohX3ZAk0lzL_RCt4oGcSx09nQ79NLXBpuWeWY63dqG6wpHMQF4IrHGE94qWPEc7yyHE81NsdpZttwFMonfVtDXc2JnQ7Tr_VRFZuztRy6DbBW1Kj_Kazwilcaamr3iAPxETu-5WUOYMGk212lzku0d2TLZa0PwtqcQFPkFrEj0Pzx02VwCN7g_9NwUyUPKAC5yLYWNwPjlmLnNG8ZMqY5qhb2NF__s4QbhUvLPTUmxyGNoBkWncm34YOG_w6OZkw=s240-p-k-rw-no" },
-      { id: 4, mail: 'soporte@humanitas.edu.mx', nombres: 'Centro de Soporte', apellidos: 'Humanitas', empresaId: 15, rolId: 15, trl_mail: true, trl_coord: false, horario_disponibilidad: Prisma.JsonNull, image: "https://www.gstatic.com/images/branding/product/2x/avatar_square_grey_48dp.png" }
+      { id: 1, mail: 'gerardo.omana@humanitas.edu.mx', nombres: 'Gerardo', apellidos: 'Omaña Vazquez', empresaId: 15, rolId: 6, trl_mail: true, trl_coord: false, horario_disponibilidad: JSON.stringify({ "lunes": { "fin": "18:30", "inicio": "10:00" }, "jueves": { "fin": "17:00", "inicio": "10:00" }, "martes": { "fin": "18:30", "inicio": "10:00" }, "sabado": { "fin": "15:00", "inicio": "09:00" }, "viernes": { "fin": "16:30", "inicio": "10:00" }, "miercoles": { "fin": "15:00", "inicio": "08:30" } }), image: "https://lh3.googleusercontent.com/a-/ALV-UjXmcvhEi7AXSnIHJP2pJTizD0lzlhMwNQeR7HM3kVKj0i85LV4Q=s240-p-k-rw-no" },
+      { id: 2, mail: 'haide.herrera@humanitas.edu.mx', nombres: 'Haide', apellidos: 'Herrera', empresaId: 14, rolId: 12, trl_mail: false, trl_coord: false, horario_disponibilidad: null, image: "https://lh3.googleusercontent.com/a-/ALV-UjUPqe4Ka1JQhFH9vqNr4SDHElvdeKhMSrWCLBX16pHRf-o8oxvy=s240-p-k-rw-no" },
+      { id: 3, mail: 'victor@humanitas.edu.mx', nombres: 'Victor', apellidos: 'Barrera', empresaId: 15, rolId: 1, trl_mail: true, trl_coord: false, horario_disponibilidad: null, image: "https://lh3.googleusercontent.com/a-/ALV-UjXzczZnIALPW_gM9F2H4wKz1syIeeJNR4orX2M3ga9Q0Eoj8Ch5Nlef6fgd40A4Iuw1G4gE-q8b981BUu3S0Wyt_8IBte-b8mqlWsoAn89iLdPFIb2Bi8ficGNiUxGKz9qZOkXTaU_Qxp17TsDh8uuwPd3byYfF5BhWm8LIaNXXfl77NOxtjSjsFLuzvsP8VHdItGQDuGwyp5nsm2N5uPdenc3MJRm-Rh85aFUPf6FWoH_TXyXXxM0H03VBw3cIVebkPC_Bv9soG8dAOeun8kcSfB_jHJGbrYJbN4uTU3tpSgdKyU4uzJt6YJMSav6Uo7kROIOLpiKB5NC1ysBLv6Okm7HDndBNr-Ai2-c50XfqV_wLmp76fYtInKcWtYJ27xmpppVkb3f6_I8dEbZt4CrpoSlPmiC9sjf4WZ2G5W3nWIsy9Ss5BotYapihRnhzp7gSZggL0uObIzs9GjXQ8fFZdx1_rk1eBo4HGPrw_NkDeftxap3Qx40uA6zrWT5REGWHflpJFkgwVnyxis9B_dlS3-OAi2xJFElP0clD6WXXh8EOKnpN5ns7-nExpKiWcc6zi4ydrNSCVVO7hAi-oanYUH0xHgjZ9JEDl5RPyVjlReED1wobfvXtfYAX7pxRg8gp6MNE_JamSylydAiHdxLc6owtk9LkmAv0Gx_g1-WtuYEQjsM-1iJqtZDEq51GHJ-5lA4V8L3AzNxdjwBl42MfYKSipKOiEZCicgoH1R7fj6qdPq0li5hcF7_7GsHoXc0WmcymxzdjyhCQ5Qd3-wKVN9V5NkW8aRZ6WqtH_XLPxxsDzw77eNyohX3ZAk0lzL_RCt4oGcSx09nQ79NLXBpuWeWY63dqG6wpHMQF4IrHGE94qWPEc7yyHE81NsdpZttwFMonfVtDXc2JnQ7Tr_VRFZuztRy6DbBW1Kj_Kazwilcaamr3iAPxETu-5WUOYMGk212lzku0d2TLZa0PwtqcQFPkFrEj0Pzx02VwCN7g_9NwUyUPKAC5yLYWNwPjlmLnNG8ZMqY5qhb2NF__s4QbhUvLPTUmxyGNoBkWncm34YOG_w6OZkw=s240-p-k-rw-no" },
+      { id: 4, mail: 'soporte@humanitas.edu.mx', nombres: 'Centro de Soporte', apellidos: 'Humanitas', empresaId: 15, rolId: 15, trl_mail: true, trl_coord: false, horario_disponibilidad: null, image: "https://www.gstatic.com/images/branding/product/2x/avatar_square_grey_48dp.png" }
     ],
   });
 
@@ -829,8 +829,7 @@ async function main() {
   ];
 
   await prisma.permisoCategoria.createMany({
-    data: permisosData,
-    skipDuplicates: true,
+    data: permisosData
   });
 
   console.log(`Seeding finished.`);
