@@ -6,21 +6,20 @@ export const campusOptions: string[] = [
 ];
 
 export const carreraOptions: string[] = [
-    "Licenciatura en Administración",
+    "Licenciatura en Administración y Contabilidad",
     "Licenciatura en Arquitectura",
-    "Licenciatura en Arte y Teatro", 
+    "Licenciatura en Arte y Teatro",
     "Licenciatura en Ciencias Políticas y Administración Pública",
-    "Licenciatura en Contabilidad",
     "Licenciatura en Derecho",
     "Licenciatura en Diseño Gráfico",
     "Licenciatura en Educación",
     "Licenciatura en Psicología",
     "Maestría en Alta Dirección Corporativa",
-    "Maestría en Contabilidad con Especialidad en Impuestos",
-    "Maestría en Derecho Empresarial Corporativo", 
+    "Maestría en Contabilidad e Impuestos",
+    "Maestría en Derecho Corporativo",
     "Maestría en Derecho Fiscal",
     "Maestría en Derecho Penal",
-    "Maestría en Educación", 
+    "Maestría en Educación",
     "Maestría en Justicia Penal y Seguridad Pública",
     "Maestría en Mercadotecnia",
     "Maestría en Psicoterapia con un Enfoque Psicoanalítico"

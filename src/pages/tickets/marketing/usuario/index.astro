@@ -1,0 +1,514 @@
+---
+import MainLayout from "@/layouts/MainLayout.astro";
+import { prisma } from "@/lib/db";
+import { getSession } from "auth-astro/server";
+import { format, differenceInDays } from "date-fns";
+import { es } from "date-fns/locale";
+import StatusBadge from "@/components/ui/StatusBadge.astro";
+
+const session = await getSession(Astro.request);
+const user = session?.user;
+
+if (!user) {
+    return Astro.redirect("/login");
+}
+
+const MARKETING_CATEGORY_ID = 12;
+
+// Obtener parámetros de filtro de la URL
+const url = new URL(Astro.request.url);
+const statusFilter = url.searchParams.get("status") || "all";
+const subcategoryFilter = url.searchParams.get("subcategory") || "all";
+const companyFilter = url.searchParams.get("company") || "all";
+const assigneeFilter = url.searchParams.get("assignee") || "all";
+const page = parseInt(url.searchParams.get("page") || "1");
+const pageSize = 10;
+
+// Definir estatus activos para la vista por defecto
+const activeStatusNames = ["Sin asignar", "Nuevo", "En progreso", "En espera"];
+
+// Construcción segura del WHERE
+const userId = user.id ? parseInt(String(user.id)) || 0 : 0;
+
+const finalWhere: any = {
+    AND: [
+        { categoriaId: MARKETING_CATEGORY_ID },
+        { atiendeId: userId },
+    ],
+};
+
+// Estatus
+if (statusFilter !== "all") {
+    finalWhere.AND.push({ estatusId: parseInt(statusFilter) });
+} else {
+    finalWhere.AND.push({ estatus: { nombre: { in: activeStatusNames } } });
+}
+
+// Subcategoría
+if (subcategoryFilter !== "all") {
+    const subId = parseInt(subcategoryFilter);
+    if (!isNaN(subId)) {
+        finalWhere.AND.push({
+            OR: [
+                { subcategoriaId: subId },
+                { subcategoria: { parent_subcategoriaId: subId } },
+            ],
+        });
+    }
+}
+
+if (
+    companyFilter !==
+    "all" /* && isPrivileged logic if needed, but marketing usually sees all? or restricted? Assuming no restriction based on user request "Mis tickets" */
+) {
+    // User request didn't specify strict company filtering per role for Marketing view, but generic logic allows it.
+    // However, "Mis Tickets" usually implies I can see tickets assigned TO ME regardless of company, OR requested BY ME.
+    // So company filter is just a helper.
+    const compId = parseInt(companyFilter);
+    if (!isNaN(compId)) {
+        finalWhere.AND.push({ empresaId: compId });
+    }
+}
+
+if (assigneeFilter !== "all") {
+    if (assigneeFilter === "unassigned") {
+        finalWhere.AND.push({ atiendeId: null });
+    } else {
+        const assignId = parseInt(assigneeFilter);
+        if (!isNaN(assignId)) {
+            finalWhere.AND.push({ atiendeId: assignId });
+        }
+    }
+}
+
+// Obtener datos para los selectores
+const statuses = await prisma.estatus.findMany({
+    orderBy: { nombre: "asc" },
+});
+const allowedStatuses = [
+    "Nuevo",
+    "En progreso",
+    "En espera",
+    "Solucionado",
+    "Cancelado",
+    "Duplicado",
+    "Sin asignar",
+];
+const filteredStatuses = statuses.filter((status) =>
+    allowedStatuses.includes(status.nombre),
+);
+
+// Subcategorías (Nivel 2: Diseño, Redes, Video)
+// Buscamos subcategorías que sean "top level" (parent null) y estén asociadas a Marketing (12)
+// O que sean explícitamente las IDs de esas áreas si las conocemos, pero mejor dinámico.
+const marketingSubcategories = await prisma.subcategoria.findMany({
+    where: {
+        subcategoria_categorias: {
+            some: { categoriaId: MARKETING_CATEGORY_ID },
+        },
+        parent_subcategoriaId: null, // Solo Nivel 2 (Diseño, Redes, Video)
+        activo: true,
+    },
+    orderBy: { nombre: "asc" },
+});
+
+// Empresas con tickets de marketing en scope (opcional, o todas)
+const companies = await prisma.empresa.findMany({
+    orderBy: { nombre: "asc" },
+});
+
+// Agentes (Mkt Team)
+const agents = await prisma.usuario.findMany({
+    where: {
+        rol: {
+            nivel_soporte: "Marketing",
+        },
+        activo: true,
+    },
+    orderBy: { nombres: "asc" },
+});
+
+// Paginación
+const totalTickets = await prisma.ticket.count({ where: finalWhere });
+const totalPages = Math.ceil(totalTickets / pageSize);
+
+const tickets = await prisma.ticket.findMany({
+    where: finalWhere,
+    include: {
+        estatus: true,
+        categoria: true,
+        subcategoria: true,
+        solicitante: true,
+        atiende: true,
+        empresa: true,
+    },
+    orderBy: {
+        fechaalta: "desc",
+    },
+    skip: (page - 1) * pageSize,
+    take: pageSize,
+});
+
+const getTicketDateColor = (date: Date, status: string) => {
+    const activeStatuses = ["Sin asignar", "Nuevo", "En progreso", "En espera"];
+    if (!activeStatuses.includes(status)) return "text-muted-foreground";
+    const days = differenceInDays(new Date(), new Date(date));
+    if (days <= 1) return "text-green-600 dark:text-green-500 font-medium";
+    if (days >= 3 && days <= 5)
+        return "text-yellow-600 dark:text-yellow-500 font-medium";
+    if (days >= 7) return "text-red-600 dark:text-red-500 font-bold";
+    return "text-muted-foreground";
+};
+---
+
+<MainLayout title="Mis Tickets Marketing">
+    <div class="space-y-6">
+        <div class="flex justify-between items-center">
+            <h1 class="text-3xl font-bold text-foreground">
+                Mis Tickets Marketing
+            </h1>
+            <div class="flex items-center gap-4">
+                <!-- Boton NewTicketMkt si queremos acceso directo aqui, pero ya esta en sidebar -->
+                <button
+                    id="reset-filters"
+                    class="bg-secondary text-secondary-foreground hover:bg-secondary/80 px-4 py-2 rounded-md font-medium transition-colors text-sm"
+                    onclick="window.location.href = window.location.pathname"
+                >
+                    Limpiar Filtros
+                </button>
+            </div>
+        </div>
+
+        <!-- Filtros -->
+        <div class="bg-card p-4 rounded-lg shadow-sm border border-border">
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div>
+                    <label
+                        for="estatus-select"
+                        class="block text-sm font-medium text-muted-foreground mb-1"
+                        >Estatus</label
+                    >
+                    <select
+                        id="estatus-select"
+                        class="w-full bg-input border-border text-foreground rounded-md p-2 text-sm focus:ring-2 focus:ring-primary focus:border-transparent"
+                    >
+                        <option value="all">Activos (Default)</option>
+                        {
+                            filteredStatuses.map((status) => (
+                                <option
+                                    value={status.id}
+                                    selected={
+                                        statusFilter === status.id.toString()
+                                    }
+                                >
+                                    {status.nombre}
+                                </option>
+                            ))
+                        }
+                    </select>
+                </div>
+                <div>
+                    <!-- Cambiado label a "Área" o "Categoría" segun preferencia, user dijo "Categoría" filter but "Subcategoría" content -->
+                    <label
+                        for="subcategory-select"
+                        class="block text-sm font-medium text-muted-foreground mb-1"
+                        >Categoría</label
+                    >
+                    <select
+                        id="subcategory-select"
+                        class="w-full bg-input border-border text-foreground rounded-md p-2 text-sm focus:ring-2 focus:ring-primary focus:border-transparent"
+                    >
+                        <option value="all">Todas</option>
+                        {
+                            marketingSubcategories.map((sub) => (
+                                <option
+                                    value={sub.id}
+                                    selected={
+                                        subcategoryFilter === sub.id.toString()
+                                    }
+                                >
+                                    {sub.nombre}
+                                </option>
+                            ))
+                        }
+                    </select>
+                </div>
+                <div>
+                    <label
+                        for="empresa-select"
+                        class="block text-sm font-medium text-muted-foreground mb-1"
+                        >Empresa</label
+                    >
+                    <select
+                        id="empresa-select"
+                        class="w-full bg-input border-border text-foreground rounded-md p-2 text-sm focus:ring-2 focus:ring-primary focus:border-transparent"
+                    >
+                        <option value="all">Todas</option>
+                        {
+                            companies.map((company) => (
+                                <option
+                                    value={company.id}
+                                    selected={
+                                        companyFilter === company.id.toString()
+                                    }
+                                >
+                                    {company.nombre}
+                                </option>
+                            ))
+                        }
+                    </select>
+                </div>
+                <div>
+                    <label
+                        for="assignee-select"
+                        class="block text-sm font-medium text-muted-foreground mb-1"
+                        >Asignado a</label
+                    >
+                    <select
+                        id="assignee-select"
+                        class="w-full bg-input border-border text-foreground rounded-md p-2 text-sm focus:ring-2 focus:ring-primary focus:border-transparent"
+                    >
+                        <option value="all">Todos</option>
+                        <option
+                            value="unassigned"
+                            selected={assigneeFilter === "unassigned"}
+                            >Sin asignar</option
+                        >
+                        {
+                            agents.map((agent) => (
+                                <option
+                                    value={agent.id}
+                                    selected={
+                                        assigneeFilter === agent.id.toString()
+                                    }
+                                >
+                                    {agent.nombres} {agent.apellidos}
+                                </option>
+                            ))
+                        }
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Vista Cards (Mobile) -->
+        <div class="md:hidden space-y-4">
+            {
+                tickets.map((ticket) => (
+                    <a
+                        href={`/tickets/view/${ticket.id}?source=marketing_usuario`}
+                        class="block"
+                    >
+                        <div class="bg-card border border-border rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow">
+                            <div class="flex justify-between items-start mb-2">
+                                <span class="font-bold text-lg text-foreground">
+                                    #{ticket.id}
+                                </span>
+                                <StatusBadge
+                                    status={ticket.estatus.nombre}
+                                    size="sm"
+                                />
+                            </div>
+                            <h3 class="font-medium text-foreground mb-2 line-clamp-2">
+                                {ticket.descripcion}
+                            </h3>
+                            <div class="text-sm text-muted-foreground space-y-1">
+                                <p>
+                                    <span class="font-semibold">
+                                        Categoría:
+                                    </span>{" "}
+                                    {ticket.subcategoria?.nombre ||
+                                        ticket.categoria.nombre}
+                                </p>
+                                <p>
+                                    <span class="font-semibold">Fecha:</span>{" "}
+                                    <span
+                                        class={getTicketDateColor(
+                                            ticket.fechaalta,
+                                            ticket.estatus.nombre,
+                                        )}
+                                    >
+                                        {format(
+                                            new Date(ticket.fechaalta),
+                                            "dd/MM/yyyy",
+                                            { locale: es },
+                                        )}
+                                    </span>
+                                </p>
+                            </div>
+                        </div>
+                    </a>
+                ))
+            }
+            {
+                tickets.length === 0 && (
+                    <div class="text-center py-8 text-muted-foreground bg-card rounded-lg border border-border">
+                        No se encontraron tickets.
+                    </div>
+                )
+            }
+        </div>
+
+        <!-- Vista Tabla (Desktop) -->
+        <div
+            class="hidden md:block bg-card rounded-lg shadow-sm border border-border overflow-hidden"
+        >
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm text-left">
+                    <thead
+                        class="bg-muted text-muted-foreground uppercase text-xs"
+                    >
+                        <tr>
+                            <th class="p-2 font-medium">ID</th>
+                            <th class="p-2 font-medium">Estatus</th>
+                            <th class="p-2 font-medium">Categoría</th>
+                            <th class="p-2 font-medium">Solicitante</th>
+                            <th class="p-2 font-medium">Asignado a</th>
+                            <th class="p-2 font-medium">Fecha</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-border">
+                        {
+                            tickets.map((ticket) => (
+                                <tr
+                                    class="hover:bg-[#797979]/40 transition-colors cursor-pointer"
+                                    onclick={`window.location.href='/tickets/view/${ticket.id}?source=marketing_usuario'`}
+                                >
+                                    <td class="p-2 font-medium text-foreground">
+                                        #{ticket.id}
+                                    </td>
+                                    <td class="p-2">
+                                        <StatusBadge
+                                            status={ticket.estatus.nombre}
+                                        />
+                                    </td>
+                                    <td class="p-2 text-muted-foreground">
+                                        {ticket.subcategoria?.nombre ||
+                                            ticket.categoria.nombre}
+                                        {ticket.subcategoria
+                                            ?.parent_subcategoriaId && (
+                                            <span class="text-xs block text-muted-foreground/70">
+                                                Detalle:{" "}
+                                                {ticket.subcategoria.nombre}
+                                            </span>
+                                        )}
+                                    </td>
+                                    <td class="p-2 text-muted-foreground">
+                                        {ticket.solicitante.nombres}{" "}
+                                        {ticket.solicitante.apellidos}
+                                        <span class="text-xs block text-muted-foreground/70">
+                                            {ticket.empresa.nombre}
+                                        </span>
+                                    </td>
+                                    <td class="p-2 text-muted-foreground">
+                                        {ticket.atiende ? (
+                                            <>
+                                                {ticket.atiende.nombres}{" "}
+                                                {ticket.atiende.apellidos}
+                                            </>
+                                        ) : (
+                                            <span class="text-muted-foreground/50 italic">
+                                                Sin asignar
+                                            </span>
+                                        )}
+                                    </td>
+                                    <td
+                                        class={`p-2 ${getTicketDateColor(ticket.fechaalta, ticket.estatus.nombre)}`}
+                                    >
+                                        {format(
+                                            new Date(ticket.fechaalta),
+                                            "dd MMM yyyy",
+                                            { locale: es },
+                                        )}
+                                    </td>
+                                </tr>
+                            ))
+                        }
+                        {
+                            tickets.length === 0 && (
+                                <tr>
+                                    <td
+                                        colspan="6"
+                                        class="px-6 py-8 text-center text-muted-foreground"
+                                    >
+                                        No se encontraron tickets.
+                                    </td>
+                                </tr>
+                            )
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Paginación -->
+        {
+            totalPages > 1 && (
+                <div class="flex justify-center mt-6 gap-2">
+                    <button
+                        id="prev-page"
+                        disabled={page === 1}
+                        class="px-4 py-2 text-sm bg-card border-border text-foreground border rounded-md disabled:opacity-50 hover:bg-muted transition-colors"
+                    >
+                        Anterior
+                    </button>
+                    <span class="px-4 py-2 text-sm text-muted-foreground">
+                        Página {page} de {totalPages}
+                    </span>
+                    <button
+                        id="next-page"
+                        disabled={page === totalPages}
+                        class="px-4 py-2 text-sm bg-card border-border text-foreground border rounded-md disabled:opacity-50 hover:bg-muted transition-colors"
+                    >
+                        Siguiente
+                    </button>
+                </div>
+            )
+        }
+    </div>
+</MainLayout>
+
+<script>
+    const selects = document.querySelectorAll("select");
+    selects.forEach((select) => {
+        select.addEventListener("change", () => {
+            const url = new URL(window.location.href);
+            // Mapeo de ID a param
+            let paramName = "";
+            if (select.id === "estatus-select") paramName = "status";
+            else if (select.id === "subcategory-select")
+                paramName = "subcategory";
+            else if (select.id === "empresa-select") paramName = "company";
+            else if (select.id === "assignee-select") paramName = "assignee";
+
+            const value = select.value;
+            if (value === "all") {
+                url.searchParams.delete(paramName);
+            } else {
+                url.searchParams.set(paramName, value);
+            }
+            url.searchParams.set("page", "1");
+            window.location.href = url.toString();
+        });
+    });
+
+    // Paginación (igual que antes)
+    const prevBtn = document.getElementById("prev-page");
+    const nextBtn = document.getElementById("next-page");
+    if (prevBtn)
+        prevBtn.addEventListener("click", () => {
+            const url = new URL(window.location.href);
+            const p = parseInt(url.searchParams.get("page") || "1");
+            if (p > 1) {
+                url.searchParams.set("page", (p - 1).toString());
+                window.location.href = url.toString();
+            }
+        });
+    if (nextBtn)
+        nextBtn.addEventListener("click", () => {
+            const url = new URL(window.location.href);
+            const p = parseInt(url.searchParams.get("page") || "1");
+            url.searchParams.set("page", (p + 1).toString());
+            window.location.href = url.toString();
+        });
+</script>

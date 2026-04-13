@@ -15,6 +15,9 @@ async function main() {
   await prisma.subcategoriaCategorias.deleteMany({});
   await prisma.subcategoria.deleteMany({});
   await prisma.categoria.deleteMany({});
+  await prisma.permisoUsuarioSeccion.deleteMany({});
+  await prisma.permisoRolSeccion.deleteMany({});
+  await prisma.seccion.deleteMany({});
   await prisma.logs.deleteMany({});
   await prisma.usuario.deleteMany({});
   await prisma.permiso.deleteMany({}); // Limpiar permisos
@@ -27,28 +30,41 @@ async function main() {
   await prisma.planPago.deleteMany({});
   await prisma.empresa.deleteMany({});
   await prisma.estatus.deleteMany({});
-  
+
   // --- Insertar Empresas ---
   console.log('Seeding empresa...');
   await prisma.empresa.createMany({
     data: [
-      { id: 1, nombre: 'Cancún', slug: 'cancun', tipo: 'Magno' },
-      { id: 2, nombre: 'Chihuahua', slug: 'chihuahua', tipo: 'Magno' },
-      { id: 3, nombre: 'Cuernavaca', slug: 'cuernavaca', tipo: 'Social' },
-      { id: 4, nombre: 'Del Valle', slug: 'del-valle', tipo: 'Magno' },
-      { id: 5, nombre: 'Guadalajara', slug: 'guadalajara', tipo: 'Ejecutivo' },
-      { id: 6, nombre: 'Mérida', slug: 'merida', tipo: 'Magno' },
-      { id: 7, nombre: 'Monterrey', slug: 'monterrey', tipo: 'Ejecutivo' },
-      { id: 8, nombre: 'Presa Madín', slug: 'presa-madin', tipo: 'Magno' },
-      { id: 9, nombre: 'Querétaro', slug: 'queretaro', tipo: 'Magno' },
-      { id: 10, nombre: 'Reyes', slug: 'reyes', tipo: 'Magno' },
-      { id: 11, nombre: 'Santa Fe', slug: 'santa-fe', tipo: 'Ejecutivo' },
-      { id: 12, nombre: 'Tijuana', slug: 'tijuana', tipo: 'Magno' },
-      { id: 13, nombre: 'Virtual', slug: 'virtual', tipo: 'Ejecutivo' },
-      { id: 14, nombre: 'Corporativo', slug: 'corporativo', tipo: 'Oficina' },
-      { id: 15, nombre: 'CSH', slug: 'csh', tipo: 'Oficina' },
+      { id: 1, nombre: 'Cancún', slug: 'cancun', tipo: 'Magno', activa: true },
+      { id: 2, nombre: 'Chihuahua', slug: 'chihuahua', tipo: 'Magno', activa: true },
+      { id: 3, nombre: 'Cuernavaca', slug: 'cuernavaca', tipo: 'Social', activa: true },
+      { id: 4, nombre: 'Del Valle', slug: 'del-valle', tipo: 'Magno', activa: true },
+      { id: 5, nombre: 'Guadalajara', slug: 'guadalajara', tipo: 'Ejecutivo', activa: true },
+      { id: 6, nombre: 'Mérida', slug: 'merida', tipo: 'Magno', activa: true },
+      { id: 7, nombre: 'Monterrey', slug: 'monterrey', tipo: 'Ejecutivo', activa: true },
+      { id: 8, nombre: 'Presa Madín', slug: 'presa-madin', tipo: 'Magno', activa: true },
+      { id: 9, nombre: 'Querétaro', slug: 'queretaro', tipo: 'Magno', activa: true },
+      { id: 10, nombre: 'Reyes', slug: 'reyes', tipo: 'Magno', activa: true },
+      { id: 11, nombre: 'Santa Fe', slug: 'santa-fe', tipo: 'Ejecutivo', activa: true },
+      { id: 12, nombre: 'Tijuana', slug: 'tijuana', tipo: 'Magno', activa: true },
+      { id: 13, nombre: 'Virtual', slug: 'virtual', tipo: 'Ejecutivo', activa: true },
+      { id: 14, nombre: 'Corporativo', slug: 'corporativo', tipo: 'Oficina', activa: true },
+      { id: 15, nombre: 'CSH', slug: 'csh', tipo: 'Oficina', activa: true },
     ],
   });
+
+  // --- Insertar Ciclos ---
+  console.log('Seeding ciclos...');
+  await prisma.ciclo.createMany({
+    data: [
+      { id: 1, ciclo: '2026-3', fecha_inicio: new Date('2025-12-18'), fecha_fin: new Date('2026-04-01'), activo: false },
+      { id: 2, ciclo: '2026-4', fecha_inicio: new Date('2026-04-01'), fecha_fin: new Date('2026-07-01'), activo: false },
+      { id: 3, ciclo: '2027-1', fecha_inicio: new Date('2026-07-01'), fecha_fin: new Date('2026-09-24'), activo: false },
+      { id: 4, ciclo: '2027-2', fecha_inicio: new Date('2026-09-24'), fecha_fin: new Date('2027-01-06'), activo: false },
+    ],
+  });
+
+
 
   // --- Insertar Permisos ---
   console.log('Seeding permiso...');
@@ -80,29 +96,95 @@ async function main() {
       { id: 13, rol: 'Community manager', descripcion: 'Ejecutivo de atención en redes sociales', nivel_soporte: 'Marketing' },
       { id: 14, rol: 'Visitante', descripcion: 'Visitante', nivel_soporte: 'Usuario' },
       { id: 15, rol: 'Visitante administrador', descripcion: 'Visitante administrador', nivel_soporte: 'S_1' },
+      { id: 16, rol: 'Ingeniero Hubspot', descripcion: 'Ingeniero especializado en Hubspot', nivel_soporte: 'S_2' },
+      { id: 17, rol: 'Editor', descripcion: 'Editor de contenido multimedia', nivel_soporte: 'Marketing' },
+      { id: 18, rol: 'Ejecutivo académico', descripcion: 'Ejecutivo académico', nivel_soporte: 'Usuario' },
+      { id: 19, rol: 'Coordinador administrativo', descripcion: 'Coordinador administrativo', nivel_soporte: 'Coordinador' },
+      { id: 20, rol: 'Coordinador idiomas', descripcion: 'Coordinador de idiomas', nivel_soporte: 'Coordinador' },
+      { id: 21, rol: 'Ejecutivo control escolar', descripcion: 'Ejecutivo de control escolar', nivel_soporte: 'Usuario' },
+      { id: 22, rol: 'Ejecutivo humanitas vive', descripcion: 'Ejecutivo de humanitas vive', nivel_soporte: 'Usuario' },
+      { id: 23, rol: 'Ejecutivo administrativo', descripcion: 'Ejecutivo administrativo', nivel_soporte: 'Usuario' },
+      { id: 24, rol: 'Coordinador académico', descripcion: 'Coordinador académico', nivel_soporte: 'Coordinador' },
+      { id: 25, rol: 'Líder académico', descripcion: 'Líder académico', nivel_soporte: 'Coordinador' },
+      { id: 26, rol: 'Coordinador vida estudiantil', descripcion: 'Coordinador de vida estudiantil y humanitas vive', nivel_soporte: 'Coordinador' },
+      { id: 27, rol: 'Coordinador control escolar', descripcion: 'Coordinador de control escolar', nivel_soporte: 'Coordinador' },
+      { id: 28, rol: 'Soporte técnico', descripcion: 'Soporte técnico', nivel_soporte: 'S_1' },
+      { id: 29, rol: 'Enlace académico', descripcion: 'Enlace académico', nivel_soporte: 'Usuario' },
     ],
   });
 
-  // --- Conectar Permisos a Roles ---
-  console.log('Connecting permissions to roles...');
+  // --- Conectar Permisos y Secciones a Roles ---
+  console.log('Connecting permissions and sections to roles...');
+
+  // Secciones Base
+  console.log('Seeding secciones...');
+  await prisma.seccion.createMany({
+    data: [
+      { id: 1, nombre: 'CSH', identificador: 'crear_ticket_csh', grupo: 'Abrir ticket' },
+      { id: 2, nombre: 'Traslado', identificador: 'proceso_traslados', grupo: 'Abrir ticket' },
+      { id: 3, nombre: 'Marketing', identificador: 'crear_ticket_marketing', grupo: 'Abrir ticket' },
+      
+      { id: 4, nombre: 'Mis tickets', identificador: 'soporte_mis_tickets', grupo: 'Tickets soporte' },
+      { id: 5, nombre: 'Dashboard', identificador: 'soporte_dashboard', grupo: 'Tickets soporte' },
+      { id: 6, nombre: 'Todos', identificador: 'soporte_todos', grupo: 'Tickets soporte' },
+      
+      { id: 7, nombre: 'Mis tickets', identificador: 'marketing_mis_tickets', grupo: 'Tickets marketing' },
+      { id: 8, nombre: 'Dashboard', identificador: 'marketing_dashboard', grupo: 'Tickets marketing' },
+      { id: 9, nombre: 'Todos', identificador: 'marketing_todos', grupo: 'Tickets marketing' },
+      
+      { id: 10, nombre: 'Plataforma Humanitas', identificador: 'plataforma_humanitas', grupo: 'Otros' },
+      { id: 11, nombre: 'Asistencia remota', identificador: 'asistencia_remota', grupo: 'Otros' },
+      { id: 12, nombre: 'Base de conocimientos', identificador: 'base_conocimientos', grupo: 'Otros' },
+      { id: 13, nombre: 'Horario de atención', identificador: 'horario_atencion', grupo: 'Otros' },
+      
+      { id: 14, nombre: 'Crear', identificador: 'admin_correos_crear', grupo: 'Administrador', subgrupo: 'Correos institucionales' },
+      { id: 15, nombre: 'Actualizar', identificador: 'admin_correos_actualizar', grupo: 'Administrador', subgrupo: 'Correos institucionales' },
+      
+      { id: 16, nombre: 'Categorías', identificador: 'admin_siget_categorias', grupo: 'Administrador', subgrupo: 'SiGeT' },
+      { id: 17, nombre: 'Ciclos', identificador: 'admin_siget_ciclos', grupo: 'Administrador', subgrupo: 'SiGeT' },
+      { id: 18, nombre: 'Secciones', identificador: 'admin_siget_secciones', grupo: 'Administrador', subgrupo: 'SiGeT' },
+      { id: 19, nombre: 'Tickets', identificador: 'admin_siget_tickets', grupo: 'Administrador', subgrupo: 'SiGeT' },
+      { id: 20, nombre: 'Usuarios', identificador: 'admin_siget_usuarios', grupo: 'Administrador', subgrupo: 'SiGeT' },
+      { id: 21, nombre: 'Roles', identificador: 'admin_siget_roles', grupo: 'Administrador', subgrupo: 'SiGeT' },
+    ],
+  });
+
+  const allRoles = await prisma.rol.findMany();
+
+  // Definir secciones por rol acorde al nuevo mapeo
+  // Grupos completos
+  const allAbrirTicket = [1, 2, 3];
+  const allTicketsSoporte = [4, 5, 6];
+  const allTicketsMarketing = [7, 8, 9];
+  const allOtros = [10, 11, 12, 13];
+  const allAdminCorreos = [14, 15];
+  const allAdminSiget = [16, 17, 18, 19, 20, 21];
+
+  const secDesarrollador = [...allAbrirTicket, ...allTicketsSoporte, ...allTicketsMarketing, ...allOtros, ...allAdminCorreos, ...allAdminSiget];
+  const secSoporte = [1, 2, ...allTicketsSoporte, ...allOtros, ...allAdminCorreos, 16, 17, 19, 20, 21]; // Sin Permiso 'Secciones' -> 18, ni Tickets Mkt
+  const secEstandar = [1, 2, 4, 10, 11, 12, 13]; // Solo abrir y mis tickets, y herramientas básicas
+  const secMarketingStaff = [1, 3, 7, 10, 13]; // Tickets Mkt y herramientas básicas
+  const secMarketingDirector = [1, 3, ...allTicketsMarketing, 10, 13];
+
   const rolesConPermisos = [
-    // Desarrollador (todos los permisos)
-    { rolId: 6, permisoIds: [1, 2, 3, 4] },
+    // Desarrollador (todos los permisos globales)
+    { rolId: 6, permisoIds: [1, 2, 3, 4], seccionIds: secDesarrollador },
     // Director CSH (todos los permisos)
-    { rolId: 1, permisoIds: [1, 2, 3, 4] },
+    { rolId: 1, permisoIds: [1, 2, 3, 4], seccionIds: secDesarrollador },
+    // Roles de Soporte
+    { rolId: 2, permisoIds: [2, 3, 4], seccionIds: secSoporte },
+    { rolId: 3, permisoIds: [2, 3, 4], seccionIds: secSoporte },
+    { rolId: 4, permisoIds: [2, 3, 4], seccionIds: secSoporte },
+    { rolId: 5, permisoIds: [2, 4], seccionIds: secSoporte }, // Auditor
+    { rolId: 16, permisoIds: [2, 3, 4], seccionIds: secSoporte }, // Ingeniero Hubspot
     // Roles de Marketing
-    { rolId: 12, permisoIds: [1] }, // Diseñador
-    { rolId: 13, permisoIds: [1] }, // Community Manager
-    // Director de Marketing (ve marketing y admin, pero no edita usuarios)
-    { rolId: 11, permisoIds: [1, 2, 4] },
-    // Roles de Soporte (ven todo, pero no marketing)
-    { rolId: 2, permisoIds: [2, 3, 4] },
-    { rolId: 3, permisoIds: [2, 3, 4] },
-    { rolId: 4, permisoIds: [2, 3, 4] },
-    { rolId: 5, permisoIds: [2, 4] }, // Auditor no edita usuarios
+    { rolId: 12, permisoIds: [1], seccionIds: secMarketingStaff }, // Diseñador
+    { rolId: 13, permisoIds: [1], seccionIds: secMarketingStaff }, // Community Manager
+    { rolId: 17, permisoIds: [1], seccionIds: secMarketingStaff }, // Editor
+    { rolId: 11, permisoIds: [1, 4], seccionIds: secMarketingDirector }, // Director de Marketing
   ];
 
-  for (const { rolId, permisoIds } of rolesConPermisos) {
+  for (const { rolId, permisoIds, seccionIds } of rolesConPermisos) {
     await prisma.rol.update({
       where: { id: rolId },
       data: {
@@ -111,14 +193,40 @@ async function main() {
         },
       },
     });
+    
+    // Conectar secciones
+    for (const sid of seccionIds) {
+      await prisma.permisoRolSeccion.create({
+        data: {
+          rolId: rolId,
+          seccionId: sid
+        }
+      });
+    }
+  }
+
+  // A los roles estándar no listados arriba (Director Campus, Ejecutivos, Contador, etc.), darles las secciones estándar
+  for (const rol of allRoles) {
+    if (!rolesConPermisos.some(r => r.rolId === rol.id)) {
+      for (const sid of secEstandar) {
+        await prisma.permisoRolSeccion.create({
+          data: {
+            rolId: rol.id,
+            seccionId: sid
+          }
+        });
+      }
+    }
   }
 
   // --- Insertar Usuario ---
   console.log('Seeding usuario...');
   await prisma.usuario.createMany({
     data: [
-      { id:1, mail: 'gerardo.omana@humanitas.edu.mx', nombres: 'Gerardo', apellidos: 'Omaña Vazquez', empresaId: 15, rolId: 6, horario_disponibilidad: Prisma.JsonNull, image: "https://lh3.googleusercontent.com/a-/ALV-UjXmcvhEi7AXSnIHJP2pJTizD0lzlhMwNQeR7HM3kVKj0i85LV4Q=s96-c" },
-      { id:2, mail: 'haide.herrera@humanitas.edu.mx', nombres: 'Haide', apellidos: 'Herrera', empresaId: 14, rolId: 12, horario_disponibilidad: Prisma.JsonNull, image: "https://lh3.googleusercontent.com/a-/ALV-UjUPqe4Ka1JQhFH9vqNr4SDHElvdeKhMSrWCLBX16pHRf-o8oxvy=s96-c" }
+      { id: 1, mail: 'gerardo.omana@humanitas.edu.mx', nombres: 'Gerardo', apellidos: 'Omaña Vazquez', empresaId: 15, rolId: 6, trl_mail: true, trl_coord: false, horario_disponibilidad: { "lunes": { "fin": "18:30", "inicio": "10:00" }, "jueves": { "fin": "17:00", "inicio": "10:00" }, "martes": { "fin": "18:30", "inicio": "10:00" }, "sabado": { "fin": "15:00", "inicio": "09:00" }, "viernes": { "fin": "16:30", "inicio": "10:00" }, "miercoles": { "fin": "15:00", "inicio": "08:30" } }, image: "https://lh3.googleusercontent.com/a-/ALV-UjXmcvhEi7AXSnIHJP2pJTizD0lzlhMwNQeR7HM3kVKj0i85LV4Q=s240-p-k-rw-no" },
+      { id: 2, mail: 'haide.herrera@humanitas.edu.mx', nombres: 'Haide', apellidos: 'Herrera', empresaId: 14, rolId: 12, trl_mail: false, trl_coord: false, horario_disponibilidad: Prisma.JsonNull, image: "https://lh3.googleusercontent.com/a-/ALV-UjUPqe4Ka1JQhFH9vqNr4SDHElvdeKhMSrWCLBX16pHRf-o8oxvy=s240-p-k-rw-no" },
+      { id: 3, mail: 'victor@humanitas.edu.mx', nombres: 'Victor', apellidos: 'Barrera', empresaId: 15, rolId: 1, trl_mail: true, trl_coord: false, horario_disponibilidad: Prisma.JsonNull, image: "https://lh3.googleusercontent.com/a-/ALV-UjXzczZnIALPW_gM9F2H4wKz1syIeeJNR4orX2M3ga9Q0Eoj8Ch5Nlef6fgd40A4Iuw1G4gE-q8b981BUu3S0Wyt_8IBte-b8mqlWsoAn89iLdPFIb2Bi8ficGNiUxGKz9qZOkXTaU_Qxp17TsDh8uuwPd3byYfF5BhWm8LIaNXXfl77NOxtjSjsFLuzvsP8VHdItGQDuGwyp5nsm2N5uPdenc3MJRm-Rh85aFUPf6FWoH_TXyXXxM0H03VBw3cIVebkPC_Bv9soG8dAOeun8kcSfB_jHJGbrYJbN4uTU3tpSgdKyU4uzJt6YJMSav6Uo7kROIOLpiKB5NC1ysBLv6Okm7HDndBNr-Ai2-c50XfqV_wLmp76fYtInKcWtYJ27xmpppVkb3f6_I8dEbZt4CrpoSlPmiC9sjf4WZ2G5W3nWIsy9Ss5BotYapihRnhzp7gSZggL0uObIzs9GjXQ8fFZdx1_rk1eBo4HGPrw_NkDeftxap3Qx40uA6zrWT5REGWHflpJFkgwVnyxis9B_dlS3-OAi2xJFElP0clD6WXXh8EOKnpN5ns7-nExpKiWcc6zi4ydrNSCVVO7hAi-oanYUH0xHgjZ9JEDl5RPyVjlReED1wobfvXtfYAX7pxRg8gp6MNE_JamSylydAiHdxLc6owtk9LkmAv0Gx_g1-WtuYEQjsM-1iJqtZDEq51GHJ-5lA4V8L3AzNxdjwBl42MfYKSipKOiEZCicgoH1R7fj6qdPq0li5hcF7_7GsHoXc0WmcymxzdjyhCQ5Qd3-wKVN9V5NkW8aRZ6WqtH_XLPxxsDzw77eNyohX3ZAk0lzL_RCt4oGcSx09nQ79NLXBpuWeWY63dqG6wpHMQF4IrHGE94qWPEc7yyHE81NsdpZttwFMonfVtDXc2JnQ7Tr_VRFZuztRy6DbBW1Kj_Kazwilcaamr3iAPxETu-5WUOYMGk212lzku0d2TLZa0PwtqcQFPkFrEj0Pzx02VwCN7g_9NwUyUPKAC5yLYWNwPjlmLnNG8ZMqY5qhb2NF__s4QbhUvLPTUmxyGNoBkWncm34YOG_w6OZkw=s240-p-k-rw-no" },
+      { id: 4, mail: 'soporte@humanitas.edu.mx', nombres: 'Centro de Soporte', apellidos: 'Humanitas', empresaId: 15, rolId: 15, trl_mail: true, trl_coord: false, horario_disponibilidad: Prisma.JsonNull, image: "https://www.gstatic.com/images/branding/product/2x/avatar_square_grey_48dp.png" }
     ],
   });
 
@@ -129,41 +237,70 @@ async function main() {
   console.log('Seeding oferta...');
   await prisma.oferta.createMany({
     data: [
-        { id: 1, descripcion: 'Licenciatura Ejecutiva' },
-        { id: 2, descripcion: 'Licenciatura Escolarizada' },
-        { id: 3, descripcion: 'Maestría' },
-        { id: 4, descripcion: 'Doctorado' },
-        { id: 5, descripcion: 'Diplomado' },
-        { id: 6, descripcion: 'Idioma' },
+      { id: 1, descripcion: 'Licenciatura Ejecutiva' },
+      { id: 2, descripcion: 'Licenciatura Escolarizada' },
+      { id: 3, descripcion: 'Maestría' },
+      { id: 4, descripcion: 'Doctorado' },
+      { id: 5, descripcion: 'Diplomado' },
+      { id: 6, descripcion: 'Idioma' },
     ],
   });
 
   // --- Insertar Descuento ---
   console.log('Seeding descuento...');
-  await prisma.descuento.createMany({
-    data: [
-        { id: 13, descripcion: 'Beca 50', monto: 50, activo: true },
-        { id: 14, descripcion: 'Beca Colab.', monto: 100, activo: true },
-        { id: 15, descripcion: 'Convenio', monto: 10, activo: true },
-        { id: 16, descripcion: 'Desc.Esp.', monto: 0, activo: true },
-    ],
+  const descuentosNumericos = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 15, 20, 25, 40];
+  const descuentosData = [
+    { id: 1, descripcion: 'N/A', monto: 0, activo: true },
+    ...descuentosNumericos.map((monto, index) => ({
+      id: index + 2,
+      descripcion: monto.toString(),
+      monto: monto,
+      activo: true
+    })),
+    { id: 18, descripcion: 'Beca 50', monto: 50, activo: true },
+    { id: 19, descripcion: 'Beca 100', monto: 100, activo: true },
+    { id: 20, descripcion: 'Convenio', monto: 10, activo: true },
+    { id: 21, descripcion: 'Especial', monto: 0, activo: true },
+  ];
+  await prisma.descuento.createMany({ data: descuentosData });
+
+  // --- Insertar PlanPago ---
+  console.log('Seeding plan_pago...');
+  const planesPago = [
+    { nombre: 'Solo colegiatura', descripcion: 'Licenciatura ejecutivo' },
+    { nombre: 'Todo incluido', descripcion: 'Licenciatura ejecutivo' },
+    { nombre: 'Equivalencia', descripcion: 'Licenciatura ejecutivo' },
+    { nombre: 'Escolarizado 1 - 10', descripcion: 'Licenciatura escolarizado' },
+    { nombre: 'Escolarizado 11 - 14', descripcion: 'Licenciatura escolarizado' },
+    { nombre: 'Escolarizado equivalencia', descripcion: 'Licenciatura escolarizado' },
+    { nombre: 'Maestría interno', descripcion: 'Maestría' },
+    { nombre: 'Maestría externo', descripcion: 'Maestría' },
+    { nombre: 'Seminario de casos', descripcion: 'Maestría' },
+    { nombre: 'Inglés interno', descripcion: 'Idiomas' },
+    { nombre: 'Inglés externo', descripcion: 'Idiomas' },
+    { nombre: 'Doctorado interno', descripcion: 'Doctorado' },
+    { nombre: 'Doctorado externo', descripcion: 'Doctorado' },
+    { nombre: 'Diplomados', descripcion: 'Diplomados' },
+  ];
+  await prisma.planPago.createMany({
+    data: planesPago.map((p, i) => ({ ...p, id: i + 1, activo: true })),
   });
 
   // --- Insertar Estatus ---
   console.log('Seeding estatus...');
   await prisma.estatus.createMany({
     data: [
-        { id: 1, nombre: 'Sin asignar', descripcion: 'Ticket nuevo sin agente asignado.' },
-        { id: 2, nombre: 'Nuevo', descripcion: 'Ticket nuevo en el sistema y asignado' },
-        { id: 3, nombre: 'En progreso', descripcion: 'El ticket está siendo atendido por un ingeniero de soporte.' },
-        { id: 4, nombre: 'En espera', descripcion: 'El ticket está siendo atendido' },
-        { id: 5, nombre: 'Solucionado', descripcion: 'Ticket cerrado' },
-        { id: 6, nombre: 'Cancelado', descripcion: 'Ticket cancelado' },
-        { id: 7, nombre: 'Duplicado', descripcion: 'Solicitud duplicada' },
-        { id: 8, nombre: 'Revisión CSH', descripcion: 'Traslado: Revisión CSH' },
-        { id: 9, nombre: 'Revisión campus origen', descripcion: 'Traslado en revisión por campus origen' },
-        { id: 10, nombre: 'Información campus destino', descripcion: 'Traslado en espera de información de campus destino' },
-        { id: 11, nombre: 'Confirmación alumno', descripcion: 'Traslado en espera de confirmación del alumno' },
+      { id: 1, nombre: 'Sin asignar', descripcion: 'Ticket nuevo sin agente asignado.' },
+      { id: 2, nombre: 'Nuevo', descripcion: 'Ticket nuevo en el sistema y asignado' },
+      { id: 3, nombre: 'En progreso', descripcion: 'El ticket está siendo atendido por un ingeniero de soporte.' },
+      { id: 4, nombre: 'En espera', descripcion: 'El ticket está siendo atendido' },
+      { id: 5, nombre: 'Solucionado', descripcion: 'Ticket cerrado' },
+      { id: 6, nombre: 'Cancelado', descripcion: 'Ticket cancelado' },
+      { id: 7, nombre: 'Duplicado', descripcion: 'Solicitud duplicada' },
+      { id: 8, nombre: 'Revisión CSH', descripcion: 'Traslado: Revisión CSH' },
+      { id: 9, nombre: 'Revisión campus origen', descripcion: 'Traslado en revisión por campus origen' },
+      { id: 10, nombre: 'Información campus destino', descripcion: 'Traslado en espera de información de campus destino' },
+      { id: 11, nombre: 'Confirmación alumno', descripcion: 'Traslado en espera de confirmación del alumno' },
     ],
   });
 
@@ -171,18 +308,18 @@ async function main() {
   console.log('Seeding categoria...');
   await prisma.categoria.createMany({
     data: [
-        { id: 1, nombre: 'Alumno', nivel_soporte_requerido: 'S_1', activo: true },
-        { id: 2, nombre: 'Aspirante', nivel_soporte_requerido: 'S_1', activo: true },
-        { id: 3, nombre: 'Colaborador', nivel_soporte_requerido: 'S_2', activo: true },
-        { id: 4, nombre: 'Docente', nivel_soporte_requerido: 'S_2', activo: true },
-        { id: 5, nombre: 'Plataforma Humanitas', nivel_soporte_requerido: 'S_2', activo: true },
-        { id: 6, nombre: 'App Humanitas', nivel_soporte_requerido: 'S_2', activo: true },
-        { id: 7, nombre: 'Canvas', nivel_soporte_requerido: 'S_2', activo: true },
-        { id: 8, nombre: 'Hubspot', nivel_soporte_requerido: 'S_2', activo: true },
-        { id: 9, nombre: 'Atom', nivel_soporte_requerido: 'S_2', activo: true },
-        { id: 10, nombre: 'Página web', nivel_soporte_requerido: 'Desarrollador', activo: true },
-        { id: 11, nombre: 'Otro', nivel_soporte_requerido: 'S_1', activo: true },
-        { id: 12, nombre: 'Marketing', nivel_soporte_requerido: 'Marketing', activo: true },
+      { id: 1, nombre: 'Alumno', nivel_soporte_requerido: 'S_1', activo: true },
+      { id: 2, nombre: 'Aspirante', nivel_soporte_requerido: 'S_1', activo: true },
+      { id: 3, nombre: 'Colaborador', nivel_soporte_requerido: 'S_2', activo: true },
+      { id: 4, nombre: 'Docente', nivel_soporte_requerido: 'S_2', activo: true },
+      { id: 5, nombre: 'Plataforma Humanitas', nivel_soporte_requerido: 'S_2', activo: true },
+      { id: 6, nombre: 'App Humanitas', nivel_soporte_requerido: 'S_2', activo: true },
+      { id: 7, nombre: 'Canvas', nivel_soporte_requerido: 'S_2', activo: true },
+      { id: 8, nombre: 'Hubspot', nivel_soporte_requerido: 'S_2', activo: true },
+      { id: 9, nombre: 'Atom', nivel_soporte_requerido: 'S_2', activo: true },
+      { id: 10, nombre: 'Página web', nivel_soporte_requerido: 'Desarrollador', activo: true },
+      { id: 11, nombre: 'Otro', nivel_soporte_requerido: 'S_1', activo: true },
+      { id: 12, nombre: 'Marketing', nivel_soporte_requerido: 'Marketing', activo: true },
     ],
   });
 
@@ -190,42 +327,40 @@ async function main() {
   console.log('Seeding carrera...');
   await prisma.carrera.createMany({
     data: [
-        { id: 1, clave: 'LAC', descripcion: 'Administración', ofertaId: 1, activo: true },
-        { id: 2, clave: 'LACE', descripcion: 'Administración', ofertaId: 2, activo: true },
-        { id: 3, clave: 'LARE', descripcion: 'Arquitectura', ofertaId: 2, activo: true },
-        { id: 4, clave: 'LCPAP', descripcion: 'Ciencias Políticas y Administración Pública', ofertaId: 1, activo: true },
-        { id: 5, clave: 'LECPA', descripcion: 'Ciencias Políticas y Administración Pública', ofertaId: 2, activo: true },
-        { id: 6, clave: 'LAC', descripcion: 'Contabilidad', ofertaId: 1, activo: true },
-        { id: 7, clave: 'LACE', descripcion: 'Contabilidad', ofertaId: 2, activo: true },
-        { id: 8, clave: 'LD', descripcion: 'Derecho', ofertaId: 1, activo: true },
-        { id: 9, clave: 'LDE', descripcion: 'Derecho', ofertaId: 2, activo: true },
-        { id: 10, clave: 'LDGE', descripcion: 'Diseño Gráfico', ofertaId: 2, activo: true },
-        { id: 11, clave: 'LICED', descripcion: 'Educación', ofertaId: 1, activo: true },
-        { id: 12, clave: 'LEED', descripcion: 'Educación', ofertaId: 2, activo: true },
-        { id: 13, clave: 'LPS', descripcion: 'Psicología', ofertaId: 1, activo: true },
-        { id: 14, clave: 'LPSE', descripcion: 'Psicología', ofertaId: 2, activo: true },
-        { id: 15, clave: 'LATE', descripcion: 'Arte y Teatro', ofertaId: 2, activo: true },
-        { id: 16, clave: 'MADEE', descripcion: 'Alta Dirección Corporativa', ofertaId: 3, activo: true },
-        { id: 17, clave: 'MCEI', descripcion: 'Contabilidad e Impuestos', ofertaId: 3, activo: true },
-        { id: 18, clave: 'MDEC', descripcion: 'Derecho Corporativo', ofertaId: 3, activo: true },
-        { id: 19, clave: 'MDFI', descripcion: 'Derecho Fiscal', ofertaId: 3, activo: true },
-        { id: 20, clave: 'MDP', descripcion: 'Derecho Penal', ofertaId: 3, activo: true },
-        { id: 21, clave: 'MAED', descripcion: 'Educación', ofertaId: 3, activo: true },
-        { id: 22, clave: 'MJPSP', descripcion: 'Justicia Penal y Seguridad Pública', ofertaId: 3, activo: true },
-        { id: 23, clave: 'MMER', descripcion: 'Mercadotecnia', ofertaId: 3, activo: true },
-        { id: 24, clave: 'MTPS8', descripcion: 'Psicoterapia con un Enfoque Psicoanalítico', ofertaId: 3, activo: true },
-        { id: 25, clave: 'DOCAD', descripcion: 'Alta Dirección', ofertaId: 4, activo: true },
-        { id: 26, clave: 'DOCDE', descripcion: 'Derecho', ofertaId: 4, activo: true },
-        { id: 27, clave: 'DOCED', descripcion: 'Educación', ofertaId: 4, activo: true },
-        { id: 28, clave: 'DIP11', descripcion: 'Diplomado en Bases de Administración y Principios Contables', ofertaId: 5, activo: true },
-        { id: 29, clave: 'DIP01', descripcion: 'Diplomado en Criminología', ofertaId: 5, activo: true },
-        { id: 30, clave: 'DIP02', descripcion: 'Diplomado en Juicios Orales', ofertaId: 5, activo: true },
-        { id: 31, clave: 'DIP09', descripcion: 'Diplomado en Perfiles Criminales', ofertaId: 5, activo: true },
-        { id: 32, clave: 'DIP04', descripcion: 'Diplomado en Tanatología', ofertaId: 5, activo: true },
-        { id: 33, clave: 'DIP03', descripcion: 'Seminario de Introducción a la Psicoterapia Psicoanalítica en Niños', ofertaId: 5, activo: true },
-        { id: 34, clave: 'DIP05', descripcion: 'Seminario de Introducción al Psicoanálisis', ofertaId: 5, activo: true },
-        { id: 35, clave: 'DIP06', descripcion: 'Seminario de Reflexiones Psicoanalíticas sobre el Cuerpo, la Anorexia y la Obesidad', ofertaId: 5, activo: true },
-        { id: 36, clave: 'ISEMI', descripcion: 'English Kingdom', ofertaId: 6, activo: true },
+      { id: 1, clave: 'LAC', descripcion: 'Administración y Contabilidad', ofertaId: 1, activo: true },
+      { id: 2, clave: 'LACE', descripcion: 'Administración y Contabilidad', ofertaId: 2, activo: true },
+      { id: 3, clave: 'LARE', descripcion: 'Arquitectura', ofertaId: 2, activo: true },
+      { id: 4, clave: 'LCPAP', descripcion: 'Ciencias Políticas y Administración Pública', ofertaId: 1, activo: true },
+      { id: 5, clave: 'LECPA', descripcion: 'Ciencias Políticas y Administración Pública', ofertaId: 2, activo: true },
+      { id: 6, clave: 'LD', descripcion: 'Derecho', ofertaId: 1, activo: true },
+      { id: 7, clave: 'LDE', descripcion: 'Derecho', ofertaId: 2, activo: true },
+      { id: 8, clave: 'LDGE', descripcion: 'Diseño Gráfico', ofertaId: 2, activo: true },
+      { id: 9, clave: 'LICED', descripcion: 'Educación', ofertaId: 1, activo: true },
+      { id: 10, clave: 'LEED', descripcion: 'Educación', ofertaId: 2, activo: true },
+      { id: 11, clave: 'LPS', descripcion: 'Psicología', ofertaId: 1, activo: true },
+      { id: 12, clave: 'LPSE', descripcion: 'Psicología', ofertaId: 2, activo: true },
+      { id: 13, clave: 'LATE', descripcion: 'Arte y Teatro', ofertaId: 2, activo: true },
+      { id: 14, clave: 'MADEE', descripcion: 'Alta Dirección Corporativa', ofertaId: 3, activo: true },
+      { id: 15, clave: 'MCEI', descripcion: 'Contabilidad e Impuestos', ofertaId: 3, activo: true },
+      { id: 16, clave: 'MDEC', descripcion: 'Derecho Corporativo', ofertaId: 3, activo: true },
+      { id: 17, clave: 'MDFI', descripcion: 'Derecho Fiscal', ofertaId: 3, activo: true },
+      { id: 18, clave: 'MDP', descripcion: 'Derecho Penal', ofertaId: 3, activo: true },
+      { id: 19, clave: 'MAED', descripcion: 'Educación', ofertaId: 3, activo: true },
+      { id: 20, clave: 'MJPSP', descripcion: 'Justicia Penal y Seguridad Pública', ofertaId: 3, activo: true },
+      { id: 21, clave: 'MMER', descripcion: 'Mercadotecnia', ofertaId: 3, activo: true },
+      { id: 22, clave: 'MTPS8', descripcion: 'Psicoterapia con un Enfoque Psicoanalítico', ofertaId: 3, activo: true },
+      { id: 23, clave: 'DOCAD', descripcion: 'Alta Dirección', ofertaId: 4, activo: true },
+      { id: 24, clave: 'DOCDE', descripcion: 'Derecho', ofertaId: 4, activo: true },
+      { id: 25, clave: 'DOCED', descripcion: 'Educación', ofertaId: 4, activo: true },
+      { id: 26, clave: 'DIP11', descripcion: 'Diplomado en Bases de Administración y Principios Contables', ofertaId: 5, activo: true },
+      { id: 27, clave: 'DIP01', descripcion: 'Diplomado en Criminología', ofertaId: 5, activo: true },
+      { id: 28, clave: 'DIP02', descripcion: 'Diplomado en Juicios Orales', ofertaId: 5, activo: true },
+      { id: 29, clave: 'DIP09', descripcion: 'Diplomado en Perfiles Criminales', ofertaId: 5, activo: true },
+      { id: 30, clave: 'DIP04', descripcion: 'Diplomado en Tanatología', ofertaId: 5, activo: true },
+      { id: 31, clave: 'DIP03', descripcion: 'Seminario de Introducción a la Psicoterapia Psicoanalítica en Niños', ofertaId: 5, activo: true },
+      { id: 32, clave: 'DIP05', descripcion: 'Seminario de Introducción al Psicoanálisis', ofertaId: 5, activo: true },
+      { id: 33, clave: 'DIP06', descripcion: 'Seminario de Reflexiones Psicoanalíticas sobre el Cuerpo, la Anorexia y la Obesidad', ofertaId: 5, activo: true },
+      { id: 34, clave: 'ISEMI', descripcion: 'English Kingdom', ofertaId: 6, activo: true },
     ],
   });
 
@@ -587,6 +722,115 @@ async function main() {
       { categoriaId: 12, subcategoriaId: 141 },
       { categoriaId: 12, subcategoriaId: 142 },
     ],
+  });
+
+  // --- Insertar Asignaciones de Categorias ---
+  console.log('Seeding asignaciones_categorias...');
+  await prisma.asignacionesCategorias.createMany({
+    data: [
+      // Asignar categoria Marketing (12) a usuario Haide Herrera (2)
+      { atiendeId: 2, categoriaId: 12, activo: true },
+      // Asignar categoria Página web (10) a usuario Gerardo Omaña (1)
+      { atiendeId: 1, categoriaId: 10, activo: true },
+    ],
+  });
+
+  // --- Insertar Permisos de Categoría por Rol ---
+  console.log('Seeding permiso_categoria...');
+
+  const permisosData = [
+    // Ingeniero soporte 1 (ID: 2)
+    { rolId: 2, categoriaId: 1, subcategoriaId: null }, // Alumno (completa)
+    { rolId: 2, categoriaId: 2, subcategoriaId: null }, // Aspirante (completa)
+    { rolId: 2, categoriaId: 3, subcategoriaId: null }, // Colaborador (completa)
+    { rolId: 2, categoriaId: 4, subcategoriaId: null }, // Docente (completa)
+    { rolId: 2, categoriaId: 5, subcategoriaId: null }, // Plataforma Humanitas (completa)
+    { rolId: 2, categoriaId: 11, subcategoriaId: null }, // Otro (completa)
+    { rolId: 2, categoriaId: 1, subcategoriaId: 9 },   // Alumno -> Correo institucional
+    { rolId: 2, categoriaId: 1, subcategoriaId: 58 },  // Alumno -> Traslado
+    { rolId: 2, categoriaId: 3, subcategoriaId: 67 },  // Colaborador -> Altas -> Creación de correo
+
+    // Ingeniero soporte 2 (ID: 3)
+    { rolId: 3, categoriaId: 1, subcategoriaId: null }, // Alumno (completa)
+    { rolId: 3, categoriaId: 2, subcategoriaId: null }, // Aspirante (completa)
+    { rolId: 3, categoriaId: 6, subcategoriaId: null }, // App Humanitas (completa)
+    { rolId: 3, categoriaId: 7, subcategoriaId: null }, // Canvas (completa)
+    { rolId: 3, categoriaId: 3, subcategoriaId: null }, // Colaborador (completa)
+    { rolId: 3, categoriaId: 4, subcategoriaId: null }, // Docente (completa)
+    { rolId: 3, categoriaId: 5, subcategoriaId: null }, // Plataforma Humanitas (completa)
+    { rolId: 3, categoriaId: 11, subcategoriaId: null }, // Otro (completa)
+    { rolId: 3, categoriaId: 1, subcategoriaId: 8 },   // Alumno -> Aplicación móvil
+    { rolId: 3, categoriaId: 1, subcategoriaId: 27 },  // Alumno -> Finanzas -> Cobros -> En campus
+    { rolId: 3, categoriaId: 1, subcategoriaId: 58 },  // Alumno -> Traslado
+    { rolId: 3, categoriaId: 3, subcategoriaId: 70 },  // Colaborador -> Altas -> Replicar permisos
+
+    // Director CSH (ID: 1) e Ingeniero soporte 3 (ID: 4) - MISMOS PERMISOS
+    ...([1, 4].flatMap(rolId => [
+      { rolId, categoriaId: 1, subcategoriaId: 5 },   // Alumno -> Académico -> Calificaciones -> Replicar
+      { rolId, categoriaId: 1, subcategoriaId: 90 },  // Alumno -> Finanzas -> Becas -> Colaboradores
+      { rolId, categoriaId: 1, subcategoriaId: 89 },  // Alumno -> Finanzas -> Becas -> Docentes
+      { rolId, categoriaId: 3, subcategoriaId: 71 },  // Colaborador -> Bajas
+      { rolId, categoriaId: 3, subcategoriaId: 13 },  // Colaborador -> Correo -> Redireccionar
+      { rolId, categoriaId: 4, subcategoriaId: 9 },   // Docente -> Correo institucional
+      { rolId, categoriaId: 4, subcategoriaId: 92 },  // Docente -> Expediente -> Correo personal
+      { rolId, categoriaId: 4, subcategoriaId: 86 },  // Docente -> Lista negra
+      { rolId, categoriaId: 5, subcategoriaId: 40 },  // Plataforma -> Finanzas -> Notas aclaratorias
+    ])),
+
+    // Ingeniero Hubspot (ID: 16 - NUEVO)
+    { rolId: 16, categoriaId: 1, subcategoriaId: null }, // Alumno (completa)
+    { rolId: 16, categoriaId: 2, subcategoriaId: null }, // Aspirante (completa)
+    { rolId: 16, categoriaId: 9, subcategoriaId: null }, // Atom (completa)
+    { rolId: 16, categoriaId: 3, subcategoriaId: null }, // Colaborador (completa)
+    { rolId: 16, categoriaId: 4, subcategoriaId: null }, // Docente (completa)
+    { rolId: 16, categoriaId: 8, subcategoriaId: null }, // Hubspot (completa)
+    { rolId: 16, categoriaId: 5, subcategoriaId: null }, // Plataforma Humanitas (completa)
+    { rolId: 16, categoriaId: 11, subcategoriaId: null }, // Otro (completa)
+    { rolId: 16, categoriaId: 1, subcategoriaId: 58 },  // Alumno -> Traslado
+
+    // Desarrollador (ID: 6)
+    { rolId: 6, categoriaId: 10, subcategoriaId: null }, // Página web (completa)
+    { rolId: 6, categoriaId: 1, subcategoriaId: 58 },   // Alumno -> Traslado
+
+    // Contador (ID: 10)
+    { rolId: 10, categoriaId: 1, subcategoriaId: 39 },  // Alumno -> Finanzas -> Facturas
+    { rolId: 10, categoriaId: 1, subcategoriaId: 42 },  // Alumno -> Finanzas -> Registro de Pagos
+
+    // Diseñador (ID: 12)
+    { rolId: 12, categoriaId: 12, subcategoriaId: 133 }, // Marketing -> Archivos para impresión
+    { rolId: 12, categoriaId: 12, subcategoriaId: 137 }, // Marketing -> Botargas
+    { rolId: 12, categoriaId: 12, subcategoriaId: 132 }, // Marketing -> Convenios
+    { rolId: 12, categoriaId: 12, subcategoriaId: 130 }, // Marketing -> Diseño de postal
+    { rolId: 12, categoriaId: 12, subcategoriaId: 134 }, // Marketing -> Firmas
+    { rolId: 12, categoriaId: 12, subcategoriaId: 131 }, // Marketing -> Mailings
+    { rolId: 12, categoriaId: 12, subcategoriaId: 136 }, // Marketing -> Proyectos especiales
+    { rolId: 12, categoriaId: 12, subcategoriaId: 135 }, // Marketing -> Señalética
+
+    // Community manager (ID: 13)
+    { rolId: 13, categoriaId: 12, subcategoriaId: 140 }, // Marketing -> Publicación colaboradores
+    { rolId: 13, categoriaId: 12, subcategoriaId: 139 }, // Marketing -> Publicación redes sociales
+
+    // Editor (ID: 17 - NUEVO)
+    { rolId: 17, categoriaId: 12, subcategoriaId: 142 }, // Marketing -> Video institucional
+
+    // Auditor CSH (ID: 5)
+    { rolId: 5, categoriaId: 1, subcategoriaId: 58 },   // Alumno -> Traslado
+
+    // Visitante administrador (ID: 15)
+    { rolId: 15, categoriaId: 1, subcategoriaId: null }, // Alumno (completa)
+    { rolId: 15, categoriaId: 2, subcategoriaId: null }, // Aspirante (completa)
+    { rolId: 15, categoriaId: 3, subcategoriaId: null }, // Colaborador (completa)
+    { rolId: 15, categoriaId: 4, subcategoriaId: null }, // Docente (completa)
+    { rolId: 15, categoriaId: 5, subcategoriaId: null }, // Plataforma Humanitas (completa)
+    { rolId: 15, categoriaId: 11, subcategoriaId: null }, // Otro (completa)
+    { rolId: 15, categoriaId: 1, subcategoriaId: 9 },   // Alumno -> Correo institucional
+    { rolId: 15, categoriaId: 1, subcategoriaId: 58 },  // Alumno -> Traslado
+    { rolId: 15, categoriaId: 3, subcategoriaId: 67 },  // Colaborador -> Altas -> Creación correo
+  ];
+
+  await prisma.permisoCategoria.createMany({
+    data: permisosData,
+    skipDuplicates: true,
   });
 
   console.log(`Seeding finished.`);

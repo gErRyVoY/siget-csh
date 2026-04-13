@@ -9,11 +9,11 @@ const empresa = await prisma.empresa.findUnique({
 });
 
 if (!empresa) {
-  return Astro.redirect('/404');
+  return Astro.redirect("/404");
 }
 
 let title = empresa.nombre;
-if (['Magno', 'Ejecutivo'].includes(empresa.tipo)) {
+if (["Magno", "Ejecutivo"].includes(empresa.tipo)) {
   title = `Campus ${empresa.nombre}`;
 }
 ---
@@ -25,29 +25,47 @@ if (['Magno', 'Ejecutivo'].includes(empresa.tipo)) {
     </div>
 
     <div class="flex justify-between items-center mb-4 gap-4 flex-wrap">
-      <a href="/admin/usuarios" class="bg-[#797979] text-black hover:bg-gray-500 px-6 py-2 rounded-md text-sm font-semibold">
-        Volver
+      <a
+        href="/admin/usuarios"
+        class="bg-muted-foreground text-white hover:bg-muted-foreground/80 px-6 py-2 rounded-md text-sm font-semibold transition-colors"
+      >
+        Volver a la lista
       </a>
       <div class="flex items-center gap-4 flex-wrap">
         <div>
-          <label for="status-select" class="mr-2 text-sm font-medium">Estado:</label>
-          <select id="status-select" class="bg-card border rounded-md p-2 text-sm">
+          <label for="status-select" class="mr-2 text-sm font-medium"
+            >Estado:</label
+          >
+          <select
+            id="status-select"
+            class="bg-card border rounded-md p-2 text-sm"
+          >
             <option value="active">Activos</option>
             <option value="inactive">Inactivos</option>
             <option value="all">Todos</option>
           </select>
         </div>
         <div>
-          <label for="vacation-select" class="mr-2 text-sm font-medium">Vacaciones:</label>
-          <select id="vacation-select" class="bg-card border rounded-md p-2 text-sm">
+          <label for="vacation-select" class="mr-2 text-sm font-medium"
+            >Vacaciones:</label
+          >
+          <select
+            id="vacation-select"
+            class="bg-card border rounded-md p-2 text-sm"
+          >
             <option value="all">Todos</option>
             <option value="on">Sí</option>
             <option value="off">No</option>
           </select>
         </div>
         <div>
-          <label for="limit-select" class="mr-2 text-sm font-medium">Por página:</label>
-          <select id="limit-select" class="bg-card border rounded-md p-2 text-sm">
+          <label for="limit-select" class="mr-2 text-sm font-medium"
+            >Por página:</label
+          >
+          <select
+            id="limit-select"
+            class="bg-card border rounded-md p-2 text-sm"
+          >
             <option value="10">10</option>
             <option value="5">5</option>
             <option value="15">15</option>
@@ -66,13 +84,15 @@ if (['Magno', 'Ejecutivo'].includes(empresa.tipo)) {
               <th class="p-4">Nombre</th>
               <th class="p-4">Estado</th>
               <th class="p-4">Vacaciones</th>
-              <th class="p-4"><span class="sr-only">Acciones</span></th>
             </tr>
           </thead>
           <tbody id="users-table-body"></tbody>
         </table>
       </div>
-      <div id="no-users-message" class="hidden p-8 text-center text-muted-foreground">
+      <div
+        id="no-users-message"
+        class="hidden p-8 text-center text-muted-foreground"
+      >
         No se encontraron usuarios con los filtros seleccionados.
       </div>
     </div>
@@ -81,90 +101,263 @@ if (['Magno', 'Ejecutivo'].includes(empresa.tipo)) {
       <span id="pagination-info" class="text-sm text-muted-foreground"></span>
       <div id="pagination-controls" class="flex gap-2"></div>
     </div>
-
   </div>
 </MainLayout>
 
 <script define:vars={{ campusSlug: campus }}>
   function initUserList() {
-    const tableBody = document.getElementById('users-table-body');
-    const noUsersMessage = document.getElementById('no-users-message');
-    const paginationInfo = document.getElementById('pagination-info');
-    const paginationControls = document.getElementById('pagination-controls');
-    const limitSelect = document.getElementById('limit-select');
-    const statusSelect = document.getElementById('status-select');
-    const vacationSelect = document.getElementById('vacation-select');
+    const tableBody = document.getElementById("users-table-body");
+    const noUsersMessage = document.getElementById("no-users-message");
+    const paginationInfo = document.getElementById("pagination-info");
+    const paginationControls = document.getElementById("pagination-controls");
+    const limitSelect = document.getElementById("limit-select");
+    const statusSelect = document.getElementById("status-select");
+    const vacationSelect = document.getElementById("vacation-select");
 
     if (!tableBody || !paginationControls) return; // Exit if essential elements aren't there
 
     let currentPage = 1;
-    let currentLimit = '10';
-    let currentStatus = 'active';
-    let currentVacation = 'all';
+    let currentLimit = "10";
+    let currentStatus = "active";
+    let currentVacation = "all";
 
     async function fetchAndRenderUsers() {
-        const url = `/api/admin/usuarios?campus=${campusSlug}&page=${currentPage}&limit=${currentLimit}&status=${currentStatus}&vacation=${currentVacation}`;
-        try {
-            const response = await fetch(url, { cache: 'no-store' });
-            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-            const { users, pagination } = await response.json();
+      const url = `/api/admin/usuarios?campus=${campusSlug}&page=${currentPage}&limit=${currentLimit}&status=${currentStatus}&vacation=${currentVacation}`;
+      try {
+        const response = await fetch(url, { cache: "no-store" });
+        if (!response.ok)
+          throw new Error(`HTTP error! status: ${response.status}`);
+        const { users, pagination } = await response.json();
 
-            tableBody.innerHTML = '';
-            if (users.length === 0) {
-                noUsersMessage.classList.remove('hidden');
-                tableBody.classList.add('hidden');
-            } else {
-                noUsersMessage.classList.add('hidden');
-                tableBody.classList.remove('hidden');
-                users.forEach(user => {
-                    const row = document.createElement('tr');
-                    row.className = 'border-b';
-                    row.innerHTML = `
-                        <td class="p-4 font-medium">${user.nombres} ${user.apellidos}</td>
-                        <td class="p-4">${user.activo ? '<span class="px-2 py-1 text-xs font-semibold text-green-800 bg-green-100 rounded-full">Activo</span>' : '<span class="px-2 py-1 text-xs font-semibold text-red-800 bg-red-100 rounded-full">Inactivo</span>'}</td>
-                        <td class="p-4">${user.vacaciones ? '<span class="px-2 py-1 text-xs font-semibold text-red-800 bg-red-100 rounded-full">Sí</span>' : '<span class="px-2 py-1 text-xs font-semibold text-green-800 bg-green-100 rounded-full">No</span>'}</td>
-                        <td class="p-4 text-right">
-                            <a href="/admin/usuarios/editar/${user.id}" class="font-medium text-primary hover:underline">Editar</a>
-                        </td>
+        tableBody.innerHTML = "";
+        if (users.length === 0) {
+          noUsersMessage.classList.remove("hidden");
+          tableBody.classList.add("hidden");
+        } else {
+          noUsersMessage.classList.add("hidden");
+          tableBody.classList.remove("hidden");
+          users.forEach((user) => {
+            const row = document.createElement("tr");
+            row.className =
+              "border-b hover:bg-[#797979]/40 transition-colors cursor-pointer";
+            
+            // Render active toggle
+            const isActivo = user.activo;
+            const activoToggleHtml = `
+              <div class="flex items-center" onclick="event.stopPropagation()">
+                <label class="relative inline-flex items-center cursor-pointer">
+                  <input type="checkbox" class="sr-only peer toggle-activo" data-user-id="${user.id}" ${isActivo ? 'checked' : ''}>
+                  <div class="w-9 h-5 bg-muted-foreground peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary"></div>
+                  <span class="ml-2 text-xs font-semibold activo-label ${isActivo ? 'text-black' : 'text-secondary'}">${isActivo ? 'Activo' : 'Inactivo'}</span>
+                </label>
+              </div>
+            `;
+
+            // Render vacation toggle
+            const isVacaciones = user.vacaciones;
+            const vacacionesToggleHtml = `
+              <div class="flex items-center" onclick="event.stopPropagation()">
+                <label class="relative inline-flex items-center cursor-pointer">
+                  <input type="checkbox" class="sr-only peer toggle-vacaciones" data-user-id="${user.id}" ${isVacaciones ? 'checked' : ''}>
+                  <div class="w-9 h-5 bg-muted-foreground peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-secondary"></div>
+                  <span class="ml-2 text-xs font-semibold vacaciones-label ${isVacaciones ? 'text-secondary' : 'text-black'}">${isVacaciones ? 'Sí' : 'No'}</span>
+                </label>
+              </div>
+            `;
+
+            row.onclick = () =>
+              (window.location.href = `/admin/usuarios/editar/${user.id}`);
+            row.innerHTML = `
+                        <td class="p-4 font-medium text-foreground">${user.nombres} ${user.apellidos}</td>
+                        <td class="p-4">${activoToggleHtml}</td>
+                        <td class="p-4">${vacacionesToggleHtml}</td>
                     `;
-                    tableBody.appendChild(row);
-                });
-            }
-            renderPagination(pagination);
-        } catch (error) {
-            console.error('Fetch Error:', error);
-            tableBody.innerHTML = `<tr><td colspan="4" class="p-8 text-center text-destructive">Error al cargar los usuarios.</td></tr>`;
+            tableBody.appendChild(row);
+          });
+
+          // Attach event listeners to the new toggles
+          attachToggleListeners();
         }
+        renderPagination(pagination);
+      } catch (error) {
+        console.error("Fetch Error:", error);
+        tableBody.innerHTML = `<tr><td colspan="4" class="p-8 text-center text-destructive">Error al cargar los usuarios.</td></tr>`;
+      }
+    }
+
+    function attachToggleListeners() {
+      // Activo Toggles
+      document.querySelectorAll('.toggle-activo').forEach(toggle => {
+        toggle.addEventListener('change', async (e) => {
+          const checkbox = e.target;
+          const userId = checkbox.dataset.userId;
+          const newValue = checkbox.checked;
+          const label = checkbox.nextElementSibling.nextElementSibling;
+
+          // Optimistic UI update
+          if (newValue) {
+            label.textContent = 'Activo';
+            label.className = 'ml-2 text-xs font-semibold activo-label text-black';
+          } else {
+            label.textContent = 'Inactivo';
+            label.className = 'ml-2 text-xs font-semibold activo-label text-secondary';
+          }
+
+          try {
+            const response = await fetch('/api/admin/usuarios', {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ id: parseInt(userId), activo: newValue })
+            });
+
+            if (!response.ok) {
+              const errorData = await response.json();
+              throw new Error(errorData.message || 'Error al actualizar');
+            }
+            
+            if (window.toast) {
+              window.toast.success(`Estado actualizado correctamente.`);
+            }
+          } catch (error) {
+            console.error('Error updating user status:', error);
+            // Revert UI
+            checkbox.checked = !newValue;
+            if (!newValue) {
+              label.textContent = 'Activo';
+              label.className = 'ml-2 text-xs font-semibold activo-label text-black';
+            } else {
+              label.textContent = 'Inactivo';
+              label.className = 'ml-2 text-xs font-semibold activo-label text-secondary';
+            }
+            if (window.toast) {
+              window.toast.error(error.message || 'Error al actualizar el estado.');
+            } else {
+              alert('Error al actualizar el estado.');
+            }
+          }
+        });
+      });
+
+      // Vacaciones Toggles
+      document.querySelectorAll('.toggle-vacaciones').forEach(toggle => {
+        toggle.addEventListener('change', async (e) => {
+          const checkbox = e.target;
+          const userId = checkbox.dataset.userId;
+          const newValue = checkbox.checked;
+          const label = checkbox.nextElementSibling.nextElementSibling;
+
+          // Optimistic UI update
+          if (newValue) {
+            label.textContent = 'Sí';
+            label.className = 'ml-2 text-xs font-semibold vacaciones-label text-secondary';
+          } else {
+            label.textContent = 'No';
+            label.className = 'ml-2 text-xs font-semibold vacaciones-label text-black';
+          }
+
+          try {
+            const response = await fetch('/api/admin/usuarios', {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ id: parseInt(userId), vacaciones: newValue })
+            });
+
+            if (!response.ok) {
+              const errorData = await response.json();
+              throw new Error(errorData.message || 'Error al actualizar');
+            }
+
+            if (window.toast) {
+              window.toast.success(`Estado de vacaciones actualizado.`);
+            }
+          } catch (error) {
+            console.error('Error updating user vacation status:', error);
+            // Revert UI
+            checkbox.checked = !newValue;
+            if (!newValue) {
+              label.textContent = 'Sí';
+              label.className = 'ml-2 text-xs font-semibold vacaciones-label text-secondary';
+            } else {
+              label.textContent = 'No';
+              label.className = 'ml-2 text-xs font-semibold vacaciones-label text-black';
+            }
+            if (window.toast) {
+              window.toast.error(error.message || 'Error al actualizar vacaciones.');
+            } else {
+              alert('Error al actualizar vacaciones.');
+            }
+          }
+        });
+      });
     }
 
     function renderPagination(pagination) {
-        if (!paginationInfo || !paginationControls) return;
-        const { page, totalUsers, totalPages } = pagination;
-        paginationInfo.textContent = `Mostrando ${tableBody.rows.length} de ${totalUsers} usuarios`;
-        paginationControls.innerHTML = '';
-        if (totalPages <= 1) return;
+      if (!paginationInfo || !paginationControls) return;
+      const { page, totalUsers, totalPages } = pagination;
+      paginationInfo.textContent = `Mostrando ${tableBody.rows.length} de ${totalUsers} usuarios`;
+      paginationControls.innerHTML = "";
+      if (totalPages <= 1) return;
 
-        const prevButton = document.createElement('button');
-        prevButton.textContent = 'Anterior';
-        prevButton.disabled = page === 1;
-        prevButton.className = 'px-4 py-2 text-sm border rounded-md disabled:opacity-50';
-        prevButton.addEventListener('click', () => { currentPage--; fetchAndRenderUsers(); });
-        paginationControls.appendChild(prevButton);
+      const prevButton = document.createElement("button");
+      prevButton.textContent = "Anterior";
+      prevButton.disabled = page === 1;
+      prevButton.className =
+        "px-4 py-2 text-sm border rounded-md disabled:opacity-50";
+      prevButton.addEventListener("click", () => {
+        currentPage--;
+        fetchAndRenderUsers();
+      });
+      paginationControls.appendChild(prevButton);
 
-        const nextButton = document.createElement('button');
-        nextButton.textContent = 'Siguiente';
-        nextButton.disabled = page === totalPages;
-        nextButton.className = 'px-4 py-2 text-sm border rounded-md disabled:opacity-50';
-        nextButton.addEventListener('click', () => { currentPage++; fetchAndRenderUsers(); });
-        paginationControls.appendChild(nextButton);
+      const nextButton = document.createElement("button");
+      nextButton.textContent = "Siguiente";
+      nextButton.disabled = page === totalPages;
+      nextButton.className =
+        "px-4 py-2 text-sm border rounded-md disabled:opacity-50";
+      nextButton.addEventListener("click", () => {
+        currentPage++;
+        fetchAndRenderUsers();
+      });
+      paginationControls.appendChild(nextButton);
     }
 
-    limitSelect.addEventListener('change', (e) => { currentLimit = e.target.value; currentPage = 1; fetchAndRenderUsers(); });
-    statusSelect.addEventListener('change', (e) => { currentStatus = e.target.value; currentPage = 1; fetchAndRenderUsers(); });
-    vacationSelect.addEventListener('change', (e) => { currentVacation = e.target.value; currentPage = 1; fetchAndRenderUsers(); });
+    limitSelect.addEventListener("change", (e) => {
+      currentLimit = e.target.value;
+      currentPage = 1;
+      fetchAndRenderUsers();
+    });
+    statusSelect.addEventListener("change", (e) => {
+      currentStatus = e.target.value;
+      currentPage = 1;
+      fetchAndRenderUsers();
+    });
+    vacationSelect.addEventListener("change", (e) => {
+      currentVacation = e.target.value;
+      currentPage = 1;
+      fetchAndRenderUsers();
+    });
 
     fetchAndRenderUsers();
   }
 
-  document.addEventListener('astro:page-load', initUserList);
+  document.addEventListener("astro:page-load", initUserList);
 </script>
+
+<style is:global>
+  .badge-active {
+    background-color: #166534; /* green-800 */
+    color: #ffffff;
+  }
+  .dark .badge-active {
+    background-color: rgba(20, 83, 45, 0.3); /* green-900/30 approx */
+    color: #86efac; /* green-300 */
+  }
+  .badge-inactive {
+    background-color: #9f0712;
+    color: #ffffff;
+  }
+  .dark .badge-inactive {
+    background-color: rgba(159, 7, 18, 0.3);
+    color: #e46971;
+  }
+</style>

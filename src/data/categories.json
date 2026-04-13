@@ -1356,6 +1356,129 @@
     ]
   },
   {
+    "id": 12,
+    "nombre": "Marketing",
+    "nivel_soporte_requerido": "Marketing",
+    "activo": true,
+    "subcategorias": [
+      {
+        "id": 129,
+        "nombre": "Diseño",
+        "parent_subcategoriaId": null,
+        "nivel_soporte_requerido": null,
+        "activo": true,
+        "children": [
+          {
+            "id": 133,
+            "nombre": "Archivos y materiales para impresión",
+            "parent_subcategoriaId": 129,
+            "nivel_soporte_requerido": null,
+            "activo": true,
+            "children": []
+          },
+          {
+            "id": 137,
+            "nombre": "Botargas",
+            "parent_subcategoriaId": 129,
+            "nivel_soporte_requerido": null,
+            "activo": true,
+            "children": []
+          },
+          {
+            "id": 132,
+            "nombre": "Convenios",
+            "parent_subcategoriaId": 129,
+            "nivel_soporte_requerido": null,
+            "activo": true,
+            "children": []
+          },
+          {
+            "id": 130,
+            "nombre": "Diseño de postal",
+            "parent_subcategoriaId": 129,
+            "nivel_soporte_requerido": null,
+            "activo": true,
+            "children": []
+          },
+          {
+            "id": 134,
+            "nombre": "Firmas",
+            "parent_subcategoriaId": 129,
+            "nivel_soporte_requerido": null,
+            "activo": true,
+            "children": []
+          },
+          {
+            "id": 131,
+            "nombre": "Mailings",
+            "parent_subcategoriaId": 129,
+            "nivel_soporte_requerido": null,
+            "activo": true,
+            "children": []
+          },
+          {
+            "id": 136,
+            "nombre": "Proyectos especiales",
+            "parent_subcategoriaId": 129,
+            "nivel_soporte_requerido": null,
+            "activo": true,
+            "children": []
+          },
+          {
+            "id": 135,
+            "nombre": "Señalética institucional",
+            "parent_subcategoriaId": 129,
+            "nivel_soporte_requerido": null,
+            "activo": true,
+            "children": []
+          }
+        ]
+      },
+      {
+        "id": 138,
+        "nombre": "Redes sociales",
+        "parent_subcategoriaId": null,
+        "nivel_soporte_requerido": null,
+        "activo": true,
+        "children": [
+          {
+            "id": 140,
+            "nombre": "Publicación de colaboradores",
+            "parent_subcategoriaId": 138,
+            "nivel_soporte_requerido": null,
+            "activo": true,
+            "children": []
+          },
+          {
+            "id": 139,
+            "nombre": "Publicación para redes sociales",
+            "parent_subcategoriaId": 138,
+            "nivel_soporte_requerido": null,
+            "activo": true,
+            "children": []
+          }
+        ]
+      },
+      {
+        "id": 141,
+        "nombre": "Video",
+        "parent_subcategoriaId": null,
+        "nivel_soporte_requerido": null,
+        "activo": true,
+        "children": [
+          {
+            "id": 142,
+            "nombre": "Video institucional",
+            "parent_subcategoriaId": 141,
+            "nivel_soporte_requerido": null,
+            "activo": true,
+            "children": []
+          }
+        ]
+      }
+    ]
+  },
+  {
     "id": 11,
     "nombre": "Otro",
     "nivel_soporte_requerido": "S_1",

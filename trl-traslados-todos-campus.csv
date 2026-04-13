@@ -1,0 +1,96 @@
+nombres,apellidos,mail,empresa_slug,rol_nombre
+Manuel Benjamin,Caballero Carballo,manuel.caballero@humanitas.edu.mx,cancun,Ejecutivo académico
+Xochitl Yazmin,Yam Lino,xochitl.yam@humanitas.edu.mx,cancun,Ejecutivo académico
+María del Sol,Luna Carrillo,maria.luna@humanitas.edu.mx,cancun,Coordinador administrativo
+Neyfi Aracely,Puc Villegas,npuc@humanitas.edu.mx,cancun,Director campus
+Nestor Alejandro,Dominguez Pérez,nestor.dominguez@humanitas.edu.mx,cancun,Coordinador RR.PP.
+Guadalupe Eugenia,Campos Patiño,guadalupe.campos@humanitas.edu.mx,cancun,Coordinador idiomas
+Celeste,de la Cruz de la Cruz,celeste.delacruz@humanitas.edu.mx,cancun,Ejecutivo académico
+Miriam Kristel,Aguayo Orozco,kristel.aguayo@humanitas.edu.mx,cancun,Ejecutivo control escolar
+Angelica Daniela,Medina Ramírez,daniela.medina@humanitas.edu.mx,cancun,Ejecutivo académico
+Martha Yesenia,Escobedo Ake,yesenia.escobedo@humanitas.edu.mx,cancun,Ejecutivo académico
+Milede,Pineda Pérez,milede.pineda@humanitas.edu.mx,cancun,Ejecutivo control escolar
+Noshua Alejandra,Rocha López,alejandra.rocha@humanitas.edu.mx,cancun,Ejecutivo humanitas vive
+Santiago Isaac,García Almada,santiago.garcia@humanitas.edu.mx,cancun,Ejecutivo administrativo
+Eva Maria,Martinez Soto,eva.martinez@humanitas.edu.mx,cancun,Coordinador académico
+Jayr Alejandro,Pérez Martínez,jayr.perez@humanitas.edu.mx,chihuahua,Ejecutivo académico
+Denisse,Sánchez Guaderrama,denisse.sanchez@humanitas.edu.mx,chihuahua,Ejecutivo académico
+Octavio,Noyola Guevara,octavio.noyola@humanitas.edu.mx,chihuahua,Coordinador RR.PP.
+Ana Fabiola,Bedoya Cortés,fabiola.bedoya@humanitas.edu.mx,chihuahua,Coordinador administrativo
+Mayra Alejandra,Téllez Conde,mayra.tellez@humanitas.edu.mx,del-valle,Líder académico
+Evelin,Sánchez García,evelin.sanchez@humanitas.edu.mx,del-valle,Ejecutivo administrativo
+Ana Laura,Alvarado Ramos,ana.alvarado@humanitas.edu.mx,del-valle,Coordinador vida estudiantil
+Sairam,Cerón Alegre,sairam.ceron@humanitas.edu.mx,del-valle,Líder académico
+Mayra Chantal,Trejo Rios,mayra.trejo@humanitas.edu.mx,del-valle,Líder académico
+Susana Alejandra,Robredo Miranda,alejandra.robredo@humanitas.edu.mx,del-valle,Coordinador RR.PP.
+Brenda Alejandra,Valverde Carmona,brenda.valverde@humanitas.edu.mx,del-valle,Coordinador académico
+Alba Nidia,Mora Contreras,alba.mora@humanitas.edu.mx,del-valle,Líder académico
+María del Pliar,Villegas Guzmán,maria.villegas@humanitas.edu.mx,del-valle,Coordinador idiomas
+Rosalba Elizabeth,Medrano Reyes,rosalba.medrano@humanitas.edu.mx,del-valle,Coordinador administrativo
+Fernando,Plascencia Ramirez,fernando.plascencia@humanitas.edu.mx,guadalajara,Ejecutivo académico
+Edgar,Garcia Lopez,edgar.lopez@humanitas.edu.mx,guadalajara,Líder académico
+Fátima,Pérez Pérez,fatima.perez@humanitas.edu.mx,guadalajara,Coordinador vida estudiantil
+Fabian,León Zambrano,fabian.leon@humanitas.edu.mx,guadalajara,Coordinador administrativo
+Israel,Del valle Zenteno,israel.delvalle@humanitas.edu.mx,guadalajara,Director campus
+Hugo Daniel,Hernández Pérez,hugo.hernandez@humanitas.edu.mx,guadalajara,Coordinador RR.PP.
+Gabriela Karina,Candelas Granados,gabriela.candelas@humanitas.edu.mx,guadalajara,Ejecutivo académico
+Ligia Daniela,Pérez Pat,ligia.perez@humanitas.edu.mx,merida,Ejecutivo académico
+Jonathan de Jesús,Capetillo Sánchez,jonathan.capetillo@humanitas.edu.mx,merida,Ejecutivo académico
+Linda Aime,Soberanis Pacheco,linda.soberanis@humanitas.edu.mx,merida,Ejecutivo control escolar
+Abraham Ernesto,Estrella Toraya,abraham.estrella@humanitas.edu.mx,merida,Coordinador administrativo
+Dayanne Beatriz,Fuentes Dzul,dayanne.fuentes@humanitas.edu.mx,merida,Ejecutivo académico
+Juan Alberto,Vidal Gongora,alberto.vidal@humanitas.edu.mx,merida,Ejecutivo administrativo
+Claudia Georgina,Cano Rivero,claudia.cano@humanitas.edu.mx,merida,Líder académico
+Abdiel Abraham,Torres Ayala,abdiel.torres@humanitas.edu.mx,monterrey,Ejecutivo administrativo
+Ana María,Hernández Pérez,ana.hernandez@humanitas.edu.mx,monterrey,Coordinador académico
+Brenda Aidee,Cruz Flores,brenda.cruz@humanitas.edu.mx,presa-madin,Ejecutivo administrativo
+Wendy Guadalupe,Mejia Mercado,wendy.mejia@humanitas.edu.mx,presa-madin,Coordinador administrativo
+Analí,Guerrero Hernández,anali.guerrero@humanitas.edu.mx,presa-madin,Coordinador control escolar
+Francisco Javier,Cervantes Cruz,francisco.cervantes@humanitas.edu.mx,presa-madin,Soporte técnico
+Carlos Alberto,Reyes Cervantes,alberto.reyes@humanitas.edu.mx,presa-madin,Director campus
+Alan Yair,Sanchez Fuentes,alan.sanchez@humanitas.edu.mx,presa-madin,Coordinador RR.PP.
+Paulina,Verdejo Rodriguez,paulina.verdejo@humanitas.edu.mx,presa-madin,Líder académico
+Daniel,Viveros López,daniel.viveros@humanitas.edu.mx,presa-madin,Soporte técnico
+Brisa Patricia,Galindo Valles,brisa.galindo@humanitas.edu.mx,presa-madin,Ejecutivo académico
+Lilia Estefania,Fortanell Rendón,estefania.fortanell@humanitas.edu.mx,queretaro,Coordinador RR.PP.
+Antonio,Perez De La Cruz,antonio.perez@humanitas.edu.mx,queretaro,Director campus
+Claudia Berenice,Venegas Venegas,claudia.venegas@humanitas.edu.mx,queretaro,Coordinador académico
+Ali Xunashi,Gachuz Gallegos,ali.gachuz@humanitas.edu.mx,queretaro,Coordinador académico
+Diana Carolina,Ventura Cruz,diana.ventura@humanitas.edu.mx,queretaro,Coordinador administrativo
+Gabriela,Mateo Juan,gabriela.mateo@humanitas.edu.mx,queretaro,Coordinador académico
+Maricruz,Nuñez Sanchez,maricruz.nunez@humanitas.edu.mx,queretaro,Coordinador académico
+Brenda Estefany,Hernandez Sanchez,brenda.hernandez@humanitas.edu.mx,queretaro,Coordinador control escolar
+Yaneely Alina,Guerrero Mejorada,alina.guerrero@humanitas.edu.mx,reyes,Coordinador académico
+David,Castellanos García,david.castellanos@humanitas.edu.mx,reyes,Coordinador RR.PP.
+Control Escolar,Campus Los Reyes,controlescolarreyes@humanitas.edu.mx,reyes,Ejecutivo RR.PP.
+Nancy Gabriela,García Ramírez,nancy.garcia@humanitas.edu.mx,reyes,Ejecutivo administrativo
+Jaquelin,Ruíz Placencia,jaquelin.ruiz@humanitas.edu.mx,reyes,Coordinador académico
+Guadalupe Nahamani,Hernández Rivera,guadalupe.hernandez@humanitas.edu.mx,reyes,Coordinador administrativo
+Sergio,Cruz Gonzalez,sergio.cruz@humanitas.edu.mx,santa-fe,Ejecutivo RR.PP.
+Ana Georgina,Ramírez Marenco,ana.ramirez@humanitas.edu.mx,santa-fe,Coordinador vida estudiantil
+Jesus Rey,Castillo Hernandez,jesus.castillo@humanitas.edu.mx,santa-fe,Ejecutivo RR.PP.
+Katia Evelin,Cruz López,katia.cruz@humanitas.edu.mx,santa-fe,Ejecutivo académico
+Brenda,Moreno Luna,brenda.moreno@humanitas.edu.mx,santa-fe,Ejecutivo académico
+Rosa María,Díaz Alcantar,maria.diaz@humanitas.edu.mx,santa-fe,Ejecutivo control escolar
+Jose Antonio,Mendoza Arellano,jose.mendoza@humanitas.edu.mx,santa-fe,Ejecutivo académico
+Abraham,Enciso Ortiz,abraham.enciso@humanitas.edu.mx,santa-fe,Ejecutivo RR.PP.
+Elia Suhey,de la Cruz Pano,suhey.delacruz@humanitas.edu.mx,tijuana,Coordinador control escolar
+Moshe,Moto Gutierrez,moshe.moto@humanitas.edu.mx,tijuana,Coordinador idiomas
+Jeymi Lizeth,Gil Acosta,jeymi.gil@humanitas.edu.mx,tijuana,Ejecutivo RR.PP.
+Juan Felipe,Ibarra Zepeda,juan.ibarra@humanitas.edu.mx,tijuana,Coordinador RR.PP.
+Monica Rosario,Luis Rodriguez,rosario.rodriguez@humanitas.edu.mx,tijuana,Coordinador vida estudiantil
+Karla Sanjuana,Martínez Ortíz,karla.martinez@humanitas.edu.mx,tijuana,Ejecutivo académico
+Armando,Ocampo Hernández,armando.hernandez@humanitas.edu.mx,tijuana,Coordinador académico
+Krys Paola,Flores Zapien,krys.flores@humanitas.edu.mx,tijuana,Enlace académico
+Guadalupe,Ayala Granados,guadalupe.ayala@humanitas.edu.mx,tijuana,Ejecutivo académico
+Moises Sinar,Pérez Ramírez,mperez@humanitas.edu.mx,tijuana,Director campus
+Yazmin de los Ángeles,Mendoza Victorio,yazmin.mendoza@humanitas.edu.mx,tijuana,Ejecutivo académico
+Citlali,Girón Escobar,citlali.giron@humanitas.edu.mx,tijuana,Ejecutivo académico
+Itzel,Bravo Barragán,itzel.bravo@humanitas.edu.mx,tijuana,Coordinador administrativo
+Roxana,Ruíz Juárez,roxana.ruiz@humanitas.edu.mx,tijuana,Coordinador académico
+Andrea Teresita,Ayala Martínez,andrea.ayala@humanitas.edu.mx,csh,Ingeniero soporte 1
+Ángel Ricardo,Montes Vázquez,angel.montes@humanitas.edu.mx,csh,Ingeniero soporte 2
+Jair,Flores Tellez,jair.flores@humanitas.edu.mx,csh,Desarrollador
+Juan Manuel,Moreno Casarrubias,juan.moreno@humanitas.edu.mx,csh,Ingeniero soporte 2
+Luis,Mendoza Danel,luis.mendoza@humanitas.edu.mx,csh,Ingeniero Hubspot
+Rogelio,Elizalde López,rogelio.elizalde@humanitas.edu.mx,csh,Ingeniero soporte 1

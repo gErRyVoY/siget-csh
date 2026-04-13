@@ -1,0 +1,243 @@
+---
+import MainLayout from "@/layouts/MainLayout.astro";
+import { getSession } from "auth-astro/server";
+import { prisma } from "@/lib/db";
+import StatCard from "@/components/dashboard/StatCard.astro";
+
+const session = await getSession(Astro.request);
+if (!session || !session.user) {
+    return Astro.redirect("/login");
+}
+
+const MARKETING_CATEGORY_ID = 12;
+
+const statusColors = {
+    "Total de Tickets": "#6b7280", // gray-500
+    "Tickets Nuevos": "#a1a1aa", // zinc-400
+    "Tickets En progreso": "#3b82f6", // blue-500
+    "Tickets En espera": "#38bdf8", // sky-400
+    "Tickets Solucionados": "#84cc16", // lime-500
+    "Tickets Duplicados": "#171717", // neutral-900
+    "Tickets Cancelados": "#dc2626", // red-600
+};
+
+// conteos iniciales
+const ticketCounts = await prisma.ticket.groupBy({
+    by: ["estatusId"],
+    _count: { id: true },
+    where: {
+        categoriaId: MARKETING_CATEGORY_ID,
+    },
+});
+
+const statuses = await prisma.estatus.findMany();
+
+const getCount = (name: string) => {
+    const status = statuses.find((s) => s.nombre === name);
+    if (!status) return 0;
+    return ticketCounts.find((c) => c.estatusId === status.id)?._count.id || 0;
+};
+
+const getStatusId = (name: string) =>
+    statuses.find((s) => s.nombre === name)?.id;
+
+const stats = {
+    nuevos: getCount("Nuevo"),
+    enProgreso: getCount("En progreso"),
+    enEspera: getCount("En espera"),
+    total: ticketCounts.reduce((acc, curr) => acc + curr._count.id, 0),
+    solucionados: getCount("Solucionado"),
+    duplicados: getCount("Duplicado"),
+    cancelados: getCount("Cancelado"),
+};
+---
+
+<MainLayout title="Dashboard Marketing">
+    <div class="max-w-full mx-auto">
+        <h1 class="text-3xl font-bold mb-6">Dashboard Marketing</h1>
+        <div
+            id="main-stats"
+            class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"
+        >
+            <div class="block transition-transform hover:scale-105">
+                <StatCard
+                    title="Total de Tickets"
+                    value={stats.total.toString()}
+                    description="Todos los tickets de Marketing"
+                    color={statusColors["Total de Tickets"]}
+                    statKey="total"
+                />
+            </div>
+            <a
+                href={`/tickets/marketing?status=${getStatusId("Nuevo")}`}
+                class="block transition-transform hover:scale-105"
+            >
+                <StatCard
+                    title="Tickets Nuevos"
+                    value={stats.nuevos.toString()}
+                    description="Tickets sin atender"
+                    color={statusColors["Tickets Nuevos"]}
+                    statKey="nuevos"
+                />
+            </a>
+            <a
+                href={`/tickets/marketing?status=${getStatusId("En progreso")}`}
+                class="block transition-transform hover:scale-105"
+            >
+                <StatCard
+                    title="Tickets En progreso"
+                    value={stats.enProgreso.toString()}
+                    description="Siendo atendidos activamente"
+                    color={statusColors["Tickets En progreso"]}
+                    statKey="enProgreso"
+                />
+            </a>
+            <a
+                href={`/tickets/marketing?status=${getStatusId("En espera")}`}
+                class="block transition-transform hover:scale-105"
+            >
+                <StatCard
+                    title="Tickets En espera"
+                    value={stats.enEspera.toString()}
+                    description="En espera de una respuesta"
+                    color={statusColors["Tickets En espera"]}
+                    statKey="enEspera"
+                />
+            </a>
+        </div>
+
+        <div
+            id="secondary-stats"
+            class="hidden md:grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-6"
+        >
+            <a
+                href={`/tickets/marketing?status=${getStatusId("Solucionado")}`}
+                class="block transition-transform hover:scale-105"
+            >
+                <StatCard
+                    title="Tickets Solucionados"
+                    value={stats.solucionados.toString()}
+                    description="Marcados como solucionados"
+                    color={statusColors["Tickets Solucionados"]}
+                    statKey="solucionados"
+                />
+            </a>
+            <a
+                href={`/tickets/marketing?status=${getStatusId("Duplicado")}`}
+                class="block transition-transform hover:scale-105"
+            >
+                <StatCard
+                    title="Tickets Duplicados"
+                    value={stats.duplicados.toString()}
+                    description="Solicitudes duplicadas"
+                    color={statusColors["Tickets Duplicados"]}
+                    statKey="duplicados"
+                />
+            </a>
+            <a
+                href={`/tickets/marketing?status=${getStatusId("Cancelado")}`}
+                class="block transition-transform hover:scale-105"
+            >
+                <StatCard
+                    title="Tickets Cancelados"
+                    value={stats.cancelados.toString()}
+                    description="Tickets que no procedieron"
+                    color={statusColors["Tickets Cancelados"]}
+                    statKey="cancelados"
+                />
+            </a>
+        </div>
+
+        <div class="mt-6 text-center md:hidden">
+            <button
+                id="toggle-stats-btn"
+                class="text-sm font-semibold text-primary hover:underline"
+                >Ver todo</button
+            >
+        </div>
+    </div>
+</MainLayout>
+
+<script>
+    let dashboardEventSource: EventSource | null = null;
+
+    document.addEventListener("astro:page-load", () => {
+        const toggleBtn = document.getElementById("toggle-stats-btn");
+        const secondaryStats = document.getElementById("secondary-stats");
+        const userId = document.body.dataset.userId;
+
+        if (toggleBtn && secondaryStats) {
+            toggleBtn.addEventListener("click", () => {
+                const isHidden = secondaryStats.classList.contains("hidden");
+                if (isHidden) {
+                    secondaryStats.classList.remove("hidden");
+                    secondaryStats.classList.add("grid");
+                    toggleBtn.textContent = "Ver menos";
+                } else {
+                    secondaryStats.classList.add("hidden");
+                    secondaryStats.classList.remove("grid");
+                    toggleBtn.textContent = "Ver todo";
+                }
+            });
+        }
+
+        // Real-time updates logic
+        const updateStats = async () => {
+            try {
+                // LLAMAR AL NUEVO ENDPOINT DE MARKETING
+                const response = await fetch("/api/dashboard/stats-marketing");
+                if (!response.ok) return;
+                const data = await response.json();
+
+                const updateEl = (key: string, value: any) => {
+                    const el = document.querySelector(
+                        `[data-stat-key="${key}"]`,
+                    );
+                    if (el) el.textContent = value.toString();
+                };
+
+                updateEl("nuevos", data.nuevos);
+                updateEl("enProgreso", data.enProgreso);
+                updateEl("enEspera", data.enEspera);
+                updateEl("total", data.total);
+                updateEl("solucionados", data.solucionados);
+                updateEl("duplicados", data.duplicados);
+                updateEl("cancelados", data.cancelados);
+            } catch (error) {
+                console.error("Error updating dashboard stats:", error);
+            }
+        };
+
+        if (userId) {
+            if (dashboardEventSource) dashboardEventSource.close();
+            // Reutilizamos el mismo endpoint SSE general.
+            // El endpoint updateStats filtra lo que pide al servidor.
+            dashboardEventSource = new EventSource(
+                `/api/notifications/sse?userId=${userId}`,
+            );
+
+            dashboardEventSource.onmessage = (event) => {
+                if (event.data === ": heartbeat") return;
+                const data = JSON.parse(event.data);
+                if (data.type === "connected") return;
+
+                if (
+                    [
+                        "ticket_created",
+                        "ticket_updated",
+                        "ticket_assigned",
+                    ].includes(data.type)
+                ) {
+                    updateStats();
+                }
+            };
+        }
+    });
+
+    document.addEventListener("astro:before-swap", () => {
+        if (dashboardEventSource) {
+            dashboardEventSource.close();
+            dashboardEventSource = null;
+        }
+    });
+</script>

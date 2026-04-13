@@ -9,6 +9,7 @@ export default {
         './src/layouts/**/*.{astro,html,js,jsx,md,mdx,svelte,ts,tsx,vue}',
         './src/pages/**/*.{astro,html,js,jsx,md,mdx,svelte,ts,tsx,vue}'
     ],
+    darkMode: 'class',
     theme: {
         extend: {
             colors: {

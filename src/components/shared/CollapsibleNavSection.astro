@@ -1,6 +1,6 @@
 ---
-import NavItem from './NavItem.astro';
-import ChevronDownIcon from '../icons/ChevronDownIcon.astro';
+import NavItem from "./NavItem.astro";
+import ChevronDownIcon from "../icons/ChevronDownIcon.astro";
 
 interface NavItemProps {
     href: string;
@@ -13,17 +13,30 @@ interface Props {
     title: string;
     items: NavItemProps[];
     pathname: string;
-    matchMode?: 'prefix' | 'exact';
+    matchMode?: "prefix" | "exact";
 }
 
-const { title, items, pathname, matchMode = 'prefix' } = Astro.props;
+const { title, items, pathname, matchMode = "prefix" } = Astro.props;
+const source = Astro.url.searchParams.get("source");
 
 // Un enlace está activo según el modo de coincidencia (matchMode)
 const isLinkActive = (href: string) => {
-    if (matchMode === 'exact') {
+    if (matchMode === "exact") {
         // Special case to keep parent active for ticket detail pages
-        if (href === '/tickets/soporte' && pathname.startsWith('/tickets/view')) {
-            return true;
+        if (pathname.startsWith("/tickets/view")) {
+            if (
+                source === "mis-tickets" &&
+                href === "/tickets/soporte/usuario"
+            ) {
+                return true;
+            }
+            if (
+                (!source || source === "todos") &&
+                href === "/tickets/soporte"
+            ) {
+                return true;
+            }
+            return false;
         }
         return pathname === href;
     }
@@ -32,30 +45,46 @@ const isLinkActive = (href: string) => {
 };
 
 // Una sección está activa si alguno de sus enlaces está activo según el modo de coincidencia de la sección.
-const isSectionActive = items.some(item => isLinkActive(item.href));
+const isSectionActive = items.some((item) => isLinkActive(item.href));
 
-const contentId = `collapsible-content-${title.toLowerCase().replace(/\s+/g, '-')}`;
+const contentId = `collapsible-content-${title.toLowerCase().replace(/\s+/g, "-")}`;
 ---
 
-<div class="collapsible-section group my-1" data-state={isSectionActive ? 'open' : 'closed'}>
+<div
+    class="collapsible-section group my-1"
+    data-state={isSectionActive ? "open" : "closed"}
+>
     <button
         type="button"
         class:list={[
             "collapsible-trigger flex items-center w-full p-2 rounded-md group-data-[sidebar-collapsed=true]:justify-center  transition-colors duration-500",
-            isSectionActive ? 'bg-secondary text-secondary-foreground' : 'hover:bg-secondary/90 hover:text-primary-foreground'
+            isSectionActive
+                ? "bg-secondary text-secondary-foreground"
+                : "hover:bg-secondary/90 hover:text-secondary-foreground",
         ]}
-        aria-expanded={isSectionActive ? 'true' : 'false'}
+        aria-expanded={isSectionActive ? "true" : "false"}
         aria-controls={contentId}
     >
-        <span class="font-semibold group-data-[sidebar-collapsed=true]:hidden">{title}</span>
-        <ChevronDownIcon class="ml-auto h-5 w-5 transition-transform duration-300 group-data-[state=open]:rotate-180 group-data-[sidebar-collapsed=true]:hidden" />
+        <span class="font-semibold group-data-[sidebar-collapsed=true]:hidden"
+            >{title}</span
+        >
+        <ChevronDownIcon
+            class="ml-auto h-5 w-5 transition-transform duration-300 group-data-[state=open]:rotate-180 group-data-[sidebar-collapsed=true]:hidden"
+        />
     </button>
-    <div id={contentId} class="collapsible-content grid grid-rows-[0fr] transition-[grid-template-rows] duration-300 ease-in-out group-data-[state=open]:grid-rows-[1fr]">
+    <div
+        id={contentId}
+        class="collapsible-content grid grid-rows-[0fr] transition-[grid-template-rows] duration-300 ease-in-out group-data-[state=open]:grid-rows-[1fr]"
+    >
         <div class="overflow-hidden">
-            <div class="pt-1 pl-4 space-y-1 group-data-[sidebar-collapsed=true]:pl-0">
-                {items.map(item => (
-                    <NavItem {...item} active={isLinkActive(item.href)} />
-                ))}
+            <div
+                class="pt-1 pl-4 space-y-1 group-data-[sidebar-collapsed=true]:pl-0"
+            >
+                {
+                    items.map((item) => (
+                        <NavItem {...item} active={isLinkActive(item.href)} />
+                    ))
+                }
             </div>
         </div>
     </div>

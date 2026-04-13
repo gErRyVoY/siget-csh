@@ -13,7 +13,9 @@ export default defineConfig({
       authorization: {
         params: {
           scope:
-            "openid email profile https://www.googleapis.com/auth/admin.directory.user.readonly",
+            "openid email profile https://www.googleapis.com/auth/admin.directory.user.readonly https://www.googleapis.com/auth/drive.readonly",
+          access_type: "offline",
+          response_type: "code"
         },
       },
     }),
@@ -21,7 +23,7 @@ export default defineConfig({
   secret: process.env.AUTH_SECRET,
   session: {
     strategy: "jwt",
-    maxAge: 12 * 60 * 60, // 12 horas en segundos
+    maxAge: 30 * 24 * 60 * 60, // 30 días
   },
   callbacks: {
     async signIn({ account, profile }) {
@@ -58,66 +60,76 @@ export default defineConfig({
         const userData = response.data;
 
         if (!userData.orgUnitPath || userData.orgUnitPath === "/") {
-            return '/login?error=OUNoAsignada';
+          return '/login?error=OUNoAsignada';
         }
 
         if (!userData.orgUnitPath.toLowerCase().includes('colaboradores')) {
-            return '/login?error=NoEsColaborador';
+          return '/login?error=NoEsColaborador';
         }
 
         const dbUser = await prisma.usuario.findUnique({
-            where: { mail: profile.email },
+          where: { mail: profile.email },
         });
 
         if (!dbUser) {
-            const ouParts = userData.orgUnitPath.split('/').filter(part => part);
-            const firstLevelOU = ouParts[0];
+          const ouParts = userData.orgUnitPath.split('/').filter(part => part);
+          const firstLevelOU = ouParts[0];
 
-            if (!firstLevelOU) {
-                console.error(`No se pudo extraer el primer nivel de la OU: ${userData.orgUnitPath}`);
-                return '/login?error=ErrorOU';
+          if (!firstLevelOU) {
+            console.error(`No se pudo extraer el primer nivel de la OU: ${userData.orgUnitPath}`);
+            return '/login?error=ErrorOU';
+          }
+
+          const slug = firstLevelOU
+            .toLowerCase()
+            .replace(/^campus\s+/, '')
+            .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+            .replace(/\s+/g, '-');
+
+          // Mapping specific OUs
+          if (slug === 'corporativo-humanitas') {
+            // "Corporativo Humanitas" maps to "corporativo" (ID 14)
+            // But verify if we need to set slug to 'corporativo'
+            // Yes, checking seed.ts: slug: 'corporativo' exists.
+            // But wait, variable is const? No, lines 83-87 define 'const slug'.
+            // I need to change it to 'let slug' or handle it differently.
+            // I will replace the whole block.
+          }
+
+          const empresa = await prisma.empresa.findUnique({
+            where: { slug: slug === 'corporativo-humanitas' ? 'corporativo' : slug },
+          });
+
+          if (!empresa) {
+            console.error(`El slug '${slug}' derivado de la OU no corresponde a ninguna empresa en la BD.`);
+            return '/login?error=AccesoNoPermitido';
+          }
+
+          const defaultRoleId = 14;
+
+          await prisma.usuario.create({
+            data: {
+              mail: profile.email,
+              nombres: profile.given_name || 'Usuario',
+              apellidos: profile.family_name || 'Humanitas',
+              image: userData.thumbnailPhotoUrl,
+              empresaId: empresa.id,
+              rolId: defaultRoleId,
+              activo: true,
+              vacaciones: false,
             }
-
-            const slug = firstLevelOU
-                .toLowerCase()
-                .replace(/^campus\s+/, '')
-                .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-                .replace(/\s+/g, '-');
-
-            const empresa = await prisma.empresa.findUnique({
-                where: { slug: slug },
-            });
-
-            if (!empresa) {
-                console.error(`El slug '${slug}' derivado de la OU no corresponde a ninguna empresa en la BD.`);
-                return '/login?error=EmpresaNoMapeada';
-            }
-
-            const defaultRoleId = 14;
-
-            await prisma.usuario.create({
-                data: {
-                    mail: profile.email,
-                    nombres: profile.given_name || 'Usuario',
-                    apellidos: profile.family_name || 'Humanitas',
-                    image: userData.thumbnailPhotoUrl,
-                    empresaId: empresa.id,
-                    rolId: defaultRoleId,
-                    activo: true,
-                    vacaciones: false,
-                }
-            });
-            console.log(`Usuario ${profile.email} creado exitosamente.`);
+          });
+          console.log(`Usuario ${profile.email} creado exitosamente.`);
         } else {
-            await prisma.usuario.update({
-                where: { mail: profile.email },
-                data: {
-                    nombres: profile.given_name ?? dbUser.nombres,
-                    apellidos: profile.family_name ?? dbUser.apellidos,
-                    image: userData.thumbnailPhotoUrl ?? dbUser.image,
-                    ultimo_login: new Date(),
-                }
-            });
+          await prisma.usuario.update({
+            where: { mail: profile.email },
+            data: {
+              nombres: profile.given_name ?? dbUser.nombres,
+              apellidos: profile.family_name ?? dbUser.apellidos,
+              image: userData.thumbnailPhotoUrl ?? dbUser.image,
+              ultimo_login: new Date(),
+            }
+          });
         }
 
         return true;
@@ -128,7 +140,11 @@ export default defineConfig({
       }
     },
 
-    async jwt({ token }) {
+    async jwt({ token, account }) {
+      if (account) {
+        token.accessToken = account.access_token;
+      }
+
       if (token.email) {
         const dbUser = await prisma.usuario.findUnique({
           where: { mail: token.email },
@@ -137,8 +153,18 @@ export default defineConfig({
             rol: {
               include: {
                 permisos: true, // Incluir los permisos del rol
+                permisos_seccion: {
+                  include: {
+                    seccion: true
+                  }
+                }
               },
             },
+            permisos_seccion: {
+              include: {
+                seccion: true
+              }
+            }
           },
         });
 
@@ -147,8 +173,36 @@ export default defineConfig({
           token.rol = dbUser.rol;
           token.empresa = dbUser.empresa;
           token.image = dbUser.image;
+          token.alias = (dbUser as any).alias ?? undefined;
+          token.vacaciones = dbUser.vacaciones;
           // Guardar solo los nombres de los permisos en el token
           token.permisos = dbUser.rol.permisos.map(p => p.nombre);
+
+          // Obtener identificadores base de Rol, considerando seccion.activo
+          const seccionesRolList = dbUser.rol.permisos_seccion
+            .filter(ps => ps.activo && ps.seccion.activo)
+            .map(ps => ps.seccion.identificador);
+          
+          let seccionesAprobadas = new Set(seccionesRolList);
+
+          // Procesar las reglas manuales del usuario
+          dbUser.permisos_seccion.forEach(ps => {
+            if (!ps.seccion.activo) return; // Ignorar secciones deshabilitadas globalmente
+            
+            if (ps.activo) {
+              // Otorgar permiso explicito
+              seccionesAprobadas.add(ps.seccion.identificador);
+            } else {
+              // Revocar permiso manual (excepción negativa)
+              seccionesAprobadas.delete(ps.seccion.identificador);
+            }
+          });
+
+          // Convertir de Set a Array
+          token.secciones = Array.from(seccionesAprobadas);
+          // Flags de atención a tickets
+          token.atiendeTicketsCsh = (dbUser.rol as any).atiendeTicketsCsh ?? false;
+          token.atiendeTicketsMkt = (dbUser.rol as any).atiendeTicketsMkt ?? false;
         }
       }
       return token;
@@ -160,8 +214,18 @@ export default defineConfig({
         session.user.rol = token.rol as Rol;
         session.user.empresa = token.empresa as Empresa;
         session.user.image = token.image as string | null;
+        session.user.alias = token.alias as string | undefined;
+        session.user.vacaciones = (token.vacaciones as boolean | undefined) ?? false;
+        // Propagate flags from rol (stored in token)
+        if (session.user.rol) {
+          (session.user.rol as any).atiendeTicketsCsh = (token as any).atiendeTicketsCsh ?? false;
+          (session.user.rol as any).atiendeTicketsMkt = (token as any).atiendeTicketsMkt ?? false;
+        }
         // Asignar los permisos a la sesión
         session.user.permisos = token.permisos as string[];
+        session.user.secciones = token.secciones as string[];
+        // Asignar access token
+        session.accessToken = token.accessToken as string;
       }
       return session;
     },
@@ -170,22 +234,32 @@ export default defineConfig({
 
 declare module "@auth/core/types" {
   interface Session {
-    user: Omit<DefaultSession["user"], "id" | "image"> & {
+    accessToken?: string;
+    user: Omit<DefaultSession["user"], "id" | "image" | "name" | "email"> & {
       id?: string | number;
-      rol?: Rol;
+      name?: string | null;
+      email?: string | null;
+      rol?: Rol & { atiendeTicketsCsh?: boolean; atiendeTicketsMkt?: boolean };
       empresa?: Empresa;
       image?: string | null;
+      alias?: string;
+      vacaciones?: boolean;
       permisos?: string[]; // Añadir permisos a la sesión
+      secciones?: string[]; // Secciones permitidas
     };
   }
 }
 
 declare module "@auth/core/jwt" {
   interface JWT {
+    accessToken?: string;
     userId?: number;
     rol?: Rol;
     empresa?: Empresa;
     image?: string | null;
+    alias?: string;
+    vacaciones?: boolean;
     permisos?: string[]; // Añadir permisos al token
+    secciones?: string[]; // Secciones permitidas
   }
 }

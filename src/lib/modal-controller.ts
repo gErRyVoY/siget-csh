@@ -1,5 +1,4 @@
-import Swal, { type SweetAlertOptions } from 'sweetalert2';
-import 'sweetalert2/dist/sweetalert2.min.css';
+import { toast } from './toast';
 
 /**
  * Configuration for the modal setup.
@@ -10,8 +9,9 @@ interface ModalConfig {
     validate: (showAllErrors?: boolean) => boolean;
     getFormData: () => Record<string, any>;
     loadFormData: (data: Record<string, any>) => void;
-    swalConfig: SweetAlertOptions;
+    successMessage?: string;
     onSuccess?: () => void;
+    onSubmit?: (data: Record<string, any>) => Promise<void>;
 }
 
 /**
@@ -19,7 +19,7 @@ interface ModalConfig {
  * @param config The configuration object for the modal.
  */
 export function setupModal(config: ModalConfig): void {
-    const { idPrefix, storageKey, validate, getFormData, loadFormData, swalConfig, onSuccess } = config;
+    const { idPrefix, storageKey, validate, getFormData, loadFormData, successMessage, onSuccess } = config;
 
     // --- Get Elements ---
     const modal = document.getElementById(`${idPrefix}-modal`) as HTMLElement | null;
@@ -73,26 +73,29 @@ export function setupModal(config: ModalConfig): void {
         save();
     });
 
-    form.addEventListener('submit', (e: SubmitEvent) => {
+    form.addEventListener('submit', async (e: SubmitEvent) => {
         e.preventDefault();
         if (!validate(true)) return; // Pass true to show all errors on submit attempt
 
-        const primaryColor = getComputedStyle(document.documentElement).getPropertyValue('--primary').trim();
-        const backgroundColor = getComputedStyle(document.documentElement).getPropertyValue('--card').trim();
-        const foregroundColor = getComputedStyle(document.documentElement).getPropertyValue('--card-foreground').trim();
+        if (config.onSubmit) {
+            try {
+                await config.onSubmit(getFormData());
+            } catch (error) {
+                console.error('Error in modal submission:', error);
+                toast.error('Ocurrió un error al enviar el formulario.');
+                return;
+            }
+        }
 
-        Swal.fire({
-            ...swalConfig,
-            background: backgroundColor,
-            color: foregroundColor,
-            confirmButtonColor: primaryColor,
-        }).then(() => {
-            toggleModal(false);
-            form.reset();
-            clear();
-            validate();
-            if (onSuccess) onSuccess();
-        });
+        // Show success toast
+        toast.success(successMessage || 'Operación exitosa', { duration: 3000 });
+
+        // Close modal and reset form
+        toggleModal(false);
+        form.reset();
+        clear();
+        validate();
+        if (onSuccess) onSuccess();
     });
 
     // --- Initial State ---

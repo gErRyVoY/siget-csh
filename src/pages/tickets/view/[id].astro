@@ -2,7 +2,43 @@
 import MainLayout from "@/layouts/MainLayout.astro";
 import { getSession } from "auth-astro/server";
 import { prisma } from "@/lib/db";
-import { type Ticket, type Estatus, type Usuario, Prioridad, type HistorialSolicitud, type Subcategoria } from "@prisma/client";
+import {
+    type Ticket,
+    type Estatus,
+    type Usuario,
+    Prioridad,
+    type HistorialSolicitud,
+    type Subcategoria,
+} from "@prisma/client";
+import {
+    campusOptions,
+    carreraOptions,
+    bloqueOptions,
+} from "@/config/form-options";
+
+// Fetch options for autocomplete with IDs
+const allCampuses = await prisma.empresa.findMany({
+    where: { activa: true },
+    select: { id: true, nombre: true }
+});
+const allCarreras = await prisma.carrera.findMany({
+    where: { activo: true },
+    include: { oferta: true }
+});
+const mappedCarreras = allCarreras.map(c => {
+     let label = c.descripcion;
+     if (c.oferta.descripcion.includes("Licenciatura")) label = `Licenciatura en ${label}`;
+     else if (c.oferta.descripcion.includes("Maestría")) label = `Maestría en ${label}`;
+     else if (c.oferta.descripcion.includes("Doctorado")) label = `Doctorado en ${label}`;
+     return { id: c.id, label };
+});
+const allDescuentos = await prisma.descuento.findMany({
+    where: { activo: true },
+    select: { id: true, descripcion: true }
+});
+
+const mappedCampuses = allCampuses.map(c => ({ id: c.id, label: c.nombre }));
+const mappedDescuentos = allDescuentos.map(d => ({ id: d.id, label: d.descripcion }));
 
 const { id } = Astro.params;
 if (!id) {
@@ -13,37 +49,80 @@ const ticketId = parseInt(id, 10);
 
 const S3_BUCKET_URL = `https://${import.meta.env.S3_BUCKET_NAME}.s3.${import.meta.env.S3_REGION}.amazonaws.com`;
 
-const ALLOWED_STATUSES = ['Nuevo', 'En progreso', 'En espera', 'Solucionado', 'Cancelado', 'Duplicado'];
+const ALLOWED_STATUSES = [
+    "Nuevo",
+    "En progreso",
+    "En espera",
+    "Solucionado",
+    "Cancelado",
+    "Duplicado",
+];
 const statusColors: { [key: string]: string } = {
-    'Nuevo': '#a1a1aa',
-    'En progreso': '#3b82f6',
-    'En espera': '#38bdf8',
-    'Solucionado': '#84cc16',
-    'Cancelado': '#dc2626',
-    'Duplicado': '#171717',
+    Nuevo: "#a1a1aa",
+    "En progreso": "#3b82f6",
+    "En espera": "#38bdf8",
+    Solucionado: "#84cc16",
+    Cancelado: "#dc2626",
+    Duplicado: "#171717",
 };
 
-const [ticket, ticketHistory] = await Promise.all([
-    prisma.ticket.findUnique({
-        where: { id: ticketId },
-        include: {
-            estatus: true,
-            categoria: true,
-            subcategoria: true,
-            solicitante: { include: { empresa: true } },
-            atiende: true,
-            empresa: true,
-        },
-    }),
-    prisma.historialSolicitud.findMany({
-        where: { ticketId: ticketId },
-        include: {
-            usuario: { select: { nombres: true, apellidos: true } },
-            estatus: { select: { nombre: true } },
-        },
-        orderBy: { fecha_cambio: 'desc' },
-    })
-]);
+const [ticket, ticketHistory, cshSupportUsers, cshAuditorDocs, cshAuditorReq] =
+    await Promise.all([
+        prisma.ticket.findUnique({
+            where: { id: ticketId },
+            include: {
+                estatus: true,
+                categoria: true,
+                subcategoria: true,
+                solicitante: { include: { empresa: true } },
+                atiende: true,
+                empresa: true,
+                traslados: {
+                    include: {
+                        origen: true,
+                        destino: true,
+                        carrera: {
+                            include: {
+                                oferta: true,
+                            }
+                        },
+                        descuento: true,
+                        bloque: true,
+                    },
+                },
+            },
+        }),
+        prisma.historialSolicitud.findMany({
+            where: { ticketId: ticketId },
+            include: {
+                usuario: { select: { nombres: true, apellidos: true } },
+                estatus: { select: { nombre: true } },
+            },
+            orderBy: { fecha_cambio: "desc" },
+        }),
+        // Fetch Support Agents for CSH (ID 15)
+        // We'll filter by specific roles in valid logic later or fetch all relevant roles
+        // For now, let's just fetch active users from CSH to filter in memory or specific roles if known.
+        // User said: "rolId tenga uno de los que estan permitidos".
+        // Usually S-1, S-2, S-3 (IDs 1, 2, 3), Developer (4), Coordinator (8), Director (9)?
+        // Let's assume standard support roles for now: 1, 2, 3, 4, 8, 9.
+        prisma.usuario.findMany({
+            where: {
+                empresaId: 15,
+                activo: true,
+                // roles: S-1, S-2, S-3, Dev, Coord, Director (Adjust IDs as per seed)
+                rolId: { in: [1, 2, 3, 4, 8, 9] },
+            },
+        }),
+        // Fetch Auditor Docs
+        prisma.usuario.findMany({
+            where: { empresaId: 15, activo: true, auditor_docs: true },
+        }),
+        // Fetch Auditor Req
+        prisma.usuario.findMany({
+            where: { empresaId: 15, activo: true, auditor_req: true },
+        }),
+    ]);
 
 if (!ticket) {
     return Astro.redirect("/404");
@@ -51,8 +130,12 @@ if (!ticket) {
 
 const session = await getSession(Astro.request);
 const PRIVILEGED_ROLES = [1, 2, 3, 4, 5, 6, 15];
-const isPrivileged = session?.user ? PRIVILEGED_ROLES.includes(session.user.rol?.id ?? -1) : false;
+const isPrivileged = session?.user
+    ? PRIVILEGED_ROLES.includes(session.user.rol?.id ?? -1)
+    : false;
 const isReadOnly = false; // Reverted: Allow editing for all statuses
+
+
 
 const breadcrumbPath = [ticket.categoria.nombre];
 if (ticket.subcategoria) {
@@ -61,7 +144,9 @@ if (ticket.subcategoria) {
     while (currentSub) {
         subPath.unshift(currentSub.nombre);
         if (currentSub.parent_subcategoriaId) {
-            currentSub = await prisma.subcategoria.findUnique({ where: { id: currentSub.parent_subcategoriaId } });
+            currentSub = await prisma.subcategoria.findUnique({
+                where: { id: currentSub.parent_subcategoriaId },
+            });
         } else {
             currentSub = null;
         }
@@ -73,25 +158,123 @@ let statuses: Estatus[] = [];
 let agents: Usuario[] = [];
 const priorities = Object.values(Prioridad);
 
+// Fetch statuses for everyone
+statuses = await prisma.estatus.findMany({
+    where: { nombre: { in: ALLOWED_STATUSES } },
+});
+
+const MARKETING_CATEGORY_ID = 12;
+
 if (isPrivileged) {
-    [statuses, agents] = await Promise.all([
-        prisma.estatus.findMany({ where: { nombre: { in: ALLOWED_STATUSES } } }),
-        prisma.usuario.findMany({ where: { rolId: { in: PRIVILEGED_ROLES }, activo: true } }),
-    ]);
+    // Privileged users see all agents
+    if (ticket.categoriaId === MARKETING_CATEGORY_ID) {
+        agents = await prisma.usuario.findMany({
+            where: {
+                empresa: { nombre: "Corporativo" },
+                rol: { rol: { in: ['Community manager', 'Director Marketing', 'Diseñador', 'Editor'] } },
+                activo: true
+            },
+            orderBy: { nombres: "asc" }
+        });
+    } else {
+        agents = await prisma.usuario.findMany({
+            where: { rolId: { in: PRIVILEGED_ROLES }, activo: true },
+        });
+    }
+} else {
+    // Regular users only see the current agent (if any)
+    if (ticket.atiende) {
+        agents = [ticket.atiende];
+    }
+
+    // Regular users cannot select 'Nuevo' if it's not currently 'Nuevo'
+    if (ticket.estatus.nombre !== "Nuevo") {
+        statuses = statuses.filter((s) => s.nombre !== "Nuevo");
+    }
 }
 
 const parseFileName = (key: string) => {
-    if (!key) return 'archivo-desconocido';
-    return key.split('/').pop()?.split('-').slice(1).join('-') || key;
+    if (!key) return "archivo-desconocido";
+    return key.split("/").pop()?.split("-").slice(1).join("-") || key;
 };
+
+const source = Astro.url.searchParams.get("source");
+const backLink =
+    source === "mis-tickets" ? "/tickets/soporte/usuario" : "/tickets/soporte";
+
+let afectadoLabel = "Clave";
+let nombreLabel = "Nombre del Afectado";
+
+if (ticket.categoriaId === 1) {
+    afectadoLabel = "Matrícula";
+    nombreLabel = "Nombre del Alumno";
+} else if (ticket.categoriaId === 2) {
+    afectadoLabel = "Folio";
+    nombreLabel = "Nombre del Aspirante";
+} else if (ticket.categoriaId === 3) {
+    nombreLabel = "Nombre del Colaborador";
+} else if (ticket.categoriaId === 4) {
+    nombreLabel = "Nombre del Docente";
+}
+
+const fieldMap: Record<string, string> = {
+    prioridad: "Prioridad",
+    estatusId: "Estatus",
+    atiendeId: "Atiende",
+    archivado: "Archivado",
+    afectado_clave: afectadoLabel,
+    afectado_nombre: nombreLabel,
+    descripcion: "Descripción",
+    // Traslados keys
+    matricula: "Matrícula",
+    alumno: "Nombre Alumno",
+    nuevo_ingreso: "Nuevo Ingreso",
+    bloque_nombre: "Bloque",
+    origen_nombre: "Campus Origen",
+    destino_nombre: "Campus Destino",
+    carrera_nombre: "Carrera",
+    descuento_nombre: "Descuento",
+    validacion_docs: "Validación Documentos",
+    descripcion_docs: "Comentarios Documentos",
+    validacion_edocta: "Validación Adeudo Financiero",
+    descripcion_edocta: "Comentarios Edo. Cta.",
+    validacion_calif: "Validación Adeudo Escolar",
+    descripcion_calif: "Comentarios Académicos",
+    auditor_docs: "Auditor Documentos",
+    auditor_req: "Auditor Requisitos/Adeudos",
+};
+
+const isTraslado = ticket.traslados && ticket.traslados.length > 0;
+const traslado = isTraslado ? ticket.traslados[0] : null;
+
+const currentUserId = session?.user?.id ? parseInt(String(session.user.id), 10) : -1;
+const isOwner = ticket.solicitanteId === currentUserId;
+
+// Permission Logic for Auditors
+const canEditDocs = isPrivileged || (traslado && traslado.auditor_docsId === currentUserId);
+const canEditReq = isPrivileged || (traslado && traslado.auditor_reqId === currentUserId);
+
+const ofertaDesc = traslado?.carrera?.oferta?.descripcion || "";
+let carreraDisplayValue = traslado?.carrera?.descripcion || "";
+if (ofertaDesc.includes("Licenciatura")) carreraDisplayValue = `Licenciatura en ${carreraDisplayValue}`;
+else if (ofertaDesc.includes("Maestría")) carreraDisplayValue = `Maestría en ${carreraDisplayValue}`;
+else if (ofertaDesc.includes("Doctorado")) carreraDisplayValue = `Doctorado en ${carreraDisplayValue}`;
+
+console.log("CAREER DEBUG:", { ofertaDesc, carreraOriginal: traslado?.carrera?.descripcion, carreraFinal: carreraDisplayValue });
 ---
 
-<MainLayout title={`Ticket #${ticket.id}`}>
+<MainLayout title={`Ticket #${isTraslado ? "TRL-" : ""}${ticket.id}`}>
     <style>
         @keyframes flash {
-            0% { background-color: transparent; }
-            50% { background-color: #f0f0f0; }
-            100% { background-color: transparent; }
+            0% {
+                background-color: transparent;
+            }
+            50% {
+                background-color: var(--muted);
+            }
+            100% {
+                background-color: transparent;
+            }
         }
         .flash-animation {
             animation: flash 1s ease-in-out;
@@ -100,160 +283,850 @@ const parseFileName = (key: string) => {
             #action-buttons-container.has-files {
                 flex-direction: column;
                 align-items: end;
-                width: calc(2/5 * 100%);
+                width: calc(2 / 5 * 100%);
             }
-            #action-buttons-container.has-files #submit-button { order: 1; }
-            #action-buttons-container.has-files #upload-files-button { order: 2; }
-            #action-buttons-container.has-files #delete-files-button { order: 3; }
-            #action-buttons-container.has-files #help-text { order: 4; text-align: right; }
+            #action-buttons-container.has-files #submit-button {
+                order: 1;
+            }
+            #action-buttons-container.has-files #upload-files-button {
+                order: 2;
+            }
+            #action-buttons-container.has-files #delete-files-button {
+                order: 3;
+            }
+            #action-buttons-container.has-files #help-text {
+                order: 4;
+                text-align: right;
+            }
         }
     </style>
     <div class="max-w-4xl mx-auto">
         <div class="mb-4 text-sm text-muted-foreground">
-            {breadcrumbPath.join(' > ')}
+            {breadcrumbPath.join(" > ")}
         </div>
 
-        <form id="edit-ticket-form">
-            <div class="bg-card border border-[var(--secondary)] rounded-lg p-4 mb-6">
-                <div class="flex justify-between items-center mb-4">
-                    <p class="text-lg font-semibold">{ticket.solicitante.nombres} {ticket.solicitante.apellidos}</p>
-                    <a href="/tickets/soporte" class="bg-muted-foreground text-white hover:bg-muted-foreground/80 px-6 py-2 rounded-md text-sm font-semibold">Volver a la lista</a>
-                </div>
-                <div class="space-y-4">
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div>
-                            <label class="block text-xs font-medium text-muted-foreground">Empresa</label>
-                            <p class="mt-1">{ticket.empresa.nombre}</p>
+        <form 
+            id="edit-ticket-form"
+            data-campus-list={JSON.stringify(mappedCampuses)}
+            data-carrera-list={JSON.stringify(mappedCarreras)}
+            data-descuento-list={JSON.stringify(mappedDescuentos)}
+            data-bloque-options={JSON.stringify(bloqueOptions)}
+            data-api-key={import.meta.env.PUBLIC_GOOGLE_API_KEY}
+            data-client-id={import.meta.env.PUBLIC_GOOGLE_CLIENT_ID}
+            data-app-id={import.meta.env.PUBLIC_GOOGLE_APP_ID}
+        >
+            <div class="bg-card border border-secondary rounded-lg p-4 mb-4">
+                {isTraslado && traslado ? (
+                    /* --- VISTA TRASLADOS (EDITABLE) --- */
+                    <div class="space-y-6">
+                        {/* Hidden Inputs for IDs */}
+                        <input type="hidden" name="origenId" id="origenId" value={traslado.origenId ?? ''} />
+                        <input type="hidden" name="destinoId" id="destinoId" value={traslado.destinoId ?? ''} />
+                        <input type="hidden" name="carreraId" id="carreraId" value={traslado.carreraId ?? ''} />
+                        <input type="hidden" name="descuentoId" id="descuentoId" value={traslado.descuentoId ?? ''} />
+                        {/* Header: Back Button & Status & Save */}
+                        <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+                            <div class="flex justify-end items-center lg:justify-start gap-4 w-full">
+                                <a
+                                    href={backLink}
+                                    class="bg-muted-foreground text-white hover:bg-muted-foreground/90 px-6 py-2 rounded-md text-sm font-semibold transition-colors shrink-0"
+                                >
+                                    Volver a la lista
+                                </a>
+                                {/* Only show Save button if privileged or owner (handled by logic usually, but here checking privilege for layout) */}
+                                {(isPrivileged || isOwner) && (
+                                    <button
+                                        type="button"
+                                        id="btn-save-transfer-changes"
+                                        class="bg-primary text-primary-foreground hover:bg-primary/90 px-6 py-2 rounded-md text-sm font-semibold shadow transition-colors"
+                                    >
+                                        Guardar cambios
+                                    </button>
+                                )}
+                            </div>
+                            
+                            <div class="flex items-center gap-4 w-full justify-end">
+                                <div>
+                                    <label for="prioridad" class="block text-xs font-medium text-muted-foreground text-right mb-1">Prioridad</label>
+                                    <select
+                                        id="prioridad"
+                                        name="prioridad"
+                                        class="block w-32 rounded-md border-border bg-input p-2 text-sm"
+                                        disabled={!isPrivileged && !isOwner}
+                                    >
+                                        {priorities.map((p) => (
+                                            <option value={p} selected={p === ticket.prioridad}>{p}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label for="estatusId" class="block text-xs font-medium text-muted-foreground text-right mb-1">Estatus</label>
+                                    <select
+                                        id="estatusId"
+                                        name="estatusId"
+                                        class="block w-40 rounded-md border-border p-2 text-sm font-medium"
+                                        style={`background-color: ${(ticket.estatus.nombre === "Nuevo" && !ticket.atiendeId) ? "var(--primary)" : (statusColors[ticket.estatus.nombre] || "#a1a1aa")}; color: white;`}
+                                        disabled={!isPrivileged && !isOwner}
+                                    >
+                                        {statuses.map((s) => {
+                                            let label = s.nombre;
+                                            let color = statusColors[s.nombre] || "#a1a1aa";
+                                            if (s.nombre === "Nuevo" && !ticket.atiendeId) {
+                                                label = "Sin asignar";
+                                                color = "var(--primary)";
+                                            }
+                                            return (
+                                                <option 
+                                                    value={s.id} 
+                                                    selected={s.id === ticket.estatusId} 
+                                                    style={`background-color: ${color}; color: white;`}
+                                                >
+                                                    {label}
+                                                </option>
+                                            );
+                                        })}
+                                    </select>
+                                </div>
+                            </div>
                         </div>
-                        <div>
-                            <label for="prioridad" class="block text-xs font-medium text-muted-foreground">Prioridad</label>
-                            <select id="prioridad" name="prioridad" class="mt-1 block w-full rounded-md border-border bg-gray-200 p-2 text-sm">
-                                {priorities.map(p => {
-                                    return (
-                                        <option value={p} selected={p === ticket.prioridad}>{p}</option>
-                                    );
-                                })}
-                            </select>
+
+                         <div id="transfer-edit-fields" class="space-y-6">
+                            {/* Student Info */}
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 border-b border-border pb-6">
+                                <div>
+                                    <label for="matricula" class="block text-xs font-medium text-muted-foreground mb-1">Matrícula</label>
+                                    <input 
+                                        type="text" 
+                                        id="matricula" 
+                                        name="matricula" 
+                                        value={traslado.matricula} 
+                                        class="w-full rounded-md border-border bg-input px-3 py-2 text-sm"
+                                        disabled={!isPrivileged && !isOwner}
+                                    />
+                                </div>
+                                <div>
+                                    <label for="alumno" class="block text-xs font-medium text-muted-foreground mb-1">Nombre del alumno</label>
+                                    <input 
+                                        type="text" 
+                                        id="alumno" 
+                                        name="alumno" 
+                                        value={traslado.alumno} 
+                                        class="w-full rounded-md border-border bg-input px-3 py-2 text-sm"
+                                        disabled={!isPrivileged && !isOwner}
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Campus Info */}
+                             <div class="grid grid-cols-1 md:grid-cols-2 gap-6 border-b border-border pb-6">
+                                <div class="relative">
+                                    <label for="campus-origen" class="block text-xs font-medium text-muted-foreground mb-1">Campus origen</label>
+                                    <input type="hidden" id="origenId" name="origenId" value={traslado.origenId || ''} />
+                                    <input 
+                                        type="text" 
+                                        id="campus-origen" 
+                                        name="campus-origen" 
+                                        value={traslado.origen?.nombre} 
+                                        class="w-full rounded-md border-border bg-input px-3 py-2 text-sm"
+                                        autocomplete="off"
+                                        disabled={!isPrivileged && !isOwner}
+                                    />
+                                    <div id="campus-origen-suggestions" class="absolute z-10 w-full bg-popover text-popover-foreground border border-[#797979] rounded-md mt-1 hidden max-h-40 overflow-y-auto shadow-md"></div>
+                                </div>
+                                <div class="relative">
+                                    <label for="campus-destino" class="block text-xs font-medium text-muted-foreground mb-1">Campus destino</label>
+                                    <input type="hidden" id="destinoId" name="destinoId" value={traslado.destinoId || ''} />
+                                    <input 
+                                        type="text" 
+                                        id="campus-destino" 
+                                        name="campus-destino" 
+                                        value={traslado.destino?.nombre} 
+                                        class="w-full rounded-md border-border bg-input px-3 py-2 text-sm"
+                                        autocomplete="off"
+                                        disabled={!isPrivileged && !isOwner}
+                                    />
+                                    <div id="campus-destino-suggestions" class="absolute z-10 w-full bg-popover text-popover-foreground border border-[#797979] rounded-md mt-1 hidden max-h-40 overflow-y-auto shadow-md"></div>
+                                </div>
+                            </div>
+
+                            {/* Career */}
+                            <div class="border-b border-border pb-6 relative">
+                                <label for="carrera" class="block text-xs font-medium text-muted-foreground mb-1">Carrera</label>
+                                <input type="hidden" id="carreraId" name="carreraId" value={traslado.carreraId || ''} />
+                                <input 
+                                    type="text" 
+                                    id="carrera" 
+                                    name="carrera" 
+                                    value={carreraDisplayValue} 
+                                    class="w-full rounded-md border-border bg-input px-3 py-2 text-sm"
+                                    autocomplete="off"
+                                    disabled={!isPrivileged && !isOwner}
+                                />
+                                <div id="carrera-suggestions" class="absolute z-10 w-full bg-popover text-popover-foreground border border-[#797979] rounded-md mt-1 hidden max-h-48 overflow-y-auto shadow-md"></div>
+                            </div>
+
+                            {/* Admission, Discount & Block */}
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 border-b border-border pb-6 items-start">
+                                <div>
+                                    <div class="flex items-center gap-2 mb-2 h-5">
+                                        <input 
+                                            type="checkbox" 
+                                            id="nuevo_ingreso" 
+                                            name="nuevo_ingreso" 
+                                            checked={traslado.nuevo_ingreso} 
+                                            class="rounded border-input text-primary focus:ring-primary"
+                                            disabled={!isPrivileged && !isOwner}
+                                        />
+                                        <label for="nuevo_ingreso" class="text-xs font-medium text-muted-foreground">¿Es nuevo ingreso?</label>
+                                    </div>
+                                </div>
+                                
+                                <div>
+                                    <div class="flex items-center gap-2 mb-2 h-5">
+                                        <input 
+                                            type="checkbox" 
+                                            id="tiene_descuento" 
+                                            name="tiene_descuento" 
+                                            checked={!!traslado.descuento} 
+                                            class="rounded border-input text-primary focus:ring-primary"
+                                            disabled={!isPrivileged && !isOwner}
+                                        />
+                                        <label for="tiene_descuento" class="text-xs font-medium text-muted-foreground">¿Tiene descuento?</label>
+                                    </div>
+                                    <div id="descuento-container" class={`relative ${!!traslado.descuento ? '' : 'hidden'}`}>
+                                        <input type="hidden" id="descuentoId" name="descuentoId" value={traslado.descuentoId || ''} />
+                                        <input 
+                                            type="text" 
+                                            id="descuento-valor" 
+                                            name="descuento-valor"
+                                            value={traslado.descuento?.descripcion || ''}
+                                            class="w-full rounded-md border-border bg-input px-3 py-2 text-sm"
+                                            placeholder="Buscar descuento..."
+                                            autocomplete="off"
+                                            disabled={!isPrivileged && !isOwner}
+                                        />
+                                        <div id="descuento-suggestions" class="absolute z-10 w-full bg-popover text-popover-foreground border border-[#797979] rounded-md mt-1 hidden max-h-40 overflow-y-auto shadow-md"></div>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label for="bloque-sugerido" class="block text-xs font-medium text-muted-foreground mb-2 h-5">Bloque sugerido</label>
+                                    <select 
+                                        id="bloque-sugerido" 
+                                        name="bloque_nombre" 
+                                        class="w-full rounded-md border-border bg-input px-3 py-2 text-sm"
+                                        disabled={!isPrivileged && !isOwner}
+                                        data-current-val={traslado.bloque_nombre || traslado.bloque?.descripcion}
+                                    >
+                                        {/* Options populated by JS */}
+                                    </select>
+                                </div>
+                            </div>
                         </div>
-                        <div>
-                            <label for="estatusId" class="block text-xs font-medium text-muted-foreground">Estatus</label>
-                            <select id="estatusId" name="estatusId" class="mt-1 block w-full rounded-md border-border p-2 text-sm">
-                                {statuses.map(status => {
-                                    return (
-                                        <option 
-                                            value={status.id} 
-                                            selected={status.id === ticket.estatusId}
-                                            style={`background-color: ${statusColors[status.nombre] || '#a1a1aa'}; color: white;`}
+                        
+                        {/* Initial Comment & Attachments (Read Only Section) */}
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 border-b border-border pb-6">
+                             <div>
+                                <label class="block text-xs font-medium text-muted-foreground mb-1">Comentario Inicial</label>
+                                <div class="p-3 bg-muted/20 rounded-md border border-border text-sm min-h-[80px] whitespace-pre-wrap">
+                                    {ticket.descripcion || "Sin comentarios."}
+                                </div>
+                             </div>
+                             <div>
+                                <label class="block text-xs font-medium text-muted-foreground mb-1">Archivos adjuntos</label>
+                                {(ticket.archivos as any[]) && (ticket.archivos as any[]).length > 0 ? (
+                                    <div class="flex items-center flex-wrap gap-2 text-sm p-2 rounded-md border border-border bg-card">
+                                        <svg
+                                            xmlns="http://www.w3.org/2000/svg"
+                                            width="16"
+                                            height="16"
+                                            viewBox="0 0 24 24"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            stroke-width="2"
+                                            stroke-linecap="round"
+                                            stroke-linejoin="round"
+                                            class="text-muted-foreground"
                                         >
-                                            {status.nombre}
-                                        </option>
-                                    );
-                                })}
-                            </select>
+                                            <path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.59a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+                                        </svg>
+                                        {(ticket.archivos as any[]).map((file: any, index: number) => {
+                                            const key = typeof file === 'string' ? file : (file.key || file.url);
+                                            const name = typeof file === 'string' ? parseFileName(key) : (file.nombre || parseFileName(key));
+                                            return (
+                                                <>
+                                                    <a 
+                                                        href={`/api/tickets/attachment?key=${encodeURIComponent(key)}`}
+                                                        target="_blank" 
+                                                        rel="noopener noreferrer"
+                                                        class="text-primary hover:underline hover:text-primary/80 transition-colors"
+                                                    >
+                                                        {name}
+                                                    </a>
+                                                    {index < (ticket.archivos as any[]).length - 1 && <span class="text-muted-foreground">, </span>}
+                                                </>
+                                            );
+                                        })}
+                                    </div>
+                                ) : (
+                                    <p class="text-sm text-muted-foreground italic p-2">No hay archivos adjuntos.</p>
+                                )}
+                             </div>
                         </div>
-                    </div>
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div>
-                            <label for="atiendeId" class="block text-xs font-medium text-muted-foreground">Atiende</label>
-                            <select id="atiendeId" name="atiendeId" class="mt-1 block w-full rounded-md border-border bg-gray-200 p-2 text-sm">
-                                {agents.map(agent => {
-                                    return (
-                                        <option value={agent.id} selected={agent.id === ticket.atiendeId}>{`${agent.nombres} ${agent.apellidos}`}</option>
-                                    );
-                                })}
-                            </select>
-                        </div>
-                        <div class="pt-4">
-                            <div class="flex items-center gap-2">
-                                <input type="checkbox" id="archivado" name="archivado" class="h-4 w-4 rounded" checked={ticket.archivado} />
-                                <label for="archivado" class="text-sm font-medium">Archivado</label>
+
+                        {/* 3-Column Assignment Section (Existing Logic kept as is, just wrapped) */}
+                        <div class="grid grid-cols-1 custom-lg:grid-cols-3 gap-4">
+                            <style>
+                                @media (min-width: 1100px) {
+                                    .custom-lg\:grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+                                }
+                            </style>
+                            
+                            {/* Col 1: Atiende */}
+                            <div class="space-y-2 bg-muted/10 p-3 rounded-md border border-border/50">
+                                <h4 class="font-semibold text-sm border-b border-border pb-2 mb-2">Atiende</h4>
+                                <div class="flex flex-col gap-1">
+                                    <span class="text-xs text-muted-foreground">Ingeniero asignado:</span>
+                                    {isPrivileged ? (
+                                        <select 
+                                            id="atiendeId"
+                                            name="atiendeId" 
+                                            class="w-full rounded-md border-border bg-input p-1 text-sm"
+                                        >
+                                            <option value="">Sin asignar</option>
+                                            {cshSupportUsers.map(u => (
+                                                <option value={u.id} selected={u.id === ticket.atiendeId}>{u.nombres} {u.apellidos}</option>
+                                            ))}
+                                        </select>
+                                    ) : (
+                                        <p class="text-sm font-medium">{ticket.atiende ? `${ticket.atiende.nombres} ${ticket.atiende.apellidos}` : 'Sin asignar'}</p>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Col 2: Rev. Documentos */}
+                            <div class="space-y-2 bg-muted/10 p-3 rounded-md border border-border/50">
+                                <h4 class="font-semibold text-sm border-b border-border pb-2 mb-2">Rev. documentos</h4>
+                                
+                                {/* Row 1: Assign Auditor */}
+                                <div class="flex flex-col gap-1 mb-3">
+                                    <label class="block text-xs text-muted-foreground">Auditor:</label>
+                                    <select 
+                                        id="auditor_docsId"
+                                        name="auditor_docsId" 
+                                        class="w-full rounded-md border-border bg-input p-1 text-sm"
+                                        disabled={!isPrivileged}
+                                    >
+                                        <option value="">Sin asignar</option>
+                                        {cshAuditorDocs.map(u => (
+                                            <option value={u.id} selected={u.id === traslado.auditor_docsId}>{u.nombres} {u.apellidos}</option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                {/* Row 2: Validation */}
+                                <div class="space-y-1">
+                                    <div class="flex items-center gap-2">
+                                        <input 
+                                            type="checkbox" 
+                                            name="validacion_docs" 
+                                            id="validacion_docs" 
+                                            checked={traslado.validacion_docs} 
+                                            class="rounded" 
+                                            disabled={!canEditDocs}
+                                        />
+                                        <label for="validacion_docs" class="text-xs font-medium">Documentación correcta</label>
+                                    </div>
+                                    <textarea 
+                                        name="descripcion_docs" 
+                                        id="descripcion_docs"
+                                        rows="5" 
+                                        placeholder="Comentarios..." 
+                                        class="w-full text-xs rounded border-border bg-input p-1"
+                                        disabled={!canEditDocs}
+                                    >{traslado.descripcion_docs}</textarea>
+                                </div>
+                            </div>
+
+                            {/* Col 3: Rev. Adeudos */}
+                            <div class="space-y-2 bg-muted/10 p-3 rounded-md border border-border/50">
+                                <h4 class="font-semibold text-sm border-b border-border pb-2 mb-2">Rev. adeudos</h4>
+                                
+                                {/* Row 1: Assign Auditor */}
+                                <div class="flex flex-col gap-1 mb-3">
+                                    <label class="text-xs text-muted-foreground">Auditor:</label>
+                                    <select 
+                                        id="auditor_reqId"
+                                        name="auditor_reqId" 
+                                        class="w-full rounded-md border-border bg-input p-1 text-sm"
+                                        disabled={!isPrivileged}
+                                    >
+                                        <option value="">Sin asignar</option>
+                                        {cshAuditorReq.map(u => (
+                                            <option value={u.id} selected={u.id === traslado.auditor_reqId}>{u.nombres} {u.apellidos}</option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                {/* Row 2a: Edocta */}
+                                <div class="space-y-1 mb-2">
+                                    <div class="flex items-center gap-2">
+                                        <input 
+                                            type="checkbox" 
+                                            name="validacion_edocta" 
+                                            id="validacion_edocta" 
+                                            checked={traslado.validacion_edocta} 
+                                            class="rounded"
+                                            disabled={!canEditReq}
+                                        />
+                                        <label for="validacion_edocta" class="text-xs font-medium">Sin adeudo financiero</label>
+                                    </div>
+                                    <textarea 
+                                        name="descripcion_edocta" 
+                                        id="descripcion_edocta"
+                                        rows="1" 
+                                        placeholder="Comentarios Edocta..." 
+                                        class="w-full text-xs rounded border-border bg-input p-1"
+                                        disabled={!canEditReq}
+                                    >{traslado.descripcion_edocta}</textarea>
+                                </div>
+
+                                {/* Row 2b: Calif */}
+                                <div class="space-y-1">
+                                    <div class="flex items-center gap-2">
+                                        <input 
+                                            type="checkbox" 
+                                            name="validacion_calif" 
+                                            id="validacion_calif" 
+                                            checked={traslado.validacion_calif} 
+                                            class="rounded" 
+                                            disabled={!canEditReq}
+                                        />
+                                        <label for="validacion_calif" class="text-xs font-medium">Sin adeudo escolar</label>
+                                    </div>
+                                    <textarea 
+                                        name="descripcion_calif" 
+                                        id="descripcion_calif"
+                                        rows="1" 
+                                        placeholder="Comentarios Calif..." 
+                                        class="w-full text-xs rounded border-border bg-input p-1"
+                                        disabled={!canEditReq}
+                                    >{traslado.descripcion_calif}</textarea>
+                                </div>
                             </div>
                         </div>
                     </div>
-                    <div>
-                        <label class="block text-xs font-medium text-muted-foreground">Descripción</label>
-                        <p class="mt-1 whitespace-pre-wrap p-2 border rounded-md bg-input/50">{ticket.descripcion}</p>
+                ) : (
+                    /* --- VISTA NORMAL (EXISTENTE) --- */
+                    <>
+                        <div class="flex justify-between items-center mb-4">
+                            <p class="text-lg font-semibold">
+                                {ticket.solicitante.nombres} {ticket.solicitante.apellidos}
+                            </p>
+                            <a
+                                href={backLink}
+                                class="bg-muted text-muted-foreground hover:bg-muted/80 px-6 py-2 rounded-md text-sm font-semibold transition-colors"
+                            >
+                                Volver a la lista
+                            </a>
+                        </div>
+                        <div class="space-y-4">
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div>
+                                    <label class="block text-xs font-medium text-muted-foreground">Empresa</label>
+                                    <p class="mt-1">{ticket.empresa.nombre}</p>
+                                </div>
+                                <div>
+                                    <label for="prioridad" class="block text-xs font-medium text-muted-foreground">Prioridad</label>
+                                    {/* ... Existing Select ... */}
+                                    <select id="prioridad" name="prioridad" class="mt-1 block w-full rounded-md border-border bg-input p-2 text-sm">
+                                        {priorities.map((p) => (
+                                            <option value={p} selected={p === ticket.prioridad}>{p}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label for="estatusId" class="block text-xs font-medium text-muted-foreground">Estatus</label>
+                                    <select 
+                                        id="estatusId" 
+                                        name="estatusId" 
+                                        class="mt-1 block w-full rounded-md border-border p-2 text-sm"
+                                        style={`background-color: ${(ticket.estatus.nombre === "Nuevo" && !ticket.atiendeId) ? "var(--primary)" : (statusColors[ticket.estatus.nombre] || "#a1a1aa")}; color: white;`}
+                                    >
+                                        {statuses.map((s) => {
+                                            let label = s.nombre;
+                                            let color = statusColors[s.nombre] || "#a1a1aa";
+                                            if (s.nombre === "Nuevo" && !ticket.atiendeId) {
+                                                label = "Sin asignar";
+                                                color = "var(--primary)";
+                                            }
+                                            return (
+                                                <option 
+                                                    value={s.id} 
+                                                    selected={s.id === ticket.estatusId} 
+                                                    style={`background-color: ${color}; color: white;`}
+                                                >
+                                                    {label}
+                                                </option>
+                                            );
+                                        })}
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            {/* ... Existing Fields ... */}
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div>
+                                    <label for="atiendeId" class="block text-xs font-medium text-muted-foreground">Atiende</label>
+                                    <select id="atiendeId" name="atiendeId" class="mt-1 block w-full rounded-md border-border bg-input p-2 text-sm">
+                                        <option value="">No asignado</option>
+                                        {agents.map((agent) => (
+                                            <option value={agent.id} selected={agent.id === ticket.atiendeId}>{`${agent.nombres} ${agent.apellidos}`}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div class="pt-4">
+                                    <div class="flex items-center gap-2">
+                                        <label class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full toggle-wrapper group">
+                                            <input type="checkbox" id="archivado" name="archivado" class="sr-only peer" checked={ticket.archivado} />
+                                            <div class="toggle-bg h-5 w-9 absolute rounded-full transition-all peer-focus:outline-none opacity-50 peer-checked:opacity-100 disabled:opacity-30 peer-disabled:cursor-not-allowed bg-muted-foreground peer-checked:bg-primary" />
+                                            <div class="toggle-knob absolute top-[2px] left-[2px] bg-white border border-gray-300 rounded-full h-4 w-4 transition-transform peer-checked:translate-x-[16px] peer-checked:border-white z-10" />
+                                        </label>
+                                        <span class="text-sm font-medium">Archivado</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* ... Afectado Fields ... */}
+                            {(ticket.afectado_clave || ticket.afectado_nombre) && (
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 border rounded-md bg-muted/20 p-3">
+                                    {ticket.afectado_clave && (
+                                        <div>
+                                            <label for="afectado_clave" class="block text-xs font-medium text-muted-foreground">{afectadoLabel}</label>
+                                            <input type="text" id="afectado_clave" name="afectado_clave" value={ticket.afectado_clave} class="mt-1 block w-full rounded-md border-border bg-input p-2 text-sm font-medium" />
+                                        </div>
+                                    )}
+                                    {ticket.afectado_nombre && (
+                                        <div>
+                                            <label for="afectado_nombre" class="block text-xs font-medium text-muted-foreground">{nombreLabel}</label>
+                                            <input type="text" id="afectado_nombre" name="afectado_nombre" value={ticket.afectado_nombre} class="mt-1 block w-full rounded-md border-border bg-input p-2 text-sm font-medium" />
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            <div>
+                                <label class="block text-xs font-medium text-muted-foreground">Descripción</label>
+                                <textarea name="descripcion" rows="6" class="mt-1 block w-full rounded-md border-border bg-input p-2 text-sm whitespace-pre-wrap">{ticket.descripcion}</textarea>
+                            </div>
+                        </div>
+                    </>
+                )}
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4 w-full items-stretch">
+                <div class="space-y-2 h-full">
+                    <div
+                        id="drop-zone"
+                        class="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 flex flex-col items-center justify-center hover:bg-muted/50 transition-colors cursor-pointer relative h-full min-h-[120px]"
+                    >
+                        <p class="text-sm text-muted-foreground mb-4 text-center">
+                            Arrastre sus archivos aquí
+                        </p>
+                        <div id="attachment-area" class="space-y-2 text-left w-full mt-auto">
+                        </div>
                     </div>
                 </div>
-            </div>
-            
-            <div class="flex justify-between items-start gap-4 mb-4 w-full">
-                <div id="attachment-area" class="space-y-2 flex-grow"></div>
-                <div id="action-buttons-container" class="flex flex-wrap justify-between items-center gap-4 flex-shrink-0 w-3/5">
-                    <button type="button" id="upload-files-button" class="bg-muted-foreground text-white hover:bg-muted-foreground/80 px-8 py-2 rounded-md text-sm font-semibold w-[176px]">
-                        Adjuntar archivos
-                    </button>
-                    <button type="submit" id="submit-button" class="bg-primary text-white hover:bg-primary/80 px-8 py-2 rounded-md text-sm font-semibold w-[176px]">
-                        Guardar cambios
-                    </button>
-                    <button type="button" id="delete-files-button" class="hidden bg-secondary text-white hover:bg-secondary/80 px-8 py-2 rounded-md text-sm font-semibold w-[176px]">
-                        Borrar archivos
-                    </button>
+
+                <div class="flex flex-col justify-end items-end gap-2 rounded-lg border border-transparent">
+                    <div
+                        id="action-buttons-container"
+                        class="flex flex-wrap justify-end items-center gap-2 w-full"
+                    >
+                        <button
+                            type="button"
+                            id="upload-files-button"
+                            class="bg-muted-foreground text-white hover:bg-muted-foreground/80 px-3 md:px-4 py-2 rounded-md text-sm font-semibold shrink-0 h-10"
+                        >
+                            Seleccionar
+                        </button>
+                        <button
+                            type="button"
+                            id="google-drive-button"
+                            class="bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 rounded-md flex items-center justify-center h-10 w-10 shrink-0"
+                            title="Adjuntar desde Google Drive"
+                        >
+                            <img
+                                src="/Google_Drive_icon.svg"
+                                width="24"
+                                height="24"
+                                alt="Google Drive"
+                            />
+                        </button>
+                        <button
+                            type="button"
+                            id="delete-files-button"
+                            class="hidden bg-secondary text-white hover:bg-secondary/80 px-4 py-2 rounded-md text-sm font-semibold shrink-0 h-10"
+                        >
+                            Borrar archivos
+                        </button>
+                        <button
+                            type="submit"
+                            id="submit-button"
+                            class="bg-primary text-white hover:bg-primary/80 px-6 py-2 rounded-md text-sm font-semibold shrink-0 h-10"
+                        >
+                            Guardar cambios
+                        </button>
+                    </div>
+                    <p
+                        id="help-text"
+                        class="text-xs text-secondary text-right w-full mt-1"
+                    >
+                        * Máximo 5MB cada uno. Formatos permitidos: jpg, png, pdf, docx, xlsx
+                    </p>
                 </div>
             </div>
-            <p id="help-text" class="text-sm text-secondary w-full text-right mb-8">
-                * Máximo 5MB cada uno. Formatos permitidos: jpg, png, pdf, docx, xlsx
-            </p>
         </form>
         <input type="file" id="file-input" multiple class="hidden" />
 
-        <div class="bg-card border border-[var(--secondary)] rounded-lg p-8">
+        <div class="bg-card border border-secondary rounded-lg p-8">
             <div class="mb-6">
-                <label for="new-comment" class="block text-sm font-medium text-muted-foreground mb-2">Añadir comentario</label>
-                <textarea id="new-comment" name="new-comment" rows="3" class="w-full rounded-md border-border bg-input p-2 text-sm" placeholder="Escribe un comentario..."></textarea>
+                <label
+                    for="new-comment"
+                    class="block text-sm font-medium text-muted-foreground mb-2"
+                    >Añadir comentario</label
+                >
+                <textarea
+                    id="new-comment"
+                    name="new-comment"
+                    rows="3"
+                    class="w-full rounded-md border-border bg-input p-2 text-sm"
+                    placeholder="Escribe un comentario..."></textarea>
             </div>
             <ul class="space-y-6">
-                {ticketHistory.length > 0 ? ticketHistory.map((entry, index) => {
-                    const hasFiles = entry.archivos && (entry.archivos as any).newFiles && (entry.archivos as any).newFiles.length > 0;
-                    const fieldChanges = (entry.cambios as any)?.fieldChanges?.filter((c: any) => ['prioridad', 'atiendeId'].includes(c.field)) || [];
-                    return (
-                    <li class="flex gap-4 border-t border-border pt-4 first:pt-0 first:border-t-0" data-history-entry={index === 0 ? 'true' : 'false'}>
-                        <div class="flex-grow">
-                            <div class="flex justify-between items-center">
-                                <p class="font-semibold text-sm">{entry.usuario.nombres} {entry.usuario.apellidos}</p>
-                                <p class="text-sm text-muted-foreground">
-                                    {new Date(entry.fecha_cambio).toLocaleString('es-MX', { dateStyle: 'full', timeStyle: 'short' })}
-                                </p>
-                            </div>
-                            <div class="flex items-center gap-4 mt-1">
-                                {entry.estatus && (
-                                    <span style={`background-color: ${statusColors[entry.estatus.nombre] || '#a1a1aa'};`} class="px-2 py-1 text-xs font-bold text-white rounded-full">
-                                        {entry.estatus.nombre}
-                                    </span>
-                                )}
-                                {hasFiles && (
-                                    <div class="relative">
-                                        <button type="button" class="attachment-clip" aria-expanded="false">
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.59a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
-                                        </button>
-                                        <div class="attachment-dropdown hidden absolute z-10 bg-card border rounded-md shadow-lg mt-1 py-1">
-                                            {(entry.archivos as any).newFiles.map((key: string) => (
-                                                <a href="#" data-key={key} class="attachment-link block px-4 py-2 text-sm text-card-foreground hover:bg-accent">{parseFileName(key)}</a>
-                                            ))}
+                {
+                    ticketHistory.length > 0 ? (
+                        ticketHistory.map((entry, index) => {
+                            const hasFiles =
+                                entry.archivos &&
+                                (entry.archivos as any).newFiles &&
+                                (entry.archivos as any).newFiles.length > 0;
+                            const fieldChanges =
+                                (entry.cambios as any)?.fieldChanges || [];
+                            return (
+                                <li
+                                    class="flex gap-4 border-t border-border pt-4 first:pt-0 first:border-t-0"
+                                    data-history-entry={
+                                        index === 0 ? "true" : "false"
+                                    }
+                                >
+                                    <div class="grow">
+                                        <div class="flex justify-between items-center">
+                                            <p class="font-semibold text-sm">
+                                                {entry.usuario.nombres}{" "}
+                                                {entry.usuario.apellidos}
+                                            </p>
+                                            <p class="text-sm text-muted-foreground">
+                                                {new Date(
+                                                    entry.fecha_cambio,
+                                                ).toLocaleString("es-MX", {
+                                                    dateStyle: "full",
+                                                    timeStyle: "short",
+                                                })}
+                                            </p>
                                         </div>
+                                        <div class="flex items-center gap-4 mt-1">
+                                            {entry.estatus && (
+                                                <span
+                                                    style={`background-color: ${statusColors[entry.estatus.nombre] || "#a1a1aa"};`}
+                                                    class="px-2 py-1 text-xs font-bold text-white rounded-full border border-transparent dark:border-white/20"
+                                                >
+                                                    {entry.estatus.nombre}
+                                                </span>
+                                            )}
+                                            {hasFiles && (
+                                                <div class="relative">
+                                                    <button
+                                                        type="button"
+                                                        class="attachment-clip cursor-pointer"
+                                                        aria-expanded="false"
+                                                    >
+                                                        <svg
+                                                            xmlns="http://www.w3.org/2000/svg"
+                                                            width="20"
+                                                            height="20"
+                                                            viewBox="0 0 24 24"
+                                                            fill="none"
+                                                            stroke="currentColor"
+                                                            stroke-width="2"
+                                                            stroke-linecap="round"
+                                                            stroke-linejoin="round"
+                                                        >
+                                                            <path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.59a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+                                                        </svg>
+                                                    </button>
+                                                    <div class="attachment-dropdown hidden absolute z-10 bg-card border rounded-md shadow-lg mt-1 py-1 w-72 max-w-[80vw] md:w-96">
+                                                        {(
+                                                            entry.archivos as any
+                                                        ).newFiles.map(
+                                                            (key: string) => (
+                                                                <a
+                                                                    href="#"
+                                                                    data-key={
+                                                                        key
+                                                                    }
+                                                                    class="attachment-link block px-4 py-1 text-sm text-card-foreground hover:underline hover:text-[#722f37]"
+                                                                >
+                                                                    {parseFileName(
+                                                                        key,
+                                                                    )}
+                                                                </a>
+                                                            ),
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                        {entry.comentario && (
+                                            <p class="mt-2 text-sm p-3 bg-muted/50 rounded-md">
+                                                {entry.comentario}
+                                            </p>
+                                        )}
+                                        {fieldChanges.length > 0 && (
+                                            <div class="mt-2 text-xs p-2 bg-blue-50 border border-blue-200 dark:bg-blue-900/20 dark:border-blue-800 rounded-md">
+                                                <p class="font-semibold mb-1">
+                                                    Cambios de campos:
+                                                </p>
+                                                {fieldChanges.map(
+                                                    (change: any) => (
+                                                        <p>
+                                                            {`• `}
+                                                            <span class="font-semibold capitalize">
+                                                                {fieldMap[
+                                                                    change.field
+                                                                ] ||
+                                                                    change.field}
+                                                                :
+                                                            </span>
+                                                            {` '${String(change.oldValue)}' → '${String(change.newValue)}'`}
+                                                        </p>
+                                                    ),
+                                                )}
+                                            </div>
+                                        )}
                                     </div>
-                                )}
-                            </div>
-                            {entry.comentario && <p class="mt-2 text-sm p-3 bg-muted/50 rounded-md">{entry.comentario}</p>}
-                            {fieldChanges.length > 0 && (
-                                <div class="mt-2 text-xs p-2 bg-blue-50 border border-blue-200 rounded-md">
-                                    <p class="font-semibold mb-1">Cambios de campos:</p>
-                                    {fieldChanges.map((change: any) => (
-                                        <p>{`• `}<span class="font-semibold capitalize">{change.field.replace(/Id$/, '')}:</span>{` '${String(change.oldValue)}' → '${String(change.newValue)}'`}</p>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-                    </li>
-                )})
-                : <p class="text-center text-muted-foreground">No hay historial de cambios para este ticket.</p>}
+                                </li>
+                            );
+                        })
+                    ) : (
+                        <p class="text-center text-muted-foreground">
+                            No hay historial de cambios para este ticket.
+                        </p>
+                    )
+                }
             </ul>
         </div>
     </div>
-</MainLayout>
 
-<script define:vars={{ ticketId, ticket, statuses }}>
-    window.ticketViewData = { ticketId, ticket, statuses };
+    <!-- Delete Confirmation Modal -->
+    <div
+        id="delete-confirmation-modal"
+        class="fixed inset-0 z-50 items-center justify-center hidden"
+        role="dialog"
+        aria-modal="true"
+    >
+        <div
+            class="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            id="delete-modal-overlay"
+        >
+        </div>
+        <div
+            class="relative bg-card border border-border rounded-lg shadow-lg p-6 w-full max-w-sm mx-4"
+        >
+            <h3 class="text-lg font-semibold mb-2">Elige el tipo de borrado</h3>
+            <p class="text-sm text-muted-foreground mb-6">
+                ¿Deseas eliminar todos los archivos adjuntos o seleccionar
+                cuáles borrar?
+            </p>
+            <div class="flex flex-col gap-3">
+                <button
+                    id="confirm-delete-all"
+                    class="w-full bg-destructive text-destructive-foreground hover:bg-destructive/90 px-4 py-2 rounded-md text-sm font-semibold transition-colors"
+                >
+                    Borrar todos
+                </button>
+                <button
+                    id="confirm-delete-select"
+                    class="w-full bg-secondary text-secondary-foreground hover:bg-secondary/80 px-4 py-2 rounded-md text-sm font-semibold transition-colors"
+                >
+                    Seleccionar
+                </button>
+                <button
+                    id="cancel-delete-modal"
+                    class="w-full bg-muted text-muted-foreground hover:bg-muted/80 px-4 py-2 rounded-md text-sm font-semibold transition-colors"
+                >
+                    Cancelar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Status Change Confirmation Modal -->
+    <div
+        id="status-change-confirmation-modal"
+        class="fixed inset-0 z-50 items-center justify-center hidden"
+        role="dialog"
+        aria-modal="true"
+    >
+        <div
+            class="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            id="status-change-modal-overlay"
+        >
+        </div>
+        <div
+            class="relative bg-card border border-border rounded-lg shadow-lg p-6 w-full max-w-sm mx-4"
+        >
+            <h3 class="text-lg font-semibold mb-2">Confirmación de Estatus</h3>
+            <p class="text-sm text-muted-foreground mb-6">
+                ¿Desea cambiar el estatus del ticket a "En espera"?
+            </p>
+            <div class="flex gap-3">
+                <button
+                    id="confirm-status-change-yes"
+                    class="flex-1 bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-2 rounded-md text-sm font-semibold transition-colors"
+                >
+                    Sí
+                </button>
+                <button
+                    id="confirm-status-change-no"
+                    class="flex-1 bg-secondary text-secondary-foreground hover:bg-secondary/80 px-4 py-2 rounded-md text-sm font-semibold transition-colors"
+                >
+                    No
+                </button>
+            </div>
+        </div>
+    </div>
+
+</MainLayout>
+<script
+    define:vars={{
+        ticketId,
+        ticket,
+        statuses,
+        currentUserId: session?.user?.id,
+        accessToken: session?.accessToken,
+    }}
+>
+    window.ticketViewData = {
+        ticketId,
+        ticket,
+        statuses,
+        accessToken: accessToken || "",
+        currentUserId: currentUserId ? parseInt(currentUserId, 10) : null,
+        isCreator: currentUserId
+            ? parseInt(currentUserId, 10) === ticket.solicitanteId
+            : false,
+    };
 </script>
 <script>
     import {
@@ -262,15 +1135,201 @@ const parseFileName = (key: string) => {
         initFileUploads,
         initHistoryToggles,
         initStatusColorizer,
-        handleNewHistoryEntry
-    } from '@/scripts/ticket-view-logic.ts';
+        handleNewHistoryEntry,
+    } from "@/scripts/ticket-view-logic.ts";
+    import { toast } from "@/lib/toast";
 
-    document.addEventListener('astro:page-load', () => {
+    document.addEventListener("astro:page-load", () => {
         init();
         initEditForm();
         initFileUploads();
         initHistoryToggles();
         initStatusColorizer();
         handleNewHistoryEntry();
+
+
+
+        // --- TRASLADOS EDIT LOGIC ---
+        const initTransferLogic = () => {
+             const transferForm = document.getElementById("edit-ticket-form");
+            if (transferForm) {
+                // Parse Options
+                const campusOptions = JSON.parse(transferForm.dataset.campusOptions || "[]");
+                const carreraOptions = JSON.parse(transferForm.dataset.carreraOptions || "[]");
+                const bloqueOptionsFull = JSON.parse(transferForm.dataset.bloqueOptions || "[]");
+                const descuentoOptions = JSON.parse(transferForm.dataset.descuentoOptions || "[]");
+
+                // Autocomplete Helper
+                function setupAutocomplete(inputId: string, suggestionsId: string, options: string[]) {
+                    const input = document.getElementById(inputId) as HTMLInputElement | null;
+                    const suggestions = document.getElementById(suggestionsId);
+                    if (!input || !suggestions) return;
+
+                    const normalizeText = (text: string) => text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+
+                    const closeSuggestions = () => {
+                        suggestions.classList.add("hidden");
+                        suggestions.innerHTML = "";
+                    };
+
+                    input.addEventListener("input", function () {
+                        const val = normalizeText((this as HTMLInputElement).value);
+                        suggestions.innerHTML = "";
+                        if (!val) {
+                            closeSuggestions();
+                            return;
+                        }
+                        const filtered = options.filter(opt => normalizeText(opt).includes(val));
+                        if (filtered.length > 0) {
+                            suggestions.classList.remove("hidden");
+                            filtered.forEach(opt => {
+                                const div = document.createElement("div");
+                                div.textContent = opt;
+                                div.className = "p-2 hover:bg-secondary hover:text-secondary-foreground cursor-pointer text-sm transition-colors";
+                                div.onclick = () => {
+                                    input.value = opt;
+                                    closeSuggestions();
+                                    if (inputId === 'carrera') handleBloqueOptions();
+                                };
+                                suggestions.appendChild(div);
+                            });
+                        } else {
+                            closeSuggestions();
+                        }
+                    });
+                    
+                    document.addEventListener("click", (e) => {
+                        if (e.target !== input && e.target !== suggestions) closeSuggestions();
+                    });
+                }
+
+                // Bloque Options Logic
+                const carreraInput = document.getElementById("carrera") as HTMLInputElement | null;
+                const bloqueSelect = document.getElementById("bloque-sugerido") as HTMLSelectElement | null;
+                
+                const handleBloqueOptions = () => {
+                    if (!carreraInput || !bloqueSelect) return;
+                    const carreraVal = carreraInput.value.toLowerCase();
+                    const normalize = (str: string) => str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+                    const carreraNorm = normalize(carreraVal);
+
+                    let filteredOptions: string[] = [];
+                    if (carreraNorm.includes("licenciatura")) {
+                        const nums = Array.from({length: 16}, (_, i) => String(i + 1));
+                        filteredOptions = [...nums, "Actualización"];
+                    } else if (carreraNorm.includes("maestria")) {
+                        const nums = Array.from({length: 5}, (_, i) => String(i + 1));
+                        filteredOptions = [...nums, "Seminario", "Actualización"];
+                    } else {
+                        filteredOptions = bloqueOptionsFull;
+                    }
+
+                    const currentVal = bloqueSelect.dataset.currentVal 
+                                        ? bloqueSelect.dataset.currentVal.toLowerCase().replace(/\s+/g, '-') 
+                                        : bloqueSelect.value;
+                    
+                    bloqueSelect.innerHTML = "";
+                    filteredOptions.forEach(opt => {
+                        const normalizedOpt = opt.toLowerCase().replace(/\s+/g, '-');
+                        const optionEl = document.createElement('option');
+                        optionEl.value = normalizedOpt;
+                        optionEl.textContent = opt;
+                        if (normalizedOpt === currentVal) {
+                            optionEl.selected = true;
+                        }
+                        bloqueSelect.appendChild(optionEl);
+                    });
+                     bloqueSelect.addEventListener('change', () => {
+                         bloqueSelect.dataset.currentVal = bloqueSelect.value;
+                     });
+                };
+                
+                if(carreraInput) {
+                    carreraInput.addEventListener('input', handleBloqueOptions);
+                    carreraInput.addEventListener('blur', handleBloqueOptions);
+                }
+
+                // Discount Logic
+                const tieneDescuentoCk = document.getElementById("tiene_descuento") as HTMLInputElement | null;
+                const descuentoContainer = document.getElementById("descuento-container");
+                if (tieneDescuentoCk && descuentoContainer) {
+                    tieneDescuentoCk.addEventListener("change", () => {
+                        if (tieneDescuentoCk.checked) {
+                            descuentoContainer.classList.remove("hidden");
+                        } else {
+                            descuentoContainer.classList.add("hidden");
+                            const descValInput = document.getElementById("descuento-valor") as HTMLInputElement | null;
+                            if (descValInput) descValInput.value = "";
+                        }
+                    });
+                }
+
+                // Init
+                setupAutocomplete("campus-origen", "campus-origen-suggestions", campusOptions);
+                setupAutocomplete("campus-destino", "campus-destino-suggestions", campusOptions);
+                setupAutocomplete("carrera", "carrera-suggestions", carreraOptions);
+                setupAutocomplete("descuento-valor", "descuento-suggestions", descuentoOptions);
+                
+                handleBloqueOptions();
+
+                // Save
+                const saveBtn = document.getElementById("btn-save-transfer-changes");
+                if (saveBtn) {
+                     // Remove old listener if any (not easily possible without ref, but okay for page load)
+                     const newSaveBtn = saveBtn.cloneNode(true) as HTMLButtonElement;
+                     saveBtn.replaceWith(newSaveBtn);
+                     
+                     newSaveBtn.addEventListener("click", async () => {
+                         const originalText = newSaveBtn.textContent || "Guardar cambios";
+                         newSaveBtn.textContent = "Guardando...";
+                         newSaveBtn.disabled = true;
+
+                         const payload = {
+                             ticketId: (window as any).ticketViewData.ticketId,
+                             prioridad: (document.getElementById("prioridad") as HTMLSelectElement)?.value,
+                             estatusId: (document.getElementById("estatusId") as HTMLSelectElement)?.value,
+                             atiendeId: (document.querySelector("select[name='atiendeId']") as HTMLSelectElement)?.value,
+                             
+                             matricula: (document.getElementById("matricula") as HTMLInputElement)?.value,
+                             alumno: (document.getElementById("alumno") as HTMLInputElement)?.value,
+                             campusOrigen: (document.getElementById("campus-origen") as HTMLInputElement)?.value,
+                             campusDestino: (document.getElementById("campus-destino") as HTMLInputElement)?.value,
+                             carrera: (document.getElementById("carrera") as HTMLInputElement)?.value,
+                             nuevo_ingreso: (document.getElementById("nuevo_ingreso") as HTMLInputElement)?.checked,
+                             tiene_descuento: (document.getElementById("tiene_descuento") as HTMLInputElement)?.checked,
+                             descuento_nombre: (document.getElementById("descuento-valor") as HTMLInputElement)?.value,
+                             bloque_nombre: (document.getElementById("bloque-sugerido") as HTMLSelectElement)?.value,
+                             
+                             auditor_docsId: (document.querySelector("select[name='auditor_docsId']") as HTMLSelectElement)?.value,
+                             auditor_reqId: (document.querySelector("select[name='auditor_reqId']") as HTMLSelectElement)?.value,
+                             validacion_docs: (document.querySelector("input[name='validacion_docs']") as HTMLInputElement)?.checked,
+                             descripcion_docs: (document.querySelector("textarea[name='descripcion_docs']") as HTMLTextAreaElement)?.value,
+                             validacion_edocta: (document.querySelector("input[name='validacion_edocta']") as HTMLInputElement)?.checked,
+                             descripcion_edocta: (document.querySelector("textarea[name='descripcion_edocta']") as HTMLTextAreaElement)?.value,
+                             validacion_calif: (document.querySelector("input[name='validacion_calif']") as HTMLInputElement)?.checked,
+                             descripcion_calif: (document.querySelector("textarea[name='descripcion_calif']") as HTMLTextAreaElement)?.value
+                         };
+
+                         try {
+                             const res = await fetch("/api/tickets/update", {
+                                 method: "PATCH",
+                                 headers: { "Content-Type": "application/json" },
+                                 body: JSON.stringify(payload)
+                             });
+                             if (!res.ok) throw new Error("Error updating ticket");
+                             toast.success("Ticket actualizado correctamente");
+                             setTimeout(() => window.location.reload(), 1000);
+                         } catch (e) {
+                             console.error(e);
+                             toast.error("Error al actualizar");
+                             newSaveBtn.textContent = originalText;
+                             newSaveBtn.disabled = false;
+                         }
+                     });
+                }
+            }
+        };
+        initTransferLogic();
     });
+
 </script>

@@ -15,6 +15,7 @@ model Empresa {
   nombre            String     @db.VarChar(50)
   slug              String     @db.VarChar(50) @unique
   tipo              TipoEmpresa
+  activa            Boolean    @default(true)
   usuarios          Usuario[]
   tickets           Ticket[]
   traslados_origen  Traslado[] @relation("Origen")
@@ -25,13 +26,17 @@ model Empresa {
 }
 
 model Rol {
-  id                 Int                  @id @default(autoincrement())
-  rol                String               @db.VarChar(50)
-  descripcion        String?              @db.Text
-  nivel_soporte      NivelSoporte
-  usuarios           Usuario[]
-  permisos           Permiso[]            @relation()
-  permisos_categoria PermisoCategoria[]
+  id                   Int                  @id @default(autoincrement())
+  rol                  String               @db.VarChar(50)
+  descripcion          String?              @db.Text
+  nivel_soporte        NivelSoporte
+  activo               Boolean              @default(true)
+  atiendeTicketsCsh    Boolean              @default(false)
+  atiendeTicketsMkt    Boolean              @default(false)
+  usuarios             Usuario[]
+  permisos             Permiso[]            @relation()
+  permisos_categoria   PermisoCategoria[]
+  permisos_seccion     PermisoRolSeccion[]
 
   @@map("rol")
 }
@@ -62,6 +67,7 @@ model Usuario {
   mail                     String                   @db.VarChar(60) @unique
   nombres                  String                   @db.VarChar(50)
   apellidos                String                   @db.VarChar(50)
+  alias                    String?                  @db.VarChar(50)
   image                    String?                  @db.Text
   empresaId                Int
   rolId                    Int
@@ -70,6 +76,8 @@ model Usuario {
   ultimo_login             DateTime                 @default(now()) @db.Timestamp(6)
   horario_disponibilidad   Json?                    @db.JsonB
   carga_actual             Int                      @default(0)
+  auditor_docs             Boolean                  @default(false)
+  auditor_req              Boolean                  @default(false)
   empresa                  Empresa                  @relation(fields: [empresaId], references: [id])
   rol                      Rol                      @relation(fields: [rolId], references: [id])
   asignaciones_categorias  AsignacionesCategorias[]
@@ -78,8 +86,11 @@ model Usuario {
   historial_solicitudes    HistorialSolicitud[]
   traslados_auditor_docs   Traslado[]               @relation("AuditorDocs")
   traslados_auditor_req    Traslado[]               @relation("AuditorReq")
+  trl_mail                 Boolean   @default(false)
+  trl_coord                Boolean   @default(false)
   notificaciones_correo    NotificacionesCorreo[]
   logs                     Logs[]
+  permisos_seccion         PermisoUsuarioSeccion[]
 
   @@map("usuario")
 }
@@ -102,6 +113,7 @@ model Ciclo {
   fecha_fin    DateTime @db.Timestamp(6)
   activo       Boolean  @default(false)
   bloques      Bloque[]
+  tickets      Ticket[]
 
   @@map("ciclo")
 }
@@ -189,11 +201,18 @@ model AsignacionesCategorias {
   atiendeId      Int
   categoriaId    Int?
   subcategoriaId Int?
-  activo         Boolean       @default(false)
-  atiende        Usuario       @relation(fields: [atiendeId], references: [id])
-  categoria      Categoria?    @relation(fields: [categoriaId], references: [id])
-  subcategoria   Subcategoria? @relation(fields: [subcategoriaId], references: [id])
+  activo         Boolean       @default(true)
+  prioridad      Int           @default(5)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
 
+  atiende        Usuario       @relation(fields: [atiendeId], references: [id], onDelete: Cascade)
+  categoria      Categoria?    @relation(fields: [categoriaId], references: [id], onDelete: Cascade)
+  subcategoria   Subcategoria? @relation(fields: [subcategoriaId], references: [id], onDelete: Cascade)
+
+  @@unique([atiendeId, categoriaId, subcategoriaId])
+  @@index([categoriaId, subcategoriaId, activo])
+  @@index([atiendeId, activo])
   @@map("asignaciones_categorias")
 }
 
@@ -208,7 +227,10 @@ model Ticket {
   atiendeId             Int?
   prioridad             Prioridad
   descripcion           String?                @db.Text
+  afectado_clave        String?                @db.VarChar(20)
+  afectado_nombre       String?                @db.VarChar(150)
   empresaId             Int
+  cicloId               Int?
   archivado             Boolean                @default(false)
   archivos              Json?                  @db.JsonB
   estatus               Estatus                @relation(fields: [estatusId], references: [id])
@@ -217,6 +239,7 @@ model Ticket {
   solicitante           Usuario                @relation("Solicitante", fields: [solicitanteId], references: [id])
   atiende               Usuario?               @relation("Atiende", fields: [atiendeId], references: [id])
   empresa               Empresa                @relation(fields: [empresaId], references: [id])
+  ciclo                 Ciclo?                 @relation(fields: [cicloId], references: [id])
   traslados             Traslado[]
   historial_solicitudes HistorialSolicitud[]
   notificaciones_correo NotificacionesCorreo[]
@@ -238,24 +261,41 @@ model Traslado {
   id             Int       @id @default(autoincrement())
   ticketId       Int       @unique
   folio          String    @db.VarChar(10) @unique
-  matricula      String    @db.VarChar(10) @unique
+  matricula      String    @db.VarChar(10)
   alumno         String    @db.VarChar(100)
   origenId       Int
   destinoId      Int
   carreraId      Int
   descuentoId    Int
-  bloqueId       Int
+  bloqueId       Int?
+  bloque_nombre  String?   @db.VarChar(20)
   actualizacion  Boolean   @default(false)
   planpagoId     Int?
   auditor_docsId Int?
   auditor_reqId  Int?
   especial       Boolean   @default(false)
+  nuevo_ingreso  Boolean   @default(false)
+  mail           String?   @db.VarChar(100)
+  mail_escuela   String?   @db.VarChar(100)
+  telefono       String?   @db.VarChar(20)
+  tel_movil      String?   @db.VarChar(20)
+
+  // Validacion Auditor Documentos
+  validacion_docs        Boolean   @default(false)
+  descripcion_docs       String?   @db.Text
+
+  // Validacion Auditor Requisitos (Calificaciones y Estado de Cuenta)
+  validacion_calif       Boolean   @default(false)
+  descripcion_calif      String?   @db.Text
+  validacion_edocta      Boolean   @default(false)
+  descripcion_edocta     String?   @db.Text
+
   ticket         Ticket    @relation(fields: [ticketId], references: [id])
   origen         Empresa   @relation("Origen", fields: [origenId], references: [id])
   destino        Empresa   @relation("Destino", fields: [destinoId], references: [id])
   carrera        Carrera   @relation(fields: [carreraId], references: [id])
   descuento      Descuento @relation(fields: [descuentoId], references: [id])
-  bloque         Bloque    @relation(fields: [bloqueId], references: [id])
+  bloque         Bloque?    @relation(fields: [bloqueId], references: [id])
   planpago       PlanPago? @relation(fields: [planpagoId], references: [id])
   auditor_docs   Usuario?  @relation("AuditorDocs", fields: [auditor_docsId], references: [id])
   auditor_req    Usuario?  @relation("AuditorReq", fields: [auditor_reqId], references: [id])
@@ -319,12 +359,18 @@ model PermisoCategoria {
   rolId          Int
   categoriaId    Int?
   subcategoriaId Int?
+  activo         Boolean       @default(true)
+  prioridad      Int           @default(0)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
 
-  rol            Rol           @relation(fields: [rolId], references: [id])
-  categoria      Categoria?    @relation(fields: [categoriaId], references: [id])
-  subcategoria   Subcategoria? @relation(fields: [subcategoriaId], references: [id])
+  rol            Rol           @relation(fields: [rolId], references: [id], onDelete: Cascade)
+  categoria      Categoria?    @relation(fields: [categoriaId], references: [id], onDelete: Cascade)
+  subcategoria   Subcategoria? @relation(fields: [subcategoriaId], references: [id], onDelete: Cascade)
 
   @@unique([rolId, categoriaId, subcategoriaId])
+  @@index([categoriaId, subcategoriaId, activo])
+  @@index([rolId, activo])
   @@map("permiso_categoria")
 }
 
@@ -386,4 +432,54 @@ enum EstatusCorreo {
   Enviado
   Pendiente
   Fallido
+}
+
+// ==========================================
+// Módulo de Permisos por Secciones (RBAC)
+// ==========================================
+
+model Seccion {
+  id               Int                     @id @default(autoincrement())
+  nombre           String                  @db.VarChar(100)
+  identificador    String                  @unique @db.VarChar(100)
+  grupo            String?                 @db.VarChar(50)
+  subgrupo         String?                 @db.VarChar(50)
+  descripcion      String?                 @db.Text
+  activo           Boolean                 @default(true)
+  permisos_rol     PermisoRolSeccion[]
+  permisos_usuario PermisoUsuarioSeccion[]
+
+  @@map("seccion")
+}
+
+model PermisoRolSeccion {
+  id         Int      @id @default(autoincrement())
+  rolId      Int
+  seccionId  Int
+  activo     Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  rol        Rol      @relation(fields: [rolId], references: [id], onDelete: Cascade)
+  seccion    Seccion  @relation(fields: [seccionId], references: [id], onDelete: Cascade)
+
+  @@unique([rolId, seccionId])
+  @@index([rolId, activo])
+  @@map("permiso_rol_seccion")
+}
+
+model PermisoUsuarioSeccion {
+  id         Int      @id @default(autoincrement())
+  usuarioId  Int
+  seccionId  Int
+  activo     Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  usuario    Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  seccion    Seccion  @relation(fields: [seccionId], references: [id], onDelete: Cascade)
+
+  @@unique([usuarioId, seccionId])
+  @@index([usuarioId, activo])
+  @@map("permiso_usuario_seccion")
 }

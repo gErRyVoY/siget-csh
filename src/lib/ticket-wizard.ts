@@ -1,5 +1,4 @@
-import Swal from 'sweetalert2';
-import 'sweetalert2/dist/sweetalert2.min.css';
+import { toast } from './toast';
 
 // --- Type Definitions ---
 interface SubcategoriaNode {
@@ -30,15 +29,56 @@ export function initTicketWizard(treeData: CategoriesTreeData) {
     // --- DOM Element Cache ---
     const wizard = document.getElementById('wizard');
     const descripcionArea = document.getElementById('descripcion-area');
-    const descripcionTitle = document.getElementById('descripcion-title');
     const descripcionInput = document.getElementById('descripcion') as HTMLTextAreaElement;
+    const closeDescripcionBtn = document.getElementById('close-descripcion-btn');
+
+    // Afectado fields
+    const afectadoFields = document.getElementById('afectado-fields');
+    const afectadoClave = document.getElementById('afectado_clave') as HTMLInputElement;
+    const afectadoNombre = document.getElementById('afectado_nombre') as HTMLInputElement;
+    const lblClave = document.getElementById('lbl-clave');
+
     const submitButton = document.getElementById('submit-ticket') as HTMLButtonElement;
     const ticketForm = document.getElementById('ticket-form');
+    
+    // File Upload Elements
+    const dropZone = document.getElementById('drop-zone');
+    const attachmentArea = document.getElementById('attachment-area');
+    const fileInput = document.getElementById('file-input') as HTMLInputElement | null;
+    const uploadButton = document.getElementById('upload-files-button');
+    const googleDriveButton = document.getElementById('google-drive-button');
 
-    if (!wizard || !descripcionArea || !descripcionTitle || !descripcionInput || !submitButton || !ticketForm) {
-        console.error('Wizard initialization failed: One or more required DOM elements are missing.');
+    if (!wizard || !descripcionArea || !descripcionInput || !submitButton || !ticketForm || !afectadoFields || !afectadoClave || !afectadoNombre || !lblClave) {
+        console.error('Wizard initialization failed: One or more required DOM elements are missing.', {
+            wizard, descripcionArea, descripcionInput, submitButton, ticketForm, 
+            afectadoFields, afectadoClave, afectadoNombre, lblClave
+        });
         return;
     }
+
+    // --- Upload State & Constants ---
+    const MAX_FILE_SIZE_MB = 5;
+    const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
+    const ALLOWED_FORMATS = [
+        'image/jpeg',
+        'image/png',
+        'application/pdf',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    ];
+    let stagedFiles: Array<{ file: File; id: number; isValid: boolean; reason: string | null }> = [];
+
+    // Google API Credentials
+    const GOOGLE_API_KEY = ticketForm.dataset.googleApiKey;
+    const GOOGLE_CLIENT_ID = ticketForm.dataset.googleClientId;
+    const GOOGLE_APP_ID = ticketForm.dataset.googleAppId;
+
+    let tokenClient: any;
+    let accessToken: string | null = null;
+    let pickerInited = false;
+    let gisInited = false;
+    const SCOPES = "https://www.googleapis.com/auth/drive.readonly";
+    const allowedMimeTypes = ALLOWED_FORMATS.join(",");
 
     // --- Core Functions ---
 
@@ -101,11 +141,49 @@ export function initTicketWizard(treeData: CategoriesTreeData) {
         });
     }
 
+    function hideDescriptionArea() {
+        if (descripcionArea) descripcionArea.classList.add('hidden');
+        // Mostrar nuevamente todos los elementos de las listas
+        const allListItems = wizard!.querySelectorAll('li');
+        allListItems.forEach(li => {
+            li.classList.remove('hidden');
+        });
+    }
+
     function showDescriptionArea() {
-        if (!descripcionArea || !descripcionTitle || !descripcionInput) return;
-        const path = [selection.categoria?.nombre, ...selection.nodes.map(n => n.nombre)].filter(Boolean).join(' > ');
+        if (!descripcionArea || !descripcionInput) return;
         descripcionArea.classList.remove('hidden');
-        descripcionTitle.textContent = `Describe tu solicitud para: ${path}`;
+
+        // Ocultar los elementos no seleccionados en todas las columnas activas
+        const allListItems = wizard!.querySelectorAll('li');
+        allListItems.forEach(li => {
+            const btn = li.querySelector('button');
+            if (btn && !btn.classList.contains('bg-secondary')) {
+                li.classList.add('hidden');
+            }
+        });
+
+        // Logic for affected fields
+        if (selection.categoria) {
+            const catId = selection.categoria.id;
+            // 1: Alumno, 2: Aspirante, 3: Colaborador, 4: Docente
+            if ([1, 2, 3, 4].includes(catId)) {
+                afectadoFields!.classList.remove('hidden');
+                afectadoFields!.classList.add('grid');
+
+                let labelText = 'Clave';
+                if (catId === 1) labelText = 'Matrícula';
+                else if (catId === 2) labelText = 'Folio';
+
+                lblClave!.textContent = labelText;
+            } else {
+                afectadoFields!.classList.add('hidden');
+                afectadoFields!.classList.remove('grid');
+                afectadoClave.value = '';
+                afectadoNombre.value = '';
+            }
+        }
+
         validateForm();
         descripcionArea.scrollIntoView({ behavior: 'smooth', block: 'center' });
         descripcionInput.focus();
@@ -124,7 +202,7 @@ export function initTicketWizard(treeData: CategoriesTreeData) {
         selectedButton.classList.add('bg-secondary', 'text-secondary-foreground');
 
         removeColumns(colIndex + 1);
-        if(descripcionArea) descripcionArea.classList.add('hidden');
+        hideDescriptionArea();
 
         if (type === 'categoria') {
             const categoria = treeData.find(c => c.id === id);
@@ -145,6 +223,12 @@ export function initTicketWizard(treeData: CategoriesTreeData) {
 
             if (!subcatNode) return;
 
+            // Redirección para Traslado
+            if (subcatNode.id === 58) {
+                window.location.href = "/tickets/soporte/traslado";
+                return;
+            }
+
             selection.nodes.splice(colIndex - 1);
             selection.nodes.push(subcatNode);
 
@@ -164,8 +248,227 @@ export function initTicketWizard(treeData: CategoriesTreeData) {
             (selection.categoria && selection.categoria.subcategorias.length === 0) ||
             (lastSelectedNode && lastSelectedNode.children.length === 0);
 
-        submitButton.disabled = !(isSelectionFinal && hasDescription);
+        let areAfectadoFieldsValid = true;
+        if (afectadoFields && !afectadoFields.classList.contains('hidden')) {
+            areAfectadoFieldsValid =
+                afectadoClave.value.trim().length > 0 &&
+                afectadoNombre.value.trim().length > 0;
+        }
+
+        submitButton.disabled = !(isSelectionFinal && hasDescription && areAfectadoFieldsValid);
     }
+
+    // --- File Upload Logic ---
+    const initGoogleDrive = () => {
+        if (!document.querySelector('script[src="https://apis.google.com/js/api.js"]')) {
+            const script1 = document.createElement("script");
+            script1.src = "https://apis.google.com/js/api.js";
+            script1.async = true;
+            script1.defer = true;
+            script1.onload = () => {
+                (window as any).gapi.load("client:picker", async () => {
+                    await (window as any).gapi.client.load(
+                        "https://www.googleapis.com/discovery/v1/apis/drive/v3/rest",
+                    );
+                    pickerInited = true;
+                });
+            };
+            document.body.appendChild(script1);
+        } else {
+            pickerInited = true;
+        }
+
+        if (!document.querySelector('script[src="https://accounts.google.com/gsi/client"]')) {
+            const script2 = document.createElement("script");
+            script2.src = "https://accounts.google.com/gsi/client";
+            script2.async = true;
+            script2.defer = true;
+            script2.onload = () => {
+                if (!(window as any).google) return;
+                tokenClient = (window as any).google.accounts.oauth2.initTokenClient({
+                    client_id: GOOGLE_CLIENT_ID,
+                    scope: SCOPES,
+                    callback: "",
+                });
+                gisInited = true;
+            };
+            document.body.appendChild(script2);
+        } else {
+            if ((window as any).google?.accounts) {
+                tokenClient = (window as any).google.accounts.oauth2.initTokenClient({
+                    client_id: GOOGLE_CLIENT_ID,
+                    scope: SCOPES,
+                    callback: "",
+                });
+                gisInited = true;
+            }
+        }
+    };
+
+    const handleAuthClick = () => {
+        if (!GOOGLE_API_KEY || !GOOGLE_CLIENT_ID || !GOOGLE_APP_ID) {
+            toast.error("Faltan credenciales de Google Drive.");
+            return;
+        }
+
+        if (accessToken) {
+            createPicker();
+            return;
+        }
+
+        tokenClient.callback = async (response: any) => {
+            if (response.error !== undefined) {
+                throw response;
+            }
+            accessToken = response.access_token;
+            createPicker();
+        };
+
+        if (accessToken === null) {
+            tokenClient.requestAccessToken({ prompt: "consent" });
+        } else {
+            tokenClient.requestAccessToken({ prompt: "" });
+        }
+    };
+
+    const createPicker = () => {
+        if (!pickerInited || (!accessToken && !gisInited)) {
+            toast.error("Google API no está lista aún.");
+            return;
+        }
+
+        const view = new (window as any).google.picker.DocsView();
+        view.setIncludeFolders(true);
+        view.setMimeTypes(allowedMimeTypes);
+        view.setSelectFolderEnabled(false);
+        view.setParent("root");
+
+        const picker = new (window as any).google.picker.PickerBuilder()
+            .enableFeature((window as any).google.picker.Feature.NAV_HIDDEN)
+            .enableFeature((window as any).google.picker.Feature.MULTISELECT_ENABLED)
+            .setAppId(GOOGLE_APP_ID)
+            .setOAuthToken(accessToken!)
+            .addView(view)
+            .addView(new (window as any).google.picker.DocsUploadView())
+            .setDeveloperKey(GOOGLE_API_KEY)
+            .setCallback(pickerCallback)
+            .build();
+        picker.setVisible(true);
+    };
+
+    const pickerCallback = async (data: any) => {
+        if (data.action === (window as any).google.picker.Action.PICKED) {
+            const documents = data[(window as any).google.picker.Response.DOCUMENTS];
+            const newFiles: File[] = [];
+
+            toast.info("Procesando archivos de Drive...");
+
+            try {
+                for (const doc of documents) {
+                    const fileId = doc[(window as any).google.picker.Document.ID];
+                    const name = doc[(window as any).google.picker.Document.NAME];
+                    const mimeType = doc[(window as any).google.picker.Document.MIME_TYPE];
+
+                    const response = await fetch(
+                        `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
+                        {
+                            headers: {
+                                Authorization: `Bearer ${accessToken}`,
+                            },
+                        },
+                    );
+
+                    if (!response.ok) {
+                        toast.error(`Error al descargar ${name} de Drive.`);
+                        continue;
+                    }
+
+                    const blob = await response.blob();
+                    const file = new File([blob], name, { type: mimeType });
+                    newFiles.push(file);
+                }
+
+                if (newFiles.length > 0) {
+                    processNewFiles(newFiles);
+                }
+            } catch (e) {
+                console.error(e);
+                toast.error("Error al procesar archivos de Drive.");
+            }
+        }
+    };
+
+    const validateFile = (file: File) => {
+        if (file.size > MAX_FILE_SIZE_BYTES) {
+            return {
+                isValid: false,
+                reason: `supera ${MAX_FILE_SIZE_MB}MB`,
+            };
+        }
+        if (!ALLOWED_FORMATS.includes(file.type)) {
+            return { isValid: false, reason: "formato no permitido" };
+        }
+        return { isValid: true, reason: null };
+    };
+
+    const formatBytes = (bytes: number) => {
+        if (bytes === 0) return "0 Bytes";
+        const k = 1024;
+        const sizes = ["Bytes", "KB", "MB", "GB"];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
+    };
+
+    const renderStagedFiles = () => {
+        if (!attachmentArea) return;
+        if (stagedFiles.length === 0) {
+            attachmentArea.innerHTML = "";
+            return;
+        }
+
+        const listConfig = stagedFiles
+            .map(
+                (fw) => `
+            <div class="flex items-center justify-between p-2 bg-muted/20 rounded border border-border">
+                <span class="text-sm ${!fw.isValid ? "text-destructive" : "text-foreground"} truncate max-w-[80%]">
+                    ${fw.file.name} (${formatBytes(fw.file.size)})
+                    ${!fw.isValid ? `(${fw.reason})` : ""}
+                </span>
+                <button type="button" class="text-xs text-muted-foreground hover:text-destructive remove-file-btn" data-id="${fw.id}">
+                    ✕
+                </button>
+            </div>
+        `,
+            )
+            .join("");
+
+        attachmentArea.innerHTML = listConfig;
+
+        // Re-attach listeners for remove buttons
+        document.querySelectorAll(".remove-file-btn").forEach((btn) => {
+            btn.addEventListener("click", (e) => {
+                e.stopPropagation(); // prevent triggering dropzone select
+                const id = parseInt((e.target as HTMLElement).dataset.id || "0");
+                stagedFiles = stagedFiles.filter((f) => f.id !== id);
+                renderStagedFiles();
+            });
+        });
+    };
+
+    const processNewFiles = (files: File[]) => {
+        if (stagedFiles.length + files.length > 10) {
+            toast.error("Máximo 10 archivos permitidos.");
+            return;
+        }
+
+        const newStaged = files.map((file, index) => {
+            const validation = validateFile(file);
+            return { file, id: Date.now() + index, ...validation };
+        });
+
+        stagedFiles = [...stagedFiles, ...newStaged];
+        renderStagedFiles();
+    };
 
     async function handleSubmit(e: SubmitEvent) {
         e.preventDefault();
@@ -174,20 +477,7 @@ export function initTicketWizard(treeData: CategoriesTreeData) {
 
         const lastSelectedNode = selection.nodes[selection.nodes.length - 1];
 
-        const Toast = Swal.mixin({
-            toast: true,
-            position: 'bottom',
-            showConfirmButton: false,
-            timer: 3000,
-            timerProgressBar: true,
-            background: '#881912',
-            color: '#FFFFFF',
-            iconColor: '#caab55',
-            didOpen: (toast) => {
-                toast.addEventListener('mouseenter', Swal.stopTimer)
-                toast.addEventListener('mouseleave', Swal.resumeTimer)
-            }
-        });
+        const isAfectadoVisible = !afectadoFields!.classList.contains('hidden');
 
         try {
             const response = await fetch('/api/tickets/create', {
@@ -197,6 +487,8 @@ export function initTicketWizard(treeData: CategoriesTreeData) {
                     categoriaId: selection.categoria?.id,
                     subcategoriaId: lastSelectedNode?.id || null,
                     descripcion: descripcionInput.value,
+                    afectado_clave: isAfectadoVisible ? afectadoClave.value : null,
+                    afectado_nombre: isAfectadoVisible ? afectadoNombre.value : null,
                 }),
             });
 
@@ -205,15 +497,67 @@ export function initTicketWizard(treeData: CategoriesTreeData) {
                 throw new Error(errorData.message);
             }
 
-            await Toast.fire({ icon: 'success', title: '¡Ticket Enviado!' });
-            
+            const resData = await response.json();
+            const ticketId = resData.id;
+
+            // --- 2. Upload Files (if any) ---
+            const validFiles = stagedFiles.filter((f) => f.isValid);
+            if (validFiles.length > 0) {
+                submitButton.innerHTML = `<span class="animate-spin mr-2">⏳</span> Subiendo archivos...`;
+
+                const uploadPromises = validFiles.map(async (fw) => {
+                    try {
+                        const presigned = await fetch("/api/tickets/generate-upload-url", {
+                            method: "POST",
+                            headers: {
+                                "Content-Type": "application/json",
+                            },
+                            body: JSON.stringify({
+                                fileName: fw.file.name,
+                                fileType: fw.file.type,
+                                ticketId: ticketId,
+                            }),
+                        });
+                        if (!presigned.ok) throw new Error("Error URL firma");
+
+                        const { uploadUrl, key } = await presigned.json();
+                        await fetch(uploadUrl, {
+                            method: "PUT",
+                            body: fw.file,
+                            headers: { "Content-Type": fw.file.type },
+                        });
+                        return key;
+                    } catch (err) {
+                        console.error(err);
+                        return null;
+                    }
+                });
+
+                const keys = (await Promise.all(uploadPromises)).filter((k) => k !== null);
+
+                // --- 3. Update Ticket with files ---
+                if (keys.length > 0) {
+                    await fetch("/api/tickets/update", {
+                        method: "PATCH",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            ticketId: ticketId,
+                            newFiles: keys,
+                            newComment: "Archivos adjuntos en creación.",
+                        }),
+                    });
+                }
+            }
+
+            toast.success('¡Ticket Enviado!', { duration: 3000 });
+
             setTimeout(() => {
                 window.location.href = '/tickets/soporte';
             }, 1500);
 
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'No se pudo crear el ticket.';
-            Toast.fire({ icon: 'error', title: 'Error', text: errorMessage });
+            toast.error(errorMessage);
             submitButton.disabled = false;
             submitButton.textContent = 'Crear Ticket';
         }
@@ -231,12 +575,80 @@ export function initTicketWizard(treeData: CategoriesTreeData) {
             const colIndex = parseInt(closeButton.dataset.closeCol!, 10);
             removeColumns(colIndex);
             selection.nodes.splice(colIndex - 1);
-            if(descripcionArea) descripcionArea.classList.add('hidden');
+            hideDescriptionArea();
             validateForm();
         }
     });
 
     descripcionInput.addEventListener('input', validateForm);
+    afectadoClave.addEventListener('input', validateForm);
+    afectadoNombre.addEventListener('input', validateForm);
+
+    // --- File Listeners ---
+    if (uploadButton && fileInput) {
+        uploadButton.addEventListener("click", () => fileInput.click());
+        fileInput.addEventListener("change", (e) => {
+            const target = e.target as HTMLInputElement;
+            if (target.files) {
+                processNewFiles(Array.from(target.files));
+                target.value = "";
+            }
+        });
+    }
+
+    if (googleDriveButton) {
+        googleDriveButton.addEventListener("click", handleAuthClick);
+    }
+
+    if (dropZone) {
+        dropZone.addEventListener("dragover", (e) => {
+            e.preventDefault();
+            dropZone.classList.add("bg-muted/50", "border-primary");
+        });
+        dropZone.addEventListener("dragleave", (e) => {
+            e.preventDefault();
+            dropZone.classList.remove("bg-muted/50", "border-primary");
+        });
+        dropZone.addEventListener("drop", (e) => {
+            e.preventDefault();
+            dropZone.classList.remove("bg-muted/50", "border-primary");
+            if (e.dataTransfer?.files) {
+                processNewFiles(Array.from(e.dataTransfer.files));
+            }
+        });
+        dropZone.addEventListener("click", (e) => {
+            if (!(e.target as HTMLElement).closest(".remove-file-btn")) {
+                fileInput?.click();
+            }
+        });
+    }
+
+    if (closeDescripcionBtn) {
+        closeDescripcionBtn.addEventListener('click', () => {
+            hideDescriptionArea();
+        });
+    }
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            if (descripcionArea && !descripcionArea.classList.contains('hidden')) {
+                hideDescriptionArea();
+            } else {
+                const closeBtns = Array.from(wizard!.querySelectorAll('button[data-close-col]')) as HTMLButtonElement[];
+                if (closeBtns.length > 0) {
+                    const lastCloseBtn = closeBtns.reduce((prev, current) => {
+                        const prevIdx = parseInt(prev.getAttribute('data-close-col')!, 10);
+                        const currIdx = parseInt(current.getAttribute('data-close-col')!, 10);
+                        return (currIdx > prevIdx) ? current : prev;
+                    });
+                    lastCloseBtn.click();
+                }
+            }
+        }
+    });
+
+    initGoogleDrive();
+
     ticketForm.addEventListener('submit', handleSubmit);
 
     // --- Initial Render ---

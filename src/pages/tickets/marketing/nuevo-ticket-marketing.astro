@@ -1,0 +1,194 @@
+---
+import MainLayout from "@/layouts/MainLayout.astro";
+import categoriesData from "@/data/categories.json";
+import { getSession } from "auth-astro/server";
+
+const session = await getSession(Astro.request);
+const user = session?.user;
+
+if (!user) {
+    return Astro.redirect("/login");
+}
+
+// Filtrar solo la categoría Marketing (ID 12)
+const marketingCategory = categoriesData.find((c) => c.id === 12);
+
+const GOOGLE_API_KEY = import.meta.env.PUBLIC_GOOGLE_API_KEY;
+const GOOGLE_CLIENT_ID = import.meta.env.PUBLIC_GOOGLE_CLIENT_ID;
+const GOOGLE_APP_ID = import.meta.env.PUBLIC_GOOGLE_APP_ID;
+---
+
+<MainLayout title="Nuevo ticket para Marketing">
+    <div class="max-w-5xl space-y-6">
+        <div
+            id="marketing-wizard"
+            class="flex flex-row gap-4 overflow-x-auto pb-4"
+        >
+            <!-- La primera columna mostrará las subcategorías directas de Marketing (Diseño, Redes, Video, etc.) -->
+        </div>
+
+        <!-- Área de Descripción y Envío -->
+        <div
+            id="descripcion-area"
+            class="max-w-4xl mt-4 p-4 bg-card border rounded-lg hidden"
+        >
+            <div class="w-full flex justify-end mb-2">
+                <button
+                    type="button"
+                    id="close-descripcion-btn"
+                    class="p-1 rounded-md hover:bg-accent text-muted-foreground transition-colors"
+                    title="Cerrar y mostrar opciones"
+                >
+                    <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="20"
+                        height="20"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        class="lucide lucide-x"
+                        ><path d="M18 6 6 18"></path><path d="m6 6 12 12"
+                        ></path></svg
+                    >
+                </button>
+            </div>
+            <h3
+                id="descripcion-title"
+                class="font-semibold mb-2 text-card-foreground"
+            >
+                Describe tu solicitud
+            </h3>
+            <form
+                id="ticket-form"
+                data-google-api-key={GOOGLE_API_KEY}
+                data-google-client-id={GOOGLE_CLIENT_ID}
+                data-google-app-id={GOOGLE_APP_ID}
+            >
+                <!-- Campos dinámicos para datos del afectado (si aplica) -->
+                <div
+                    id="afectado-fields"
+                    class="hidden grid-cols-1 md:grid-cols-2 gap-4 mb-4"
+                >
+                    <div>
+                        <label
+                            id="lbl-clave"
+                            for="afectado_clave"
+                            class="block text-sm font-medium text-foreground mb-1"
+                            >Clave / Matrícula</label
+                        >
+                        <input
+                            type="text"
+                            id="afectado_clave"
+                            name="afectado_clave"
+                            class="w-full rounded-md border-border bg-input p-2 text-sm focus:outline-none focus:ring-1 focus:ring-secondary focus:border-secondary"
+                        />
+                    </div>
+                    <div>
+                        <label
+                            for="afectado_nombre"
+                            class="block text-sm font-medium text-foreground mb-1"
+                            >Nombre Completo</label
+                        >
+                        <input
+                            type="text"
+                            id="afectado_nombre"
+                            name="afectado_nombre"
+                            class="w-full rounded-md border-border bg-input p-2 text-sm focus:outline-none focus:ring-1 focus:ring-secondary focus:border-secondary"
+                        />
+                    </div>
+                </div>
+
+                <textarea
+                    id="descripcion"
+                    name="descripcion"
+                    rows="4"
+                    class="mt-1 block w-full rounded-md border-border bg-input p-2 accent-secondary focus:outline-none focus:ring-1 focus:ring-secondary focus:border-secondary"
+                    placeholder="Detalla tu requerimiento..."></textarea>
+
+                <!-- File upload section -->
+                <div class="space-y-4 pt-4">
+                    <div
+                        class="grid grid-cols-1 md:grid-cols-2 gap-4 w-full items-stretch"
+                    >
+                        <div class="space-y-2 h-full">
+                            <div
+                                id="drop-zone"
+                                class="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 flex flex-col items-center justify-center hover:bg-muted/50 transition-colors cursor-pointer relative h-full min-h-[120px]"
+                            >
+                                <p
+                                    class="text-sm text-muted-foreground text-center"
+                                >
+                                    Arrastre sus archivos aquí
+                                </p>
+                                <div
+                                    id="attachment-area"
+                                    class="text-left w-full mt-auto"
+                                >
+                                </div>
+                            </div>
+                        </div>
+
+                        <div
+                            class="flex flex-col justify-end items-end gap-2 rounded-lg border border-transparent"
+                        >
+                            <div
+                                id="action-buttons-container"
+                                class="flex flex-wrap justify-end items-center gap-2 w-full"
+                            >
+                                <button
+                                    type="button"
+                                    id="upload-files-button"
+                                    class="bg-muted-foreground text-white hover:bg-muted-foreground/80 px-4 py-2 rounded-md text-sm font-semibold shrink-0 h-10"
+                                >
+                                    Seleccionar
+                                </button>
+                                <button
+                                    type="button"
+                                    id="google-drive-button"
+                                    class="bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 rounded-md flex items-center justify-center h-10 w-10 shrink-0"
+                                    title="Adjuntar desde Google Drive"
+                                >
+                                    <img
+                                        src="/Google_Drive_icon.svg"
+                                        width="24"
+                                        height="24"
+                                        alt="Google Drive"
+                                    />
+                                </button>
+                                <button
+                                    type="submit"
+                                    id="submit-ticket"
+                                    class="bg-primary text-primary-foreground hover:bg-primary/90 px-6 py-2 rounded-md text-sm font-semibold shrink-0 h-10 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    disabled
+                                >
+                                    Crear Ticket
+                                </button>
+                            </div>
+                            <p
+                                id="help-text"
+                                class="text-xs text-secondary text-right w-full mt-1"
+                            >
+                                * Máximo 5MB cada uno. Formatos permitidos: jpg,
+                                png, pdf, docx, xlsx, zip, mp4
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                <input type="file" id="file-input" multiple class="hidden" />
+            </form>
+        </div>
+    </div>
+
+    <!-- Pasamos solo la data de marketing -->
+    <script
+        id="marketing-data"
+        type="application/json"
+        is:inline
+        set:html={JSON.stringify(marketingCategory)}
+    />
+</MainLayout>
+
+<script src="../../../scripts/init-nuevo-ticket-marketing.ts"></script>

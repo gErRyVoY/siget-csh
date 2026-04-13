@@ -1,4 +1,4 @@
-declare const Swal: any;
+import { toast } from '@/lib/toast';
 
 declare global {
     interface Window {
@@ -6,13 +6,22 @@ declare global {
     }
 }
 
+declare const gapi: any;
+declare const google: any;
+
 let ticketId: number;
 let ticket: any;
 let statuses: any[];
 
 const MAX_FILE_SIZE_MB = 5;
 const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
-const ALLOWED_FORMATS = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'];
+const ALLOWED_FORMATS = [
+    'image/jpeg',
+    'image/png',
+    'application/pdf',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+];
 
 let stagedFiles: { file: File; id: number; isValid: boolean; reason: string | null; }[] = [];
 let isDeleteSelectionMode = false;
@@ -76,104 +85,51 @@ function renderStagedFiles() {
                 </li>
             `).join('') + '</ul>';
     }
-    
+
     attachmentArea.innerHTML = listHtml;
     deleteFilesButton.classList.remove('hidden');
 }
 
-export function initFileUploads() {
-    const uploadButton = document.getElementById('upload-files-button');
-    const fileInput = document.getElementById('file-input') as HTMLInputElement;
-    const deleteFilesButton = document.getElementById('delete-files-button');
 
-    if (!uploadButton || !fileInput || !deleteFilesButton) return;
 
-    uploadButton.addEventListener('click', () => fileInput.click());
+function showStatusConfirmation(): Promise<boolean | null> {
+    return new Promise((resolve) => {
+        const modal = document.getElementById('status-change-confirmation-modal');
+        const btnYes = document.getElementById('confirm-status-change-yes');
+        const btnNo = document.getElementById('confirm-status-change-no');
+        const overlay = document.getElementById('status-change-modal-overlay');
 
-    fileInput.addEventListener('change', (e) => {
-        const target = e.target as HTMLInputElement;
-        if (!target.files) return;
-
-        const newFiles = Array.from(target.files);
-
-        if (stagedFiles.length + newFiles.length > 10) {
-            Swal.fire({
-                background: '#881912',
-                color: '#FFFFFF',
-                customClass: { popup: 'Montserrat' },
-                icon: 'error',
-                iconColor: '#CAAB55',
-                position: 'bottom',
-                showConfirmButton: false,
-                text: 'No puede seleccionar más de 10 archivos en total.',
-                timer: 4000,
-                timerProgressBar: true,
-                title: 'Límite de archivos excedido',
-                toast: true
-            });
-            target.value = '';
+        if (!modal || !btnYes || !btnNo) {
+            resolve(null);
             return;
         }
 
-        let hasInvalidFiles = false;
-        const newStagedFiles = newFiles.map((file, index) => {
-            const validation = validateFile(file);
-            if (!validation.isValid) hasInvalidFiles = true;
-            const id = Date.now() + index; // Use timestamp for more robust unique ID
-            return { file, id, ...validation };
-        });
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
 
-        stagedFiles = stagedFiles.concat(newStagedFiles);
+        const cleanup = () => {
+            btnYes.removeEventListener('click', handleYes);
+            btnNo.removeEventListener('click', handleNo);
+            overlay?.removeEventListener('click', handleNo);
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        };
 
-        if (hasInvalidFiles) {
-            Swal.fire({
-                toast: true, position: 'bottom', showConfirmButton: false, timer: 4000, timerProgressBar: true,
-                icon: 'warning', title: 'Valide sus archivos', text: 'Algunos no cumplen con los requisitos y no serán adjuntados.', color: '#FFFFFF', background: '#881912'
-            });
-        }
+        const handleYes = (e: Event) => {
+            e.preventDefault();
+            cleanup();
+            resolve(true);
+        };
 
-        isDeleteSelectionMode = false;
-        deleteFilesButton.textContent = 'Borrar archivos';
-        renderStagedFiles();
-        target.value = '';
-    });
+        const handleNo = (e: Event) => {
+            e.preventDefault();
+            cleanup();
+            resolve(false);
+        };
 
-    deleteFilesButton.addEventListener('click', () => {
-        if (isDeleteSelectionMode) {
-            const selectedIds = Array.from(document.querySelectorAll('.file-delete-checkbox:checked')).map(cb => parseInt((cb as HTMLInputElement).dataset.fileId!));
-            stagedFiles = stagedFiles.filter(fw => !selectedIds.includes(fw.id));
-            isDeleteSelectionMode = false;
-            deleteFilesButton.textContent = 'Borrar archivos';
-            renderStagedFiles();
-        } else {
-            Swal.fire({
-                title: 'Elige el tipo de borrado:',
-                icon: 'warning',
-                iconColor: '#CAAB55',
-                showCancelButton: true,
-                confirmButtonColor: '#881912',
-                cancelButtonColor: '#797979',
-                confirmButtonText: 'Borrar todos',
-                cancelButtonText: 'Seleccionar',
-                customClass: {
-                    popup: 'Montserrat'
-                }
-            }).then((result: any) => {
-                if (result.isConfirmed) {
-                    stagedFiles = [];
-                    renderStagedFiles();
-                } else if (result.dismiss === Swal.DismissReason.cancel) {
-                    stagedFiles = stagedFiles.filter(fw => fw.isValid);
-                    if (stagedFiles.length > 0) {
-                        isDeleteSelectionMode = true;
-                        deleteFilesButton.textContent = 'Borrar selección';
-                        renderStagedFiles();
-                    } else {
-                        renderStagedFiles();
-                    }
-                }
-            });
-        }
+        btnYes.addEventListener('click', handleYes);
+        btnNo.addEventListener('click', handleNo);
+        overlay?.addEventListener('click', handleNo);
     });
 }
 
@@ -191,24 +147,48 @@ export function initEditForm() {
         const newComment = newCommentElement ? newCommentElement.value.trim() : '';
 
         if (validFilesToUpload.length > 0 && newComment.length < 10) {
-            Swal.fire('Comentario requerido', 'Si desea adjuntar archivos, por favor inserte un comentario descriptivo (mínimo 10 caracteres).', 'warning');
+            toast.warning('Si desea adjuntar archivos, por favor inserte un comentario descriptivo (mínimo 10 caracteres).');
             return;
+        }
+
+        // Confirmation Logic for Creator on Closed Tickets
+        const isCreator = window.ticketViewData?.isCreator;
+        const currentStatus = ticket.estatus.nombre;
+        const closedStatuses = ['Cancelado', 'Duplicado', 'Solucionado'];
+        let finalStatusId = estatusSelect.value;
+
+        if (isCreator && closedStatuses.includes(currentStatus)) {
+            const confirmed = await showStatusConfirmation();
+            if (confirmed === true) {
+                const enEsperaStatus = statuses.find(s => s.nombre === 'En espera');
+                if (enEsperaStatus) {
+                    finalStatusId = String(enEsperaStatus.id);
+                }
+            }
+            // If confirmed === false, we keep the current status (do nothing to finalStatusId)
+            // If confirmed === null (modal error), we proceed as is
+        } else if (closedStatuses.includes(currentStatus) && newComment.length >= 10 && estatusSelect.value === String(ticket.estatusId)) {
+            // Logic for Resolvers (or if not caught by above): If adding comment on closed ticket, maybe auto-reopen?
+            // User requirement: "Por otro lado si el ticket ya está solucionado y se guarda que el estado permanezca, excepto si se coloca otro estatus"
+            // So we actually DON'T want to auto-change to 'En progreso' here for Resolvers if it's solved.
+            // The previous logic had:
+            /*
+            if (closedStatuses.includes(initialStatus) && newComment.length >= 10 && estatusSelect.value === String(ticket.estatusId)) {
+               const enProgresoStatus = statuses.find(s => s.nombre === 'En progreso');
+               if (enProgresoStatus) finalStatusId = String(enProgresoStatus.id);
+            }
+            */
+            // We should REMOVE or modify this based on "que el estado permanezca".
+            // So I will remove the auto-transition to 'En progreso' for closed tickets unless explicitly requested.
+            // But wait, the previous code block did exactly that. I should probably remove it to comply with "permanezca".
+        } else if (currentStatus === 'Nuevo' && estatusSelect.value === String(ticket.estatusId)) {
+            // Auto-transition from 'Nuevo' to 'En progreso' is handled in Backend for Resolvers.
+            // For Creators, it should stay 'Nuevo'. Backend handles this too.
         }
 
         if (submitButton) {
             submitButton.disabled = true;
             submitButton.textContent = 'Guardando...';
-        }
-
-        const initialStatus = ticket.estatus.nombre;
-        const closedStatuses = ['Cancelado', 'Duplicado', 'Solucionado'];
-        let finalStatusId = estatusSelect.value;
-
-        if (closedStatuses.includes(initialStatus) && newComment.length >= 10 && estatusSelect.value === String(ticket.estatusId)) {
-            const enProgresoStatus = statuses.find(s => s.nombre === 'En progreso');
-            if (enProgresoStatus) {
-                finalStatusId = String(enProgresoStatus.id);
-            }
         }
 
         let uploadedFileKeys: string[] = [];
@@ -232,7 +212,7 @@ export function initEditForm() {
             const results = await Promise.all(uploadPromises);
             uploadedFileKeys = results.filter((key): key is string => key !== null);
             if (uploadedFileKeys.length !== validFilesToUpload.length) {
-                Swal.fire('Error de subida', 'Algunos archivos no se pudieron subir. Por favor, inténtalo de nuevo.', 'error');
+                toast.error('Algunos archivos no se pudieron subir. Por favor, inténtalo de nuevo.');
                 if (submitButton) { submitButton.disabled = false; submitButton.textContent = 'Guardar cambios'; }
                 return;
             }
@@ -242,11 +222,16 @@ export function initEditForm() {
         const data = {
             ticketId: ticketId,
             estatusId: finalStatusId,
-            prioridad: formData.get('prioridad'),
-            atiendeId: formData.get('atiendeId'),
-            archivado: (form.elements.namedItem('archivado') as HTMLInputElement).checked,
             newComment: newComment,
             newFiles: uploadedFileKeys,
+            ...Object.fromEntries(formData),
+            // Checkboxes needing explicit boolean handling
+            archivado: (form.elements.namedItem('archivado') as HTMLInputElement)?.checked ?? false,
+            nuevo_ingreso: (document.getElementById('nuevo_ingreso') as HTMLInputElement)?.checked ?? false,
+            tiene_descuento: (document.getElementById('tiene_descuento') as HTMLInputElement)?.checked ?? false,
+            validacion_docs: (document.querySelector('input[name="validacion_docs"]') as HTMLInputElement)?.checked ?? false,
+            validacion_edocta: (document.querySelector('input[name="validacion_edocta"]') as HTMLInputElement)?.checked ?? false,
+            validacion_calif: (document.querySelector('input[name="validacion_calif"]') as HTMLInputElement)?.checked ?? false,
         };
 
         try {
@@ -255,44 +240,160 @@ export function initEditForm() {
                 const errorData = await response.json();
                 throw new Error(errorData.message || 'Error al actualizar el ticket');
             }
-            Swal.fire({
-                background: '#CAAB55',
-                color: '#FFFFFF',
-                customClass: { popup: 'Montserrat' },
-                icon: 'success',
-                iconColor: '#FFFFFF',
-                position: 'bottom',
-                showConfirmButton: false,
-                text: 'Los cambios han sido guardados.',
-                timer: 4000,
-                timerProgressBar: true,
-                title: 'Ticket actualizado',
-                toast: true
-            }).then(() => {
+            toast.success('Los cambios han sido guardados.');
+            setTimeout(() => {
                 window.location.href = `${window.location.pathname}?new_entry=true`;
-            });
+            }, 1000);
         } catch (error) {
             const message = error instanceof Error ? error.message : 'Ocurrió un error desconocido.';
-            Swal.fire({
-                background: '#881912',
-                color: '#FFFFFF',
-                customClass: { popup: 'Montserrat' },
-                icon: 'error',
-                iconColor: '#CAAB55',
-                position: 'bottom',
-                showConfirmButton: false,
-                text: message,
-                timer: 4000,
-                timerProgressBar: true,
-                title: 'Error',
-                toast: true
-            });
+            toast.error(message);
             if (submitButton) { submitButton.disabled = false; submitButton.textContent = 'Guardar cambios'; }
         }
     });
 }
 
+export function initFileUploads() {
+    const uploadButton = document.getElementById('upload-files-button');
+    const fileInput = document.getElementById('file-input') as HTMLInputElement;
+    const deleteFilesButton = document.getElementById('delete-files-button');
+    const dropZone = document.getElementById('drop-zone');
+    const googleDriveButton = document.getElementById('google-drive-button');
+
+    if (!uploadButton || !fileInput || !deleteFilesButton) return;
+
+    uploadButton.addEventListener('click', () => fileInput.click());
+
+    if (googleDriveButton) {
+        googleDriveButton.addEventListener('click', () => {
+            handleAuthClick();
+        });
+    }
+
+    // Initialize Google Drive API
+    initGoogleDrive();
+
+    if (dropZone) {
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('bg-muted/50', 'border-primary');
+        }, { passive: false });
+        dropZone.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('bg-muted/50', 'border-primary');
+        }, { passive: false });
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('bg-muted/50', 'border-primary');
+            if (e.dataTransfer?.files) {
+                fileInput.files = e.dataTransfer.files;
+                fileInput.dispatchEvent(new Event('change'));
+            }
+        }, { passive: false });
+        dropZone.addEventListener('click', (e) => {
+            const target = e.target as HTMLElement;
+            // Prevent opening file dialog if clicking on a delete checkbox or inside the attachment area (except if empty area)
+            // Actually, if we click on the list items we don't want to open the dialog.
+            if (target.closest('.file-delete-checkbox') || target.closest('#attachment-area')) {
+                return;
+            }
+            fileInput.click();
+        });
+    }
+
+    fileInput.addEventListener('change', (e) => {
+        const target = e.target as HTMLInputElement;
+        if (!target.files) return;
+
+        const newFiles = Array.from(target.files);
+
+        if (stagedFiles.length + newFiles.length > 10) {
+            toast.error('No puede seleccionar más de 10 archivos en total.');
+            target.value = '';
+            return;
+        }
+
+        let hasInvalidFiles = false;
+        const newStagedFiles = newFiles.map((file, index) => {
+            const validation = validateFile(file);
+            if (!validation.isValid) hasInvalidFiles = true;
+            const id = Date.now() + index;
+            return { file, id, ...validation };
+        });
+
+        stagedFiles = stagedFiles.concat(newStagedFiles);
+
+        if (hasInvalidFiles) {
+            toast.warning('Algunos archivos no cumplen con los requisitos y no serán adjuntados.');
+        }
+
+        isDeleteSelectionMode = false;
+        deleteFilesButton.textContent = 'Borrar archivos';
+        renderStagedFiles();
+        target.value = '';
+    });
+
+    // Modal elements
+    const modal = document.getElementById('delete-confirmation-modal');
+    const overlay = document.getElementById('delete-modal-overlay');
+    const btnAll = document.getElementById('confirm-delete-all');
+    const btnSelect = document.getElementById('confirm-delete-select');
+    const btnCancel = document.getElementById('cancel-delete-modal');
+
+    const closeModal = () => {
+        modal?.classList.add('hidden');
+        modal?.classList.remove('flex');
+    };
+
+    // Attach modal listeners only once
+    if (btnAll && !btnAll.dataset.listenerAttached) {
+        btnAll.addEventListener('click', () => {
+            stagedFiles = [];
+            renderStagedFiles();
+            closeModal();
+        });
+        btnAll.dataset.listenerAttached = 'true';
+    }
+
+    if (btnSelect && !btnSelect.dataset.listenerAttached) {
+        btnSelect.addEventListener('click', () => {
+            stagedFiles = stagedFiles.filter(fw => fw.isValid);
+            if (stagedFiles.length > 0) {
+                isDeleteSelectionMode = true;
+                deleteFilesButton.textContent = 'Borrar selección';
+                renderStagedFiles();
+            } else {
+                renderStagedFiles();
+            }
+            closeModal();
+        });
+        btnSelect.dataset.listenerAttached = 'true';
+    }
+
+    if (btnCancel && !btnCancel.dataset.listenerAttached) {
+        btnCancel.addEventListener('click', closeModal);
+        btnCancel.dataset.listenerAttached = 'true';
+    }
+    if (overlay && !overlay.dataset.listenerAttached) {
+        overlay.addEventListener('click', closeModal);
+        overlay.dataset.listenerAttached = 'true';
+    }
+
+    deleteFilesButton.addEventListener('click', () => {
+        if (isDeleteSelectionMode) {
+            const selectedIds = Array.from(document.querySelectorAll('.file-delete-checkbox:checked')).map(cb => parseInt((cb as HTMLInputElement).dataset.fileId!));
+            stagedFiles = stagedFiles.filter(fw => !selectedIds.includes(fw.id));
+            isDeleteSelectionMode = false;
+            deleteFilesButton.textContent = 'Borrar archivos';
+            renderStagedFiles();
+        } else {
+            modal?.classList.remove('hidden');
+            modal?.classList.add('flex');
+        }
+    });
+}
+
 export function initHistoryToggles() {
+    console.log('initHistoryToggles running. Found links:', document.querySelectorAll('.attachment-link').length);
     let activeDropdown: HTMLElement | null = null;
     const closeActiveDropdown = () => {
         if (activeDropdown) {
@@ -333,7 +434,7 @@ export function initHistoryToggles() {
             } catch (error) {
                 const message = error instanceof Error ? error.message : 'Error desconocido';
                 console.error('Error fetching download URL:', error);
-                Swal.fire('Error', message, 'error');
+                toast.error(message);
             }
         });
     });
@@ -370,9 +471,211 @@ export function initStatusColorizer() {
     }
 }
 
+// Google Drive Integration
+let tokenClient: any;
+let accessToken: string | null = null;
+let pickerInited = false;
+let gisInited = false;
+
+let GOOGLE_API_KEY: string | undefined;
+let GOOGLE_CLIENT_ID: string | undefined;
+let GOOGLE_APP_ID: string | undefined;
+
+// Scopes for Drive API (drive.file is safer, but we need to download)
+// drive.readonly allows reading all files, which is needed if we want to pick any file.
+// drive.file only allows accessing files created by this app or opened with it.
+// Since we want to pick ANY file, we might need drive.readonly.
+const SCOPES = 'https://www.googleapis.com/auth/drive.readonly';
+
+export function initGoogleDrive() {
+    const form = document.getElementById('edit-ticket-form') as HTMLFormElement;
+    if (form) {
+        GOOGLE_API_KEY = form.dataset.apiKey;
+        GOOGLE_CLIENT_ID = form.dataset.clientId;
+        GOOGLE_APP_ID = form.dataset.appId;
+    }
+
+    if (!document.querySelector('script[src="https://apis.google.com/js/api.js"]')) {
+        const script1 = document.createElement('script');
+        script1.src = 'https://apis.google.com/js/api.js';
+        script1.async = true;
+        script1.defer = true;
+        script1.onload = () => {
+            gapi.load('client:picker', async () => {
+                await gapi.client.load('https://www.googleapis.com/discovery/v1/apis/drive/v3/rest');
+                pickerInited = true;
+            });
+        };
+        document.body.appendChild(script1);
+    } else {
+        pickerInited = true;
+    }
+
+    if (!document.querySelector('script[src="https://accounts.google.com/gsi/client"]')) {
+        const script2 = document.createElement('script');
+        script2.src = 'https://accounts.google.com/gsi/client';
+        script2.async = true;
+        script2.defer = true;
+        script2.onload = () => {
+            tokenClient = google.accounts.oauth2.initTokenClient({
+                client_id: GOOGLE_CLIENT_ID,
+                scope: SCOPES,
+                callback: '', // defined later
+            });
+            gisInited = true;
+        };
+        document.body.appendChild(script2);
+    } else {
+        if ((window as any).google?.accounts) {
+            tokenClient = google.accounts.oauth2.initTokenClient({
+                client_id: GOOGLE_CLIENT_ID,
+                scope: SCOPES,
+                callback: '', // defined later
+            });
+            gisInited = true;
+        }
+    }
+}
+
+function handleAuthClick() {
+    if (!GOOGLE_API_KEY || !GOOGLE_CLIENT_ID || !GOOGLE_APP_ID) {
+        toast.error('Faltan credenciales de Google Drive.');
+        return;
+    }
+
+    if (accessToken) {
+        createPicker();
+        return;
+    }
+
+    tokenClient.callback = async (response: any) => {
+        if (response.error !== undefined) {
+            throw (response);
+        }
+        accessToken = response.access_token;
+        createPicker();
+    };
+
+    if (accessToken === null) {
+        // Prompt the user to select a Google Account and ask for consent to share their data
+        // when establishing a new session.
+        tokenClient.requestAccessToken({ prompt: 'consent' });
+    } else {
+        // Skip display of account chooser and consent dialog for an existing session.
+        tokenClient.requestAccessToken({ prompt: '' });
+    }
+}
+
+function createPicker() {
+    // If we have an access token, we only need the picker lib to be ready.
+    // If we don't have a token, we need GIS to be ready to get one.
+    if (!pickerInited || (!accessToken && !gisInited)) {
+        toast.error('Google API no está lista aún. Intente de nuevo en unos segundos.');
+        return;
+    }
+
+    // Use DocsView to allow folder navigation and better structure
+    const view = new google.picker.DocsView();
+    view.setIncludeFolders(true);
+    view.setMimeTypes(ALLOWED_FORMATS.join(','));
+    view.setSelectFolderEnabled(false);
+    view.setParent('root'); // Start at root to show "My Drive" structure
+
+    const origin = window.location.protocol + '//' + window.location.host;
+    const picker = new google.picker.PickerBuilder()
+        .enableFeature(google.picker.Feature.NAV_HIDDEN)
+        .enableFeature(google.picker.Feature.MULTISELECT_ENABLED)
+        .setAppId(GOOGLE_APP_ID)
+        .setOAuthToken(accessToken!)
+        .addView(view)
+        .addView(new google.picker.DocsUploadView())
+        .setDeveloperKey(GOOGLE_API_KEY)
+        .setOrigin(origin)
+        .setCallback(pickerCallback)
+        .build();
+    picker.setVisible(true);
+}
+
+async function pickerCallback(data: any) {
+    if (data.action === google.picker.Action.PICKED) {
+        const documents = data[google.picker.Response.DOCUMENTS];
+        const newFiles: File[] = [];
+
+        toast.info('Procesando archivos de Drive... espere un momento.');
+
+        try {
+            for (const doc of documents) {
+                const fileId = doc[google.picker.Document.ID];
+                const name = doc[google.picker.Document.NAME];
+                const mimeType = doc[google.picker.Document.MIME_TYPE];
+
+                // We need to fetch the file content.
+                // Using gapi.client.drive.files.get with alt=media
+                const response = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
+                    headers: {
+                        'Authorization': `Bearer ${accessToken}`
+                    }
+                });
+
+                if (!response.ok) {
+                    console.error(`Error downloading ${name}:`, response.statusText);
+                    toast.error(`Error al descargar ${name} de Drive.`);
+                    continue;
+                }
+
+                const blob = await response.blob();
+                const file = new File([blob], name, { type: mimeType });
+                newFiles.push(file);
+            }
+
+            if (newFiles.length > 0) {
+                // Add to staged files using existing logic
+                const fileInput = document.getElementById('file-input') as HTMLInputElement;
+                // We can't set fileInput.files directly with File objects created manually easily without DataTransfer
+                // But our logic uses stagedFiles array. We just need to push to it and call render.
+
+                if (stagedFiles.length + newFiles.length > 10) {
+                    toast.error('No puede seleccionar más de 10 archivos en total.');
+                } else {
+                    let hasInvalidFiles = false;
+                    const newStagedFiles = newFiles.map((file, index) => {
+                        const validation = validateFile(file);
+                        if (!validation.isValid) hasInvalidFiles = true;
+                        const id = Date.now() + index; // Ensure integer ID for delete logic
+                        return { file, id, ...validation };
+                    });
+
+                    stagedFiles = stagedFiles.concat(newStagedFiles);
+
+                    if (hasInvalidFiles) {
+                        toast.warning('Algunos archivos no cumplen con los requisitos y no serán adjuntados.');
+                    }
+
+                    const deleteFilesButton = document.getElementById('delete-files-button');
+                    if (deleteFilesButton) {
+                        isDeleteSelectionMode = false;
+                        deleteFilesButton.textContent = 'Borrar archivos';
+                    }
+                    renderStagedFiles();
+                }
+            }
+        } catch (e) {
+            console.error(e);
+            toast.error('Error al procesar archivos de Drive.');
+        } finally {
+            // Dismiss loading toast (if toast library supports it, otherwise just ignore)
+            // Assuming toast.dismiss or similar exists, or just let it be replaced by success/error
+        }
+    }
+}
+
 export function init() {
-    if (!window.ticketViewData) return;
-    ticketId = window.ticketViewData.ticketId;
-    ticket = window.ticketViewData.ticket;
-    statuses = window.ticketViewData.statuses;
+    if (window.ticketViewData) {
+        ticketId = window.ticketViewData.ticketId;
+        ticket = window.ticketViewData.ticket;
+        statuses = window.ticketViewData.statuses;
+        if (window.ticketViewData.accessToken) {
+            accessToken = window.ticketViewData.accessToken;
+        }
+    }
 }

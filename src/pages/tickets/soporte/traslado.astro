@@ -1,0 +1,1398 @@
+---
+import MainLayout from "@/layouts/MainLayout.astro";
+import UserTransferIcon from "@/components/icons/UserTransferIcon.astro";
+import { prisma } from "@/lib/db";
+import {
+    campusOptions,
+    carreraOptions,
+    bloqueOptions,
+} from "@/config/form-options";
+
+const GOOGLE_API_KEY = import.meta.env.PUBLIC_GOOGLE_API_KEY;
+const GOOGLE_CLIENT_ID = import.meta.env.PUBLIC_GOOGLE_CLIENT_ID;
+const GOOGLE_APP_ID = import.meta.env.PUBLIC_GOOGLE_APP_ID;
+
+const descuentos = await prisma.descuento.findMany({
+    where: { activo: true },
+    select: { descripcion: true },
+});
+const descuentoOptions = descuentos.map((d) => d.descripcion);
+---
+
+<MainLayout title="Solicitud de nuevo traslado">
+    <div class="max-w-3xl">
+        <div class="bg-card text-card-foreground rounded-xl border shadow-sm">
+            <div class="p-6 border-b border-border flex items-center gap-4">
+                <div class="p-2 bg-primary/10 rounded-lg text-primary">
+                    <UserTransferIcon class="h-6 w-6" />
+                </div>
+                <div>
+                    <!-- <h1 class="text-2xl font-bold">Solicitud de Traslado</h1> -->
+                    <p class="text-lg mt-1">
+                        Ingresa la <span class="font-bold text-secondary"
+                            >matrícula</span
+                        > y <span class="font-bold text-secondary">campus</span> del
+                        alumno para autocomplementar la información.
+                    </p>
+                </div>
+            </div>
+
+            <div class="p-6">
+                <form
+                    id="nuevo-traslado-form"
+                    class="space-y-6"
+                    data-campus-options={JSON.stringify(campusOptions)}
+                    data-carrera-options={JSON.stringify(carreraOptions)}
+                    data-descuento-options={JSON.stringify(descuentoOptions)}
+                    data-bloque-options={JSON.stringify(bloqueOptions)}
+                    data-google-api-key={GOOGLE_API_KEY}
+                    data-google-client-id={GOOGLE_CLIENT_ID}
+                    data-google-app-id={GOOGLE_APP_ID}
+                >
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <!-- Campus origen -->
+                        <div class="relative">
+                            <label
+                                for="campus-origen"
+                                class="block text-sm font-medium text-foreground mb-1"
+                            >
+                                Campus origen <span class="text-destructive"
+                                    >*</span
+                                >
+                            </label>
+                            <input
+                                type="text"
+                                id="campus-origen"
+                                name="campus-origen"
+                                autocomplete="off"
+                                class="w-full rounded-md border-border bg-input px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                placeholder="Buscar campus..."
+                                required
+                            />
+                            <div
+                                id="campus-origen-suggestions"
+                                class="absolute z-10 w-full bg-popover text-popover-foreground border border-[#797979] rounded-md mt-1 hidden max-h-40 overflow-y-auto shadow-md"
+                            >
+                            </div>
+                            <p
+                                id="campus-origen-error"
+                                class="text-destructive text-xs mt-1 hidden"
+                            >
+                            </p>
+                        </div>
+
+                        <!-- Campus destino -->
+                        <div class="relative">
+                            <label
+                                for="campus-destino"
+                                class="block text-sm font-medium text-foreground mb-1"
+                            >
+                                Campus destino <span class="text-destructive"
+                                    >*</span
+                                >
+                            </label>
+                            <input
+                                type="text"
+                                id="campus-destino"
+                                name="campus-destino"
+                                autocomplete="off"
+                                class="w-full rounded-md border-border bg-input px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                placeholder="Buscar campus..."
+                                required
+                            />
+                            <div
+                                id="campus-destino-suggestions"
+                                class="absolute z-10 w-full bg-popover text-popover-foreground border border-[#797979] rounded-md mt-1 hidden max-h-40 overflow-y-auto shadow-md"
+                            >
+                            </div>
+                            <p
+                                id="campus-destino-error"
+                                class="text-destructive text-xs mt-1 hidden"
+                            >
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <!-- Matrícula -->
+                        <div>
+                            <label
+                                for="matricula"
+                                class="block text-sm font-medium text-foreground mb-1"
+                            >
+                                Matrícula <span class="text-destructive">*</span
+                                >
+                            </label>
+                            <input
+                                type="text"
+                                id="matricula"
+                                name="matricula"
+                                pattern="[a-zA-Z0-9]+"
+                                class="w-full rounded-md border-border bg-input px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                placeholder="Ej: 123456"
+                                required
+                            />
+                            <p
+                                id="matricula-error"
+                                class="text-destructive text-xs mt-1 hidden"
+                            >
+                            </p>
+                        </div>
+
+                        <!-- Nombre Completo -->
+                        <div>
+                            <label
+                                for="nombre-completo"
+                                class="block text-sm font-medium text-foreground mb-1"
+                            >
+                                Nombre completo <span class="text-destructive"
+                                    >*</span
+                                >
+                            </label>
+                            <input
+                                type="text"
+                                id="nombre-completo"
+                                name="nombre-completo"
+                                class="w-full rounded-md border-border bg-input px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                placeholder="Nombre completo del alumno"
+                                required
+                            />
+                            <p
+                                id="nombre-completo-error"
+                                class="text-destructive text-xs mt-1 hidden"
+                            >
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Carrera y modalidad -->
+                    <div class="relative">
+                        <div class="flex justify-between items-center mb-1">
+                            <label
+                                for="carrera"
+                                class="block text-sm font-medium text-foreground"
+                            >
+                                Carrera <span class="text-destructive">*</span>
+                            </label>
+                            <div
+                                id="escolarizada-container"
+                                class="items-center hidden"
+                            >
+                                <label
+                                    for="escolarizada"
+                                    class="mr-2 text-sm text-muted-foreground"
+                                    >Escolarizada</label
+                                >
+                                <input
+                                    id="escolarizada"
+                                    name="escolarizada"
+                                    type="checkbox"
+                                    class="h-4 w-4 rounded border-input text-primary focus:ring-primary"
+                                />
+                            </div>
+                        </div>
+                        <input
+                            type="text"
+                            id="carrera"
+                            name="carrera"
+                            autocomplete="off"
+                            class="w-full rounded-md border-border bg-input px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                            placeholder="Buscar carrera..."
+                            required
+                        />
+                        <div
+                            id="carrera-suggestions"
+                            class="absolute z-10 w-full bg-popover text-popover-foreground border border-[#797979] rounded-md mt-1 hidden max-h-48 overflow-y-auto shadow-md"
+                        >
+                        </div>
+                        <p
+                            id="carrera-error"
+                            class="text-destructive text-xs mt-1 hidden"
+                        >
+                        </p>
+                    </div>
+                    <!-- Bloque sugerido -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label
+                                for="bloque-sugerido"
+                                class="block text-sm font-medium text-foreground mb-1"
+                            >
+                                Bloque sugerido <span class="text-destructive"
+                                    >*</span
+                                >
+                            </label>
+                            <select
+                                id="bloque-sugerido"
+                                name="bloque-sugerido"
+                                class="w-full rounded-md border-border bg-input px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring"
+                            >
+                                {
+                                    bloqueOptions.map((option) => (
+                                        <option
+                                            value={option
+                                                .toLowerCase()
+                                                .replace(/\s+/g, "-")}
+                                        >
+                                            {option}
+                                        </option>
+                                    ))
+                                }
+                            </select>
+                        </div>
+                    </div>
+                    <div class="flex justify-between items-center mb-1 w-full">
+                        <h1
+                            class="text-sm font-medium text-foreground w-full text-center border-b border-muted-foreground/40"
+                        >
+                            Información opcional
+                        </h1>
+                    </div>
+                    <!-- Descuentos y comentarios -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <!-- Descuento -->
+                        <div>
+                            <div class="flex items-center mb-2 h-5">
+                                <label
+                                    class="text-sm font-medium text-foreground"
+                                    >¿Tiene descuento?</label
+                                >
+                            </div>
+                            <div
+                                class="flex items-center gap-4 p-2 border border-input rounded-md bg-transparent"
+                            >
+                                <div class="flex items-center">
+                                    <input
+                                        id="tiene-descuento"
+                                        name="tiene-descuento"
+                                        type="checkbox"
+                                        class="h-4 w-4 rounded border-input text-primary focus:ring-primary"
+                                    />
+                                    <label
+                                        for="tiene-descuento"
+                                        class="ml-2 text-sm text-foreground"
+                                        >Si</label
+                                    >
+                                </div>
+                                <div
+                                    id="descuento-container"
+                                    class="items-center hidden ml-auto relative w-full max-w-[200px]"
+                                >
+                                    <input
+                                        type="text"
+                                        id="descuento-valor"
+                                        name="descuento-valor"
+                                        autocomplete="off"
+                                        class="w-full rounded-md border-border bg-input px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                        placeholder="Buscar..."
+                                    />
+                                    <div
+                                        id="descuento-suggestions"
+                                        class="absolute z-10 w-full bg-popover text-popover-foreground border border-[#797979] rounded-md mt-1 hidden max-h-40 overflow-y-auto shadow-md top-full left-0 origin-top"
+                                    >
+                                    </div>
+                                </div>
+                            </div>
+                            <p
+                                id="descuento-valor-error"
+                                class="text-destructive text-xs mt-1 hidden"
+                            >
+                            </p>
+                        </div>
+                        <!-- Comentarios -->
+                        <div>
+                            <div class="flex items-center mb-2 h-5">
+                                <label
+                                    class="text-sm font-medium text-foreground"
+                                    >Comentarios</label
+                                >
+                            </div>
+                            <textarea
+                                id="comentarios"
+                                name="comentarios"
+                                rows="4"
+                                class="w-full rounded-md border-border bg-input px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                placeholder="Escribe tus comentarios aquí..."
+                            ></textarea>
+                        </div>
+                    </div>
+
+                    <!-- File upload section -->
+                    <div class="space-y-4">
+                        <div
+                            class="grid grid-cols-1 md:grid-cols-2 gap-4 w-full items-stretch"
+                        >
+                            <div class="space-y-2 h-full">
+                                <div
+                                    id="drop-zone"
+                                    class="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 flex flex-col items-center justify-center hover:bg-muted/50 transition-colors cursor-pointer relative h-full min-h-[120px]"
+                                >
+                                    <p
+                                        class="text-sm text-muted-foreground text-center"
+                                    >
+                                        Arrastre sus archivos aquí
+                                    </p>
+                                    <div
+                                        id="attachment-area"
+                                        class="text-left w-full mt-auto"
+                                    >
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div
+                                class="flex flex-col justify-end items-end gap-2 rounded-lg border border-transparent"
+                            >
+                                <div
+                                    id="action-buttons-container"
+                                    class="flex flex-wrap justify-end items-center gap-2 w-full"
+                                >
+                                    <button
+                                        type="button"
+                                        id="upload-files-button"
+                                        class="bg-muted-foreground text-white hover:bg-muted-foreground/80 px-4 py-2 rounded-md text-sm font-semibold shrink-0 h-10"
+                                    >
+                                        Seleccionar
+                                    </button>
+                                    <button
+                                        type="button"
+                                        id="google-drive-button"
+                                        class="bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 rounded-md flex items-center justify-center h-10 w-10 shrink-0"
+                                        title="Adjuntar desde Google Drive"
+                                    >
+                                        <img
+                                            src="/Google_Drive_icon.svg"
+                                            width="24"
+                                            height="24"
+                                            alt="Google Drive"
+                                        />
+                                    </button>
+                                    <a
+                                        href="/"
+                                        class="px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors shrink-0 flex items-center justify-center h-10"
+                                        >Cancelar</a
+                                    >
+                                    <button
+                                        type="submit"
+                                        id="nuevo-traslado-submit"
+                                        class="bg-primary text-primary-foreground hover:bg-primary/90 px-6 py-2 rounded-md text-sm font-semibold shrink-0 h-10 disabled:opacity-50 disabled:cursor-not-allowed"
+                                        disabled
+                                    >
+                                        Enviar solicitud
+                                    </button>
+                                </div>
+                                <p
+                                    id="help-text"
+                                    class="text-xs text-secondary text-right w-full mt-1"
+                                >
+                                    * Máximo 5MB cada uno. Formatos permitidos:
+                                    jpg, png, pdf, docx, xlsx
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <input type="hidden" id="mail" name="mail" />
+                    <input
+                        type="hidden"
+                        id="mail_escuela"
+                        name="mail_escuela"
+                    />
+                    <input type="hidden" id="telefono" name="telefono" />
+                    <input type="hidden" id="tel_movil" name="tel_movil" />
+                    <input
+                        type="hidden"
+                        id="plan_pago_api"
+                        name="plan_pago_api"
+                    />
+
+                    <input
+                        type="file"
+                        id="file-input"
+                        multiple
+                        class="hidden"
+                    />
+                </form>
+            </div>
+        </div>
+    </div>
+</MainLayout>
+
+<script>
+    import { toast } from "@/lib/toast";
+
+    declare global {
+        interface Window {
+            gapi: any;
+            google: any;
+        }
+    }
+
+    function initTransferForm() {
+        const form = document.getElementById(
+            "nuevo-traslado-form",
+        ) as HTMLFormElement;
+        const submitButton = document.getElementById(
+            "nuevo-traslado-submit",
+        ) as HTMLButtonElement;
+
+        if (!form) return;
+
+        // Data from attributes
+        const campusOptions: string[] = JSON.parse(
+            form.dataset.campusOptions || "[]",
+        );
+        const carreraOptions: string[] = JSON.parse(
+            form.dataset.carreraOptions || "[]",
+        );
+        const descuentoOptions: string[] = JSON.parse(
+            form.dataset.descuentoOptions || "[]",
+        );
+        const bloqueOptionsFull: string[] = JSON.parse(
+            form.dataset.bloqueOptions || "[]",
+        );
+
+        const GOOGLE_API_KEY = form.dataset.googleApiKey;
+        const GOOGLE_CLIENT_ID = form.dataset.googleClientId;
+        const GOOGLE_APP_ID = form.dataset.googleAppId;
+
+        // --- FIELD REFS ---
+        const matriculaInput = document.getElementById(
+            "matricula",
+        ) as HTMLInputElement;
+        const nombreInput = document.getElementById(
+            "nombre-completo",
+        ) as HTMLInputElement;
+        const campusOrigenInput = document.getElementById(
+            "campus-origen",
+        ) as HTMLInputElement;
+        const campusDestinoInput = document.getElementById(
+            "campus-destino",
+        ) as HTMLInputElement;
+        const carreraInput = document.getElementById(
+            "carrera",
+        ) as HTMLInputElement;
+        const tieneDescuentoCheckbox = document.getElementById(
+            "tiene-descuento",
+        ) as HTMLInputElement;
+        const descuentoValorInput = document.getElementById(
+            "descuento-valor",
+        ) as HTMLInputElement;
+        const escolarizadaCheckbox = document.getElementById(
+            "escolarizada",
+        ) as HTMLInputElement;
+        const escolarizadaContainer = document.getElementById(
+            "escolarizada-container",
+        ) as HTMLElement;
+        const bloqueSugeridoSelect = document.getElementById(
+            "bloque-sugerido",
+        ) as HTMLSelectElement;
+        const comentariosInput = document.getElementById(
+            "comentarios",
+        ) as HTMLTextAreaElement;
+        const dropZone = document.getElementById("drop-zone");
+        const fileInput = document.getElementById(
+            "file-input",
+        ) as HTMLInputElement;
+        const uploadButton = document.getElementById("upload-files-button");
+        const googleDriveButton = document.getElementById(
+            "google-drive-button",
+        );
+        const attachmentArea = document.getElementById("attachment-area");
+
+        // Hidden Inputs
+        const mailInput = document.getElementById("mail") as HTMLInputElement;
+        const mailEscuelaInput = document.getElementById(
+            "mail_escuela",
+        ) as HTMLInputElement;
+        const telefonoInput = document.getElementById(
+            "telefono",
+        ) as HTMLInputElement;
+        const telMovilInput = document.getElementById(
+            "tel_movil",
+        ) as HTMLInputElement;
+        const planPagoApiInput = document.getElementById(
+            "plan_pago_api",
+        ) as HTMLInputElement;
+
+        // --- FILE CONFIG ---
+        const MAX_FILE_SIZE_MB = 5;
+        const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
+        const ALLOWED_FORMATS = [
+            "image/jpeg",
+            "image/png",
+            "image/webp",
+            "application/pdf",
+            "application/msword",
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            "application/vnd.ms-excel",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        ];
+
+        interface StagedFile {
+            file: File;
+            id: number;
+            isValid: boolean;
+            reason: string | null;
+        }
+        let stagedFiles: StagedFile[] = [];
+
+        // --- VALIDATION HELPERS ---
+        const showError = (fieldId: string, message: string) => {
+            const errorP = document.getElementById(`${fieldId}-error`);
+            const field = document.getElementById(fieldId);
+            if (errorP) {
+                errorP.textContent = message;
+                errorP.classList.remove("hidden");
+            }
+            if (field) field.classList.add("border-destructive");
+        };
+
+        const clearError = (fieldId: string) => {
+            const errorP = document.getElementById(`${fieldId}-error`);
+            const field = document.getElementById(fieldId);
+            if (errorP) {
+                errorP.textContent = "";
+                errorP.classList.add("hidden");
+            }
+            if (field) field.classList.remove("border-destructive");
+        };
+
+        // --- LOGIC ---
+        // State
+        let duplicateError = "";
+
+        const handleEscolarizadaLogic = () => {
+            const carrera = carreraInput.value;
+            const groupB = [
+                "Licenciatura en Arquitectura",
+                "Licenciatura en Arte y Teatro",
+                "Licenciatura en Diseño Gráfico",
+            ];
+
+            if (carrera.toLowerCase().includes("licenciatura")) {
+                escolarizadaContainer.classList.remove("hidden");
+                escolarizadaContainer.classList.add("flex");
+                if (groupB.includes(carrera)) {
+                    escolarizadaCheckbox.checked = true;
+                    escolarizadaCheckbox.disabled = true;
+                } else {
+                    escolarizadaCheckbox.disabled = false;
+                }
+            } else {
+                escolarizadaContainer.classList.add("hidden");
+                escolarizadaContainer.classList.remove("flex");
+                escolarizadaCheckbox.checked = false;
+                escolarizadaCheckbox.disabled = false;
+            }
+        };
+
+        const handleBloqueOptions = () => {
+            const carrera = carreraInput.value.toLowerCase();
+            const normalize = (str: string) =>
+                str
+                    .normalize("NFD")
+                    .replace(/[\u0300-\u036f]/g, "")
+                    .toLowerCase();
+            const carreraNorm = normalize(carrera);
+
+            let filteredOptions: string[] = [];
+
+            if (carreraNorm.includes("licenciatura")) {
+                const nums = Array.from({ length: 16 }, (_, i) =>
+                    String(i + 1),
+                );
+                filteredOptions = [...nums, "Actualización"];
+            } else if (carreraNorm.includes("maestria")) {
+                const nums = Array.from({ length: 5 }, (_, i) => String(i + 1));
+                filteredOptions = [...nums, "Seminario", "Actualización"];
+            } else {
+                filteredOptions = bloqueOptionsFull;
+            }
+
+            const currentValue = bloqueSugeridoSelect.value;
+            bloqueSugeridoSelect.innerHTML = "";
+
+            filteredOptions.forEach((opt) => {
+                const normalizedOpt = opt.toLowerCase().replace(/\s+/g, "-");
+                const optionEl = document.createElement("option");
+                optionEl.value = normalizedOpt;
+                optionEl.textContent = opt;
+                if (normalizedOpt === currentValue) {
+                    optionEl.selected = true;
+                }
+                bloqueSugeridoSelect.appendChild(optionEl);
+            });
+        };
+
+        const validate = (fieldsToShow: string[] | "ALL" = []) => {
+            handleEscolarizadaLogic();
+            handleBloqueOptions();
+            let isValid = true;
+            const shouldShow = (id: string) =>
+                fieldsToShow === "ALL" || fieldsToShow.includes(id);
+
+            const matricula = matriculaInput.value.trim();
+            const nombre = nombreInput.value.trim();
+            const nameRegex = /^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/;
+            const campusOrigen = campusOrigenInput.value.trim();
+            const campusDestino = campusDestinoInput.value.trim();
+            const carrera = carreraInput.value.trim();
+            const tieneDescuento = tieneDescuentoCheckbox.checked;
+
+            // Matricula
+            if (!matricula) {
+                isValid = false;
+                if (shouldShow("matricula"))
+                    showError("matricula", "Requerido.");
+            } else if (duplicateError) {
+                isValid = false;
+                if (shouldShow("matricula"))
+                    showError("matricula", duplicateError);
+            } else clearError("matricula");
+
+            // Nombre
+            if (!nombre) {
+                isValid = false;
+                if (shouldShow("nombre-completo"))
+                    showError("nombre-completo", "Requerido.");
+            } else if (!nameRegex.test(nombre)) {
+                isValid = false;
+                if (shouldShow("nombre-completo"))
+                    showError(
+                        "nombre-completo",
+                        "Contiene caracteres inválidos.",
+                    );
+            } else clearError("nombre-completo");
+
+            // Campus
+            if (!campusOptions.includes(campusOrigen)) {
+                isValid = false;
+                if (shouldShow("campus-origen"))
+                    showError("campus-origen", "Campus origen no coincide.");
+            } else clearError("campus-origen");
+
+            if (!campusOptions.includes(campusDestino)) {
+                isValid = false;
+                if (shouldShow("campus-destino"))
+                    showError("campus-destino", "Campus destino no coincide.");
+            } else {
+                if (
+                    campusOrigen &&
+                    campusDestino &&
+                    campusOrigen === campusDestino
+                ) {
+                    isValid = false;
+                    if (shouldShow("campus-destino"))
+                        showError(
+                            "campus-destino",
+                            "Debe ser diferente al origen.",
+                        );
+                } else {
+                    clearError("campus-destino");
+                }
+            }
+
+            // Carrera
+            if (!carreraOptions.includes(carrera)) {
+                isValid = false;
+                if (shouldShow("carrera"))
+                    showError("carrera", "No se reconoce oferta.");
+            } else clearError("carrera");
+
+            // Descuento
+            if (tieneDescuento) {
+                const val = descuentoValorInput.value.trim();
+                if (!val) {
+                    isValid = false;
+                    if (shouldShow("descuento-valor"))
+                        showError("descuento-valor", "Requerido.");
+                } else if (!descuentoOptions.includes(val)) {
+                    isValid = false;
+                    if (shouldShow("descuento-valor"))
+                        showError("descuento-valor", "Descuento no válido.");
+                } else clearError("descuento-valor");
+            } else clearError("descuento-valor");
+
+            // Bloque Sugerido
+            if (
+                !bloqueSugeridoSelect.value ||
+                bloqueSugeridoSelect.value === ""
+            ) {
+                isValid = false;
+                // Assuming you want to show error for this field too, but existing code doesn't have an error p tag for it in the HTML provided in previous turns.
+                // Let's check if we need to add error display logic for it.
+                // The previous user edit code didn't add p#bloque-sugerido-error.
+                // I will add the red border at least using the existing helper if I can, or just standard validation.
+                // Helper uses ID to find error element. Let's assume I should add the logic to show error style.
+                bloqueSugeridoSelect.classList.add("border-destructive");
+            } else {
+                bloqueSugeridoSelect.classList.remove("border-destructive");
+            }
+
+            submitButton.disabled = !isValid;
+            return isValid;
+        };
+
+        // --- AUTOCOMPLETE ---
+        function setupAutocomplete(
+            inputId: string,
+            suggestionsId: string,
+            options: string[],
+        ) {
+            const input = document.getElementById(inputId) as HTMLInputElement;
+            const suggestions = document.getElementById(
+                suggestionsId,
+            ) as HTMLElement;
+            if (!input || !suggestions) return;
+
+            // Helper to normalize text (remove accents and lowercase)
+            const normalizeText = (text: string) => {
+                return text
+                    .normalize("NFD")
+                    .replace(/[\u0300-\u036f]/g, "")
+                    .toLowerCase();
+            };
+
+            let activeIndex = -1;
+
+            const closeSuggestions = () => {
+                suggestions.classList.add("hidden");
+                suggestions.innerHTML = "";
+                activeIndex = -1;
+            };
+
+            const setActive = (items: NodeListOf<Element>, index: number) => {
+                items.forEach((item) => {
+                    item.classList.remove(
+                        "bg-secondary",
+                        "text-secondary-foreground",
+                    );
+                    item.classList.add(
+                        "hover:bg-secondary",
+                        "hover:text-secondary-foreground",
+                    );
+                });
+                if (index >= 0 && items[index]) {
+                    items[index].classList.remove(
+                        "hover:bg-secondary",
+                        "hover:text-secondary-foreground",
+                    );
+                    items[index].classList.add(
+                        "bg-secondary",
+                        "text-secondary-foreground",
+                    );
+                    items[index].scrollIntoView({ block: "nearest" });
+                }
+            };
+
+            input.addEventListener("input", function () {
+                const val = normalizeText(this.value);
+                suggestions.innerHTML = "";
+                activeIndex = -1;
+
+                if (!val) {
+                    closeSuggestions();
+                    validate();
+                    return;
+                }
+
+                const filtered = options.filter((opt) =>
+                    normalizeText(opt).includes(val),
+                );
+
+                if (filtered.length > 0) {
+                    suggestions.classList.remove("hidden");
+                    filtered.forEach((opt, index) => {
+                        const div = document.createElement("div");
+                        div.textContent = opt;
+                        div.className =
+                            "p-2 hover:bg-secondary hover:text-secondary-foreground cursor-pointer text-sm transition-colors";
+                        div.onclick = () => {
+                            input.value = opt;
+                            closeSuggestions();
+                            validate();
+                        };
+                        suggestions.appendChild(div);
+                    });
+                } else {
+                    closeSuggestions();
+                }
+                validate();
+            });
+
+            // Keyboard navigation
+            input.addEventListener("keydown", function (e) {
+                if (suggestions.classList.contains("hidden")) return;
+
+                const items = suggestions.querySelectorAll("div");
+                if (items.length === 0) return;
+
+                if (e.key === "ArrowDown") {
+                    e.preventDefault();
+                    activeIndex++;
+                    if (activeIndex >= items.length) activeIndex = 0;
+                    setActive(items, activeIndex);
+                } else if (e.key === "ArrowUp") {
+                    e.preventDefault();
+                    activeIndex--;
+                    if (activeIndex < 0) activeIndex = items.length - 1;
+                    setActive(items, activeIndex);
+                } else if (e.key === "Enter") {
+                    e.preventDefault();
+                    if (activeIndex > -1 && items[activeIndex]) {
+                        (items[activeIndex] as HTMLElement).click();
+                        closeSuggestions();
+                    }
+                } else if (e.key === "Escape") {
+                    closeSuggestions();
+                }
+            });
+
+            // Close clicking outside
+            document.addEventListener("click", (e) => {
+                if (e.target !== input && e.target !== suggestions)
+                    closeSuggestions();
+            });
+        }
+
+        // --- GOOGLE DRIVE & FILE UPLOAD LOGIC ---
+        let tokenClient: any;
+        let accessToken: string | null = null;
+        let pickerInited = false;
+        let gisInited = false;
+        const SCOPES = "https://www.googleapis.com/auth/drive.readonly";
+        const allowedMimeTypes = ALLOWED_FORMATS.join(",");
+
+        // Init Google Scripts
+        const initGoogleDrive = () => {
+            if (
+                !document.querySelector(
+                    'script[src="https://apis.google.com/js/api.js"]',
+                )
+            ) {
+                const script1 = document.createElement("script");
+                script1.src = "https://apis.google.com/js/api.js";
+                script1.async = true;
+                script1.defer = true;
+                script1.onload = () => {
+                    window.gapi.load("client:picker", async () => {
+                        await window.gapi.client.load(
+                            "https://www.googleapis.com/discovery/v1/apis/drive/v3/rest",
+                        );
+                        pickerInited = true;
+                    });
+                };
+                document.body.appendChild(script1);
+            } else {
+                pickerInited = true;
+            }
+
+            if (
+                !document.querySelector(
+                    'script[src="https://accounts.google.com/gsi/client"]',
+                )
+            ) {
+                const script2 = document.createElement("script");
+                script2.src = "https://accounts.google.com/gsi/client";
+                script2.async = true;
+                script2.defer = true;
+                script2.onload = () => {
+                    if (!window.google) return;
+                    tokenClient = window.google.accounts.oauth2.initTokenClient(
+                        {
+                            client_id: GOOGLE_CLIENT_ID,
+                            scope: SCOPES,
+                            callback: "",
+                        },
+                    );
+                    gisInited = true;
+                };
+                document.body.appendChild(script2);
+            } else {
+                if (window.google?.accounts) {
+                    tokenClient = window.google.accounts.oauth2.initTokenClient(
+                        {
+                            client_id: GOOGLE_CLIENT_ID,
+                            scope: SCOPES,
+                            callback: "",
+                        },
+                    );
+                    gisInited = true;
+                }
+            }
+        };
+
+        const handleAuthClick = () => {
+            if (!GOOGLE_API_KEY || !GOOGLE_CLIENT_ID || !GOOGLE_APP_ID) {
+                toast.error("Faltan credenciales de Google Drive.");
+                return;
+            }
+
+            if (accessToken) {
+                createPicker();
+                return;
+            }
+
+            tokenClient.callback = async (response: any) => {
+                if (response.error !== undefined) {
+                    throw response;
+                }
+                accessToken = response.access_token;
+                createPicker();
+            };
+
+            if (accessToken === null) {
+                tokenClient.requestAccessToken({ prompt: "consent" });
+            } else {
+                tokenClient.requestAccessToken({ prompt: "" });
+            }
+        };
+
+        const createPicker = () => {
+            if (!pickerInited || (!accessToken && !gisInited)) {
+                toast.error("Google API no está lista aún.");
+                return;
+            }
+
+            const view = new window.google.picker.DocsView();
+            view.setIncludeFolders(true);
+            view.setMimeTypes(allowedMimeTypes);
+            view.setSelectFolderEnabled(false);
+            view.setParent("root");
+
+            const picker = new window.google.picker.PickerBuilder()
+                .enableFeature(window.google.picker.Feature.NAV_HIDDEN)
+                .enableFeature(window.google.picker.Feature.MULTISELECT_ENABLED)
+                .setAppId(GOOGLE_APP_ID)
+                .setOAuthToken(accessToken!)
+                .addView(view)
+                .addView(new window.google.picker.DocsUploadView())
+                .setDeveloperKey(GOOGLE_API_KEY)
+                .setCallback(pickerCallback)
+                .build();
+            picker.setVisible(true);
+        };
+
+        const pickerCallback = async (data: any) => {
+            if (data.action === window.google.picker.Action.PICKED) {
+                const documents = data[window.google.picker.Response.DOCUMENTS];
+                const newFiles: File[] = [];
+
+                toast.info("Procesando archivos de Drive...");
+
+                try {
+                    for (const doc of documents) {
+                        const fileId = doc[window.google.picker.Document.ID];
+                        const name = doc[window.google.picker.Document.NAME];
+                        const mimeType =
+                            doc[window.google.picker.Document.MIME_TYPE];
+
+                        const response = await fetch(
+                            `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
+                            {
+                                headers: {
+                                    Authorization: `Bearer ${accessToken}`,
+                                },
+                            },
+                        );
+
+                        if (!response.ok) {
+                            toast.error(`Error al descargar ${name} de Drive.`);
+                            continue;
+                        }
+
+                        const blob = await response.blob();
+                        const file = new File([blob], name, { type: mimeType });
+                        newFiles.push(file);
+                    }
+
+                    if (newFiles.length > 0) {
+                        processNewFiles(newFiles);
+                    }
+                } catch (e) {
+                    console.error(e);
+                    toast.error("Error al procesar archivos de Drive.");
+                }
+            }
+        };
+
+        const validateFile = (file: File) => {
+            if (file.size > MAX_FILE_SIZE_BYTES) {
+                return {
+                    isValid: false,
+                    reason: `supera ${MAX_FILE_SIZE_MB}MB`,
+                };
+            }
+            if (!ALLOWED_FORMATS.includes(file.type)) {
+                return { isValid: false, reason: "formato no permitido" };
+            }
+            return { isValid: true, reason: null };
+        };
+
+        const formatBytes = (bytes: number) => {
+            if (bytes === 0) return "0 Bytes";
+            const k = 1024;
+            const sizes = ["Bytes", "KB", "MB", "GB"];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return (
+                parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i]
+            );
+        };
+
+        const renderStagedFiles = () => {
+            if (!attachmentArea) return;
+            if (stagedFiles.length === 0) {
+                attachmentArea.innerHTML = "";
+                return;
+            }
+
+            const listConfig = stagedFiles
+                .map(
+                    (fw) => `
+                <div class="flex items-center justify-between p-2 bg-muted/20 rounded border border-border">
+                    <span class="text-sm ${!fw.isValid ? "text-destructive" : "text-foreground"} truncate max-w-[80%]">
+                        ${fw.file.name} (${formatBytes(fw.file.size)})
+                        ${!fw.isValid ? `(${fw.reason})` : ""}
+                    </span>
+                    <button type="button" class="text-xs text-muted-foreground hover:text-destructive remove-file-btn" data-id="${fw.id}">
+                        ✕
+                    </button>
+                </div>
+            `,
+                )
+                .join("");
+
+            attachmentArea.innerHTML = listConfig;
+
+            // Re-attach listeners for remove buttons
+            document.querySelectorAll(".remove-file-btn").forEach((btn) => {
+                btn.addEventListener("click", (e) => {
+                    e.stopPropagation(); // prevent triggering dropzone select
+                    const id = parseInt(
+                        (e.target as HTMLElement).dataset.id || "0",
+                    );
+                    stagedFiles = stagedFiles.filter((f) => f.id !== id);
+                    renderStagedFiles();
+                });
+            });
+        };
+
+        const processNewFiles = (files: File[]) => {
+            if (stagedFiles.length + files.length > 10) {
+                toast.error("Máximo 10 archivos permitidos.");
+                return;
+            }
+
+            const newStaged = files.map((file, index) => {
+                const validation = validateFile(file);
+                return { file, id: Date.now() + index, ...validation };
+            });
+
+            stagedFiles = [...stagedFiles, ...newStaged];
+            renderStagedFiles();
+        };
+
+        // --- LISTENERS ---
+        setupAutocomplete(
+            "campus-origen",
+            "campus-origen-suggestions",
+            campusOptions,
+        );
+        setupAutocomplete(
+            "campus-destino",
+            "campus-destino-suggestions",
+            campusOptions,
+        );
+        setupAutocomplete("carrera", "carrera-suggestions", carreraOptions);
+        setupAutocomplete(
+            "descuento-valor",
+            "descuento-suggestions",
+            descuentoOptions,
+        );
+
+        async function checkDuplicateMatricula() {
+            const matricula = matriculaInput.value.trim();
+            if (!matricula) return;
+
+            try {
+                const res = await fetch(
+                    `/api/tickets/check-transfer?matricula=${matricula}`,
+                );
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.exists) {
+                        duplicateError = `Hay un traslado activo para ésta matrícula, folio TRL-${data.ticketId}`;
+                        validate(["matricula"]);
+                    }
+                }
+            } catch (e) {
+                console.error("Error checking duplicate", e);
+            }
+        }
+
+        function formatName(str: string) {
+            if (!str) return "";
+            return str.toLowerCase().split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+        }
+
+        function formatCarrera(str: string) {
+            if (!str) return "";
+            return str.toLowerCase().split(' ').map(w => {
+                if(["en", "y", "de", "la", "el"].includes(w)) return w;
+                return w.charAt(0).toUpperCase() + w.slice(1);
+            }).join(' ').trim();
+        }
+
+        async function consultarDetalleAlumno() {
+            const matricula = matriculaInput.value.trim();
+            const campus = campusOrigenInput.value.trim();
+
+            if (matricula && campus && campusOptions.includes(campus)) {
+                try {
+                    const url = `https://pz3bmmqsty.us-east-1.awsapprunner.com/api/alumnos/consultar-detalle?campus=${encodeURIComponent(campus)}&matricula=${encodeURIComponent(matricula)}`;
+                    const res = await fetch(url);
+                    let json;
+                    try {
+                        json = await res.json();
+                    } catch (e) {}
+
+                    if (res.ok && json?.status === "success" && json?.data) {
+                        const data = json.data;
+
+                        if (data.Alumno) {
+                            nombreInput.value = formatName(data.Alumno);
+                            validate(["nombre-completo"]);
+                        }
+                        if (data.carrera) {
+                            let rawCarrera = data.carrera;
+                            if (rawCarrera.toUpperCase().includes('ESCOLARIZADO')) {
+                                rawCarrera = rawCarrera.replace(/ESCOLARIZADO/i, '').replace(/  +/g, ' ').trim();
+                                escolarizadaCheckbox.checked = true;
+                                escolarizadaCheckbox.dispatchEvent(new Event('change'));
+                            }
+                            carreraInput.value = formatCarrera(rawCarrera);
+                            validate(["carrera"]);
+                            handleEscolarizadaLogic();
+                            handleBloqueOptions();
+                        }
+
+                        mailInput.value = data.mail || "";
+                        mailEscuelaInput.value = data.mail_escuela || "";
+                        telefonoInput.value = data.telefono || "";
+                        telMovilInput.value = data.tel_movil || "";
+                        planPagoApiInput.value = data.plan_pago || "";
+
+                        toast.success("Datos del alumno autocompletados.");
+                    } else if (json?.detail) {
+                        toast.error("Valida el campus con el área de soporte.");
+                    }
+                } catch (e) {
+                    console.error("Error fetching alumno details", e);
+                }
+            }
+        }
+
+        matriculaInput.addEventListener("input", () => {
+            duplicateError = ""; // Reset on edit
+            validate([]);
+        });
+        matriculaInput.addEventListener("blur", async () => {
+            validate(["matricula"]);
+            await checkDuplicateMatricula();
+            await consultarDetalleAlumno();
+        });
+
+        // For Name, show errors immediately on input if invalid chars found
+        nombreInput.addEventListener("input", () => {
+            validate(["nombre-completo"]);
+        });
+
+        // For inputs that might need blur validation to be sure
+        campusOrigenInput.addEventListener("blur", async () => {
+            validate(["campus-origen"]);
+            await consultarDetalleAlumno();
+        });
+        campusDestinoInput.addEventListener("blur", () =>
+            validate(["campus-destino"]),
+        );
+        carreraInput.addEventListener("blur", () => {
+            validate(["carrera"]);
+            handleEscolarizadaLogic();
+            handleBloqueOptions();
+        });
+
+        // Trigger logic on input too for realtime feedback if mostly typing
+        carreraInput.addEventListener("input", () => {
+            handleEscolarizadaLogic();
+            handleBloqueOptions();
+        });
+
+        descuentoValorInput.addEventListener("input", () =>
+            validate(["descuento-valor"]),
+        );
+
+        tieneDescuentoCheckbox.addEventListener("change", (e) => {
+            const isChecked = (e.target as HTMLInputElement).checked;
+            const container = document.getElementById("descuento-container");
+            if (container) {
+                container.classList.toggle("hidden", !isChecked);
+                container.classList.toggle("flex", isChecked);
+            }
+            validate([]);
+        });
+
+        // File listeners
+        if (uploadButton && fileInput) {
+            uploadButton.addEventListener("click", () => fileInput.click());
+            fileInput.addEventListener("change", (e) => {
+                const target = e.target as HTMLInputElement;
+                if (target.files) {
+                    processNewFiles(Array.from(target.files));
+                    target.value = "";
+                }
+            });
+        }
+
+        if (googleDriveButton) {
+            googleDriveButton.addEventListener("click", handleAuthClick);
+        }
+
+        initGoogleDrive();
+
+        if (dropZone) {
+            dropZone.addEventListener("dragover", (e) => {
+                e.preventDefault();
+                dropZone.classList.add("bg-muted/50", "border-primary");
+            });
+            dropZone.addEventListener("dragleave", (e) => {
+                e.preventDefault();
+                dropZone.classList.remove("bg-muted/50", "border-primary");
+            });
+            dropZone.addEventListener("drop", (e) => {
+                e.preventDefault();
+                dropZone.classList.remove("bg-muted/50", "border-primary");
+                if (e.dataTransfer?.files) {
+                    processNewFiles(Array.from(e.dataTransfer.files));
+                }
+            });
+            dropZone.addEventListener("click", (e) => {
+                if (!(e.target as HTMLElement).closest(".remove-file-btn")) {
+                    fileInput?.click();
+                }
+            });
+        }
+
+        // --- SUBMIT ---
+        form.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            if (!validate("ALL")) return;
+
+            submitButton.disabled = true;
+            submitButton.innerHTML = `<span class="animate-spin mr-2">⏳</span> Enviando Solicitud...`;
+
+            const formData = new FormData(form);
+            const payload = {
+                matricula: formData.get("matricula"),
+                "nombre-completo": formData.get("nombre-completo"),
+                "campus-origen": formData.get("campus-origen"),
+                "campus-destino": formData.get("campus-destino"),
+                carrera: formData.get("carrera"),
+                "tiene-descuento": formData.get("tiene-descuento") === "on",
+                "descuento-valor": formData.get("descuento-valor"),
+                escolarizada: formData.get("escolarizada") === "on",
+                "bloque-sugerido": formData.get("bloque-sugerido"),
+                comentarios: formData.get("comentarios"),
+                mail: formData.get("mail"),
+                mail_escuela: formData.get("mail_escuela"),
+                telefono: formData.get("telefono"),
+                tel_movil: formData.get("tel_movil"),
+                plan_pago_api: formData.get("plan_pago_api"),
+            };
+
+            try {
+                // 1. Create Ticket
+                const response = await fetch("/api/tickets/transfer", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload),
+                });
+                const res = await response.json();
+
+                if (!response.ok)
+                    throw new Error(
+                        res.message || "Error al crear la solicitud.",
+                    );
+
+                const ticketId = res.id;
+
+                // 2. Upload Files (if any)
+                const validFiles = stagedFiles.filter((f) => f.isValid);
+                if (validFiles.length > 0) {
+                    submitButton.innerHTML = `<span class="animate-spin mr-2">⏳</span> Subiendo archivos...`;
+
+                    const uploadPromises = validFiles.map(async (fw) => {
+                        try {
+                            const presigned = await fetch(
+                                "/api/tickets/generate-upload-url",
+                                {
+                                    method: "POST",
+                                    headers: {
+                                        "Content-Type": "application/json",
+                                    },
+                                    body: JSON.stringify({
+                                        fileName: fw.file.name,
+                                        fileType: fw.file.type,
+                                        ticketId: ticketId,
+                                    }),
+                                },
+                            );
+                            if (!presigned.ok)
+                                throw new Error("Error URL firma");
+
+                            const { uploadUrl, key } = await presigned.json();
+                            await fetch(uploadUrl, {
+                                method: "PUT",
+                                body: fw.file,
+                                headers: { "Content-Type": fw.file.type },
+                            });
+                            return key;
+                        } catch (err) {
+                            console.error(err);
+                            return null;
+                        }
+                    });
+
+                    const keys = (await Promise.all(uploadPromises)).filter(
+                        (k) => k !== null,
+                    );
+
+                    // 3. Update Ticket with files
+                    if (keys.length > 0) {
+                        await fetch("/api/tickets/update", {
+                            method: "PATCH",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                                ticketId: ticketId,
+                                newFiles: keys,
+                                newComment: "Archivos adjuntos en creación.",
+                            }),
+                        });
+                    }
+                }
+
+                toast.success("Tu solicitud de traslado ha sido enviada.");
+                setTimeout(() => {
+                    window.location.href = "/";
+                }, 1500);
+            } catch (error: any) {
+                console.error(error);
+                toast.error(error.message || "Ocurrió un error inesperado.");
+                submitButton.disabled = false;
+                submitButton.textContent = "Enviar Solicitud";
+            }
+        });
+    }
+
+    document.addEventListener("astro:page-load", initTransferForm);
+</script>

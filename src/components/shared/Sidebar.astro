@@ -2,24 +2,25 @@
 import type { Session } from "@auth/core/types";
 
 // Icons
-import AllTicketsIcon from '@/components/icons/AllTicketsIcon.astro';
-import KnowledgeBaseIcon from '@/components/icons/KnowledgeBaseIcon.astro';
-import ManageTicketsIcon from '@/components/icons/ManageTicketsIcon.astro';
-import ManageUsersIcon from '@/components/icons/ManageUsersIcon.astro';
-import MyTicketsIcon from '@/components/icons/MyTicketsIcon.astro';
-import OfficeHours from '@/components/icons/OfficeHours.astro';
-import RemoteSupportIcon from '@/components/icons/RemoteSupportIcon.astro';
+import AllTicketsIcon from "@/components/icons/AllTicketsIcon.astro";
+import KnowledgeBaseIcon from "@/components/icons/KnowledgeBaseIcon.astro";
+import ManageTicketsIcon from "@/components/icons/ManageTicketsIcon.astro";
+import ManageUsersIcon from "@/components/icons/ManageUsersIcon.astro";
+import MyTicketsIcon from "@/components/icons/MyTicketsIcon.astro";
+import OfficeHours from "@/components/icons/OfficeHours.astro";
+import RemoteSupportIcon from "@/components/icons/RemoteSupportIcon.astro";
 import CreateMailIcon from "../icons/CreateMailIcon.astro";
 import UpdateMailIcon from "../icons/UpdateMailIcon.astro";
+import UserTransferIcon from "@/components/icons/UserTransferIcon.astro";
 
+import CollapsibleNavSection from "@/components/shared/CollapsibleNavSection.astro";
+import NavItem from "@/components/shared/NavItem.astro";
+import NewTicketMkt from "@/components/shared/NewTicketMkt.astro";
+import AddTicketMkt from "@/components/icons/AddTicketMkt.astro";
 
-import CollapsibleNavSection from '@/components/shared/CollapsibleNavSection.astro';
-import NavItem from '@/components/shared/NavItem.astro';
-import NewTicketMkt from '@/components/shared/NewTicketMkt.astro';
-import NewTransfer from '@/components/shared/NewTransfer.astro';
-import PlataformaHumanitas from './PlataformaHumanitas.astro';
-import UserProfile from '@/components/shared/UserProfile.astro';
-import AddTicket from '@/components/icons/AddTicket.astro';
+import PlataformaHumanitas from "./PlataformaHumanitas.astro";
+import UserProfile from "@/components/shared/UserProfile.astro";
+import AddTicket from "@/components/icons/AddTicket.astro";
 import DashboardIcon from "../icons/DashboardIcon.astro";
 
 interface Props {
@@ -28,141 +29,336 @@ interface Props {
 
 const { session } = Astro.props;
 const { pathname } = Astro.url;
-const { id = 'invitado' } = Astro.params;
+const { id = "invitado" } = Astro.params;
 
 // Permisos del sistema RBAC
 const permisos = session?.user?.permisos ?? [];
-const canSeeMarketing = permisos.includes('ver_seccion_marketing');
-const canSeeAdmin = permisos.includes('ver_seccion_admin');
-const canSeeAllTickets = permisos.includes('ver_todos_tickets');
+const secciones = session?.user?.secciones ?? [];
+
+const canViewAllTickets = permisos.includes("ver_todos_tickets");
+
+const canCreateTicketCSH = secciones.includes("crear_ticket_csh");
+const canSeeTraslados = secciones.includes("proceso_traslados");
+const canCreateTicketMarketing = secciones.includes("crear_ticket_marketing");
+const canSeeAsistencia = secciones.includes("asistencia_remota");
+const canSeeBaseConocimientos = secciones.includes("base_conocimientos");
+const canSeeHorario = secciones.includes("horario_atencion");
+
+const canSeeSoporteAdmin = ["soporte_mis_tickets", "soporte_dashboard", "soporte_todos"].some(id => secciones.includes(id));
+const canSeeMarketingAdmin = ["marketing_mis_tickets", "marketing_dashboard", "marketing_todos"].some(id => secciones.includes(id));
+const canSeeAdminCorreos = ["admin_correos_crear", "admin_correos_actualizar"].some(id => secciones.includes(id));
+const canSeeAdminSiget = ["admin_siget_categorias", "admin_siget_ciclos", "admin_siget_secciones", "admin_siget_tickets", "admin_siget_usuarios", "admin_siget_roles"].some(id => secciones.includes(id));
+const canSeeAdminMarketing = false; // Director Marketing ya no tiene un menú administrativo codificado de forma estática, requiere los permisos granulares.
 
 const cshHref = "/tickets/soporte/nuevo-ticket-csh";
 const isCshActive = pathname === cshHref;
 
 const mainNavItems = [
-    { href: 'https://my.anydesk.com/download/DftqvrQy/AnyDesk_Universidad_Humanitas.exe', label: 'Asistencia remota', icon: RemoteSupportIcon },
-    { href: '/base-de-conocimientos', label: 'Base de conocimientos', icon: KnowledgeBaseIcon },
-    { href: '/horario-de-atencion', label: 'Horario de atención', icon: OfficeHours },
+    ...(canSeeAsistencia ? [{
+        href: "https://my.anydesk.com/download/DftqvrQy/AnyDesk_Universidad_Humanitas.exe",
+        label: "Asistencia remota",
+        icon: RemoteSupportIcon,
+    }] : []),
+    ...(canSeeBaseConocimientos ? [{
+        href: "/base-de-conocimientos",
+        label: "Base de conocimientos",
+        icon: KnowledgeBaseIcon,
+    }] : []),
+    ...(canSeeHorario ? [{
+        href: "/horario-de-atencion",
+        label: "Horario de atención",
+        icon: OfficeHours,
+    }] : []),
 ];
 
 let ticketSections = [
-    {
-        title: 'Tickets soporte',
+    ...(canSeeSoporteAdmin ? [{
+        title: "Tickets soporte",
         items: [
-            { href: `/tickets/soporte/usuario`, label: 'Mis tickets', icon: MyTicketsIcon, reload: true },
-            { href: `/`, label: 'Dashboard', icon: DashboardIcon },
-            { href: '/tickets/soporte', label: 'Todos', icon: AllTicketsIcon, reload: true },
-        ]
-    },
-    {
-        title: 'Tickets marketing',
+            ...(secciones.includes("soporte_dashboard") ? [{ href: `/`, label: "Dashboard", icon: DashboardIcon }] : []),
+            ...(secciones.includes("soporte_mis_tickets") ? [{
+                href: `/tickets/soporte/usuario`,
+                label: "Mis tickets",
+                icon: MyTicketsIcon,
+                reload: true,
+            }] : []),
+            ...(secciones.includes("soporte_todos") ? [{
+                href: "/tickets/soporte",
+                label: "Todos",
+                icon: AllTicketsIcon,
+                reload: true,
+            }] : []),
+        ],
+    }] : []),
+    ...(canSeeMarketingAdmin ? [{
+        title: "Tickets marketing",
         items: [
-            { href: `/tickets/marketing/${id}`, label: 'Mis tickets', icon: MyTicketsIcon },
-            { href: '/tickets/marketing', label: 'Todos', icon: AllTicketsIcon },
-        ]
-    }
+            ...(secciones.includes("marketing_dashboard") ? [{
+                href: `/tickets/marketing/dashboard`,
+                label: "Dashboard",
+                icon: DashboardIcon,
+            }] : []),
+            ...(secciones.includes("marketing_mis_tickets") ? [{
+                href: `/tickets/marketing/usuario`,
+                label: "Mis tickets",
+                icon: MyTicketsIcon,
+            }] : []),
+            ...(secciones.includes("marketing_todos") ? [{
+                href: "/tickets/marketing",
+                label: "Todos",
+                icon: AllTicketsIcon,
+            }] : []),
+        ],
+    }] : []),
 ];
 
-if (!canSeeMarketing) {
-    // Ocultar la sección de marketing si no tiene el permiso
-    ticketSections = ticketSections.filter(section => section.title !== 'Tickets marketing');
-}
-
-if (!canSeeAllTickets) {
-    // En la sección de soporte, dejar solo "Mis tickets" si no tiene permiso para ver todos
-    ticketSections = ticketSections.map(section => {
-        if (section.title === 'Tickets soporte') {
-            section.items = section.items.filter(item => item.label === 'Mis tickets');
-        }
-        return section;
-    });
-}
-
 const adminSections = [
-    { title: 'Correos institucionales', items: [
-        { href: '/admin/correos/crear', label: 'Crear', icon: CreateMailIcon },
-        { href: '/admin/correos/actualizar', label: 'Actualizar', icon: UpdateMailIcon },
-    ]},
-    { title: 'SiGeT', items: [
-        { href: '/admin/tickets', label: 'Tickets', icon: ManageTicketsIcon },
-        { href: '/admin/usuarios', label: 'Usuarios', icon: ManageUsersIcon },
-    ]}
+    ...(canSeeAdminCorreos ? [{
+        title: "Correos institucionales",
+        items: [
+            ...(secciones.includes("admin_correos_actualizar") ? [{
+                href: "/admin/correos/actualizar",
+                label: "Actualizar",
+                icon: UpdateMailIcon,
+            }] : []),
+            ...(secciones.includes("admin_correos_crear") ? [{
+                href: "/admin/correos/crear",
+                label: "Crear",
+                icon: CreateMailIcon,
+            }] : []),
+        ],
+    }] : []),
+    ...(canSeeAdminSiget ? [{
+        title: "SiGeT",
+        items: [
+            ...(secciones.includes("admin_siget_categorias") ? [{
+                href: "/admin/categorias",
+                label: "Categorías",
+                icon: ManageTicketsIcon,
+            }] : []),
+            ...(secciones.includes("admin_siget_ciclos") ? [{
+                href: "/admin/ciclos",
+                label: "Ciclos",
+                icon: ManageTicketsIcon,
+            }] : []),
+            ...(secciones.includes("admin_siget_roles") ? [{
+                href: "/admin/roles",
+                label: "Roles",
+                icon: ManageUsersIcon,
+            }] : []),
+            ...(secciones.includes("admin_siget_secciones") ? [{
+                href: "/admin/secciones",
+                label: "Secciones",
+                icon: ManageTicketsIcon,
+            }] : []),
+            ...(secciones.includes("admin_siget_tickets") ? [{
+                href: "/admin/tickets",
+                label: "Tickets",
+                icon: ManageTicketsIcon,
+            }] : []),
+            ...(secciones.includes("admin_siget_usuarios") ? [{
+                href: "/admin/usuarios",
+                label: "Usuarios",
+                icon: ManageUsersIcon,
+            }] : []),
+        ],
+    }] : []),
+    ...(canSeeAdminMarketing ? [{
+        title: "SiGeT (Admin Marketing)",
+        items: [
+            {
+                href: "/admin/tickets",
+                label: "Tickets",
+                icon: ManageTicketsIcon,
+            },
+            {
+                href: "/admin/categorias",
+                label: "Categorías",
+                icon: ManageTicketsIcon,
+            },
+            {
+                href: "/admin/usuarios/corporativo",
+                label: "Usuarios",
+                icon: ManageUsersIcon,
+            },
+            {
+                href: "/admin/ciclos",
+                label: "Ciclos",
+                icon: ManageTicketsIcon,
+            },
+        ],
+    }] : [])
 ];
 ---
 
 <aside
     id="sidebar"
-    class=" bg-sidebar text-sidebar-foreground border-r border-border h-full flex flex-col
+    class="bg-sidebar text-sidebar-foreground border-r border-border h-full flex flex-col
             transition-transform duration-300 ease-in-out
             w-64 fixed inset-y-0 left-0 z-50
             group-data-[sidebar-collapsed=true]:-translate-x-full"
 >
-    <a href="/" class="h-[var(--header-height)] border-b border-border flex items-center px-6 shrink-0">
+    <a
+        href="/"
+        class="h-(--header-height) border-b border-border flex items-center px-6 shrink-0"
+    >
         <div class="flex items-center gap-2">
             <img src="/logo-h-wine.png" alt="Humanitas" class="h-8 w-8" />
-            <span class="font-bold text-lg group-data-[sidebar-collapsed=true]:hidden">C S H</span>
+            <span
+                class="font-bold text-lg group-data-[sidebar-collapsed=true]:hidden"
+                >C S H</span
+            >
         </div>
     </a>
 
     <nav class="flex-1 py-4 px-2 space-y-1 overflow-y-auto">
-        <div class="px-2 mb-2 text-sm font-semibold text-muted-foreground group-data-[sidebar-collapsed=true]:hidden">Abrir ticket</div>
-        <a
-            href={cshHref}
-            class:list={[
-                "w-full flex items-center gap-3 rounded-md px-4 py-2.5 text-sm font-semibold transition-colors duration-500 focus-visible:outline-none focus-visible:ring-1",
-                isCshActive
-                    ? "bg-secondary text-secondary-foreground"
-                    : "bg-primary text-primary-foreground hover:bg-secondary/90"
-            ]}
-        >
-            <AddTicket class="h-5 w-5" />
-            <span class="group-data-[sidebar-collapsed=true]:hidden">C S H</span>
-        </a>
-        <NewTransfer />
-        { canSeeMarketing && <NewTicketMkt /> }
+        { canCreateTicketCSH && (
+        <>
+            <div class="px-2 mb-2 text-sm font-semibold text-muted-foreground group-data-[sidebar-collapsed=true]:hidden">
+                Abrir ticket
+            </div>
+            <a
+                href={cshHref}
+                class:list={[
+                    "w-full flex items-center gap-3 rounded-md px-4 py-2.5 text-sm font-semibold transition-colors duration-500 focus-visible:outline-none focus-visible:ring-1",
+                    isCshActive
+                        ? "bg-secondary text-secondary-foreground"
+                        : "bg-primary text-primary-foreground hover:bg-secondary/90 hover:text-secondary-foreground",
+                ]}
+            >
+                <AddTicket class="h-5 w-5" />
+                <span class="group-data-[sidebar-collapsed=true]:hidden">
+                    C S H
+                </span>
+            </a>
+        </>
+        )}
+
+        {
+            canCreateTicketMarketing && (
+                <a
+                    href="/tickets/marketing/nuevo-ticket-marketing"
+                    class:list={[
+                        "w-full flex items-center gap-3 rounded-md px-4 py-2.5 text-sm font-semibold transition-colors duration-500 focus-visible:outline-none focus-visible:ring-1",
+                        pathname === "/tickets/marketing/nuevo-ticket-marketing"
+                            ? "bg-secondary text-secondary-foreground"
+                            : "bg-primary text-primary-foreground hover:bg-secondary/90 hover:text-secondary-foreground",
+                    ]}
+                >
+                    <AddTicketMkt class="h-5 w-5" />
+                    <span class="group-data-[sidebar-collapsed=true]:hidden">
+                        Marketing
+                    </span>
+                </a>
+            )
+        }
+
+        {/* Link a Traslado */}
+        {
+            canSeeTraslados && (
+                <a
+                    href="/tickets/soporte/traslado"
+                    class:list={[
+                        "w-full flex items-center gap-3 rounded-md px-4 py-2.5 text-sm font-semibold transition-colors duration-500 focus-visible:outline-none focus-visible:ring-1",
+                        pathname === "/tickets/soporte/traslado"
+                            ? "bg-secondary text-secondary-foreground"
+                            : "bg-primary text-primary-foreground hover:bg-secondary/90 hover:text-secondary-foreground",
+                    ]}
+                >
+                    <UserTransferIcon class="h-5 w-5" />
+                    <span class="group-data-[sidebar-collapsed=true]:hidden">
+                        Traslado
+                    </span>
+                </a>
+            )
+        }
 
         <div class="border-t border-border my-3"></div>
 
-        {ticketSections.map(section => (
-            <CollapsibleNavSection title={section.title} items={section.items} pathname={pathname} matchMode="exact" />
-        ))}
-
+        {
+            ticketSections.map((section) => (
+                <CollapsibleNavSection
+                    title={section.title}
+                    items={section.items}
+                    pathname={pathname}
+                    matchMode="exact"
+                />
+            ))
+        }
 
         <div class="py-2 border-t border-b border-border">
+            {
+                mainNavItems.map((item) => (
+                    <NavItem
+                        {...item}
+                        active={
+                            item.href === "/"
+                                ? pathname === "/"
+                                : pathname.startsWith(item.href)
+                        }
+                    />
+                ))
+            }
             <PlataformaHumanitas />
-            {mainNavItems.map(item => (
-                <NavItem {...item} active={item.href === '/' ? pathname === '/' : pathname.startsWith(item.href)} />
-            ))}
         </div>
 
-        { canSeeAdmin && (
-            <>
-                <div class="px-2 pt-2 text-sm font-semibold text-muted-foreground group-data-[sidebar-collapsed=true]:hidden">Administrador</div>
-                {adminSections.map(section => (
-                    <CollapsibleNavSection title={section.title} items={section.items} pathname={pathname} matchMode="prefix" />
-                ))}
-            </>
-        )}
+        {
+            (canSeeAdminCorreos || canSeeAdminSiget || canSeeAdminMarketing) && (
+                <>
+                    <div class="px-2 pt-2 text-sm font-semibold text-muted-foreground group-data-[sidebar-collapsed=true]:hidden">
+                        Administrador
+                    </div>
+                    {adminSections.map((section) => (
+                        <CollapsibleNavSection
+                            title={section.title}
+                            items={section.items}
+                            pathname={pathname}
+                            matchMode="prefix"
+                        />
+                    ))}
+                </>
+            )
+        }
     </nav>
-    
-    <div class="p-2 border-t border-border mt-auto shrink-0">
+
+    <div
+        class="p-2 border-t border-border mt-auto shrink-0 bg-sidebar/80 backdrop-blur-sm z-10"
+    >
         <UserProfile session={session} />
+    </div>
+
+    {/* Fondo decorativo con opacidad reducida */}
+    <div
+        class="absolute inset-0 z-0 pointer-events-none opacity-[0.1] dark:opacity-[0.08]"
+        style="background-image: url('/leon-querer-es-poder.png'); background-position: bottom center; background-repeat: no-repeat; background-size: contain;"
+    >
     </div>
 </aside>
 
 <script>
     function setupCollapsibleSections() {
-        const triggers = document.querySelectorAll('.collapsible-trigger');
-        triggers.forEach(trigger => {
-            trigger.addEventListener('click', () => {
-                const section = trigger.closest('.collapsible-section');
+        const triggers = document.querySelectorAll(".collapsible-trigger");
+        triggers.forEach((trigger) => {
+            trigger.addEventListener("click", () => {
+                const section = trigger.closest(".collapsible-section");
                 if (section) {
-                    const isOpening = section.getAttribute('data-state') === 'closed';
-                    section.setAttribute('data-state', isOpening ? 'open' : 'closed');
-                    trigger.setAttribute('aria-expanded', String(isOpening));
+                    const isOpening =
+                        section.getAttribute("data-state") === "closed";
+                    section.setAttribute(
+                        "data-state",
+                        isOpening ? "open" : "closed",
+                    );
+                    trigger.setAttribute("aria-expanded", String(isOpening));
+                    
+                    if (isOpening) {
+                        // Esperar a que la transición del menú expansible termine (aprox 300ms)
+                        setTimeout(() => {
+                            section.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                        }, 300);
+                    }
                 }
             });
         });
     }
-    document.addEventListener('astro:page-load', setupCollapsibleSections);
+    document.addEventListener("astro:page-load", setupCollapsibleSections);
 </script>

@@ -1,0 +1,149 @@
+---
+import MainLayout from "@/layouts/MainLayout.astro";
+import { prisma } from "@/lib/db";
+import { getSession } from "auth-astro/server";
+
+const session = await getSession(Astro.request);
+
+const secciones = await prisma.seccion.findMany({
+  orderBy: [{ grupo: "desc" }, { subgrupo: "asc" }, { nombre: "asc" }],
+});
+
+// Agrupar secciones para UI
+const orderGrupos = [
+  "Abrir ticket",
+  "Tickets soporte",
+  "Tickets marketing",
+  "Otros",
+  "Administrador",
+];
+const groupedSecciones: { [key: string]: { [key: string]: typeof secciones } } =
+  {};
+
+secciones.forEach((sec) => {
+  const group = sec.grupo || "Otros";
+  const subgroup = sec.subgrupo || "General";
+  if (!groupedSecciones[group]) groupedSecciones[group] = {};
+  if (!groupedSecciones[group][subgroup])
+    groupedSecciones[group][subgroup] = [];
+  groupedSecciones[group][subgroup].push(sec);
+});
+---
+
+<MainLayout title="Gestión de secciones globales">
+  <div class="max-w-6xl mx-auto space-y-6">
+    <div>
+      <p class="text-lg mt-2">
+        Habilita o inhabilita el acceso a módulos completos de la plataforma. Si
+        una sección se desactiva aquí, ningún usuario podrá acceder a ella, ya
+        que prevalecerá la desactivación global sobre los permisos de rol o de
+        usuario.
+      </p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {
+        orderGrupos.map((grupo) => {
+          if (
+            !groupedSecciones[grupo] ||
+            Object.keys(groupedSecciones[grupo]).length === 0
+          )
+            return null;
+
+          const subgroups = groupedSecciones[grupo];
+          return (
+            <div class="bg-card border rounded-lg p-4 shadow-sm">
+              <h3 class="text-sm font-bold text-muted-foreground mb-4 uppercase tracking-wider">
+                {grupo}
+              </h3>
+              <div class="space-y-6">
+                {Object.entries(subgroups).map(([subgroupName, secs]) => (
+                  <div class="space-y-3">
+                    {subgroupName !== "General" && (
+                      <h4 class="text-[11px] font-bold text-muted-foreground border-b pb-1 uppercase">
+                        {subgroupName}
+                      </h4>
+                    )}
+                    <div class="space-y-3 pl-1">
+                      {secs.map((seccion) => (
+                        <div class="flex items-center justify-between gap-4">
+                          <label
+                            for={`sec-global-${seccion.id}`}
+                            class="text-sm cursor-pointer select-none truncate pr-2 flex-1"
+                            title={seccion.nombre}
+                          >
+                            {seccion.nombre}
+                          </label>
+
+                          <label
+                            class="relative inline-flex items-center cursor-pointer shrink-0"
+                            title={seccion.activo ? "Inhabilitar" : "Habilitar"}
+                          >
+                            <input
+                              type="checkbox"
+                              id={`sec-global-${seccion.id}`}
+                              class="sr-only peer global-section-toggle"
+                              data-seccion-id={seccion.id}
+                              checked={seccion.activo}
+                            />
+                            <div class="w-9 h-5 bg-muted-foreground peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary opacity-80 peer-checked:opacity-100 hover:opacity-100 transition-opacity" />
+                          </label>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })
+      }
+    </div>
+  </div>
+</MainLayout>
+
+<script>
+  import { toast } from "@/lib/toast";
+
+  document.addEventListener("astro:page-load", () => {
+    const toggles = document.querySelectorAll(".global-section-toggle");
+    toggles.forEach((toggle) => {
+      toggle.addEventListener("change", async (e) => {
+        const input = e.target as HTMLInputElement;
+        const seccionId = input.dataset.seccionId;
+        const activo = input.checked;
+
+        try {
+          const res = await fetch("/api/admin/secciones", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              seccionId: parseInt(seccionId || "0", 10),
+              activo,
+            }),
+          });
+
+          if (!res.ok) {
+            throw new Error(
+              (await res.json()).message || "Error al actualizar la sección",
+            );
+          }
+
+          toast.success(
+            activo
+              ? "Sección habilitada globalmente"
+              : "Sección inhabilitada globalmente",
+          );
+        } catch (error) {
+          console.error(error);
+          input.checked = !activo; // revert
+          toast.error(
+            error instanceof Error
+              ? error.message
+              : "No se pudo actualizar la sección",
+          );
+        }
+      });
+    });
+  });
+</script>

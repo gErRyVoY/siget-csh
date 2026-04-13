@@ -1,10 +1,13 @@
 ---
-import Sidebar from '@/components/shared/Sidebar.astro';
-import NotificationEmpty from '@/components/icons/NotificationEmpty.astro';
-import NotificationFull from '@/components/icons/NotificationFull.astro';
-import PanelLeftClose from '@/components/icons/PanelLeftClose.astro';
-import '@/styles/global.css'; 
-import ClientRouter from 'astro/components/ClientRouter.astro';
+import Sidebar from "@/components/shared/Sidebar.astro";
+import NotificationEmpty from "@/components/icons/NotificationEmpty.astro";
+import NotificationFull from "@/components/icons/NotificationFull.astro";
+import PanelLeftClose from "@/components/icons/PanelLeftClose.astro";
+import Toaster from "@/components/ui/Toaster.astro";
+import ThemeToggle from "@/components/ui/ThemeToggle.astro";
+import "@/styles/global.css";
+import "@/styles/toast.css";
+import ClientRouter from "astro/components/ClientRouter.astro";
 
 // La sesión ahora se obtiene desde Astro.locals, inyectada por el middleware.
 const session = Astro.locals.session;
@@ -12,19 +15,19 @@ const session = Astro.locals.session;
 // La lógica de redirección ha sido movida al middleware, manteniendo este layout limpio.
 
 interface Props {
-	title: string;
+    title: string;
 }
 const { title } = Astro.props;
 
 const NOTIFICATION_EMPTY_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-bell">
     <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-    <path d="M10 5a2 2 0 1 1 4 0a7 7 0 0 1 4 6v3a4 4 0 0 0 2 -3v-3a7 7 0 0 1 4 -6" />
+    <path d="M10 5a2 2 0 1 1 4 0a7 7 0 0 1 4 6v3a4 4 0 0 0 2 3h-16a4 4 0 0 0 2 -3v-3a7 7 0 0 1 4 -6" />
     <path d="M9 17v1a3 3 0 0 0 6 0v-1" />
 </svg>`;
 
 const NOTIFICATION_FULL_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-bell-ringing">
     <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-    <path d="M10 5a2 2 0 1 1 4 0a7 7 0 0 1 4 6v3a4 4 0 0 0 2 -3v-3a7 7 0 0 1 4 -6" />
+    <path d="M10 5a2 2 0 1 1 4 0a7 7 0 0 1 4 6v3a4 4 0 0 0 2 3h-16a4 4 0 0 0 2 -3v-3a7 7 0 0 1 4 -6" />
     <path d="M9 17v1a3 3 0 0 0 6 0v-1" />
     <path d="M21 6.727a11.05 11.05 0 0 0 -2.794 -3.727" />
     <path d="M3 6.727a11.05 11.05 0 0 1 2.792 -3.727" />
@@ -33,147 +36,544 @@ const NOTIFICATION_FULL_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="24
 
 <!doctype html>
 <html lang="es-MX">
-<head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width" />
-    <link rel="icon" type="image/svg+xml" href="/logo-h-wine.png" />
-    <meta name="generator" content={Astro.generator} />
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <title>{ title } | CSH</title>
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width" />
+        <link rel="icon" type="image/svg+xml" href="/logo-h-wine.png" />
+        <meta name="generator" content={Astro.generator} />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+        <link
+            href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap"
+            rel="stylesheet"
+        />
+        <title>{title} | CSH</title>
 
-    <!-- SweetAlert2 -->
-    <script is:inline src="//cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+        <script is:inline>
+            const getThemePreference = () => {
+                if (
+                    typeof localStorage !== "undefined" &&
+                    localStorage.getItem("theme")
+                ) {
+                    return localStorage.getItem("theme");
+                }
+                return window.matchMedia("(prefers-color-scheme: dark)").matches
+                    ? "dark"
+                    : "light";
+            };
 
-    <ClientRouter />
-</head>
-<body data-user-id={session?.user?.id}>
-    <div id="dashboard-wrapper" class="h-screen w-screen bg-background flex group font-montse">
-        <Sidebar session={session} />
-    
+            const applyTheme = () => {
+                const isDark = getThemePreference() === "dark";
+                document.documentElement.classList[isDark ? "add" : "remove"](
+                    "dark",
+                );
+            };
+
+            // Apply on initial load
+            applyTheme();
+
+            // Re-apply after view transitions to ensure persistence
+            document.addEventListener("astro:after-swap", applyTheme);
+        </script>
+
+        <ClientRouter />
+    </head>
+    <body
+        data-user-id={session?.user?.id}
+        data-user-role={session?.user?.rol?.id}
+        class="h-screen w-full overflow-hidden m-0 p-0"
+    >
         <div
-            id="main-content"
-            class=" relative flex-1 flex flex-col h-full overflow-y-auto
-                    transition-[margin-left] duration-300 ease-in-out 
-                    ml-0 md:ml-64 group-data-[sidebar-collapsed=false]:ml-64 group-data-[sidebar-collapsed=true]:ml-0"
+            id="dashboard-wrapper"
+            class="h-screen w-full bg-background text-foreground flex group font-montse overflow-hidden"
         >
-            <header class="h-[var(--header-height)] flex items-center justify-between border-b border-border px-6 sticky top-0 bg-background/80 backdrop-blur-lg z-30">
-                <div class="flex items-center">
-                    <button id="sidebar-toggle-button" class="mr-4 p-2 rounded-md hover:bg-accent">
-                        <PanelLeftClose class="h-5 w-5" />
-                    </button>
-                    <h1 class="text-xl font-semibold h-16 flex items-center justify-center">{ title }</h1>
-                </div>
-                <div class="flex items-center gap-4">
-                    <div id="notification-bell" class="relative cursor-pointer w-6 h-6 flex items-center justify-center">
-                        <NotificationEmpty />
-                        <span id="notification-count" class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center" style="display: none;"></span>
-                    </div>
-                </div>
-            </header>
+            <Sidebar session={session} />
 
-            <main class="p-4 flex-1">
-                <div class="group-data-[sidebar-collapsed=false]:max-md:hidden h-full">
-                    <slot />
-                </div>
-                <div 
-                    id="mobile-overlay-message" 
-                    class=" hidden group-data-[sidebar-collapsed=false]:max-md:flex
-                            absolute inset-0 top-[var(--header-height)] bg-background/80 backdrop-blur-sm cursor-pointer 
-                            items-center justify-center p-8 text-center font-semibold text-foreground z-20"
+            <div
+                id="main-content"
+                class="relative flex-1 flex flex-col h-full overflow-hidden min-w-0
+                    transition-[padding-left] duration-300 ease-in-out
+                    pl-0 md:pl-64 group-data-[sidebar-collapsed=false]:pl-64 group-data-[sidebar-collapsed=true]:pl-0"
+            >
+                <header
+                    class="h-(--header-height) flex items-center justify-between border-b border-border px-6 bg-background/80 backdrop-blur-lg z-30 shrink-0"
                 >
-                    Toque aquí para ver el contenido
-                </div>
-            </main>
-        </div>
-    </div>
-    <script>
-        if (typeof window !== "undefined") {
-            const notificationBell = document.getElementById('notification-bell');
-            const notificationCount = document.getElementById('notification-count');
-            const currentUserId = document.body.dataset.userId;
-            let count = 0;
+                    <div class="flex items-center">
+                        <button
+                            id="sidebar-toggle-button"
+                            class="mr-4 p-2 rounded-md hover:bg-accent"
+                        >
+                            <PanelLeftClose class="h-5 w-5" />
+                        </button>
+                        <h1
+                            class="text-xl font-semibold h-16 flex items-center justify-center group-data-[sidebar-collapsed=false]:max-md:hidden"
+                        >
+                            {title}
+                        </h1>
+                    </div>
+                    <div class="flex items-center gap-4">
+                        <ThemeToggle />
+                        <div
+                            id="notification-bell"
+                            class="relative cursor-pointer w-6 h-6 flex items-center justify-center shrink-0"
+                        >
+                            <div id="notification-icon">
+                                <NotificationEmpty />
+                            </div>
+                            <span
+                                id="notification-count"
+                                class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center"
+                                style="display: none;"></span>
 
-            const NOTIFICATION_EMPTY_SVG = `
+                            <!-- Dropdown de Notificaciones -->
+                            <div
+                                id="notification-dropdown"
+                                class="absolute top-full right-0 mt-2 w-80 bg-card border border-border rounded-lg shadow-lg z-50 hidden flex-col max-h-[80vh]"
+                            >
+                                <div
+                                    class="p-3 border-b border-border font-semibold text-sm"
+                                >
+                                    Notificaciones
+                                </div>
+                                <div
+                                    id="notification-list"
+                                    class="overflow-y-auto flex-1"
+                                >
+                                    <!-- Items se inyectarán aquí -->
+                                </div>
+                                <button
+                                    id="notification-load-more"
+                                    class="p-2 text-xs text-center text-primary hover:bg-accent w-full border-t border-border hidden"
+                                >
+                                    Ver más
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </header>
+
+                <main
+                    class="p-4 flex-1 min-w-0 h-full overflow-y-auto overflow-x-auto"
+                >
+                    <div
+                        class="group-data-[sidebar-collapsed=false]:max-md:hidden"
+                    >
+                        <slot />
+                    </div>
+                    <div
+                        id="mobile-overlay-message"
+                        class="hidden group-data-[sidebar-collapsed=false]:max-md:flex
+                            absolute inset-0 top-(--header-height) bg-background/80 backdrop-blur-sm cursor-pointer
+                            items-center justify-center p-8 text-center font-semibold text-foreground z-20"
+                    >
+                        Toque aquí para ver el contenido
+                    </div>
+                </main>
+            </div>
+        </div>
+
+        <!-- Toaster de Sonner para notificaciones -->
+        <Toaster />
+
+        <script>
+            import { toast } from "@/lib/toast";
+
+            let eventSource: EventSource | null = null;
+
+            document.addEventListener("astro:page-load", () => {
+                const notificationBell =
+                    document.getElementById("notification-bell");
+                const notificationIcon =
+                    document.getElementById("notification-icon");
+                const notificationDropdown = document.getElementById(
+                    "notification-dropdown",
+                );
+                const notificationList =
+                    document.getElementById("notification-list");
+                const notificationCount =
+                    document.getElementById("notification-count");
+                const loadMoreBtn = document.getElementById(
+                    "notification-load-more",
+                );
+                const userRoleStr = document.body.dataset.userRole || "-1";
+                const currentUserId = document.body.dataset.userId;
+
+                if (
+                    !notificationBell ||
+                    !notificationIcon ||
+                    !notificationDropdown ||
+                    !notificationList ||
+                    !notificationCount ||
+                    !loadMoreBtn
+                ) {
+                    return;
+                }
+
+                // Check for unauthorized access redirect
+                const urlParams = new URLSearchParams(window.location.search);
+                if (urlParams.get("unauthorized") === "true") {
+                    setTimeout(() => {
+                        toast.error("No tienes permisos suficientes.", {
+                            duration: 5000,
+                        });
+                        // Clean URL without reloading
+                        const newUrl = window.location.pathname;
+                        window.history.replaceState({}, document.title, newUrl);
+                    }, 500); // Small delay to ensure toast lib is ready and visible after transition
+                }
+
+                let currentPage = 1;
+                let count = 0;
+                let isLoadingNotifications = false;
+                const PRIVILEGED_ROLES = [1, 2, 3, 4, 5, 6, 15];
+                const userRoleId = parseInt(userRoleStr, 10);
+                const isResolver = PRIVILEGED_ROLES.includes(userRoleId);
+
+                const NOTIFICATION_EMPTY_SVG = `
 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-bell">
     <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-    <path d="M10 5a2 2 0 1 1 4 0a7 7 0 0 1 4 6v3a4 4 0 0 0 2 -3v-3a7 7 0 0 1 4 -6" />
+    <path d="M10 5a2 2 0 1 1 4 0a7 7 0 0 1 4 6v3a4 4 0 0 0 2 3h-16a4 4 0 0 0 2 -3v-3a7 7 0 0 1 4 -6" />
     <path d="M9 17v1a3 3 0 0 0 6 0v-1" />
 </svg>
 `;
 
-            const NOTIFICATION_FULL_SVG = `
+                const NOTIFICATION_FULL_SVG = `
 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-bell-ringing">
     <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-    <path d="M10 5a2 2 0 1 1 4 0a7 7 0 0 1 4 6v3a4 4 0 0 0 2 -3v-3a7 7 0 0 1 4 -6" />
+    <path d="M10 5a2 2 0 1 1 4 0a7 7 0 0 1 4 6v3a4 4 0 0 0 2 3h-16a4 4 0 0 0 2 -3v-3a7 7 0 0 1 4 -6" />
     <path d="M9 17v1a3 3 0 0 0 6 0v-1" />
     <path d="M21 6.727a11.05 11.05 0 0 0 -2.794 -3.727" />
     <path d="M3 6.727a11.05 11.05 0 0 1 2.792 -3.727" />
 </svg>
 `;
 
-            if (notificationBell && notificationCount) {
-                notificationBell.addEventListener('click', () => {
-                    count = 0;
-                    notificationCount.textContent = '';
-                    notificationCount.style.display = 'none';
-                    notificationBell.innerHTML = NOTIFICATION_EMPTY_SVG;
-                });
+                const updateNotificationUI = () => {
+                    if (count > 0) {
+                        notificationCount.textContent = count.toString();
+                        notificationCount.style.display = "flex";
+                        notificationIcon.innerHTML = NOTIFICATION_FULL_SVG;
+                    } else {
+                        notificationCount.style.display = "none";
+                        notificationIcon.innerHTML = NOTIFICATION_EMPTY_SVG;
+                    }
+                };
 
-                const eventSource = new EventSource("/api/notifications");
+                const renderNotifications = (
+                    tickets: any[],
+                    append = false,
+                ) => {
+                    if (!append) {
+                        notificationList.innerHTML = "";
+                    }
 
-                eventSource.onmessage = (event) => {
-                    const data = JSON.parse(event.data);
-                    console.log('[SSE] Notification received:', data);
-
-                    // Ignore notification if it was triggered by the current user
-                    if (data.originatorId && data.originatorId.toString() === currentUserId) {
-                        console.log('[SSE] Ignoring self-triggered notification.');
+                    if (tickets.length === 0 && !append) {
+                        notificationList.innerHTML = `
+                            <div class="px-4 py-8 text-sm text-muted-foreground text-center flex flex-col items-center gap-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-muted-foreground/50"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12.5 17h-8.5a4 4 0 0 0 2 -3v-3a7 7 0 0 1 4 -6a2 2 0 0 1 4 0a7 7 0 0 1 4 6v3c.025 .912 .452 1.745 1.154 2.318" /><path d="M9 17v1a3 3 0 0 0 6 0v-1" /><path d="M16 19h6" /><path d="M19 16v6" /></svg>
+                                <p>No hay notificaciones nuevas.</p>
+                                <p class="text-xs opacity-70">Estás al día.</p>
+                            </div>
+                        `;
+                        loadMoreBtn.classList.add("hidden");
                         return;
                     }
 
-                    count++;
-                    notificationCount.textContent = count.toString();
-                    notificationCount.style.display = 'flex';
-                    notificationBell.innerHTML = NOTIFICATION_FULL_SVG;
+                    tickets.forEach((ticket: any) => {
+                        const item = document.createElement("a");
+                        item.href = `/tickets/view/${ticket.id}`;
+                        item.className =
+                            "block px-4 py-3 hover:bg-muted/50 transition-colors border-b border-border last:border-0";
+
+                        const statusHexColors: { [key: string]: string } = {
+                            Nuevo: "#a1a1aa",
+                            "En progreso": "#3b82f6",
+                            "En espera": "#38bdf8",
+                            Solucionado: "#84cc16",
+                            Cancelado: "#dc2626",
+                            Duplicado: "#171717",
+                        };
+
+                        const statusName = ticket.estatus?.nombre || "Estado";
+                        const bgColor =
+                            statusHexColors[statusName] || "#a1a1aa";
+
+                        const lastComment = ticket.historial_solicitudes && ticket.historial_solicitudes.length > 0 
+                            ? ticket.historial_solicitudes[0].comentario 
+                            : null;
+                        const subtitle = lastComment || ticket.descripcion;
+                        
+                        item.innerHTML = `
+                            <div class="flex justify-between items-start mb-1">
+                                <span class="font-medium text-sm text-foreground">Ticket #${ticket.id}</span>
+                                <span class="text-xs px-2 py-0.5 rounded-full text-white" style="background-color: ${bgColor}">${statusName}</span>
+                            </div>
+                            <p class="text-sm text-muted-foreground line-clamp-2 mb-1">${subtitle}</p>
+                            <div class="flex justify-between items-center text-xs text-muted-foreground/70">
+                                <span>${ticket.solicitante.nombres} ${ticket.solicitante.apellidos}</span>
+                                <span>${ticket.categoria.nombre}</span>
+                            </div>
+                        `;
+
+                        // Always redirect notifications to 'mis-tickets' context
+                        item.href = `/tickets/view/${ticket.id}?source=mis-tickets`;
+
+                        item.addEventListener("click", () => {
+                            if (count > 0) {
+                                count--;
+                                updateNotificationUI();
+                            }
+                            notificationDropdown.classList.add("hidden");
+                        });
+
+                        notificationList.appendChild(item);
+                    });
                 };
+
+                const fetchNotifications = async () => {
+                    if (isLoadingNotifications) return;
+                    isLoadingNotifications = true;
+                    loadMoreBtn.textContent = "Cargando...";
+                    console.log(
+                        "[Debug] Fetching notifications page:",
+                        currentPage,
+                    );
+
+                    try {
+                        const res = await fetch(
+                            `/api/notifications/list?page=${currentPage}&limit=5`,
+                        );
+                        console.log(
+                            "[Debug] Notifications list response status:",
+                            res.status,
+                        );
+                        if (res.ok) {
+                            const data = await res.json();
+                            console.log(
+                                "[Debug] Notifications list data:",
+                                data,
+                            );
+                            renderNotifications(data.tickets, currentPage > 1);
+
+                            if (data.hasMore) {
+                                loadMoreBtn.classList.remove("hidden");
+                                loadMoreBtn.textContent = "Ver más";
+                            } else {
+                                loadMoreBtn.classList.add("hidden");
+                            }
+                        }
+                    } catch (error) {
+                        console.error("Error fetching notifications:", error);
+                        loadMoreBtn.textContent = "Error al cargar";
+                    } finally {
+                        isLoadingNotifications = false;
+                    }
+                };
+
+                const fetchNotificationCount = async () => {
+                    try {
+                        console.log("[Debug] Fetching notification count...");
+                        const res = await fetch("/api/notifications/count");
+                        console.log(
+                            "[Debug] Notification count response status:",
+                            res.status,
+                        );
+                        if (res.ok) {
+                            const data = await res.json();
+                            console.log(
+                                "[Debug] Notification count data:",
+                                data,
+                            );
+                            count = data.count;
+                            updateNotificationUI();
+                        }
+                    } catch (error) {
+                        console.error(
+                            "Error fetching notification count:",
+                            error,
+                        );
+                    }
+                };
+
+                notificationBell.addEventListener("click", (e) => {
+                    console.log("[Debug] Bell clicked");
+                    e.stopPropagation();
+                    const isHidden =
+                        notificationDropdown.classList.contains("hidden");
+
+                    if (isHidden) {
+                        console.log("[Debug] Opening dropdown");
+                        notificationDropdown.classList.remove("hidden");
+                        notificationDropdown.classList.add("flex");
+                        currentPage = 1;
+                        fetchNotifications();
+                    } else {
+                        console.log("[Debug] Closing dropdown");
+                        notificationDropdown.classList.add("hidden");
+                        notificationDropdown.classList.remove("flex");
+                    }
+                });
+
+                document.addEventListener("click", (e) => {
+                    if (
+                        !notificationBell.contains(e.target as Node) &&
+                        !notificationDropdown.contains(e.target as Node)
+                    ) {
+                        notificationDropdown.classList.add("hidden");
+                        notificationDropdown.classList.remove("flex");
+                    }
+                });
+
+                loadMoreBtn.addEventListener("click", (e) => {
+                    e.stopPropagation();
+                    currentPage++;
+                    fetchNotifications();
+                });
+
+                fetchNotificationCount();
+
+                // SSE Logic
+                if (eventSource) {
+                    eventSource.close();
+                }
+
+                let reconnectAttempts = 0;
+                const maxReconnectDelay = 30000;
+
+                const connectSSE = () => {
+                    if (eventSource) eventSource.close();
+
+                    eventSource = new EventSource(
+                        `/api/notifications/sse?userId=${currentUserId}`,
+                    );
+
+                    eventSource.onopen = () => {
+                        console.log("[SSE] Connected");
+                        reconnectAttempts = 0;
+                    };
+
+                    eventSource.onmessage = (event) => {
+                        if (event.data === ": heartbeat") return;
+
+                        const data = JSON.parse(event.data);
+                        if (data.type === "connected") return;
+
+                        if (
+                            data.originatorId &&
+                            data.originatorId.toString() === currentUserId
+                        ) {
+                            return;
+                        }
+
+                        let messageContent = data.message;
+                        if (data.comment) {
+                             messageContent = `<strong>${data.message}</strong><br><span style="opacity: 0.85; font-size: 0.85em;">${data.comment}</span>`;
+                        }
+
+                        toast.info(messageContent, {
+                            allowHtml: true,
+                            action: {
+                                label: "Ver",
+                                onClick: () => {
+                                    if (data.ticketId) {
+                                        window.location.href = `/tickets/view/${data.ticketId}`;
+                                    }
+                                },
+                            },
+                        });
+
+                        let shouldIncrement = false;
+
+                        if (isResolver) {
+                            if (data.type === "ticket_created") {
+                                shouldIncrement = true;
+                            }
+                        } else {
+                            if (data.type === "ticket_updated") {
+                                shouldIncrement = true;
+                            }
+                        }
+
+                        if (shouldIncrement) {
+                            count++;
+                            updateNotificationUI();
+                        }
+                    };
+
+                    eventSource.onerror = (error) => {
+                        console.error("SSE Error:", error);
+                        eventSource?.close();
+                        const delay = Math.min(
+                            1000 * Math.pow(2, reconnectAttempts),
+                            maxReconnectDelay,
+                        );
+                        reconnectAttempts++;
+                        setTimeout(connectSSE, delay);
+                    };
+                };
+
+                document.addEventListener("visibilitychange", () => {
+                    if (document.visibilityState === "visible") {
+                        if (
+                            !eventSource ||
+                            eventSource.readyState === EventSource.CLOSED
+                        ) {
+                            reconnectAttempts = 0;
+                            connectSSE();
+                        }
+                    }
+                });
+
+                connectSSE();
+            });
+        </script>
+        <script>
+            function setupSidebar() {
+                const dashboardWrapper = document.getElementById(
+                    "dashboard-wrapper",
+                ) as HTMLElement;
+                const toggleButton = document.getElementById(
+                    "sidebar-toggle-button",
+                ) as HTMLButtonElement;
+                const mobileOverlay = document.getElementById(
+                    "mobile-overlay-message",
+                ) as HTMLElement;
+
+                if (!dashboardWrapper || !toggleButton || !mobileOverlay)
+                    return;
+
+                function setSidebarState(isCollapsed: boolean) {
+                    dashboardWrapper.setAttribute(
+                        "data-sidebar-collapsed",
+                        String(isCollapsed),
+                    );
+                }
+
+                function handleSidebarForViewport() {
+                    if (window.innerWidth < 768) {
+                        setSidebarState(true);
+                    } else {
+                        setSidebarState(false);
+                    }
+                }
+
+                toggleButton.addEventListener("click", (e) => {
+                    e.stopPropagation();
+                    const isCollapsed =
+                        dashboardWrapper.getAttribute(
+                            "data-sidebar-collapsed",
+                        ) === "true";
+                    setSidebarState(!isCollapsed);
+                });
+
+                mobileOverlay.addEventListener("click", () =>
+                    setSidebarState(true),
+                );
+
+                window.addEventListener("resize", handleSidebarForViewport);
+                handleSidebarForViewport();
             }
-        }
-    </script>
-    <script>
-    function setupSidebar() {
-        const dashboardWrapper = document.getElementById('dashboard-wrapper') as HTMLElement;
-        const toggleButton = document.getElementById('sidebar-toggle-button') as HTMLButtonElement;
-        const mobileOverlay = document.getElementById('mobile-overlay-message') as HTMLElement;
 
-        if (!dashboardWrapper || !toggleButton || !mobileOverlay) return;
-
-        function setSidebarState(isCollapsed: boolean) {
-            dashboardWrapper.setAttribute('data-sidebar-collapsed', String(isCollapsed));
-        }
-
-        function handleSidebarForViewport() {
-            if (window.innerWidth < 768) {
-                setSidebarState(true);
-            } else {
-                setSidebarState(false);
-            }
-        }
-
-        toggleButton.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const isCollapsed = dashboardWrapper.getAttribute('data-sidebar-collapsed') === 'true';
-            setSidebarState(!isCollapsed);
-        });
-
-        mobileOverlay.addEventListener('click', () => setSidebarState(true));
-
-        window.addEventListener('resize', handleSidebarForViewport);
-        handleSidebarForViewport();
-    }
-
-    document.addEventListener('astro:page-load', setupSidebar);
-</script>
-</body>
+            document.addEventListener("astro:page-load", setupSidebar);
+        </script>
+    </body>
 </html>

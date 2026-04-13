@@ -27,3 +27,16 @@ pnpm-debug.log*
 
 # Custom ignores
 Mejoras.txt
+
+# Archivos personales y temporales
+por_hacer_vscode.txt
+*.orig
+
+# Lockfiles de npm (el proyecto usa pnpm)
+package-lock.json
+
+# Documentación temporal (descomentar si no se desea versionar PDFs)
+*.pdf
+
+# Google Client Secrets
+client_secret*.json
