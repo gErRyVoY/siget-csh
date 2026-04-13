@@ -40,3 +40,6 @@ package-lock.json
 
 # Google Client Secrets
 client_secret*.json
+
+# Cloudflare local files
+.wrangler
