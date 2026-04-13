@@ -1,15 +1,15 @@
 import { defineConfig } from "auth-astro";
 import Google from "@auth/core/providers/google";
-import { google } from "googleapis";
 import { prisma } from "./src/lib/db";
 import type { Rol, Empresa, Permiso } from "@prisma/client";
 import type { DefaultSession } from "@auth/core/types";
+import { AUTH_SECRET, AUTH_GOOGLE_ID, AUTH_GOOGLE_SECRET, GOOGLE_SERVICE_ACCOUNT_KEY, GOOGLE_ADMIN_EMAIL } from "astro:env/server";
 
 export default defineConfig({
   providers: [
     Google({
-      clientId: process.env.AUTH_GOOGLE_ID,
-      clientSecret: process.env.AUTH_GOOGLE_SECRET,
+      clientId: AUTH_GOOGLE_ID,
+      clientSecret: AUTH_GOOGLE_SECRET,
       authorization: {
         params: {
           scope:
@@ -20,7 +20,7 @@ export default defineConfig({
       },
     }),
   ],
-  secret: process.env.AUTH_SECRET,
+  secret: AUTH_SECRET,
   session: {
     strategy: "jwt",
     maxAge: 30 * 24 * 60 * 60, // 30 días
@@ -41,23 +41,54 @@ export default defineConfig({
 
       try {
         const serviceAccountCreds = JSON.parse(
-          process.env.GOOGLE_SERVICE_ACCOUNT_KEY || "{}"
+          GOOGLE_SERVICE_ACCOUNT_KEY || "{}"
         );
 
-        const auth = new google.auth.JWT({
-          email: serviceAccountCreds.client_email,
-          key: serviceAccountCreds.private_key,
-          scopes: ["https://www.googleapis.com/auth/admin.directory.user.readonly"],
-          subject: process.env.GOOGLE_ADMIN_EMAIL,
+        // Uso de JWT ligero ('jose') compatible con Cloudflare Workers (Edge)
+        // para reemplazar a 'google-auth-library' que utiliza 'node:child_process'.
+        const { importPKCS8, SignJWT } = await import('jose');
+        
+        const privateKey = await importPKCS8(serviceAccountCreds.private_key, 'RS256');
+        const now = Math.floor(Date.now() / 1000);
+        
+        const jwtToken = await new SignJWT({
+          iss: serviceAccountCreds.client_email,
+          sub: GOOGLE_ADMIN_EMAIL,
+          scope: "https://www.googleapis.com/auth/admin.directory.user.readonly",
+          aud: 'https://oauth2.googleapis.com/token',
+        })
+          .setProtectedHeader({ alg: 'RS256', typ: 'JWT' })
+          .setIssuedAt(now)
+          .setExpirationTime(now + 3600)
+          .sign(privateKey);
+
+        const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams({
+            grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+            assertion: jwtToken,
+          }).toString(),
         });
 
-        const admin = google.admin({ version: "directory_v1", auth });
+        if (!tokenResponse.ok) {
+          throw new Error(`Error fetching access token: ${await tokenResponse.text()}`);
+        }
+        
+        const tokenData = await tokenResponse.json();
 
-        const response = await admin.users.get({
-          userKey: profile.email,
+        const response = await fetch(`https://admin.googleapis.com/admin/directory/v1/users/${encodeURIComponent(profile.email)}`, {
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer ${tokenData.access_token}`
+          }
         });
 
-        const userData = response.data;
+        if (!response.ok) {
+          throw new Error(`Admin API Error: ${await response.text()}`);
+        }
+
+        const userData = await response.json();
 
         if (!userData.orgUnitPath || userData.orgUnitPath === "/") {
           return '/login?error=OUNoAsignada';

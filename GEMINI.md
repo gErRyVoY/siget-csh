@@ -2,7 +2,7 @@
 
 **Tarea Actual:** Migración de Infraestructura a Cloudflare Pages y Cloudflare D1 (Serverless)
 
-**Estado:** Completando Fase 1 - Migración Inyección Dependencias y Preparación de Prisma.
+**Estado:** Fase 1 completada - Refactorización de Prisma para Inyección de Dependencias. Iniciando Fase 2 (Migración D1).
 
 **Pasos Completados:**
 - ✅ Creada rama aislada `cloudflare-deploy` para mantener `main` intacto durante el experimento.
@@ -80,6 +80,12 @@ A continuación se listan los proyectos prioritarios. Tu tarea es ayudar a refin
     * **Infraestructura y Despliegue (CI/CD):** Implementado. El flujo con GitHub Actions, Docker, AWS ECR, Secrets Manager y App Runner está operativo.
 
 # Historial de Cambios (Log)
+
+## 2026-04-13 (Sesión 22 - Preparación D1 y Refactor Serverless)
+*   **Adaptación a Edge (Cloudflare):**
+    *   **Inactividad global de cliente:** Se suprimió la inicialización estática del cliente de Prisma en `src/lib/db.ts` en favor de inyección de dependencias dinámica mediante `Astro.locals.db`. Esto permite instanciar el adaptador `@prisma/adapter-d1` por request, una condición necesaria para V8 Isolates/Cloudflare Workers.
+    *   **Actualizaciones de Configuración:** Modificados `astro.config.mjs`, `auth.config.ts`, `wrangler.toml` y el esquema a SQLite para habilitar un modelo Edge.
+    *   **Control de Versiones:** Cambios en la rama `cloudflare-deploy` preparados e insertados sin afectar `main`.
 
 ## 2026-04-02 (Sesión 21 - Integración de Vistas y Asignaciones de Marketing)
 *   **Gestión de Tickets (Marketing):**

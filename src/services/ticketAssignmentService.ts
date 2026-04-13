@@ -1,5 +1,4 @@
-import { PrismaClient } from '@prisma/client';
-import type { Usuario, Rol } from '@prisma/client';
+import type { PrismaClient, Usuario, Rol } from '@prisma/client';
 
 type AgentWithRelations = Usuario & { rol: Rol };
 
