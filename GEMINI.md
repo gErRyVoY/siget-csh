@@ -1,8 +1,13 @@
 # Plan de Trabajo (SIGET-CSH)
 
-**Tarea Actual:** Implementación de Asignación de Tickets por Permisos (RBAC)
+**Tarea Actual:** Proyecto en AWS (Despliegue App Runner y RDS)
 
-**Estado:** En progreso.
+**Estado:** Retomando AWS (Migración a Cloudflare pausada temporalmente por instrucción del usuario).
+
+**Pasos Siguientes:**
+1. Estabilizar y continuar el flujo de despliegue usando la infraestructura AWS (ECR, App Runner, RDS).
+2. Revisar si existen configuraciones pendientes en GitHub Actions o AWS.
+3. Decidir si se integrarán a `main` las funcionalidades de UI y Roles que se avanzaron paralelamente en la rama de Cloudflare.
 
 **Pasos Completados:**
 - Se modificó el `schema.prisma` para permitir asignaciones a nivel de categoría (`subcategoriaId` opcional).
