@@ -10,15 +10,7 @@ frontend:
       commands:
         - pnpm exec prisma generate
         - pnpm run build
-        - mkdir -p .amplify-hosting/compute/default
-        - mkdir -p .amplify-hosting/static
-        - cp -r dist/server/* .amplify-hosting/compute/default/
-        - cp -r dist/client/* .amplify-hosting/static/
-        - cp -r dist/client .amplify-hosting/compute/default/client/
-        - mv node_modules .amplify-hosting/compute/default/
-        - cp package.json .amplify-hosting/compute/default/
-        - echo "import './entry.mjs';" > .amplify-hosting/compute/default/server.js
-        - echo '{"version":1,"routes":[{"path":"/_astro/*","target":{"kind":"Static"}},{"path":"/*","target":{"kind":"Compute","base":"default"}}]}' > .amplify-hosting/deploy-manifest.json
+        - node setup-amplify.mjs
   artifacts:
     baseDirectory: .amplify-hosting
     files:
