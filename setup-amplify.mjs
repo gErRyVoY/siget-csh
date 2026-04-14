@@ -50,12 +50,26 @@ fs.cpSync('dist/server', '.amplify-hosting/compute/default', { recursive: true }
 fs.cpSync('dist/client', '.amplify-hosting/static', { recursive: true });
 fs.cpSync('dist/client', '.amplify-hosting/compute/default/client', { recursive: true });
 
-// Mover dependencias y metadatos
-fs.renameSync('node_modules', '.amplify-hosting/compute/default/node_modules');
+// Mover package.json y prisma
 fs.copyFileSync('package.json', '.amplify-hosting/compute/default/package.json');
+fs.cpSync('prisma', '.amplify-hosting/compute/default/prisma', { recursive: true });
+
+import { execSync } from 'node:child_process';
+console.log("Instalando dependencias de producción limpias en compute/default...");
+// Instala solo las deps necesarias para producción (<230MB).
+execSync('npm install --omit=dev --no-package-lock', {
+  cwd: '.amplify-hosting/compute/default',
+  stdio: 'inherit'
+});
+
+console.log("Generando Prisma Client...");
+execSync('npx prisma generate', {
+  cwd: '.amplify-hosting/compute/default',
+  stdio: 'inherit'
+});
 
 // Crear entrypoint de AWS y archivo manifest obligatorios
 fs.writeFileSync('.amplify-hosting/compute/default/server.js', "import './entry.mjs';\n");
 fs.writeFileSync('.amplify-hosting/deploy-manifest.json', JSON.stringify(manifest, null, 2));
 
-console.log("Archivos de Amplify creados y validados correctamente.");
+console.log("Archivos de Amplify creados y validados correctamente para tamaño optimizado.");
