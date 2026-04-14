@@ -1,7 +1,7 @@
 // @ts-check
 import { defineConfig } from 'astro/config';
 import tailwindcss from '@tailwindcss/vite';
-import node from '@astrojs/node';
+import awsAmplify from 'astro-aws-amplify';
 import auth from 'auth-astro';
 import dotenv from 'dotenv';
 
@@ -20,9 +20,7 @@ export default defineConfig({
     host: '0.0.0.0'
   },
 
-  adapter: node({
-      mode: 'middleware'
-	}),
+  adapter: awsAmplify(),
 
   integrations: [auth()]
 });
