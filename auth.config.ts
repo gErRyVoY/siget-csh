@@ -1,6 +1,6 @@
 import { defineConfig } from "auth-astro";
 import Google from "@auth/core/providers/google";
-import { google } from "googleapis";
+import { JWT } from "google-auth-library";
 import { prisma } from "./src/lib/db";
 import type { Rol, Empresa, Permiso } from "@prisma/client";
 import type { DefaultSession } from "@auth/core/types";
@@ -44,20 +44,17 @@ export default defineConfig({
           process.env.GOOGLE_SERVICE_ACCOUNT_KEY || "{}"
         );
 
-        const auth = new google.auth.JWT({
+        const client = new JWT({
           email: serviceAccountCreds.client_email,
           key: serviceAccountCreds.private_key,
           scopes: ["https://www.googleapis.com/auth/admin.directory.user.readonly"],
           subject: process.env.GOOGLE_ADMIN_EMAIL,
         });
 
-        const admin = google.admin({ version: "directory_v1", auth });
-
-        const response = await admin.users.get({
-          userKey: profile.email,
-        });
-
-        const userData = response.data;
+        const url = `https://admin.googleapis.com/admin/directory/v1/users/${encodeURIComponent(profile.email)}`;
+        const response = await client.request({ url });
+        
+        const userData = response.data as any;
 
         if (!userData.orgUnitPath || userData.orgUnitPath === "/") {
           return '/login?error=OUNoAsignada';
