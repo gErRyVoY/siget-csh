@@ -87,8 +87,15 @@ console.log("Realizando limpieza agresiva para cumplir cuota de 230MB...");
 // 1. Prisma Engine y cli_cache
 fs.rmSync('.amplify-hosting/compute/default/node_modules/@prisma/engines', { recursive: true, force: true });
 fs.rmSync('.amplify-hosting/compute/default/node_modules/prisma', { recursive: true, force: true });
+fs.rmSync('.amplify-hosting/compute/default/node_modules/.cache', { recursive: true, force: true });
 
-// 2. Eliminar Assets de la copia local del Cliente en el servidor (No los necesita el SSR y sí Amplify Static)
+// 2. Eliminar "peerDependencies" masivas como Astro/Vite/Rollup que NPM instala pero NO se usan en RUNTIME SSR.
+const fatPackages = ['astro', 'vite', 'rollup', 'esbuild', 'typescript', '@rollup', '@esbuild'];
+fatPackages.forEach(pkg => {
+  fs.rmSync(path.join('.amplify-hosting/compute/default/node_modules', pkg), { recursive: true, force: true });
+});
+
+// 3. Eliminar Assets de la copia local del Cliente en el servidor (No los necesita el SSR y sí Amplify Static)
 function removeHeavyAssets(dir) {
   if (!fs.existsSync(dir)) return;
   const files = fs.readdirSync(dir);
@@ -106,7 +113,7 @@ function removeHeavyAssets(dir) {
 }
 removeHeavyAssets('.amplify-hosting/compute/default/client');
 
-// 3. Eliminar binarios sueltos inútiles
+// 4. Eliminar binarios sueltos inútiles
 fs.rmSync('.amplify-hosting/compute/default/node_modules/.bin', { recursive: true, force: true });
 
 // Crear entrypoint de AWS y archivo manifest obligatorios
