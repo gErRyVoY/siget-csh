@@ -71,7 +71,8 @@ fs.writeFileSync(schemaPath, schemaContent);
 
 console.log("Instalando dependencias de producción ultra-ligeras en compute/default...");
 // Instala solo las deps necesarias para producción (<230MB).
-execSync('npm install --omit=dev --omit=peer --no-package-lock', {
+// Usar --legacy-peer-deps bloquea de raíz que NPM instale Astro, Vite, Rolldown y Effect (pesan ~200MB).
+execSync('npm install --omit=dev --legacy-peer-deps --no-package-lock', {
   cwd: '.amplify-hosting/compute/default',
   stdio: 'inherit'
 });
@@ -90,7 +91,7 @@ fs.rmSync('.amplify-hosting/compute/default/node_modules/prisma', { recursive: t
 fs.rmSync('.amplify-hosting/compute/default/node_modules/.cache', { recursive: true, force: true });
 
 // 2. Eliminar "peerDependencies" masivas como Astro/Vite/Rollup que NPM instala pero NO se usan en RUNTIME SSR.
-const fatPackages = ['astro', 'vite', 'rollup', 'esbuild', 'typescript', '@rollup', '@esbuild'];
+const fatPackages = ['astro', 'vite', 'rollup', 'esbuild', 'typescript', '@rollup', '@esbuild', '@rolldown', 'effect'];
 fatPackages.forEach(pkg => {
   fs.rmSync(path.join('.amplify-hosting/compute/default/node_modules', pkg), { recursive: true, force: true });
 });
