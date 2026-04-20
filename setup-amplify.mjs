@@ -78,8 +78,7 @@ execSync('npm install --prefix . --omit=dev --legacy-peer-deps --no-package-lock
 });
 
 console.log("Ajustando schema.prisma local para forzar Output y aislar el binario...");
-const schemaPath = path.join('.amplify-hosting/compute/default/prisma/schema.prisma');
-let schemaContent = fs.readFileSync(schemaPath, 'utf8');
+schemaContent = fs.readFileSync(schemaPath, 'utf8');
 if (!schemaContent.includes('output =')) {
   schemaContent = schemaContent.replace(/provider\s*=\s*"prisma-client-js"/, `provider = "prisma-client-js"\n  output = "../node_modules/.prisma/client"`);
   fs.writeFileSync(schemaPath, schemaContent);
