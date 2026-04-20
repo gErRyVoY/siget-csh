@@ -77,22 +77,28 @@ execSync('npm install --prefix . --omit=dev --legacy-peer-deps --no-package-lock
   stdio: 'inherit'
 });
 
-console.log("Copiando Prisma Client pre-generado de la raíz (evitando fugas a symlinks de pnpm)...");
-if (fs.existsSync('node_modules/.prisma')) {
-  fs.cpSync('node_modules/.prisma', '.amplify-hosting/compute/default/node_modules/.prisma', { recursive: true, dereference: true });
+console.log("Ajustando schema.prisma local para forzar Output y aislar el binario...");
+const schemaPath = path.join('.amplify-hosting/compute/default/prisma/schema.prisma');
+let schemaContent = fs.readFileSync(schemaPath, 'utf8');
+if (!schemaContent.includes('output =')) {
+  schemaContent = schemaContent.replace(/provider\s*=\s*"prisma-client-js"/, `provider = "prisma-client-js"\n  output = "../node_modules/.prisma/client"`);
+  fs.writeFileSync(schemaPath, schemaContent);
 }
-if (fs.existsSync('node_modules/@prisma')) {
-  fs.cpSync('node_modules/@prisma', '.amplify-hosting/compute/default/node_modules/@prisma', { recursive: true, dereference: true });
-}
+
+console.log("Generando Prisma Client estrictamente en compute/default...");
+execSync('npx --yes prisma generate', {
+  cwd: '.amplify-hosting/compute/default',
+  stdio: 'inherit'
+});
 
 console.log("Realizando limpieza agresiva para cumplir cuota de 230MB...");
 
-// 1. Limpiar Engines inutilizados de Prisma (Conservamos solo AL2023 rhel-3.0.x y AL2 rhel-1.0.x para AWS Lambda)
+// 1. Limpiar Engines inutilizados de Prisma (Conservamos solo rhel-3.0.x y rhel-1.0.x para AWS Lambda)
 const prismaClientDir = '.amplify-hosting/compute/default/node_modules/.prisma/client';
 if (fs.existsSync(prismaClientDir)) {
   const files = fs.readdirSync(prismaClientDir);
   files.forEach(file => {
-    // Si es un query engine (*.node) pero no es rhel-openssl-3.0 o 1.0, lo borramos (elimina >100MB de binarios de windows/mac/etc)
+    // Si es un query engine (*.node) o archivos macOS/Windows nativos pero no es rhel-openssl, borrarlos.
     if (file.endsWith('.node') && !file.includes('rhel-openssl-3.0.x') && !file.includes('rhel-openssl-1.0.x')) {
       fs.rmSync(path.join(prismaClientDir, file), { force: true });
     }
