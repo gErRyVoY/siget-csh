@@ -65,6 +65,15 @@ if (pkg.dependencies) {
 fs.writeFileSync('.amplify-hosting/compute/default/package.json', JSON.stringify(pkg, null, 2));
 
 import { execSync } from 'node:child_process';
+import path from 'node:path';
+
+// MODIFICACIÓN: Quitar binaryTargets opcionales en el prisma.schema para el SSR
+// El server de Amplify Build compartirá la misma arquitectura AL2023 (native) que Runtime.
+const schemaPath = '.amplify-hosting/compute/default/prisma/schema.prisma';
+let schemaContent = fs.readFileSync(schemaPath, 'utf-8');
+schemaContent = schemaContent.replace(/binaryTargets\s*=\s*\[.*?\]/g, '');
+fs.writeFileSync(schemaPath, schemaContent);
+
 console.log("Instalando dependencias de producción ultra-ligeras en compute/default...");
 // Instala solo las deps necesarias para producción (<230MB).
 execSync('npm install --omit=dev --omit=peer --no-package-lock', {
@@ -78,8 +87,35 @@ execSync('npx prisma generate', {
   stdio: 'inherit'
 });
 
+console.log("Realizando limpieza agresiva para cumplir cuota de 230MB...");
+
+// 1. Prisma Engine y cli_cache
+fs.rmSync('.amplify-hosting/compute/default/node_modules/@prisma/engines', { recursive: true, force: true });
+fs.rmSync('.amplify-hosting/compute/default/node_modules/prisma', { recursive: true, force: true });
+
+// 2. Eliminar Assets de la copia local del Cliente en el servidor (No los necesita el SSR y sí Amplify Static)
+function removeHeavyAssets(dir) {
+  if (!fs.existsSync(dir)) return;
+  const files = fs.readdirSync(dir);
+  for (const file of files) {
+    const fullPath = path.join(dir, file);
+    if (fs.statSync(fullPath).isDirectory()) {
+      removeHeavyAssets(fullPath);
+    } else {
+      // Eliminar mapas, fuentes y media
+      if (/\.(png|jpg|jpeg|gif|svg|webp|woff2|woff|ttf|map|ico)$/i.test(fullPath)) {
+        fs.rmSync(fullPath, { force: true });
+      }
+    }
+  }
+}
+removeHeavyAssets('.amplify-hosting/compute/default/client');
+
+// 3. Eliminar binarios sueltos inútiles
+fs.rmSync('.amplify-hosting/compute/default/node_modules/.bin', { recursive: true, force: true });
+
 // Crear entrypoint de AWS y archivo manifest obligatorios
 fs.writeFileSync('.amplify-hosting/compute/default/server.js', "import './entry.mjs';\n");
 fs.writeFileSync('.amplify-hosting/deploy-manifest.json', JSON.stringify(manifest, null, 2));
 
-console.log("Archivos de Amplify creados y validados correctamente para tamaño optimizado.");
+console.log("Archivos de Amplify creados, purgados y validados correctamente para tamaño optimizado.");
