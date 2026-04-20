@@ -72,20 +72,32 @@ fs.writeFileSync(schemaPath, schemaContent);
 console.log("Instalando dependencias de producción ultra-ligeras en compute/default...");
 // Instala solo las deps necesarias para producción (<230MB).
 // Usar --legacy-peer-deps bloquea de raíz que NPM instale Astro, Vite, Rolldown y Effect (pesan ~200MB).
-execSync('npm install --omit=dev --legacy-peer-deps --no-package-lock', {
+execSync('npm install --prefix . --omit=dev --legacy-peer-deps --no-package-lock', {
   cwd: '.amplify-hosting/compute/default',
   stdio: 'inherit'
 });
 
-console.log("Generando Prisma Client...");
-execSync('npx prisma generate', {
-  cwd: '.amplify-hosting/compute/default',
-  stdio: 'inherit'
-});
+console.log("Copiando Prisma Client pre-generado de la raíz (evitando fugas a symlinks de pnpm)...");
+if (fs.existsSync('node_modules/.prisma')) {
+  fs.cpSync('node_modules/.prisma', '.amplify-hosting/compute/default/node_modules/.prisma', { recursive: true, dereference: true });
+}
+if (fs.existsSync('node_modules/@prisma')) {
+  fs.cpSync('node_modules/@prisma', '.amplify-hosting/compute/default/node_modules/@prisma', { recursive: true, dereference: true });
+}
 
 console.log("Realizando limpieza agresiva para cumplir cuota de 230MB...");
 
-// 1. Prisma Engine y cli_cache
+// 1. Limpiar Engines inutilizados de Prisma (Conservamos solo AL2023 rhel-3.0.x y AL2 rhel-1.0.x para AWS Lambda)
+const prismaClientDir = '.amplify-hosting/compute/default/node_modules/.prisma/client';
+if (fs.existsSync(prismaClientDir)) {
+  const files = fs.readdirSync(prismaClientDir);
+  files.forEach(file => {
+    // Si es un query engine (*.node) pero no es rhel-openssl-3.0 o 1.0, lo borramos (elimina >100MB de binarios de windows/mac/etc)
+    if (file.endsWith('.node') && !file.includes('rhel-openssl-3.0.x') && !file.includes('rhel-openssl-1.0.x')) {
+      fs.rmSync(path.join(prismaClientDir, file), { force: true });
+    }
+  });
+}
 fs.rmSync('.amplify-hosting/compute/default/node_modules/@prisma/engines', { recursive: true, force: true });
 fs.rmSync('.amplify-hosting/compute/default/node_modules/prisma', { recursive: true, force: true });
 fs.rmSync('.amplify-hosting/compute/default/node_modules/.cache', { recursive: true, force: true });
