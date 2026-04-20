@@ -57,11 +57,6 @@ fs.cpSync('prisma', '.amplify-hosting/compute/default/prisma', { recursive: true
 // MODIFICACIÓN: Leer el package.json y purgar dependencias problemáticas pesadas
 // que arrastran Astro, TypeScript y Rollup inútilmente a producción.
 const pkg = JSON.parse(fs.readFileSync('package.json', 'utf-8'));
-if (pkg.dependencies) {
-  delete pkg.dependencies['@astrojs/node'];
-  delete pkg.dependencies['auth-astro'];
-  // Conservar las demás.
-}
 fs.writeFileSync('.amplify-hosting/compute/default/package.json', JSON.stringify(pkg, null, 2));
 
 import { execSync } from 'node:child_process';
