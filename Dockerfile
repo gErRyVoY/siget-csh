@@ -1,9 +1,9 @@
 # --- Etapa 1: Construcción (Builder) ---
 # Usamos una imagen completa de Node para tener las herramientas de construcción.
-FROM node:18-slim AS builder
+FROM node:20-slim AS builder
 
-# [FIX] Actualizar los paquetes del SO base para mitigar vulnerabilidades conocidas.
-RUN apt-get update && apt-get upgrade -y
+# [FIX] Actualizar los paquetes del SO base para mitigar vulnerabilidades y asegurar dependencias de Prisma
+RUN apt-get update && apt-get upgrade -y && apt-get install -y openssl
 
 # Instalar pnpm globalmente en la imagen.
 RUN npm install -g pnpm
@@ -25,8 +25,10 @@ RUN pnpm run build
 
 
 # --- Etapa 2: Producción (Runner) ---
-# Usamos una imagen limpia y ligera para la ejecución.
-FROM node:18-alpine AS runner
+# Usamos el mismo SO base ligero que el builder para evitar incompatibilidades de binarios en Prisma.
+FROM node:20-slim AS runner
+
+RUN apt-get update && apt-get upgrade -y && apt-get install -y openssl
 
 # Instalar pnpm globalmente también aquí.
 RUN npm install -g pnpm
@@ -42,10 +44,12 @@ RUN pnpm install --prod --frozen-lockfile
 # Copiar la carpeta 'dist' con la aplicación construida desde la etapa de construcción.
 COPY --from=builder /app/dist ./dist
 
-
+# Variables de entorno exigidas por Astro Node Adapter en Standalone mode.
+ENV HOST=0.0.0.0
+ENV PORT=4321
 
 # Exponer el puerto que Astro usa por defecto en producción.
 EXPOSE 4321
 
-# El comando para iniciar el servidor de Node.js que sirve la aplicación.
-CMD [ "node", "dist/server/entry.mjs", "--host", "0.0.0.0" ]
+# Iniciar el servidor exportado por el build.
+CMD [ "node", "./dist/server/entry.mjs" ]
