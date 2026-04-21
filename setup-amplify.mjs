@@ -142,7 +142,7 @@ fs.writeFileSync('.amplify-hosting/deploy-manifest.json', JSON.stringify(manifes
 // automáticamente las variables definidas en la consola al proceso Node SSR.
 // Las agarramos del contenedor de Build y las escribimos en .env rígido.
 console.log("Inyectando variables de entorno desde el orquestador AWS a .env en runtime...");
-const allowedPrefixes = ['AUTH_', 'DATABASE_', 'GOOGLE_', 'NEXTAUTH_', 'HOST', 'PORT', 'NODE_ENV'];
+const allowedPrefixes = ['AUTH_', 'DATABASE_', 'GOOGLE_', 'NEXTAUTH_', 'HOST', 'PORT', 'NODE_ENV', 'S3_', 'PUBLIC_', 'AWS_'];
 let envContent = '';
 for (const [key, value] of Object.entries(process.env)) {
   if (allowedPrefixes.some(prefix => key.startsWith(prefix))) {
