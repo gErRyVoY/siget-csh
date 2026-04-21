@@ -135,7 +135,37 @@ removeHeavyAssets('.amplify-hosting/compute/default/client');
 fs.rmSync('.amplify-hosting/compute/default/node_modules/.bin', { recursive: true, force: true });
 
 // Crear entrypoint de AWS y archivo manifest obligatorios
-fs.writeFileSync('.amplify-hosting/compute/default/server.js', "import './entry.mjs';\n");
+const serverScript = `
+import 'dotenv/config';
+
+import { handler } from './entry.mjs';
+import http from 'http';
+
+const port = process.env.PORT || 3000;
+const server = http.createServer(async (req, res) => {
+  try {
+    await handler(req, res, (err) => {
+      if (err) {
+        console.error('Astro Next Error:', err);
+        res.statusCode = 500;
+        res.end('Internal Server Error: ' + err.message);
+      } else {
+        res.statusCode = 404;
+        res.end('Not Found');
+      }
+    });
+  } catch (err) {
+    console.error('Astro Handler Exception:', err);
+    res.statusCode = 500;
+    res.end('Internal Server Error: ' + err.message);
+  }
+});
+
+server.listen(port, () => {
+  console.log(\`[Amplify] Astro SSR server listening on port \${port}\`);
+});
+`;
+fs.writeFileSync('.amplify-hosting/compute/default/server.js', serverScript.trim());
 fs.writeFileSync('.amplify-hosting/deploy-manifest.json', JSON.stringify(manifest, null, 2));
 
 // 5. INYECTAR VARIABLES DE ENTORNO EN EL LAMBDA: AWS Amplify Web Compute NO pasa
