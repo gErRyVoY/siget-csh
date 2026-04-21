@@ -138,4 +138,17 @@ fs.rmSync('.amplify-hosting/compute/default/node_modules/.bin', { recursive: tru
 fs.writeFileSync('.amplify-hosting/compute/default/server.js', "import './entry.mjs';\n");
 fs.writeFileSync('.amplify-hosting/deploy-manifest.json', JSON.stringify(manifest, null, 2));
 
+// 5. INYECTAR VARIABLES DE ENTORNO EN EL LAMBDA: AWS Amplify Web Compute NO pasa
+// automáticamente las variables definidas en la consola al proceso Node SSR.
+// Las agarramos del contenedor de Build y las escribimos en .env rígido.
+console.log("Inyectando variables de entorno desde el orquestador AWS a .env en runtime...");
+const allowedPrefixes = ['AUTH_', 'DATABASE_', 'GOOGLE_', 'NEXTAUTH_', 'HOST', 'PORT', 'NODE_ENV'];
+let envContent = '';
+for (const [key, value] of Object.entries(process.env)) {
+  if (allowedPrefixes.some(prefix => key.startsWith(prefix))) {
+    envContent += `${key}="${value}"\n`;
+  }
+}
+fs.writeFileSync('.amplify-hosting/compute/default/.env', envContent);
+
 console.log("Archivos de Amplify creados, purgados y validados correctamente para tamaño optimizado.");
