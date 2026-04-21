@@ -83,6 +83,11 @@ A continuación se listan los proyectos prioritarios. Tu tarea es ayudar a refin
 
 # Historial de Cambios (Log)
 
+## 2026-04-21 (Regreso a AWS App Runner)
+*   **Reversión de Entorno:**
+    *   Se abandonó el intento de despliegue con AWS Amplify debido a problemas con los límites de tamaño y caos en el despliegue.
+    *   Se restauró el proyecto a la rama `main` descartando los archivos generados y se creó la rama `siget-apprunner-new` para continuar con la configuración de AWS App Runner original.
+
 ## 2026-04-02 (Sesión 21 - Integración de Vistas y Asignaciones de Marketing)
 *   **Gestión de Tickets (Marketing):**
     *   **Vistas Diferenciadas:** La ruta `/tickets/marketing/usuario` ahora aplica estrictamente el filtro `atiendeId` para mostrar únicamente los tickets que el agente de Marketing tiene asignados.
