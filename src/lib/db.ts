@@ -1,4 +1,7 @@
-import { PrismaClient } from '@prisma/client';
+import pkg from '@prisma/client';
+import type { PrismaClient as PrismaClientType } from '@prisma/client';
+
+const { PrismaClient } = pkg;
 
 // PrismaClient is attached to the `global` object in development to prevent
 // exhausting your database connection limit.
@@ -6,7 +9,7 @@ import { PrismaClient } from '@prisma/client';
 // Learn more: https://pris.ly/d/help/next-js-best-practices
 
 const globalForPrisma = globalThis as unknown as {
-  prisma: PrismaClient | undefined;
+  prisma: PrismaClientType | undefined;
 };
 
 export const prisma =
