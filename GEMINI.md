@@ -83,6 +83,12 @@ A continuación se listan los proyectos prioritarios. Tu tarea es ayudar a refin
 
 # Historial de Cambios (Log)
 
+## 2026-04-21 (Despliegue en AWS Amplify)
+*   **Corrección de Error 500:**
+    *   Se solucionó un `Internal Server Error` (500) en el entorno de AWS Amplify.
+    *   Se actualizó `setup-amplify.mjs` para inyectar correctamente `dotenv/config` en el archivo `server.js` generado, lo que soluciona el problema de conexión con la base de datos de Prisma y Auth.js al permitir que las variables de entorno de AWS se carguen en el entorno de ejecución del lambda.
+    *   Se implementó un manejador de excepciones que previene el "crash" (`next is not a function`) de Astro en modo `middleware` al levantar el servidor Node crudo, permitiendo que cualquier error no controlado responda con un error claro o 404 en lugar de tumbar la aplicación.
+
 ## 2026-04-02 (Sesión 21 - Integración de Vistas y Asignaciones de Marketing)
 *   **Gestión de Tickets (Marketing):**
     *   **Vistas Diferenciadas:** La ruta `/tickets/marketing/usuario` ahora aplica estrictamente el filtro `atiendeId` para mostrar únicamente los tickets que el agente de Marketing tiene asignados.
