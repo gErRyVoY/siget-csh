@@ -38,8 +38,14 @@ WORKDIR /app
 # Copiar los manifiestos de dependencias desde la etapa de construcción.
 COPY --from=builder /app/package.json /app/pnpm-lock.yaml ./
 
+# Copiar la carpeta prisma para tener el schema.prisma
+COPY --from=builder /app/prisma ./prisma
+
 # Instalar ÚNICAMENTE las dependencias de producción.
 RUN pnpm install --prod --frozen-lockfile
+
+# Generar el cliente de Prisma para producción
+RUN npx prisma generate
 
 # Copiar la carpeta 'dist' con la aplicación construida desde la etapa de construcción.
 COPY --from=builder /app/dist ./dist
