@@ -44,8 +44,8 @@ COPY --from=builder /app/prisma ./prisma
 # Instalar ÚNICAMENTE las dependencias de producción.
 RUN pnpm install --prod --frozen-lockfile
 
-# Generar el cliente de Prisma para producción
-RUN npx prisma generate
+# Generar el cliente de Prisma para producción (forzando la versión del package.json para evitar v7 breaking changes)
+RUN npx prisma@6.19.1 generate
 
 # Copiar la carpeta 'dist' con la aplicación construida desde la etapa de construcción.
 COPY --from=builder /app/dist ./dist
