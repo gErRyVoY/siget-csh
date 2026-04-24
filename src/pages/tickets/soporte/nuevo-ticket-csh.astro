@@ -2,9 +2,9 @@
 import MainLayout from "@/layouts/MainLayout.astro";
 import categoriesData from "@/data/categories.json";
 
-const GOOGLE_API_KEY = import.meta.env.PUBLIC_GOOGLE_API_KEY;
-const GOOGLE_CLIENT_ID = import.meta.env.PUBLIC_GOOGLE_CLIENT_ID;
-const GOOGLE_APP_ID = import.meta.env.PUBLIC_GOOGLE_APP_ID;
+const GOOGLE_API_KEY = import.meta.env.PUBLIC_GOOGLE_API_KEY || import.meta.env.GOOGLE_API_KEY || '';
+const GOOGLE_CLIENT_ID = import.meta.env.PUBLIC_GOOGLE_CLIENT_ID || import.meta.env.GOOGLE_CLIENT_ID || '';
+const GOOGLE_APP_ID = import.meta.env.PUBLIC_GOOGLE_APP_ID || import.meta.env.GOOGLE_APP_ID || '';
 ---
 
 <MainLayout title="Nuevo ticket para CSH">

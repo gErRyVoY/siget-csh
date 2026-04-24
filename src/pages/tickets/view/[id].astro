@@ -49,6 +49,12 @@ const ticketId = parseInt(id, 10);
 
 const S3_BUCKET_URL = `https://${import.meta.env.S3_BUCKET_NAME}.s3.${import.meta.env.S3_REGION}.amazonaws.com`;
 
+// Google Drive credentials — leídas en runtime desde el servidor para evitar el problema
+// de incrustación en build-time de las variables PUBLIC_* en Astro.
+const GOOGLE_API_KEY_SERVER = import.meta.env.PUBLIC_GOOGLE_API_KEY || import.meta.env.GOOGLE_API_KEY || '';
+const GOOGLE_CLIENT_ID_SERVER = import.meta.env.PUBLIC_GOOGLE_CLIENT_ID || import.meta.env.GOOGLE_CLIENT_ID || '';
+const GOOGLE_APP_ID_SERVER = import.meta.env.PUBLIC_GOOGLE_APP_ID || import.meta.env.GOOGLE_APP_ID || '';
+
 const ALLOWED_STATUSES = [
     "Nuevo",
     "En progreso",
@@ -311,9 +317,9 @@ console.log("CAREER DEBUG:", { ofertaDesc, carreraOriginal: traslado?.carrera?.d
             data-carrera-list={JSON.stringify(mappedCarreras)}
             data-descuento-list={JSON.stringify(mappedDescuentos)}
             data-bloque-options={JSON.stringify(bloqueOptions)}
-            data-api-key={import.meta.env.PUBLIC_GOOGLE_API_KEY}
-            data-client-id={import.meta.env.PUBLIC_GOOGLE_CLIENT_ID}
-            data-app-id={import.meta.env.PUBLIC_GOOGLE_APP_ID}
+            data-api-key={GOOGLE_API_KEY_SERVER}
+            data-client-id={GOOGLE_CLIENT_ID_SERVER}
+            data-app-id={GOOGLE_APP_ID_SERVER}
         >
             <div class="bg-card border border-secondary rounded-lg p-4 mb-4">
                 {isTraslado && traslado ? (
