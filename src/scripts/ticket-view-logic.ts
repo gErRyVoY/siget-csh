@@ -501,8 +501,7 @@ export function initGoogleDrive() {
         script1.async = true;
         script1.defer = true;
         script1.onload = () => {
-            gapi.load('client:picker', async () => {
-                await gapi.client.load('https://www.googleapis.com/discovery/v1/apis/drive/v3/rest');
+            gapi.load('picker', () => {
                 pickerInited = true;
             });
         };

@@ -230,10 +230,7 @@ export function initMarketingTicketWizard(marketingCategory: CategoriaNode) {
             script1.async = true;
             script1.defer = true;
             script1.onload = () => {
-                (window as any).gapi.load("client:picker", async () => {
-                    await (window as any).gapi.client.load(
-                        "https://www.googleapis.com/discovery/v1/apis/drive/v3/rest"
-                    );
+                (window as any).gapi.load('picker', () => {
                     pickerInited = true;
                 });
             };
