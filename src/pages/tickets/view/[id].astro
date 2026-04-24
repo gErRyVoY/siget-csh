@@ -49,18 +49,20 @@ const ticketId = parseInt(id, 10);
 
 const S3_BUCKET_URL = `https://${import.meta.env.S3_BUCKET_NAME}.s3.${import.meta.env.S3_REGION}.amazonaws.com`;
 
-// Google Drive credentials — leídas en runtime desde el servidor para evitar el problema
-// de incrustación en build-time de las variables PUBLIC_* en Astro.
-const GOOGLE_API_KEY_SERVER = import.meta.env.PUBLIC_GOOGLE_API_KEY || import.meta.env.GOOGLE_API_KEY || '';
-const GOOGLE_CLIENT_ID_SERVER = import.meta.env.PUBLIC_GOOGLE_CLIENT_ID || import.meta.env.GOOGLE_CLIENT_ID || '';
-const GOOGLE_APP_ID_SERVER = import.meta.env.PUBLIC_GOOGLE_APP_ID || import.meta.env.GOOGLE_APP_ID || '';
+// Google Drive credentials — usar process.env para leer en RUNTIME.
+// IMPORTANTE: import.meta.env es reemplazado estáticamente por Vite en build-time.
+// Si las variables no existen durante el build (Docker), quedan como string vacío.
+// process.env sí lee del entorno real del proceso Node.js en producción.
+const GOOGLE_API_KEY_SERVER = process.env.GOOGLE_API_KEY || '';
+const GOOGLE_CLIENT_ID_SERVER = process.env.GOOGLE_CLIENT_ID || '';
+const GOOGLE_APP_ID_SERVER = process.env.GOOGLE_APP_ID || '';
 
 // DIAGNÓSTICO TEMPORAL — eliminar después de confirmar que las variables llegan correctas
 console.log('[GOOGLE CREDS DEBUG]', {
     hasApiKey: !!GOOGLE_API_KEY_SERVER,
     hasClientId: !!GOOGLE_CLIENT_ID_SERVER,
     hasAppId: !!GOOGLE_APP_ID_SERVER,
-    rawEnvKeys: Object.keys(import.meta.env).filter(k => k.includes('GOOGLE')),
+    rawProcessEnvKeys: Object.keys(process.env).filter(k => k.includes('GOOGLE')),
 });
 
 const ALLOWED_STATUSES = [

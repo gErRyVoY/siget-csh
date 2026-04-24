@@ -13,9 +13,9 @@ if (!user) {
 // Filtrar solo la categoría Marketing (ID 12)
 const marketingCategory = categoriesData.find((c) => c.id === 12);
 
-const GOOGLE_API_KEY = import.meta.env.PUBLIC_GOOGLE_API_KEY || import.meta.env.GOOGLE_API_KEY || '';
-const GOOGLE_CLIENT_ID = import.meta.env.PUBLIC_GOOGLE_CLIENT_ID || import.meta.env.GOOGLE_CLIENT_ID || '';
-const GOOGLE_APP_ID = import.meta.env.PUBLIC_GOOGLE_APP_ID || import.meta.env.GOOGLE_APP_ID || '';
+const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY || '';
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
+const GOOGLE_APP_ID = process.env.GOOGLE_APP_ID || '';
 ---
 
 <MainLayout title="Nuevo ticket para Marketing">
