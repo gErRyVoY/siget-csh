@@ -55,6 +55,14 @@ const GOOGLE_API_KEY_SERVER = import.meta.env.PUBLIC_GOOGLE_API_KEY || import.me
 const GOOGLE_CLIENT_ID_SERVER = import.meta.env.PUBLIC_GOOGLE_CLIENT_ID || import.meta.env.GOOGLE_CLIENT_ID || '';
 const GOOGLE_APP_ID_SERVER = import.meta.env.PUBLIC_GOOGLE_APP_ID || import.meta.env.GOOGLE_APP_ID || '';
 
+// DIAGNÓSTICO TEMPORAL — eliminar después de confirmar que las variables llegan correctas
+console.log('[GOOGLE CREDS DEBUG]', {
+    hasApiKey: !!GOOGLE_API_KEY_SERVER,
+    hasClientId: !!GOOGLE_CLIENT_ID_SERVER,
+    hasAppId: !!GOOGLE_APP_ID_SERVER,
+    rawEnvKeys: Object.keys(import.meta.env).filter(k => k.includes('GOOGLE')),
+});
+
 const ALLOWED_STATUSES = [
     "Nuevo",
     "En progreso",
