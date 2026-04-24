@@ -495,6 +495,20 @@ export function initGoogleDrive() {
         GOOGLE_APP_ID = form.dataset.appId;
     }
 
+    // Diagnóstico: verificar qué valores llegan desde el servidor
+    console.log('[GoogleDrive] Credenciales recibidas:', {
+        hasApiKey: !!GOOGLE_API_KEY,
+        hasClientId: !!GOOGLE_CLIENT_ID,
+        hasAppId: !!GOOGLE_APP_ID,
+    });
+
+    // Guardia: si no hay credenciales, no cargar las librerías de Google para evitar
+    // el error "Missing required parameter client_id" en la consola.
+    if (!GOOGLE_API_KEY || !GOOGLE_CLIENT_ID || !GOOGLE_APP_ID) {
+        console.warn('[GoogleDrive] Credenciales faltantes. La integración con Google Drive está deshabilitada.');
+        return;
+    }
+
     if (!document.querySelector('script[src="https://apis.google.com/js/api.js"]')) {
         const script1 = document.createElement('script');
         script1.src = 'https://apis.google.com/js/api.js';
