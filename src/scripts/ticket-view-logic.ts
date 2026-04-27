@@ -490,17 +490,10 @@ const SCOPES = 'https://www.googleapis.com/auth/drive.readonly';
 export function initGoogleDrive() {
     const form = document.getElementById('edit-ticket-form') as HTMLFormElement;
     if (form) {
-        GOOGLE_API_KEY = form.dataset.apiKey;
-        GOOGLE_CLIENT_ID = form.dataset.clientId;
-        GOOGLE_APP_ID = form.dataset.appId;
+        GOOGLE_API_KEY = form.dataset.apiKey ? form.dataset.apiKey.trim() : undefined;
+        GOOGLE_CLIENT_ID = form.dataset.clientId ? form.dataset.clientId.trim() : undefined;
+        GOOGLE_APP_ID = form.dataset.appId ? form.dataset.appId.trim() : undefined;
     }
-
-    // Diagnóstico: verificar qué valores llegan desde el servidor
-    console.log('[GoogleDrive] Credenciales recibidas:', {
-        hasApiKey: !!GOOGLE_API_KEY,
-        hasClientId: !!GOOGLE_CLIENT_ID,
-        hasAppId: !!GOOGLE_APP_ID,
-    });
 
     // Guardia: si no hay credenciales, no cargar las librerías de Google para evitar
     // el error "Missing required parameter client_id" en la consola.
@@ -602,7 +595,6 @@ function createPicker() {
         .setOAuthToken(accessToken!)
         .addView(view)
         .addView(new google.picker.DocsUploadView())
-        .setDeveloperKey(GOOGLE_API_KEY)
         .setOrigin(origin)
         .setCallback(pickerCallback)
         .build();
