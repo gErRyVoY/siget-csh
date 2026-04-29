@@ -107,14 +107,7 @@ const ticketHistory = await prisma.historialSolicitud.findMany({
     },
     orderBy: { fecha_cambio: "desc" },
 });
-// Agentes de soporte CSH (roles: S-1, S-2, S-3, Dev, Coord, Director)
-const cshSupportUsers = await prisma.usuario.findMany({
-    where: {
-        empresaId: 15,
-        activo: true,
-        rolId: { in: [1, 2, 3, 4, 8, 9] },
-    },
-});
+// cshSupportUsers eliminado; ahora se usa agents unificadamente.
 const cshAuditorDocs = await prisma.usuario.findMany({
     where: { empresaId: 15, activo: true, auditor_docs: true },
 });
@@ -168,15 +161,46 @@ if (isPrivileged) {
     if (ticket.categoriaId === MARKETING_CATEGORY_ID) {
         agents = await prisma.usuario.findMany({
             where: {
-                empresa: { nombre: "Corporativo" },
-                rol: { rol: { in: ['Community manager', 'Director Marketing', 'Diseñador', 'Editor'] } },
-                activo: true
+                activo: true,
+                OR: [
+                    { rol: { atiendeTicketsMkt: true } },
+                    {
+                        asignaciones_categorias: {
+                            some: {
+                                categoriaId: ticket.categoriaId,
+                                OR: [
+                                    { subcategoriaId: ticket.subcategoriaId },
+                                    { subcategoriaId: null }
+                                ],
+                                activo: true
+                            }
+                        }
+                    }
+                ]
             },
             orderBy: { nombres: "asc" }
         });
     } else {
         agents = await prisma.usuario.findMany({
-            where: { rolId: { in: PRIVILEGED_ROLES }, activo: true },
+            where: {
+                activo: true,
+                OR: [
+                    { rol: { atiendeTicketsCsh: true } },
+                    {
+                        asignaciones_categorias: {
+                            some: {
+                                categoriaId: ticket.categoriaId,
+                                OR: [
+                                    { subcategoriaId: ticket.subcategoriaId },
+                                    { subcategoriaId: null }
+                                ],
+                                activo: true
+                            }
+                        }
+                    }
+                ]
+            },
+            orderBy: { nombres: "asc" }
         });
     }
 } else {
@@ -592,7 +616,7 @@ console.log("CAREER DEBUG:", { ofertaDesc, carreraOriginal: traslado?.carrera?.d
                                             class="w-full rounded-md border-border bg-input p-1 text-sm"
                                         >
                                             <option value="">Sin asignar</option>
-                                            {cshSupportUsers.map(u => (
+                                            {agents.map(u => (
                                                 <option value={u.id} selected={u.id === ticket.atiendeId}>{u.nombres} {u.apellidos}</option>
                                             ))}
                                         </select>

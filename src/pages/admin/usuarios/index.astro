@@ -15,6 +15,20 @@ const empresas = await prisma.empresa.findMany({
 <MainLayout title="Administración de usuarios">
   <div class="max-w-7xl mx-auto">
     <h1 class="text-xl font-bold mb-4">Selecciona una empresa</h1>
+    <div class="mb-8 relative">
+      <div class="relative">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"><circle cx="11" cy="11" r="8"></circle><line x1="21" x2="16.65" y1="21" y2="16.65"></line></svg>
+        <input 
+          type="text" 
+          id="user-search-input" 
+          placeholder="Buscar por nombre, apellidos o correo..." 
+          class="w-full rounded-md border border-border bg-card pl-10 pr-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+          autocomplete="off"
+        />
+      </div>
+      <div id="user-search-results" class="absolute z-10 w-full mt-1 bg-popover text-popover-foreground border border-border rounded-md shadow-lg overflow-hidden hidden max-h-60 overflow-y-auto">
+      </div>
+    </div>
     <div
       class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"
     >
@@ -500,4 +514,107 @@ const empresas = await prisma.empresa.findMany({
       uploadBtn.textContent = "Subir CSV";
     }
   });
+
+  // --- USER SEARCH LOGIC ---
+  const searchInput = document.getElementById("user-search-input") as HTMLInputElement;
+  const searchResults = document.getElementById("user-search-results");
+  let searchTimeout: ReturnType<typeof setTimeout>;
+  let selectedIndex = -1;
+
+  if (searchInput && searchResults) {
+    const hideResults = () => {
+      searchResults.classList.add("hidden");
+      selectedIndex = -1;
+    };
+
+    const renderResults = (usuarios: any[]) => {
+      if (usuarios.length === 0) {
+        searchResults.innerHTML = '<div class="p-3 text-sm text-muted-foreground">No se encontraron usuarios.</div>';
+      } else {
+        searchResults.innerHTML = usuarios.map((user, index) => `
+          <a href="/admin/usuarios/editar/${user.id}" data-index="${index}" class="search-result-item block p-3 hover:bg-muted border-b border-border last:border-0 transition-colors cursor-pointer outline-none focus:bg-secondary">
+            <div class="font-medium">${user.nombres} ${user.apellidos}</div>
+            <div class="text-xs text-muted-foreground flex justify-between">
+              <span>${user.mail}</span>
+              <span>${user.empresa?.nombre || ''}</span>
+            </div>
+          </a>
+        `).join('');
+      }
+      searchResults.classList.remove("hidden");
+      selectedIndex = -1;
+    };
+
+    const performSearch = async (query: string) => {
+      if (query.length < 3) {
+        hideResults();
+        return;
+      }
+      try {
+        const res = await fetch(`/api/admin/usuarios/search?q=${encodeURIComponent(query)}`);
+        if (res.ok) {
+          const data = await res.json();
+          renderResults(data.usuarios || []);
+        }
+      } catch (error) {
+        console.error("Error al buscar usuarios", error);
+      }
+    };
+
+    searchInput.addEventListener("input", (e) => {
+      const query = (e.target as HTMLInputElement).value.trim();
+      clearTimeout(searchTimeout);
+      searchTimeout = setTimeout(() => performSearch(query), 300);
+    });
+
+    searchInput.addEventListener("keydown", (e) => {
+      if (searchResults.classList.contains("hidden")) return;
+      
+      const items = searchResults.querySelectorAll(".search-result-item");
+      if (items.length === 0) return;
+
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        selectedIndex = (selectedIndex + 1) % items.length;
+        updateSelection(items);
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        selectedIndex = (selectedIndex - 1 + items.length) % items.length;
+        updateSelection(items);
+      } else if (e.key === "Enter") {
+        e.preventDefault();
+        if (selectedIndex >= 0) {
+          const href = (items[selectedIndex] as HTMLAnchorElement).href;
+          window.location.href = href;
+        } else if (items.length > 0) {
+          window.location.href = (items[0] as HTMLAnchorElement).href;
+        }
+      } else if (e.key === "Escape") {
+        e.preventDefault();
+        hideResults();
+      }
+    });
+
+    const updateSelection = (items: NodeListOf<Element>) => {
+      items.forEach((item, idx) => {
+        if (idx === selectedIndex) {
+          item.classList.add("bg-secondary", "text-secondary-foreground");
+          item.classList.remove("hover:bg-muted");
+        } else {
+          item.classList.remove("bg-secondary", "text-secondary-foreground");
+          item.classList.add("hover:bg-muted");
+        }
+      });
+      if (selectedIndex >= 0) {
+        (items[selectedIndex] as HTMLElement).scrollIntoView({ block: "nearest" });
+      }
+    };
+
+    // Cerrar si hace click fuera
+    document.addEventListener("click", (e) => {
+      if (!searchInput.contains(e.target as Node) && !searchResults.contains(e.target as Node)) {
+        hideResults();
+      }
+    });
+  }
 </script>

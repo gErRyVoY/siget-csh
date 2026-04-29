@@ -1151,7 +1151,12 @@ const descuentoOptions = descuentos.map((d) => d.descripcion);
             if (matricula && campus && campusOptions.includes(campus)) {
                 try {
                     const url = `https://pz3bmmqsty.us-east-1.awsapprunner.com/api/alumnos/consultar-detalle?campus=${encodeURIComponent(campus)}&matricula=${encodeURIComponent(matricula)}`;
-                    const res = await fetch(url);
+                    const res = await fetch(url, {
+                        headers: {
+                            'x-api-key': 'CHURRUMAIS-1979'
+                        }
+                    });
+                    
                     let json;
                     try {
                         json = await res.json();
@@ -1185,10 +1190,13 @@ const descuentoOptions = descuentos.map((d) => d.descripcion);
 
                         toast.success("Datos del alumno autocompletados.");
                     } else if (json?.detail) {
-                        toast.error("Valida el campus con el área de soporte.");
+                        toast.error(json.detail);
+                    } else {
+                        toast.error("Ocurrió un error al consultar el alumno.");
                     }
                 } catch (e) {
                     console.error("Error fetching alumno details", e);
+                    toast.error("Error de conexión al consultar el alumno.");
                 }
             }
         }
