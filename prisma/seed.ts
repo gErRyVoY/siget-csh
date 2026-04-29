@@ -1,4 +1,4 @@
-import { PrismaClient, TipoEmpresa, NivelSoporte, Prioridad, Prisma } from '@prisma/client';
+﻿import { PrismaClient, TipoEmpresa, NivelSoporte, Prioridad, Prisma } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
@@ -81,7 +81,7 @@ async function main() {
   console.log('Seeding rol...');
   await prisma.rol.createMany({
     data: [
-      // ─── Roles de Soporte CSH (atiendeTicketsCsh = true) ───────────────────
+      // â”€â”€â”€ Roles de Soporte CSH (atiendeTicketsCsh = true) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
       { id: 1,  rol: 'Director CSH',          descripcion: 'Director del Centro de Soporte',           nivel_soporte: 'S_3',          atiendeTicketsCsh: true,  atiendeTicketsMkt: false },
       { id: 2,  rol: 'Ingeniero soporte 1',   descripcion: 'Ingeniero de soporte nivel 1',             nivel_soporte: 'S_1',          atiendeTicketsCsh: true,  atiendeTicketsMkt: false },
       { id: 3,  rol: 'Ingeniero soporte 2',   descripcion: 'Ingeniero de soporte nivel 2',             nivel_soporte: 'S_2',          atiendeTicketsCsh: true,  atiendeTicketsMkt: false },
@@ -91,12 +91,12 @@ async function main() {
       { id: 15, rol: 'Visitante administrador', descripcion: 'Visitante administrador',                nivel_soporte: 'S_1',          atiendeTicketsCsh: true,  atiendeTicketsMkt: false },
       { id: 16, rol: 'Ingeniero Hubspot',     descripcion: 'Ingeniero especializado en Hubspot',       nivel_soporte: 'S_2',          atiendeTicketsCsh: true,  atiendeTicketsMkt: false },
       { id: 28, rol: 'Soporte técnico',       descripcion: 'Soporte técnico',                          nivel_soporte: 'S_1',          atiendeTicketsCsh: true,  atiendeTicketsMkt: false },
-      // ─── Roles de Marketing (atiendeTicketsMkt = true) ─────────────────────
+      // â”€â”€â”€ Roles de Marketing (atiendeTicketsMkt = true) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
       { id: 11, rol: 'Director Marketing',    descripcion: 'Director de Marketing',                    nivel_soporte: 'Director',     atiendeTicketsCsh: false, atiendeTicketsMkt: true  },
       { id: 12, rol: 'Diseñador',             descripcion: 'Diseñador gráfico (Marketing)',            nivel_soporte: 'Marketing',    atiendeTicketsCsh: false, atiendeTicketsMkt: true  },
       { id: 13, rol: 'Community manager',     descripcion: 'Ejecutivo de atención en redes sociales',  nivel_soporte: 'Marketing',    atiendeTicketsCsh: false, atiendeTicketsMkt: true  },
       { id: 17, rol: 'Editor',                descripcion: 'Editor de contenido multimedia',           nivel_soporte: 'Marketing',    atiendeTicketsCsh: false, atiendeTicketsMkt: true  },
-      // ─── Roles sin atención de tickets ─────────────────────────────────────
+      // â”€â”€â”€ Roles sin atención de tickets â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
       { id: 7,  rol: 'Director campus',       descripcion: 'Director de campus',                       nivel_soporte: 'Director',     atiendeTicketsCsh: false, atiendeTicketsMkt: false },
       { id: 8,  rol: 'Coordinador RR.PP.',    descripcion: 'Coordinador de relaciones públicas',       nivel_soporte: 'Coordinador',  atiendeTicketsCsh: false, atiendeTicketsMkt: false },
       { id: 9,  rol: 'Ejecutivo RR.PP.',      descripcion: 'Ejecutivo de relaciones públicas',         nivel_soporte: 'Usuario',      atiendeTicketsCsh: false, atiendeTicketsMkt: false },
@@ -829,6 +829,17 @@ async function main() {
     { rolId: 15, categoriaId: 1, subcategoriaId: 9 },   // Alumno -> Correo institucional
     { rolId: 15, categoriaId: 1, subcategoriaId: 58 },  // Alumno -> Traslado
     { rolId: 15, categoriaId: 3, subcategoriaId: 67 },  // Colaborador -> Altas -> Creación correo
+
+    // Soporte técnico (ID: 28 - S_1)
+    { rolId: 28, categoriaId: 1, subcategoriaId: null }, // Alumno (completa)
+    { rolId: 28, categoriaId: 2, subcategoriaId: null }, // Aspirante (completa)
+    { rolId: 28, categoriaId: 3, subcategoriaId: null }, // Colaborador (completa)
+    { rolId: 28, categoriaId: 4, subcategoriaId: null }, // Docente (completa)
+    { rolId: 28, categoriaId: 5, subcategoriaId: null }, // Plataforma Humanitas (completa)
+    { rolId: 28, categoriaId: 11, subcategoriaId: null }, // Otro (completa)
+    { rolId: 28, categoriaId: 1, subcategoriaId: 9 },   // Alumno -> Correo institucional
+    { rolId: 28, categoriaId: 1, subcategoriaId: 58 },  // Alumno -> Traslado
+    { rolId: 28, categoriaId: 3, subcategoriaId: 67 },  // Colaborador -> Altas -> Creación correo
   ];
 
   await prisma.permisoCategoria.createMany({

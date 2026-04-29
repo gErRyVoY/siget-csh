@@ -222,14 +222,41 @@ const horarioString = JSON.stringify(dbUser.horario_disponibilidad ?? {});
       });
     }
 
-    // Toggle text updater
+    // Toggle text updater and auto-save
     const vacToggle = document.getElementById("vacaciones") as HTMLInputElement;
     const vacText = document.getElementById("vacaciones-status-text");
-    vacToggle?.addEventListener("change", () => {
-      if (vacText)
-        vacText.textContent = vacToggle.checked
-          ? "De Vacaciones"
-          : "En Oficina";
+    vacToggle?.addEventListener("change", async () => {
+      const newVal = vacToggle.checked;
+      if (vacText) {
+        vacText.textContent = newVal ? "De vacaciones" : "En oficina";
+      }
+
+      try {
+        const res = await fetch("/api/user/profile", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ vacaciones: newVal }),
+        });
+
+        if (!res.ok) {
+          throw new Error((await res.json()).message || "Error al actualizar estatus");
+        }
+
+        toast.success(newVal ? "Estatus de vacaciones activado" : "Estatus de vacaciones desactivado");
+
+        // Sync sidebar toggle
+        const sidebarToggle = document.getElementById("vacation-toggle-menu") as HTMLInputElement | null;
+        if (sidebarToggle) {
+          sidebarToggle.checked = newVal;
+        }
+      } catch (err: any) {
+        // Revert on error
+        vacToggle.checked = !newVal;
+        if (vacText) {
+          vacText.textContent = vacToggle.checked ? "De vacaciones" : "En oficina";
+        }
+        toast.error(err.message || "Error al actualizar estatus");
+      }
     });
 
     // Form submission

@@ -74,6 +74,25 @@ const NOTIFICATION_FULL_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="24
 
             // Re-apply after view transitions to ensure persistence
             document.addEventListener("astro:after-swap", applyTheme);
+
+            // Global Loading State for View Transitions
+            // Usamos un overlay con transition:persist para mostrar
+            // el indicador de carga en la zona central.
+            function getOrCreateLoadingOverlay() {
+                return document.getElementById("page-loading-overlay");
+            }
+
+            // Mostrar overlay al iniciar la navegación
+            document.addEventListener("astro:before-preparation", () => {
+                const overlay = getOrCreateLoadingOverlay();
+                overlay.style.display = "block";
+            });
+
+            // Ocultar overlay tras el swap del DOM
+            document.addEventListener("astro:after-swap", () => {
+                const overlay = document.getElementById("page-loading-overlay");
+                if (overlay) overlay.style.display = "none";
+            });
         </script>
 
         <ClientRouter />
@@ -152,23 +171,28 @@ const NOTIFICATION_FULL_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="24
                     </div>
                 </header>
 
-                <main
-                    class="p-4 flex-1 min-w-0 h-full overflow-y-auto overflow-x-auto"
-                >
-                    <div
-                        class="group-data-[sidebar-collapsed=false]:max-md:hidden"
+                <div class="relative flex-1 flex flex-col min-w-0 h-full overflow-hidden">
+                    <div id="page-loading-overlay" transition:persist="loading-overlay"></div>
+
+                    <main
+                        id="page-content"
+                        class="p-4 flex-1 h-full overflow-y-auto overflow-x-auto transition-opacity duration-200"
                     >
-                        <slot />
-                    </div>
-                    <div
-                        id="mobile-overlay-message"
-                        class="hidden group-data-[sidebar-collapsed=false]:max-md:flex
-                            absolute inset-0 top-(--header-height) bg-background/80 backdrop-blur-sm cursor-pointer
-                            items-center justify-center p-8 text-center font-semibold text-foreground z-20"
-                    >
-                        Toque aquí para ver el contenido
-                    </div>
-                </main>
+                        <div
+                            class="group-data-[sidebar-collapsed=false]:max-md:hidden"
+                        >
+                            <slot />
+                        </div>
+                        <div
+                            id="mobile-overlay-message"
+                            class="hidden group-data-[sidebar-collapsed=false]:max-md:flex
+                                absolute inset-0 top-0 bg-background/80 backdrop-blur-sm cursor-pointer
+                                items-center justify-center p-8 text-center font-semibold text-foreground z-20"
+                        >
+                            Toque aquí para ver el contenido
+                        </div>
+                    </main>
+                </div>
             </div>
         </div>
 
@@ -546,13 +570,30 @@ const NOTIFICATION_FULL_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="24
                         "data-sidebar-collapsed",
                         String(isCollapsed),
                     );
+                    
+                    if (window.innerWidth >= 768) {
+                        localStorage.setItem("sidebar-collapsed", String(isCollapsed));
+                    }
+
+                    if (isCollapsed) {
+                        toggleButton.classList.add("bg-secondary", "text-secondary-foreground");
+                        toggleButton.classList.remove("hover:bg-accent");
+                    } else {
+                        toggleButton.classList.remove("bg-secondary", "text-secondary-foreground");
+                        toggleButton.classList.add("hover:bg-accent");
+                    }
                 }
 
                 function handleSidebarForViewport() {
                     if (window.innerWidth < 768) {
                         setSidebarState(true);
                     } else {
-                        setSidebarState(false);
+                        const stored = localStorage.getItem("sidebar-collapsed");
+                        if (stored !== null) {
+                            setSidebarState(stored === "true");
+                        } else {
+                            setSidebarState(false);
+                        }
                     }
                 }
 
@@ -570,6 +611,8 @@ const NOTIFICATION_FULL_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="24
                 );
 
                 window.addEventListener("resize", handleSidebarForViewport);
+                
+                // Set initial state
                 handleSidebarForViewport();
             }
 

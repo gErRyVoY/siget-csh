@@ -12,6 +12,15 @@ export const onRequest = defineMiddleware(async (context, next) => {
 
   const { pathname } = context.url;
 
+  // Ignorar archivos estáticos y assets internos de Astro para evitar saturar la base de datos
+  if (
+    pathname.startsWith("/_astro/") ||
+    pathname.startsWith("/_image") ||
+    pathname.match(/\.(png|jpe?g|gif|webp|svg|css|js|ico|woff2?|ttf|avif)$/)
+  ) {
+    return next();
+  }
+
   // El endpoint de la API de autenticación siempre debe ser accesible.
   if (pathname.startsWith("/api/auth")) {
     return next();

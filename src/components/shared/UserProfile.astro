@@ -226,6 +226,14 @@ const enVacaciones = user?.vacaciones ?? false;
                 });
                 if (!res.ok) throw new Error((await res.json()).message);
                 toast.success(newVal ? "Estatus de vacaciones activado" : "Estatus de vacaciones desactivado");
+                
+                // Sync profile page toggle if we are on the profile page
+                if (window.location.pathname === "/user/perfil") {
+                    const profileToggle = document.getElementById("vacaciones") as HTMLInputElement | null;
+                    const profileText = document.getElementById("vacaciones-status-text");
+                    if (profileToggle) profileToggle.checked = newVal;
+                    if (profileText) profileText.textContent = newVal ? "De vacaciones" : "En oficina";
+                }
             } catch (err: any) {
                 vacationToggle.checked = !newVal;
                 toast.error(err.message || "Error al actualizar estatus");

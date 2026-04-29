@@ -821,16 +821,16 @@
         "activo": true,
         "children": [
           {
-            "id": 69,
-            "nombre": "Acceso a Teambook",
+            "id": 68,
+            "nombre": "Acceso a plataforma",
             "parent_subcategoriaId": 66,
             "nivel_soporte_requerido": null,
             "activo": true,
             "children": []
           },
           {
-            "id": 68,
-            "nombre": "Acceso a plataforma",
+            "id": 69,
+            "nombre": "Acceso a Teambook",
             "parent_subcategoriaId": 66,
             "nivel_soporte_requerido": null,
             "activo": true,
@@ -1486,6 +1486,30 @@
     "subcategorias": []
   },
   {
+    "id": 10,
+    "nombre": "Página web",
+    "nivel_soporte_requerido": "Desarrollador",
+    "activo": true,
+    "subcategorias": [
+      {
+        "id": 127,
+        "nombre": "Formulario de contacto",
+        "parent_subcategoriaId": null,
+        "nivel_soporte_requerido": null,
+        "activo": true,
+        "children": []
+      },
+      {
+        "id": 128,
+        "nombre": "Página caída",
+        "parent_subcategoriaId": null,
+        "nivel_soporte_requerido": null,
+        "activo": true,
+        "children": []
+      }
+    ]
+  },
+  {
     "id": 5,
     "nombre": "Plataforma Humanitas",
     "nivel_soporte_requerido": "S_2",
@@ -1654,30 +1678,6 @@
             "children": []
           }
         ]
-      }
-    ]
-  },
-  {
-    "id": 10,
-    "nombre": "Página web",
-    "nivel_soporte_requerido": "Desarrollador",
-    "activo": true,
-    "subcategorias": [
-      {
-        "id": 127,
-        "nombre": "Formulario de contacto",
-        "parent_subcategoriaId": null,
-        "nivel_soporte_requerido": null,
-        "activo": true,
-        "children": []
-      },
-      {
-        "id": 128,
-        "nombre": "Página caída",
-        "parent_subcategoriaId": null,
-        "nivel_soporte_requerido": null,
-        "activo": true,
-        "children": []
       }
     ]
   }

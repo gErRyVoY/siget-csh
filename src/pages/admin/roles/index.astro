@@ -16,21 +16,19 @@ let selectedRoleId = selectedRoleIdString
   ? parseInt(selectedRoleIdString, 10)
   : null;
 
-const [rolesList, seccionesRaw, categoriasMaster] = await Promise.all([
-  prisma.rol.findMany({ orderBy: { rol: "asc" } }),
-  prisma.seccion.findMany({ orderBy: [{ grupo: "asc" }, { nombre: "asc" }] }),
-  prisma.categoria.findMany({
-    where: { activo: true },
-    include: {
-      subcategoria_categorias: {
-        where: { activo: true, subcategoria: { activo: true } },
-        include: { subcategoria: true },
-        orderBy: { subcategoria: { nombre: "asc" } },
-      },
+const rolesList = await prisma.rol.findMany({ orderBy: { rol: "asc" } });
+const seccionesRaw = await prisma.seccion.findMany({ orderBy: [{ grupo: "asc" }, { nombre: "asc" }] });
+const categoriasMaster = await prisma.categoria.findMany({
+  where: { activo: true },
+  include: {
+    subcategoria_categorias: {
+      where: { activo: true, subcategoria: { activo: true } },
+      include: { subcategoria: true },
+      orderBy: { subcategoria: { nombre: "asc" } },
     },
-    orderBy: { nombre: "asc" },
-  }),
-]);
+  },
+  orderBy: { nombre: "asc" },
+});
 
 // If an ID is provided but doesn't match any role, nullify it
 if (selectedRoleId && !rolesList.find((r) => r.id === selectedRoleId)) {

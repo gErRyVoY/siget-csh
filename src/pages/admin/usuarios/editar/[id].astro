@@ -7,31 +7,29 @@ import { getSession } from "auth-astro/server";
 const { id } = Astro.params;
 const session = await getSession(Astro.request);
 
-const [user, empresas, roles, secciones, categoriasMaster] = await Promise.all([
-  prisma.usuario.findUnique({
-    where: { id: parseInt(id as string, 10) },
-    include: {
-      empresa: true,
-      rol: { include: { permisos_seccion: true, permisos_categoria: true } },
-      permisos_seccion: true,
-      asignaciones_categorias: true,
-    },
-  }),
-  prisma.empresa.findMany({ orderBy: { nombre: "asc" } }),
-  prisma.rol.findMany({ orderBy: { rol: "asc" } }),
-  prisma.seccion.findMany({ orderBy: [{ grupo: "asc" }, { nombre: "asc" }] }),
-  prisma.categoria.findMany({
-    where: { activo: true },
-    include: {
-      subcategoria_categorias: {
-        where: { activo: true, subcategoria: { activo: true } },
-        include: { subcategoria: true },
-        orderBy: { subcategoria: { nombre: 'asc'} }
-      }
-    },
-    orderBy: { nombre: 'asc' }
-  })
-]);
+const user = await prisma.usuario.findUnique({
+  where: { id: parseInt(id as string, 10) },
+  include: {
+    empresa: true,
+    rol: { include: { permisos_seccion: true, permisos_categoria: true } },
+    permisos_seccion: true,
+    asignaciones_categorias: true,
+  },
+});
+const empresas = await prisma.empresa.findMany({ orderBy: { nombre: "asc" } });
+const roles = await prisma.rol.findMany({ orderBy: { rol: "asc" } });
+const secciones = await prisma.seccion.findMany({ orderBy: [{ grupo: "asc" }, { nombre: "asc" }] });
+const categoriasMaster = await prisma.categoria.findMany({
+  where: { activo: true },
+  include: {
+    subcategoria_categorias: {
+      where: { activo: true, subcategoria: { activo: true } },
+      include: { subcategoria: true },
+      orderBy: { subcategoria: { nombre: 'asc'} }
+    }
+  },
+  orderBy: { nombre: 'asc' }
+});
 
 if (!user) {
   return Astro.redirect("/404");

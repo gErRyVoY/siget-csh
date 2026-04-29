@@ -393,7 +393,7 @@ const getTicketDateColor = (date: Date, status: string) => {
                             tickets.map((ticket) => (
                                 <tr
                                     class="hover:bg-[#797979]/40 transition-colors cursor-pointer"
-                                    onclick={`window.location.href='/tickets/view/${ticket.id}?source=todos'`}
+                                    data-href={`/tickets/view/${ticket.id}?source=todos`}
                                 >
                                     <td class="p-2 font-medium text-foreground">
                                         #{ticket.id}
@@ -488,6 +488,20 @@ const getTicketDateColor = (date: Date, status: string) => {
 </MainLayout>
 
 <script>
+    import { navigate } from 'astro:transitions/client';
+
+    // Filas de tabla clickeables → usa navigate() de Astro para disparar el overlay de carga
+    document.addEventListener('astro:page-load', () => {
+        document.querySelectorAll('tr[data-href]').forEach((row) => {
+            row.addEventListener('click', (e) => {
+                // Si el clic fue en un elemento interactivo interno, no navegar
+                const target = e.target as HTMLElement;
+                if (target.closest('a, button, select, input')) return;
+                navigate((row as HTMLElement).dataset.href!);
+            });
+        });
+    });
+
     // Manejo de filtros
     const selects = document.querySelectorAll("select");
     selects.forEach((select) => {

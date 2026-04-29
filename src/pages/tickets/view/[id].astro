@@ -74,63 +74,53 @@ const statusColors: { [key: string]: string } = {
     Duplicado: "#171717",
 };
 
-const [ticket, ticketHistory, cshSupportUsers, cshAuditorDocs, cshAuditorReq] =
-    await Promise.all([
-        prisma.ticket.findUnique({
-            where: { id: ticketId },
+// Consultas secuenciales para evitar el agotamiento del connection pool
+const ticket = await prisma.ticket.findUnique({
+    where: { id: ticketId },
+    include: {
+        estatus: true,
+        categoria: true,
+        subcategoria: true,
+        solicitante: { include: { empresa: true } },
+        atiende: true,
+        empresa: true,
+        traslados: {
             include: {
-                estatus: true,
-                categoria: true,
-                subcategoria: true,
-                solicitante: { include: { empresa: true } },
-                atiende: true,
-                empresa: true,
-                traslados: {
+                origen: true,
+                destino: true,
+                carrera: {
                     include: {
-                        origen: true,
-                        destino: true,
-                        carrera: {
-                            include: {
-                                oferta: true,
-                            }
-                        },
-                        descuento: true,
-                        bloque: true,
-                    },
+                        oferta: true,
+                    }
                 },
+                descuento: true,
+                bloque: true,
             },
-        }),
-        prisma.historialSolicitud.findMany({
-            where: { ticketId: ticketId },
-            include: {
-                usuario: { select: { nombres: true, apellidos: true } },
-                estatus: { select: { nombre: true } },
-            },
-            orderBy: { fecha_cambio: "desc" },
-        }),
-        // Fetch Support Agents for CSH (ID 15)
-        // We'll filter by specific roles in valid logic later or fetch all relevant roles
-        // For now, let's just fetch active users from CSH to filter in memory or specific roles if known.
-        // User said: "rolId tenga uno de los que estan permitidos".
-        // Usually S-1, S-2, S-3 (IDs 1, 2, 3), Developer (4), Coordinator (8), Director (9)?
-        // Let's assume standard support roles for now: 1, 2, 3, 4, 8, 9.
-        prisma.usuario.findMany({
-            where: {
-                empresaId: 15,
-                activo: true,
-                // roles: S-1, S-2, S-3, Dev, Coord, Director (Adjust IDs as per seed)
-                rolId: { in: [1, 2, 3, 4, 8, 9] },
-            },
-        }),
-        // Fetch Auditor Docs
-        prisma.usuario.findMany({
-            where: { empresaId: 15, activo: true, auditor_docs: true },
-        }),
-        // Fetch Auditor Req
-        prisma.usuario.findMany({
-            where: { empresaId: 15, activo: true, auditor_req: true },
-        }),
-    ]);
+        },
+    },
+});
+const ticketHistory = await prisma.historialSolicitud.findMany({
+    where: { ticketId: ticketId },
+    include: {
+        usuario: { select: { nombres: true, apellidos: true } },
+        estatus: { select: { nombre: true } },
+    },
+    orderBy: { fecha_cambio: "desc" },
+});
+// Agentes de soporte CSH (roles: S-1, S-2, S-3, Dev, Coord, Director)
+const cshSupportUsers = await prisma.usuario.findMany({
+    where: {
+        empresaId: 15,
+        activo: true,
+        rolId: { in: [1, 2, 3, 4, 8, 9] },
+    },
+});
+const cshAuditorDocs = await prisma.usuario.findMany({
+    where: { empresaId: 15, activo: true, auditor_docs: true },
+});
+const cshAuditorReq = await prisma.usuario.findMany({
+    where: { empresaId: 15, activo: true, auditor_req: true },
+});
 
 if (!ticket) {
     return Astro.redirect("/404");

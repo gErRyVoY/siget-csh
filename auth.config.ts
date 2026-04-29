@@ -140,69 +140,84 @@ export default defineConfig({
       }
     },
 
-    async jwt({ token, account }) {
+    async jwt({ token, account, user }) {
       if (account) {
         token.accessToken = account.access_token;
       }
 
       if (token.email) {
+        // Query ligero para mantener en tiempo real vacaciones, alias, activo y rol
         const dbUser = await prisma.usuario.findUnique({
           where: { mail: token.email },
-          include: {
-            empresa: true,
-            rol: {
+          select: { 
+            id: true, 
+            rolId: true, 
+            image: true, 
+            alias: true, 
+            vacaciones: true, 
+            empresaId: true, 
+            activo: true 
+          }
+        });
+
+        if (dbUser) {
+          token.userId = dbUser.id;
+          token.image = dbUser.image;
+          token.alias = dbUser.alias ?? undefined;
+          token.vacaciones = dbUser.vacaciones;
+          
+          // Solo hacer la consulta pesada (joins) en login, si cambió el rol, o si faltan datos en el token
+          if (user || token.rolId !== dbUser.rolId || !token.secciones) {
+            const fullUser = await prisma.usuario.findUnique({
+              where: { id: dbUser.id },
               include: {
-                permisos: true, // Incluir los permisos del rol
+                empresa: true,
+                rol: {
+                  include: {
+                    permisos: true,
+                    permisos_seccion: {
+                      include: {
+                        seccion: true
+                      }
+                    }
+                  },
+                },
                 permisos_seccion: {
                   include: {
                     seccion: true
                   }
                 }
               },
-            },
-            permisos_seccion: {
-              include: {
-                seccion: true
-              }
+            });
+
+            if (fullUser) {
+              token.rolId = fullUser.rolId;
+              token.rol = fullUser.rol;
+              token.empresa = fullUser.empresa;
+              
+              token.permisos = fullUser.rol.permisos.map(p => p.nombre);
+
+              const seccionesRolList = fullUser.rol.permisos_seccion
+                .filter(ps => ps.activo && ps.seccion.activo)
+                .map(ps => ps.seccion.identificador);
+              
+              let seccionesAprobadas = new Set(seccionesRolList);
+
+              fullUser.permisos_seccion.forEach(ps => {
+                if (!ps.seccion.activo) return;
+                
+                if (ps.activo) {
+                  seccionesAprobadas.add(ps.seccion.identificador);
+                } else {
+                  seccionesAprobadas.delete(ps.seccion.identificador);
+                }
+              });
+
+              token.secciones = Array.from(seccionesAprobadas);
+              token.atiendeTicketsCsh = (fullUser.rol as any).atiendeTicketsCsh ?? false;
+              token.atiendeTicketsMkt = (fullUser.rol as any).atiendeTicketsMkt ?? false;
             }
-          },
-        });
-
-        if (dbUser) {
-          token.userId = dbUser.id;
-          token.rol = dbUser.rol;
-          token.empresa = dbUser.empresa;
-          token.image = dbUser.image;
-          token.alias = (dbUser as any).alias ?? undefined;
-          token.vacaciones = dbUser.vacaciones;
-          // Guardar solo los nombres de los permisos en el token
-          token.permisos = dbUser.rol.permisos.map(p => p.nombre);
-
-          // Obtener identificadores base de Rol, considerando seccion.activo
-          const seccionesRolList = dbUser.rol.permisos_seccion
-            .filter(ps => ps.activo && ps.seccion.activo)
-            .map(ps => ps.seccion.identificador);
-          
-          let seccionesAprobadas = new Set(seccionesRolList);
-
-          // Procesar las reglas manuales del usuario
-          dbUser.permisos_seccion.forEach(ps => {
-            if (!ps.seccion.activo) return; // Ignorar secciones deshabilitadas globalmente
-            
-            if (ps.activo) {
-              // Otorgar permiso explicito
-              seccionesAprobadas.add(ps.seccion.identificador);
-            } else {
-              // Revocar permiso manual (excepción negativa)
-              seccionesAprobadas.delete(ps.seccion.identificador);
-            }
-          });
-
-          // Convertir de Set a Array
-          token.secciones = Array.from(seccionesAprobadas);
-          // Flags de atención a tickets
-          token.atiendeTicketsCsh = (dbUser.rol as any).atiendeTicketsCsh ?? false;
-          token.atiendeTicketsMkt = (dbUser.rol as any).atiendeTicketsMkt ?? false;
+          }
         }
       }
       return token;

@@ -15,7 +15,7 @@ if (!user) {
 
 const MARKETING_CATEGORY_ID = 12;
 
-// Obtener parámetros de filtro de la URL
+// Obtener parÃ¡metros de filtro de la URL
 const url = new URL(Astro.request.url);
 const statusFilter = url.searchParams.get("status") || "all";
 const subcategoryFilter = url.searchParams.get("subcategory") || "all";
@@ -27,7 +27,7 @@ const pageSize = 10;
 // Definir estatus activos para la vista por defecto
 const activeStatusNames = ["Sin asignar", "Nuevo", "En progreso", "En espera"];
 
-// Reconstrucción segura del WHERE (AND structure)
+// ReconstrucciÃ³n segura del WHERE (AND structure)
 const finalWhere: any = {
     AND: [{ categoriaId: MARKETING_CATEGORY_ID }],
 };
@@ -39,7 +39,7 @@ if (statusFilter !== "all") {
     finalWhere.AND.push({ estatus: { nombre: { in: activeStatusNames } } });
 }
 
-// Subcategoría
+// SubcategorÃ­a
 if (subcategoryFilter !== "all") {
     const subId = parseInt(subcategoryFilter);
     if (!isNaN(subId)) {
@@ -87,13 +87,13 @@ const filteredStatuses = statuses.filter((status) =>
     allowedStatuses.includes(status.nombre),
 );
 
-// Subcategorías (Nivel 2: Diseño, Redes, Video)
+// SubcategorÃ­as (Nivel 2: DiseÃ±o, Redes, Video)
 const marketingSubcategories = await prisma.subcategoria.findMany({
     where: {
         subcategoria_categorias: {
             some: { categoriaId: MARKETING_CATEGORY_ID },
         },
-        parent_subcategoriaId: null, // Solo Nivel 2 (Diseño, Redes, Video)
+        parent_subcategoriaId: null, // Solo Nivel 2 (DiseÃ±o, Redes, Video)
         activo: true,
     },
     orderBy: { nombre: "asc" },
@@ -115,7 +115,7 @@ const agents = await prisma.usuario.findMany({
     orderBy: { nombres: "asc" },
 });
 
-// Paginación
+// PaginaciÃ³n
 const totalTickets = await prisma.ticket.count({ where: finalWhere });
 const totalPages = Math.ceil(totalTickets / pageSize);
 
@@ -195,11 +195,11 @@ const getTicketDateColor = (date: Date, status: string) => {
                     </select>
                 </div>
                 <div>
-                    <!-- Cambiado label a "Área" o "Categoría" segun preferencia, user dijo "Categoría" filter but "Subcategoría" content -->
+                    <!-- Cambiado label a "Ãrea" o "CategorÃ­a" segun preferencia, user dijo "CategorÃ­a" filter but "SubcategorÃ­a" content -->
                     <label
                         for="subcategory-select"
                         class="block text-sm font-medium text-muted-foreground mb-1"
-                        >Categoría</label
+                        >CategorÃ­a</label
                     >
                     <select
                         id="subcategory-select"
@@ -302,7 +302,7 @@ const getTicketDateColor = (date: Date, status: string) => {
                             <div class="text-sm text-muted-foreground space-y-1">
                                 <p>
                                     <span class="font-semibold">
-                                        Categoría:
+                                        CategorÃ­a:
                                     </span>{" "}
                                     {ticket.subcategoria?.nombre ||
                                         ticket.categoria.nombre}
@@ -355,7 +355,7 @@ const getTicketDateColor = (date: Date, status: string) => {
                         <tr>
                             <th class="p-2 font-medium">ID</th>
                             <th class="p-2 font-medium">Estatus</th>
-                            <th class="p-2 font-medium">Categoría</th>
+                            <th class="p-2 font-medium">CategorÃ­a</th>
                             <th class="p-2 font-medium">Solicitante</th>
                             <th class="p-2 font-medium">Asignado a</th>
                             <th class="p-2 font-medium">Fecha</th>
@@ -366,7 +366,7 @@ const getTicketDateColor = (date: Date, status: string) => {
                             tickets.map((ticket) => (
                                 <tr
                                     class="hover:bg-[#797979]/40 transition-colors cursor-pointer"
-                                    onclick={`window.location.href='/tickets/view/${ticket.id}?source=marketing_todos'`}
+                                    data-href={`/tickets/view/${ticket.id}?source=marketing_todos`}
                                 >
                                     <td class="p-2 font-medium text-foreground">
                                         #{ticket.id}
@@ -435,7 +435,7 @@ const getTicketDateColor = (date: Date, status: string) => {
             </div>
         </div>
 
-        <!-- Paginación -->
+        <!-- PaginaciÃ³n -->
         {
             totalPages > 1 && (
                 <div class="flex justify-center mt-6 gap-2">
@@ -447,7 +447,7 @@ const getTicketDateColor = (date: Date, status: string) => {
                         Anterior
                     </button>
                     <span class="px-4 py-2 text-sm text-muted-foreground">
-                        Página {page} de {totalPages}
+                        PÃ¡gina {page} de {totalPages}
                     </span>
                     <button
                         id="next-page"
@@ -463,6 +463,19 @@ const getTicketDateColor = (date: Date, status: string) => {
 </MainLayout>
 
 <script>
+    import { navigate } from 'astro:transitions/client';
+
+    // Filas de tabla clickeables → usa navigate() de Astro para disparar el overlay de carga
+    document.addEventListener('astro:page-load', () => {
+        document.querySelectorAll('tr[data-href]').forEach((row) => {
+            row.addEventListener('click', (e) => {
+                // Si el clic fue en un elemento interactivo interno, no navegar
+                const target = e.target;
+                if (target.closest('a, button, select, input')) return;
+                navigate(row.dataset.href);
+            });
+        });
+    });
     const selects = document.querySelectorAll("select");
     selects.forEach((select) => {
         select.addEventListener("change", () => {
@@ -486,7 +499,7 @@ const getTicketDateColor = (date: Date, status: string) => {
         });
     });
 
-    // Paginación (igual que antes)
+    // PaginaciÃ³n (igual que antes)
     const prevBtn = document.getElementById("prev-page");
     const nextBtn = document.getElementById("next-page");
     if (prevBtn)

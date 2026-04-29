@@ -2,13 +2,11 @@ import type { APIRoute } from "astro";
 import { prisma } from "@/lib/db";
 
 export const GET: APIRoute = async () => {
-    const [ticketCounts, activeCycle] = await Promise.all([
-        prisma.ticket.groupBy({
-            by: ["estatusId"],
-            _count: { id: true },
-        }),
-        prisma.ciclo.findFirst({ where: { activo: true } }),
-    ]);
+    const ticketCounts = await prisma.ticket.groupBy({
+        by: ["estatusId"],
+        _count: { id: true },
+    });
+    const activeCycle = await prisma.ciclo.findFirst({ where: { activo: true } });
 
     const statuses = await prisma.estatus.findMany();
 

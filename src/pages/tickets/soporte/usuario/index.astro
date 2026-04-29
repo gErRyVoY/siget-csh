@@ -17,7 +17,7 @@ if (!user) {
 const PRIVILEGED_ROLES = [1, 2, 3, 4, 5, 6, 15];
 const isPrivileged = PRIVILEGED_ROLES.includes(user.rol?.id ?? -1);
 
-// Obtener parámetros de filtro de la URL
+// Obtener parÃ¡metros de filtro de la URL
 const url = new URL(Astro.request.url);
 const statusFilter = url.searchParams.get("status") || "all";
 const categoryFilter = url.searchParams.get("category") || "all";
@@ -37,7 +37,7 @@ const baseWhere: any = {
     ],
 };
 
-// Lógica de filtro de Estatus (Principal)
+// LÃ³gica de filtro de Estatus (Principal)
 let statusWhere: any = {};
 if (statusFilter !== "all") {
     statusWhere = { estatusId: parseInt(statusFilter) };
@@ -58,7 +58,7 @@ const where: any = {
     ...statusWhere,
 };
 
-// Añadir otros filtros si están presentes
+// AÃ±adir otros filtros si estÃ¡n presentes
 if (categoryFilter !== "all") {
     where.categoriaId = parseInt(categoryFilter);
 }
@@ -75,7 +75,7 @@ if (assigneeFilter !== "all") {
     }
 }
 
-// Obtener datos para los selectores (DINÁMICOS basados en Estatus + Scope)
+// Obtener datos para los selectores (DINÃMICOS basados en Estatus + Scope)
 const dropdownScope = {
     ...baseWhere,
     ...statusWhere,
@@ -99,7 +99,7 @@ const filteredStatuses = statuses.filter((status) =>
     allowedStatuses.includes(status.nombre),
 );
 
-// Categorías disponibles (solo las que tienen tickets en el estatus/scope actual)
+// CategorÃ­as disponibles (solo las que tienen tickets en el estatus/scope actual)
 const categories = await prisma.categoria.findMany({
     where: {
         activo: true,
@@ -136,7 +136,7 @@ const agents = await prisma.usuario.findMany({
     orderBy: { nombres: "asc" },
 });
 
-// Obtener total de tickets para paginación
+// Obtener total de tickets para paginaciÃ³n
 const totalTickets = await prisma.ticket.count({ where });
 const totalPages = Math.ceil(totalTickets / pageSize);
 
@@ -228,7 +228,7 @@ const getTicketDateColor = (date: Date, status: string) => {
                     <label
                         for="categoria-select"
                         class="block text-sm font-medium text-muted-foreground mb-1"
-                        >Categoría</label
+                        >CategorÃ­a</label
                     >
                     <select
                         id="categoria-select"
@@ -314,7 +314,7 @@ const getTicketDateColor = (date: Date, status: string) => {
             </div>
         </div>
 
-        <!-- Vista Móvil: Cards -->
+        <!-- Vista MÃ³vil: Cards -->
         <div class="md:hidden space-y-4">
             {
                 tickets.map((ticket) => (
@@ -338,7 +338,7 @@ const getTicketDateColor = (date: Date, status: string) => {
                             <div class="text-sm text-muted-foreground space-y-1">
                                 <p>
                                     <span class="font-semibold">
-                                        Categoría:
+                                        CategorÃ­a:
                                     </span>{" "}
                                     {ticket.categoria.nombre}
                                 </p>
@@ -391,14 +391,14 @@ const getTicketDateColor = (date: Date, status: string) => {
                                             Solicitante
                                         </th>
                                         <th class="p-2 font-medium">
-                                            Categoría
+                                            CategorÃ­a
                                         </th>
                                         <th class="p-2 font-medium">Fecha</th>
                                     </>
                                 ) : (
                                     <>
                                         <th class="p-2 font-medium">
-                                            Categoría
+                                            CategorÃ­a
                                         </th>
                                         <th class="p-2 font-medium">
                                             Asignado a
@@ -414,7 +414,7 @@ const getTicketDateColor = (date: Date, status: string) => {
                             tickets.map((ticket) => (
                                 <tr
                                     class="hover:bg-[#797979]/40 transition-colors cursor-pointer"
-                                    onclick={`window.location.href='/tickets/view/${ticket.id}?source=mis-tickets'`}
+                                    data-href={`/tickets/view/${ticket.id}?source=mis-tickets`}
                                 >
                                     <td class="p-2 font-medium text-foreground">
                                         #{ticket.id}
@@ -511,7 +511,7 @@ const getTicketDateColor = (date: Date, status: string) => {
             </div>
         </div>
 
-        <!-- Paginación -->
+        <!-- PaginaciÃ³n -->
         {
             totalPages > 1 && (
                 <div class="flex justify-center mt-6 gap-2">
@@ -523,7 +523,7 @@ const getTicketDateColor = (date: Date, status: string) => {
                         Anterior
                     </button>
                     <span class="px-4 py-2 text-sm text-muted-foreground">
-                        Página {page} de {totalPages}
+                        PÃ¡gina {page} de {totalPages}
                     </span>
                     <button
                         id="next-page"
@@ -539,6 +539,19 @@ const getTicketDateColor = (date: Date, status: string) => {
 </MainLayout>
 
 <script>
+    import { navigate } from 'astro:transitions/client';
+
+    // Filas de tabla clickeables → usa navigate() de Astro para disparar el overlay de carga
+    document.addEventListener('astro:page-load', () => {
+        document.querySelectorAll('tr[data-href]').forEach((row) => {
+            row.addEventListener('click', (e) => {
+                // Si el clic fue en un elemento interactivo interno, no navegar
+                const target = e.target;
+                if (target.closest('a, button, select, input')) return;
+                navigate(row.dataset.href);
+            });
+        });
+    });
     // Manejo de filtros
     const selects = document.querySelectorAll("select");
     selects.forEach((select) => {
@@ -569,13 +582,13 @@ const getTicketDateColor = (date: Date, status: string) => {
                     value,
                 );
             }
-            // Resetear a página 1 al filtrar
+            // Resetear a pÃ¡gina 1 al filtrar
             url.searchParams.set("page", "1");
             window.location.href = url.toString();
         });
     });
 
-    // Manejo de paginación
+    // Manejo de paginaciÃ³n
     const prevBtn = document.getElementById("prev-page");
     const nextBtn = document.getElementById("next-page");
 

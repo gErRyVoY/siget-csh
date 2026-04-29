@@ -92,6 +92,10 @@ model Usuario {
   logs                     Logs[]
   permisos_seccion         PermisoUsuarioSeccion[]
 
+  // Índices de rendimiento
+  @@index([rolId, activo])
+  @@index([empresaId])
+  @@index([activo, vacaciones])
   @@map("usuario")
 }
 
@@ -103,6 +107,8 @@ model Logs {
   usuarioId Int
   usuario   Usuario  @relation(fields: [usuarioId], references: [id])
 
+  // Índices de rendimiento
+  @@index([usuarioId, fecha(sort: Desc)])
   @@map("logs")
 }
 
@@ -244,6 +250,15 @@ model Ticket {
   historial_solicitudes HistorialSolicitud[]
   notificaciones_correo NotificacionesCorreo[]
 
+  // Índices de rendimiento
+  @@index([solicitanteId])
+  @@index([estatusId])
+  @@index([atiendeId])
+  @@index([categoriaId])
+  @@index([empresaId])
+  @@index([fechaalta(sort: Desc)])
+  @@index([estatusId, atiendeId, archivado])
+  @@index([subcategoriaId, fechaalta])
   @@map("ticket")
 }
 
@@ -316,6 +331,9 @@ model HistorialSolicitud {
   estatus      Estatus  @relation(fields: [estatusId], references: [id])
   usuario      Usuario  @relation(fields: [usuarioId], references: [id])
 
+  // Índices de rendimiento
+  @@index([ticketId, fecha_cambio(sort: Desc)])
+  @@index([usuarioId])
   @@map("historial_solicitud")
 }
 
@@ -342,6 +360,9 @@ model NotificacionesCorreo {
   destinatario   Usuario         @relation(fields: [destinatarioId], references: [id])
   plantilla      PlantillaCorreo @relation(fields: [plantillaId], references: [id])
 
+  // Índices de rendimiento
+  @@index([ticketId])
+  @@index([destinatarioId])
   @@map("notificaciones_correo")
 }
 

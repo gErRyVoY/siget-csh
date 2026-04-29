@@ -177,3 +177,43 @@
     opacity: 0;
   }
 }
+
+/* =========================================
+   Estado de carga global (view transitions)
+   Overlay persistente que cubre el area de
+   contenido mientras el servidor procesa.
+   ========================================= */
+@keyframes page-pulse {
+  0%, 100% { opacity: 0; }
+  50%       { opacity: 1; }
+}
+
+#page-loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 9999;
+  pointer-events: none;
+  display: none;
+  background: rgba(255, 255, 255, 0.3);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  animation: page-pulse 1s ease-in-out infinite;
+  /* Excluir del fade nativo de View Transitions */
+  view-transition-name: page-loading-overlay;
+}
+
+::view-transition-group(page-loading-overlay) {
+  animation: none;
+}
+
+::view-transition-old(page-loading-overlay),
+::view-transition-new(page-loading-overlay) {
+  animation: none;
+}
+
+.dark #page-loading-overlay {
+  background: rgba(10, 10, 10, 0.4);
+}
