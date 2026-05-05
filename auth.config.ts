@@ -146,78 +146,62 @@ export default defineConfig({
       }
 
       if (token.email) {
-        // Query ligero para mantener en tiempo real vacaciones, alias, activo y rol
-        const dbUser = await prisma.usuario.findUnique({
+        // Query único con joins para mantener en tiempo real todos los datos, permisos y secciones.
+        // Esto permite que los cambios desde /admin/secciones se reflejen solo con actualizar el navegador (F5),
+        // sin necesidad de borrar cookies.
+        const fullUser = await prisma.usuario.findUnique({
           where: { mail: token.email },
-          select: { 
-            id: true, 
-            rolId: true, 
-            image: true, 
-            alias: true, 
-            vacaciones: true, 
-            empresaId: true, 
-            activo: true 
-          }
-        });
-
-        if (dbUser) {
-          token.userId = dbUser.id;
-          token.image = dbUser.image;
-          token.alias = dbUser.alias ?? undefined;
-          token.vacaciones = dbUser.vacaciones;
-          
-          // Solo hacer la consulta pesada (joins) en login, si cambió el rol, o si faltan datos en el token
-          if (user || token.rolId !== dbUser.rolId || !token.secciones) {
-            const fullUser = await prisma.usuario.findUnique({
-              where: { id: dbUser.id },
+          include: {
+            empresa: true,
+            rol: {
               include: {
-                empresa: true,
-                rol: {
-                  include: {
-                    permisos: true,
-                    permisos_seccion: {
-                      include: {
-                        seccion: true
-                      }
-                    }
-                  },
-                },
+                permisos: true,
                 permisos_seccion: {
                   include: {
                     seccion: true
                   }
                 }
               },
-            });
-
-            if (fullUser) {
-              token.rolId = fullUser.rolId;
-              token.rol = fullUser.rol;
-              token.empresa = fullUser.empresa;
-              
-              token.permisos = fullUser.rol.permisos.map(p => p.nombre);
-
-              const seccionesRolList = fullUser.rol.permisos_seccion
-                .filter(ps => ps.activo && ps.seccion.activo)
-                .map(ps => ps.seccion.identificador);
-              
-              let seccionesAprobadas = new Set(seccionesRolList);
-
-              fullUser.permisos_seccion.forEach(ps => {
-                if (!ps.seccion.activo) return;
-                
-                if (ps.activo) {
-                  seccionesAprobadas.add(ps.seccion.identificador);
-                } else {
-                  seccionesAprobadas.delete(ps.seccion.identificador);
-                }
-              });
-
-              token.secciones = Array.from(seccionesAprobadas);
-              token.atiendeTicketsCsh = (fullUser.rol as any).atiendeTicketsCsh ?? false;
-              token.atiendeTicketsMkt = (fullUser.rol as any).atiendeTicketsMkt ?? false;
+            },
+            permisos_seccion: {
+              include: {
+                seccion: true
+              }
             }
-          }
+          },
+        });
+
+        if (fullUser) {
+          token.userId = fullUser.id;
+          token.image = fullUser.image;
+          token.alias = fullUser.alias ?? undefined;
+          token.vacaciones = fullUser.vacaciones;
+          
+          token.rolId = fullUser.rolId;
+          token.rol = fullUser.rol;
+          token.empresa = fullUser.empresa;
+          
+          token.permisos = fullUser.rol.permisos.map(p => p.nombre);
+
+          const seccionesRolList = fullUser.rol.permisos_seccion
+            .filter(ps => ps.activo && ps.seccion.activo)
+            .map(ps => ps.seccion.identificador);
+          
+          let seccionesAprobadas = new Set(seccionesRolList);
+
+          fullUser.permisos_seccion.forEach(ps => {
+            if (!ps.seccion.activo) return;
+            
+            if (ps.activo) {
+              seccionesAprobadas.add(ps.seccion.identificador);
+            } else {
+              seccionesAprobadas.delete(ps.seccion.identificador);
+            }
+          });
+
+          token.secciones = Array.from(seccionesAprobadas);
+          token.atiendeTicketsCsh = (fullUser.rol as any).atiendeTicketsCsh ?? false;
+          token.atiendeTicketsMkt = (fullUser.rol as any).atiendeTicketsMkt ?? false;
         }
       }
       return token;

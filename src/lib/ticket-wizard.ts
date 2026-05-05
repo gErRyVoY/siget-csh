@@ -347,7 +347,6 @@ export function initTicketWizard(treeData: CategoriesTreeData) {
             .setOAuthToken(accessToken!)
             .addView(view)
             .addView(new (window as any).google.picker.DocsUploadView())
-            .setDeveloperKey(GOOGLE_API_KEY)
             .setCallback(pickerCallback)
             .build();
         picker.setVisible(true);

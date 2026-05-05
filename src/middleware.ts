@@ -72,6 +72,9 @@ export const onRequest = defineMiddleware(async (context, next) => {
     "/admin/secciones": "admin_siget_secciones",
     "/admin/tickets": "admin_siget_tickets",
     "/admin/usuarios": "admin_siget_usuarios",
+    "/admin/roles": "admin_siget_roles",
+    "/base-de-conocimientos": "base_conocimientos",
+    "/horario-de-atencion": "horario_atencion",
   };
 
   // Convert map to array sorted by path length descending to match most specific path first.
@@ -86,7 +89,15 @@ export const onRequest = defineMiddleware(async (context, next) => {
         // Esto también captura el caso en donde la sección esté apagada globalmente 
         // porque auth.config.ts ya omite las inhabilitadas globalmente.
         if (!userSecciones.includes(requiredSection)) {
-             return context.redirect("/?unauthorized=true");
+            // Cookie de flash: sobrevive el redirect del ClientRouter sin depender de query params
+            context.cookies.set('siget_flash_unauthorized', '1', {
+                path: '/',
+                maxAge: 30,
+                sameSite: 'lax',
+                httpOnly: false,
+                secure: false,
+            });
+            return context.redirect("/");
         }
         break; // Detener la verificación porque logramos el match más específico
     }

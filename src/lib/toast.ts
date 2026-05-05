@@ -63,6 +63,14 @@ class ToastManager {
             },
             ...config,
         };
+
+        if (typeof document !== 'undefined') {
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    this.clear();
+                }
+            });
+        }
     }
 
     public updateConfig(config: Partial<ToastConfig>): void {

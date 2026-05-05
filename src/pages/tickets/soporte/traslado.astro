@@ -8,9 +8,9 @@ import {
     bloqueOptions,
 } from "@/config/form-options";
 
-const GOOGLE_API_KEY = import.meta.env.PUBLIC_GOOGLE_API_KEY;
-const GOOGLE_CLIENT_ID = import.meta.env.PUBLIC_GOOGLE_CLIENT_ID;
-const GOOGLE_APP_ID = import.meta.env.PUBLIC_GOOGLE_APP_ID;
+const GOOGLE_API_KEY = import.meta.env.GOOGLE_API_KEY || process.env.GOOGLE_API_KEY || '';
+const GOOGLE_CLIENT_ID = import.meta.env.GOOGLE_CLIENT_ID || process.env.GOOGLE_CLIENT_ID || '';
+const GOOGLE_APP_ID = import.meta.env.GOOGLE_APP_ID || process.env.GOOGLE_APP_ID || '';
 
 const descuentos = await prisma.descuento.findMany({
     where: { activo: true },
@@ -968,7 +968,6 @@ const descuentoOptions = descuentos.map((d) => d.descripcion);
                 .setOAuthToken(accessToken!)
                 .addView(view)
                 .addView(new window.google.picker.DocsUploadView())
-                .setDeveloperKey(GOOGLE_API_KEY)
                 .setCallback(pickerCallback)
                 .build();
             picker.setVisible(true);

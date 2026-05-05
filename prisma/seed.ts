@@ -82,37 +82,37 @@ async function main() {
   await prisma.rol.createMany({
     data: [
       // â”€â”€â”€ Roles de Soporte CSH (atiendeTicketsCsh = true) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-      { id: 1,  rol: 'Director CSH',          descripcion: 'Director del Centro de Soporte',           nivel_soporte: 'S_3',          atiendeTicketsCsh: true,  atiendeTicketsMkt: false },
-      { id: 2,  rol: 'Ingeniero soporte 1',   descripcion: 'Ingeniero de soporte nivel 1',             nivel_soporte: 'S_1',          atiendeTicketsCsh: true,  atiendeTicketsMkt: false },
-      { id: 3,  rol: 'Ingeniero soporte 2',   descripcion: 'Ingeniero de soporte nivel 2',             nivel_soporte: 'S_2',          atiendeTicketsCsh: true,  atiendeTicketsMkt: false },
-      { id: 4,  rol: 'Ingeniero soporte 3',   descripcion: 'Ingeniero de soporte nivel 3',             nivel_soporte: 'S_3',          atiendeTicketsCsh: true,  atiendeTicketsMkt: false },
-      { id: 5,  rol: 'Auditor CSH',           descripcion: 'Auditor del centro de soporte',            nivel_soporte: 'S_1',          atiendeTicketsCsh: true,  atiendeTicketsMkt: false },
-      { id: 6,  rol: 'Desarrollador',         descripcion: 'Desarrollador de aplicaciones',            nivel_soporte: 'Desarrollador', atiendeTicketsCsh: true,  atiendeTicketsMkt: false },
-      { id: 15, rol: 'Visitante administrador', descripcion: 'Visitante administrador',                nivel_soporte: 'S_1',          atiendeTicketsCsh: true,  atiendeTicketsMkt: false },
-      { id: 16, rol: 'Ingeniero Hubspot',     descripcion: 'Ingeniero especializado en Hubspot',       nivel_soporte: 'S_2',          atiendeTicketsCsh: true,  atiendeTicketsMkt: false },
-      { id: 28, rol: 'Soporte técnico',       descripcion: 'Soporte técnico',                          nivel_soporte: 'S_1',          atiendeTicketsCsh: true,  atiendeTicketsMkt: false },
+      { id: 1, rol: 'Director CSH', descripcion: 'Director del Centro de Soporte', nivel_soporte: 'S_3', atiendeTicketsCsh: true, atiendeTicketsMkt: false },
+      { id: 2, rol: 'Ingeniero soporte 1', descripcion: 'Ingeniero de soporte nivel 1', nivel_soporte: 'S_1', atiendeTicketsCsh: true, atiendeTicketsMkt: false },
+      { id: 3, rol: 'Ingeniero soporte 2', descripcion: 'Ingeniero de soporte nivel 2', nivel_soporte: 'S_2', atiendeTicketsCsh: true, atiendeTicketsMkt: false },
+      { id: 4, rol: 'Ingeniero soporte 3', descripcion: 'Ingeniero de soporte nivel 3', nivel_soporte: 'S_3', atiendeTicketsCsh: true, atiendeTicketsMkt: false },
+      { id: 5, rol: 'Auditor CSH', descripcion: 'Auditor del centro de soporte', nivel_soporte: 'S_1', atiendeTicketsCsh: true, atiendeTicketsMkt: false },
+      { id: 6, rol: 'Desarrollador', descripcion: 'Desarrollador de aplicaciones', nivel_soporte: 'Desarrollador', atiendeTicketsCsh: true, atiendeTicketsMkt: false },
+      { id: 15, rol: 'Visitante administrador', descripcion: 'Visitante administrador', nivel_soporte: 'S_1', atiendeTicketsCsh: true, atiendeTicketsMkt: false },
+      { id: 16, rol: 'Ingeniero Hubspot', descripcion: 'Ingeniero especializado en Hubspot', nivel_soporte: 'S_2', atiendeTicketsCsh: true, atiendeTicketsMkt: false },
+      { id: 28, rol: 'Soporte técnico', descripcion: 'Soporte técnico', nivel_soporte: 'S_1', atiendeTicketsCsh: true, atiendeTicketsMkt: false },
       // â”€â”€â”€ Roles de Marketing (atiendeTicketsMkt = true) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-      { id: 11, rol: 'Director Marketing',    descripcion: 'Director de Marketing',                    nivel_soporte: 'Director',     atiendeTicketsCsh: false, atiendeTicketsMkt: true  },
-      { id: 12, rol: 'Diseñador',             descripcion: 'Diseñador gráfico (Marketing)',            nivel_soporte: 'Marketing',    atiendeTicketsCsh: false, atiendeTicketsMkt: true  },
-      { id: 13, rol: 'Community manager',     descripcion: 'Ejecutivo de atención en redes sociales',  nivel_soporte: 'Marketing',    atiendeTicketsCsh: false, atiendeTicketsMkt: true  },
-      { id: 17, rol: 'Editor',                descripcion: 'Editor de contenido multimedia',           nivel_soporte: 'Marketing',    atiendeTicketsCsh: false, atiendeTicketsMkt: true  },
+      { id: 11, rol: 'Director Marketing', descripcion: 'Director de Marketing', nivel_soporte: 'Director', atiendeTicketsCsh: false, atiendeTicketsMkt: true },
+      { id: 12, rol: 'Diseñador', descripcion: 'Diseñador gráfico (Marketing)', nivel_soporte: 'Marketing', atiendeTicketsCsh: false, atiendeTicketsMkt: true },
+      { id: 13, rol: 'Community manager', descripcion: 'Ejecutivo de atención en redes sociales', nivel_soporte: 'Marketing', atiendeTicketsCsh: false, atiendeTicketsMkt: true },
+      { id: 17, rol: 'Editor', descripcion: 'Editor de contenido multimedia', nivel_soporte: 'Marketing', atiendeTicketsCsh: false, atiendeTicketsMkt: true },
       // â”€â”€â”€ Roles sin atención de tickets â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-      { id: 7,  rol: 'Director campus',       descripcion: 'Director de campus',                       nivel_soporte: 'Director',     atiendeTicketsCsh: false, atiendeTicketsMkt: false },
-      { id: 8,  rol: 'Coordinador RR.PP.',    descripcion: 'Coordinador de relaciones públicas',       nivel_soporte: 'Coordinador',  atiendeTicketsCsh: false, atiendeTicketsMkt: false },
-      { id: 9,  rol: 'Ejecutivo RR.PP.',      descripcion: 'Ejecutivo de relaciones públicas',         nivel_soporte: 'Usuario',      atiendeTicketsCsh: false, atiendeTicketsMkt: false },
-      { id: 10, rol: 'Contador',              descripcion: 'Contador',                                 nivel_soporte: 'Contador',     atiendeTicketsCsh: false, atiendeTicketsMkt: false },
-      { id: 14, rol: 'Visitante',             descripcion: 'Visitante',                                nivel_soporte: 'Usuario',      atiendeTicketsCsh: false, atiendeTicketsMkt: false },
-      { id: 18, rol: 'Ejecutivo académico',   descripcion: 'Ejecutivo académico',                      nivel_soporte: 'Usuario',      atiendeTicketsCsh: false, atiendeTicketsMkt: false },
-      { id: 19, rol: 'Coordinador administrativo', descripcion: 'Coordinador administrativo',          nivel_soporte: 'Coordinador',  atiendeTicketsCsh: false, atiendeTicketsMkt: false },
-      { id: 20, rol: 'Coordinador idiomas',   descripcion: 'Coordinador de idiomas',                   nivel_soporte: 'Coordinador',  atiendeTicketsCsh: false, atiendeTicketsMkt: false },
-      { id: 21, rol: 'Ejecutivo control escolar', descripcion: 'Ejecutivo de control escolar',         nivel_soporte: 'Usuario',      atiendeTicketsCsh: false, atiendeTicketsMkt: false },
-      { id: 22, rol: 'Ejecutivo humanitas vive', descripcion: 'Ejecutivo de humanitas vive',           nivel_soporte: 'Usuario',      atiendeTicketsCsh: false, atiendeTicketsMkt: false },
-      { id: 23, rol: 'Ejecutivo administrativo', descripcion: 'Ejecutivo administrativo',              nivel_soporte: 'Usuario',      atiendeTicketsCsh: false, atiendeTicketsMkt: false },
-      { id: 24, rol: 'Coordinador académico', descripcion: 'Coordinador académico',                    nivel_soporte: 'Coordinador',  atiendeTicketsCsh: false, atiendeTicketsMkt: false },
-      { id: 25, rol: 'Líder académico',       descripcion: 'Líder académico',                          nivel_soporte: 'Coordinador',  atiendeTicketsCsh: false, atiendeTicketsMkt: false },
+      { id: 7, rol: 'Director campus', descripcion: 'Director de campus', nivel_soporte: 'Director', atiendeTicketsCsh: false, atiendeTicketsMkt: false },
+      { id: 8, rol: 'Coordinador RR.PP.', descripcion: 'Coordinador de relaciones públicas', nivel_soporte: 'Coordinador', atiendeTicketsCsh: false, atiendeTicketsMkt: false },
+      { id: 9, rol: 'Ejecutivo RR.PP.', descripcion: 'Ejecutivo de relaciones públicas', nivel_soporte: 'Usuario', atiendeTicketsCsh: false, atiendeTicketsMkt: false },
+      { id: 10, rol: 'Contador', descripcion: 'Contador', nivel_soporte: 'Contador', atiendeTicketsCsh: false, atiendeTicketsMkt: false },
+      { id: 14, rol: 'Visitante', descripcion: 'Visitante', nivel_soporte: 'Usuario', atiendeTicketsCsh: false, atiendeTicketsMkt: false },
+      { id: 18, rol: 'Ejecutivo académico', descripcion: 'Ejecutivo académico', nivel_soporte: 'Usuario', atiendeTicketsCsh: false, atiendeTicketsMkt: false },
+      { id: 19, rol: 'Coordinador administrativo', descripcion: 'Coordinador administrativo', nivel_soporte: 'Coordinador', atiendeTicketsCsh: false, atiendeTicketsMkt: false },
+      { id: 20, rol: 'Coordinador idiomas', descripcion: 'Coordinador de idiomas', nivel_soporte: 'Coordinador', atiendeTicketsCsh: false, atiendeTicketsMkt: false },
+      { id: 21, rol: 'Ejecutivo control escolar', descripcion: 'Ejecutivo de control escolar', nivel_soporte: 'Usuario', atiendeTicketsCsh: false, atiendeTicketsMkt: false },
+      { id: 22, rol: 'Ejecutivo humanitas vive', descripcion: 'Ejecutivo de humanitas vive', nivel_soporte: 'Usuario', atiendeTicketsCsh: false, atiendeTicketsMkt: false },
+      { id: 23, rol: 'Ejecutivo administrativo', descripcion: 'Ejecutivo administrativo', nivel_soporte: 'Usuario', atiendeTicketsCsh: false, atiendeTicketsMkt: false },
+      { id: 24, rol: 'Coordinador académico', descripcion: 'Coordinador académico', nivel_soporte: 'Coordinador', atiendeTicketsCsh: false, atiendeTicketsMkt: false },
+      { id: 25, rol: 'Líder académico', descripcion: 'Líder académico', nivel_soporte: 'Coordinador', atiendeTicketsCsh: false, atiendeTicketsMkt: false },
       { id: 26, rol: 'Coordinador vida estudiantil', descripcion: 'Coordinador de vida estudiantil y humanitas vive', nivel_soporte: 'Coordinador', atiendeTicketsCsh: false, atiendeTicketsMkt: false },
-      { id: 27, rol: 'Coordinador control escolar', descripcion: 'Coordinador de control escolar',     nivel_soporte: 'Coordinador',  atiendeTicketsCsh: false, atiendeTicketsMkt: false },
-      { id: 29, rol: 'Enlace académico',      descripcion: 'Enlace académico',                         nivel_soporte: 'Usuario',      atiendeTicketsCsh: false, atiendeTicketsMkt: false },
+      { id: 27, rol: 'Coordinador control escolar', descripcion: 'Coordinador de control escolar', nivel_soporte: 'Coordinador', atiendeTicketsCsh: false, atiendeTicketsMkt: false },
+      { id: 29, rol: 'Enlace académico', descripcion: 'Enlace académico', nivel_soporte: 'Usuario', atiendeTicketsCsh: false, atiendeTicketsMkt: false },
     ],
   });
 
@@ -126,23 +126,23 @@ async function main() {
       { id: 1, nombre: 'CSH', identificador: 'crear_ticket_csh', grupo: 'Abrir ticket' },
       { id: 2, nombre: 'Traslado', identificador: 'proceso_traslados', grupo: 'Abrir ticket' },
       { id: 3, nombre: 'Marketing', identificador: 'crear_ticket_marketing', grupo: 'Abrir ticket' },
-      
+
       { id: 4, nombre: 'Mis tickets', identificador: 'soporte_mis_tickets', grupo: 'Tickets soporte' },
       { id: 5, nombre: 'Dashboard', identificador: 'soporte_dashboard', grupo: 'Tickets soporte' },
       { id: 6, nombre: 'Todos', identificador: 'soporte_todos', grupo: 'Tickets soporte' },
-      
+
       { id: 7, nombre: 'Mis tickets', identificador: 'marketing_mis_tickets', grupo: 'Tickets marketing' },
       { id: 8, nombre: 'Dashboard', identificador: 'marketing_dashboard', grupo: 'Tickets marketing' },
       { id: 9, nombre: 'Todos', identificador: 'marketing_todos', grupo: 'Tickets marketing' },
-      
+
       { id: 10, nombre: 'Plataforma Humanitas', identificador: 'plataforma_humanitas', grupo: 'Otros' },
       { id: 11, nombre: 'Asistencia remota', identificador: 'asistencia_remota', grupo: 'Otros' },
       { id: 12, nombre: 'Base de conocimientos', identificador: 'base_conocimientos', grupo: 'Otros' },
       { id: 13, nombre: 'Horario de atención', identificador: 'horario_atencion', grupo: 'Otros' },
-      
+
       { id: 14, nombre: 'Crear', identificador: 'admin_correos_crear', grupo: 'Administrador', subgrupo: 'Correos institucionales' },
       { id: 15, nombre: 'Actualizar', identificador: 'admin_correos_actualizar', grupo: 'Administrador', subgrupo: 'Correos institucionales' },
-      
+
       { id: 16, nombre: 'Categorías', identificador: 'admin_siget_categorias', grupo: 'Administrador', subgrupo: 'SiGeT' },
       { id: 17, nombre: 'Ciclos', identificador: 'admin_siget_ciclos', grupo: 'Administrador', subgrupo: 'SiGeT' },
       { id: 18, nombre: 'Secciones', identificador: 'admin_siget_secciones', grupo: 'Administrador', subgrupo: 'SiGeT' },
@@ -196,7 +196,7 @@ async function main() {
         },
       },
     });
-    
+
     // Conectar secciones
     for (const sid of seccionIds) {
       await prisma.permisoRolSeccion.create({
@@ -226,10 +226,10 @@ async function main() {
   console.log('Seeding usuario...');
   await prisma.usuario.createMany({
     data: [
-      { id: 1, mail: 'gerardo.omana@humanitas.edu.mx', nombres: 'Gerardo', apellidos: 'Omaña Vazquez', empresaId: 15, rolId: 6, trl_mail: true, trl_coord: false, horario_disponibilidad: { "lunes": { "fin": "18:30", "inicio": "10:00" }, "jueves": { "fin": "17:00", "inicio": "10:00" }, "martes": { "fin": "18:30", "inicio": "10:00" }, "sabado": { "fin": "15:00", "inicio": "09:00" }, "viernes": { "fin": "16:30", "inicio": "10:00" }, "miercoles": { "fin": "15:00", "inicio": "08:30" } }, image: "https://lh3.googleusercontent.com/a-/ALV-UjXmcvhEi7AXSnIHJP2pJTizD0lzlhMwNQeR7HM3kVKj0i85LV4Q=s240-p-k-rw-no" },
-      { id: 2, mail: 'haide.herrera@humanitas.edu.mx', nombres: 'Haide', apellidos: 'Herrera', empresaId: 14, rolId: 12, trl_mail: false, trl_coord: false, horario_disponibilidad: Prisma.JsonNull, image: "https://lh3.googleusercontent.com/a-/ALV-UjUPqe4Ka1JQhFH9vqNr4SDHElvdeKhMSrWCLBX16pHRf-o8oxvy=s240-p-k-rw-no" },
-      { id: 3, mail: 'victor@humanitas.edu.mx', nombres: 'Victor', apellidos: 'Barrera', empresaId: 15, rolId: 1, trl_mail: true, trl_coord: false, horario_disponibilidad: Prisma.JsonNull, image: "https://lh3.googleusercontent.com/a-/ALV-UjXzczZnIALPW_gM9F2H4wKz1syIeeJNR4orX2M3ga9Q0Eoj8Ch5Nlef6fgd40A4Iuw1G4gE-q8b981BUu3S0Wyt_8IBte-b8mqlWsoAn89iLdPFIb2Bi8ficGNiUxGKz9qZOkXTaU_Qxp17TsDh8uuwPd3byYfF5BhWm8LIaNXXfl77NOxtjSjsFLuzvsP8VHdItGQDuGwyp5nsm2N5uPdenc3MJRm-Rh85aFUPf6FWoH_TXyXXxM0H03VBw3cIVebkPC_Bv9soG8dAOeun8kcSfB_jHJGbrYJbN4uTU3tpSgdKyU4uzJt6YJMSav6Uo7kROIOLpiKB5NC1ysBLv6Okm7HDndBNr-Ai2-c50XfqV_wLmp76fYtInKcWtYJ27xmpppVkb3f6_I8dEbZt4CrpoSlPmiC9sjf4WZ2G5W3nWIsy9Ss5BotYapihRnhzp7gSZggL0uObIzs9GjXQ8fFZdx1_rk1eBo4HGPrw_NkDeftxap3Qx40uA6zrWT5REGWHflpJFkgwVnyxis9B_dlS3-OAi2xJFElP0clD6WXXh8EOKnpN5ns7-nExpKiWcc6zi4ydrNSCVVO7hAi-oanYUH0xHgjZ9JEDl5RPyVjlReED1wobfvXtfYAX7pxRg8gp6MNE_JamSylydAiHdxLc6owtk9LkmAv0Gx_g1-WtuYEQjsM-1iJqtZDEq51GHJ-5lA4V8L3AzNxdjwBl42MfYKSipKOiEZCicgoH1R7fj6qdPq0li5hcF7_7GsHoXc0WmcymxzdjyhCQ5Qd3-wKVN9V5NkW8aRZ6WqtH_XLPxxsDzw77eNyohX3ZAk0lzL_RCt4oGcSx09nQ79NLXBpuWeWY63dqG6wpHMQF4IrHGE94qWPEc7yyHE81NsdpZttwFMonfVtDXc2JnQ7Tr_VRFZuztRy6DbBW1Kj_Kazwilcaamr3iAPxETu-5WUOYMGk212lzku0d2TLZa0PwtqcQFPkFrEj0Pzx02VwCN7g_9NwUyUPKAC5yLYWNwPjlmLnNG8ZMqY5qhb2NF__s4QbhUvLPTUmxyGNoBkWncm34YOG_w6OZkw=s240-p-k-rw-no" },
-      { id: 4, mail: 'soporte@humanitas.edu.mx', nombres: 'Centro de Soporte', apellidos: 'Humanitas', empresaId: 15, rolId: 15, trl_mail: true, trl_coord: false, horario_disponibilidad: Prisma.JsonNull, image: "https://www.gstatic.com/images/branding/product/2x/avatar_square_grey_48dp.png" }
+      { id: 1, mail: 'gerardo.omana@humanitas.edu.mx', nombres: 'Gerardo', apellidos: 'Omaña Vazquez', clave: 'OVG821', empresaId: 15, rolId: 6, trl_mail: true, trl_coord: false, horario_disponibilidad: { "lunes": { "fin": "18:30", "inicio": "10:00" }, "jueves": { "fin": "17:00", "inicio": "10:00" }, "martes": { "fin": "18:30", "inicio": "10:00" }, "sabado": { "fin": "15:00", "inicio": "09:00" }, "viernes": { "fin": "16:30", "inicio": "10:00" }, "miercoles": { "fin": "15:00", "inicio": "08:30" } }, image: "https://lh3.googleusercontent.com/a-/ALV-UjXmcvhEi7AXSnIHJP2pJTizD0lzlhMwNQeR7HM3kVKj0i85LV4Q=s240-p-k-rw-no" },
+      { id: 2, mail: 'haide.herrera@humanitas.edu.mx', nombres: 'Haide', apellidos: 'Herrera', clave: 'HAH1210', empresaId: 14, rolId: 12, trl_mail: false, trl_coord: false, horario_disponibilidad: Prisma.JsonNull, image: "https://lh3.googleusercontent.com/a-/ALV-UjUPqe4Ka1JQhFH9vqNr4SDHElvdeKhMSrWCLBX16pHRf-o8oxvy=s240-p-k-rw-no" },
+      { id: 3, mail: 'victor@humanitas.edu.mx', nombres: 'Victor', apellidos: 'Barrera', clave: 'BRV005', empresaId: 15, rolId: 1, trl_mail: true, trl_coord: false, horario_disponibilidad: Prisma.JsonNull, image: "https://lh3.googleusercontent.com/a-/ALV-UjXzczZnIALPW_gM9F2H4wKz1syIeeJNR4orX2M3ga9Q0Eoj8Ch5Nlef6fgd40A4Iuw1G4gE-q8b981BUu3S0Wyt_8IBte-b8mqlWsoAn89iLdPFIb2Bi8ficGNiUxGKz9qZOkXTaU_Qxp17TsDh8uuwPd3byYfF5BhWm8LIaNXXfl77NOxtjSjsFLuzvsP8VHdItGQDuGwyp5nsm2N5uPdenc3MJRm-Rh85aFUPf6FWoH_TXyXXxM0H03VBw3cIVebkPC_Bv9soG8dAOeun8kcSfB_jHJGbrYJbN4uTU3tpSgdKyU4uzJt6YJMSav6Uo7kROIOLpiKB5NC1ysBLv6Okm7HDndBNr-Ai2-c50XfqV_wLmp76fYtInKcWtYJ27xmpppVkb3f6_I8dEbZt4CrpoSlPmiC9sjf4WZ2G5W3nWIsy9Ss5BotYapihRnhzp7gSZggL0uObIzs9GjXQ8fFZdx1_rk1eBo4HGPrw_NkDeftxap3Qx40uA6zrWT5REGWHflpJFkgwVnyxis9B_dlS3-OAi2xJFElP0clD6WXXh8EOKnpN5ns7-nExpKiWcc6zi4ydrNSCVVO7hAi-oanYUH0xHgjZ9JEDl5RPyVjlReED1wobfvXtfYAX7pxRg8gp6MNE_JamSylydAiHdxLc6owtk9LkmAv0Gx_g1-WtuYEQjsM-1iJqtZDEq51GHJ-5lA4V8L3AzNxdjwBl42MfYKSipKOiEZCicgoH1R7fj6qdPq0li5hcF7_7GsHoXc0WmcymxzdjyhCQ5Qd3-wKVN9V5NkW8aRZ6WqtH_XLPxxsDzw77eNyohX3ZAk0lzL_RCt4oGcSx09nQ79NLXBpuWeWY63dqG6wpHMQF4IrHGE94qWPEc7yyHE81NsdpZttwFMonfVtDXc2JnQ7Tr_VRFZuztRy6DbBW1Kj_Kazwilcaamr3iAPxETu-5WUOYMGk212lzku0d2TLZa0PwtqcQFPkFrEj0Pzx02VwCN7g_9NwUyUPKAC5yLYWNwPjlmLnNG8ZMqY5qhb2NF__s4QbhUvLPTUmxyGNoBkWncm34YOG_w6OZkw=s240-p-k-rw-no" },
+      { id: 4, mail: 'soporte@humanitas.edu.mx', nombres: 'Centro de Soporte', apellidos: 'Humanitas', clave: 'HCL1493', empresaId: 15, rolId: 15, trl_mail: true, trl_coord: false, horario_disponibilidad: Prisma.JsonNull, image: "https://www.gstatic.com/images/branding/product/2x/avatar_square_grey_48dp.png" }
     ],
   });
 

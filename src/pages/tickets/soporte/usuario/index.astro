@@ -99,7 +99,7 @@ const filteredStatuses = statuses.filter((status) =>
     allowedStatuses.includes(status.nombre),
 );
 
-// CategorÃ­as disponibles (solo las que tienen tickets en el estatus/scope actual)
+// Categorí­as disponibles (solo las que tienen tickets en el estatus/scope actual)
 const categories = await prisma.categoria.findMany({
     where: {
         activo: true,
@@ -228,7 +228,7 @@ const getTicketDateColor = (date: Date, status: string) => {
                     <label
                         for="categoria-select"
                         class="block text-sm font-medium text-muted-foreground mb-1"
-                        >CategorÃ­a</label
+                        >Categoría</label
                     >
                     <select
                         id="categoria-select"
@@ -338,7 +338,7 @@ const getTicketDateColor = (date: Date, status: string) => {
                             <div class="text-sm text-muted-foreground space-y-1">
                                 <p>
                                     <span class="font-semibold">
-                                        CategorÃ­a:
+                                        Categoría:
                                     </span>{" "}
                                     {ticket.categoria.nombre}
                                 </p>
@@ -391,14 +391,14 @@ const getTicketDateColor = (date: Date, status: string) => {
                                             Solicitante
                                         </th>
                                         <th class="p-2 font-medium">
-                                            CategorÃ­a
+                                            Categoría
                                         </th>
                                         <th class="p-2 font-medium">Fecha</th>
                                     </>
                                 ) : (
                                     <>
                                         <th class="p-2 font-medium">
-                                            CategorÃ­a
+                                            Categoría
                                         </th>
                                         <th class="p-2 font-medium">
                                             Asignado a
@@ -539,16 +539,18 @@ const getTicketDateColor = (date: Date, status: string) => {
 </MainLayout>
 
 <script>
-    import { navigate } from 'astro:transitions/client';
+    import { navigate } from "astro:transitions/client";
 
     // Filas de tabla clickeables → usa navigate() de Astro para disparar el overlay de carga
-    document.addEventListener('astro:page-load', () => {
-        document.querySelectorAll('tr[data-href]').forEach((row) => {
-            row.addEventListener('click', (e) => {
+    document.addEventListener("astro:page-load", () => {
+        document.querySelectorAll("tr[data-href]").forEach((row) => {
+            row.addEventListener("click", (e) => {
                 // Si el clic fue en un elemento interactivo interno, no navegar
-                const target = e.target;
-                if (target.closest('a, button, select, input')) return;
-                navigate(row.dataset.href);
+                const target = e.target as HTMLElement;
+                if (target && target.closest("a, button, select, input")) return;
+                
+                const href = (row as HTMLElement).dataset.href;
+                if (href) navigate(href);
             });
         });
     });

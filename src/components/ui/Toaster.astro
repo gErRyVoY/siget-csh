@@ -8,7 +8,16 @@
     function initToaster() {
         // Exponer toast globalmente
         (window as any).toast = toast;
-        console.log("[Toast] Sistema personalizado inicializado");
+
+        // Verificar si el servidor inyectó una señal de acceso no autorizado.
+        // El inline script del layout establece window.__siget_flash_unauthorized = true
+        // ANTES de que este módulo se ejecute en el evento astro:page-load.
+        if ((window as any).__siget_flash_unauthorized) {
+            delete (window as any).__siget_flash_unauthorized;
+            toast.error("No tienes autorización para ver la sección.", {
+                duration: 0 // No se cierra automáticamente; solo con ESC o click en X
+            });
+        }
     }
 
     document.addEventListener("astro:page-load", initToaster);

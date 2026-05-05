@@ -13,7 +13,15 @@ import { prisma } from "@/lib/db";
 // La sesión ahora se obtiene desde Astro.locals, inyectada por el middleware.
 const session = Astro.locals.session;
 
+// Leer cookie de flash de acceso no autorizado (colocada por el middleware antes del redirect)
+const showUnauthorizedToast = Astro.cookies.get('siget_flash_unauthorized')?.value === '1';
+if (showUnauthorizedToast) {
+    // Borrar la cookie inmediatamente para que no persista si el usuario refresca
+    Astro.cookies.delete('siget_flash_unauthorized', { path: '/' });
+}
+
 // La lógica de redirección ha sido movida al middleware, manteniendo este layout limpio.
+
 
 interface Props {
     title: string;
@@ -221,6 +229,11 @@ const NOTIFICATION_FULL_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="24
         </div>
 
         <!-- Toaster de Sonner para notificaciones -->
+        {showUnauthorizedToast && (
+            <script is:inline>
+                window.__siget_flash_unauthorized = true;
+            </script>
+        )}
         <Toaster />
 
         <script>

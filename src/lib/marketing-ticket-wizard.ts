@@ -311,7 +311,6 @@ export function initMarketingTicketWizard(marketingCategory: CategoriaNode) {
             .setOAuthToken(accessToken!)
             .addView(view)
             .addView(new (window as any).google.picker.DocsUploadView())
-            .setDeveloperKey(GOOGLE_API_KEY)
             .setCallback(pickerCallback)
             .build();
         picker.setVisible(true);

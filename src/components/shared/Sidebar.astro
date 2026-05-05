@@ -58,6 +58,7 @@ const mainNavItems = [
         href: "https://my.anydesk.com/download/DftqvrQy/AnyDesk_Universidad_Humanitas.exe",
         label: "Asistencia remota",
         icon: RemoteSupportIcon,
+        target: "_blank",
     }] : []),
     ...(canSeeBaseConocimientos ? [{
         href: "/base-de-conocimientos",
@@ -360,5 +361,31 @@ const adminSections = [
             });
         });
     }
+
+    function setupSidebarNavLoading() {
+        const sidebar = document.getElementById("sidebar");
+        if (!sidebar) return;
+
+        sidebar.querySelectorAll("a[href]").forEach((link) => {
+            link.addEventListener("click", (e) => {
+                const anchor = e.currentTarget as HTMLAnchorElement;
+
+                // No activar el overlay si el link abre en nueva pestaña
+                if (anchor.target === "_blank") return;
+
+                // No activar si es un link al hash (#) o si ya estamos en esa ruta
+                const href = anchor.getAttribute("href") || "";
+                if (href.startsWith("#")) return;
+                if (href === window.location.pathname) return;
+
+                // Mostrar el overlay de carga inmediatamente
+                const overlay = document.getElementById("page-loading-overlay");
+                if (overlay) overlay.style.display = "block";
+            });
+        });
+    }
+
     document.addEventListener("astro:page-load", setupCollapsibleSections);
+    document.addEventListener("astro:page-load", setupSidebarNavLoading);
+
 </script>

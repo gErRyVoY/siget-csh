@@ -2,6 +2,10 @@
 import MainLayout from "@/layouts/MainLayout.astro";
 import { prisma } from "@/lib/db";
 
+const GOOGLE_API_KEY = import.meta.env.GOOGLE_API_KEY || process.env.GOOGLE_API_KEY || '';
+const GOOGLE_CLIENT_ID = import.meta.env.GOOGLE_CLIENT_ID || process.env.GOOGLE_CLIENT_ID || '';
+const GOOGLE_APP_ID = import.meta.env.GOOGLE_APP_ID || process.env.GOOGLE_APP_ID || '';
+
 const empresas = await prisma.empresa.findMany({
   orderBy: { nombre: "asc" },
   include: {
@@ -63,7 +67,7 @@ const empresas = await prisma.empresa.findMany({
         >
       </p>
 
-      <form id="bulk-upload-form" class="space-y-4">
+      <form id="bulk-upload-form" class="space-y-4" data-google-api-key={GOOGLE_API_KEY} data-google-client-id={GOOGLE_CLIENT_ID} data-google-app-id={GOOGLE_APP_ID}>
         <div
           id="drop-zone"
           class="border-2 border-dashed border-muted-foreground/25 rounded-lg p-8 text-center hover:bg-muted/50 transition-colors cursor-pointer relative"
@@ -189,10 +193,6 @@ const empresas = await prisma.empresa.findMany({
     }
   }
 
-  const GOOGLE_API_KEY = import.meta.env.PUBLIC_GOOGLE_API_KEY;
-  const GOOGLE_CLIENT_ID = import.meta.env.PUBLIC_GOOGLE_CLIENT_ID;
-  const GOOGLE_APP_ID = import.meta.env.PUBLIC_GOOGLE_APP_ID;
-
   // --- DOM REFERENCES ---
   const dropZone = document.getElementById("drop-zone");
   const fileInput = document.getElementById("csv-input") as HTMLInputElement;
@@ -203,6 +203,10 @@ const empresas = await prisma.empresa.findMany({
   const filePreview = document.getElementById("file-preview");
   const fileNameSpan = document.getElementById("file-name");
   const removeFileBtn = document.getElementById("remove-file");
+
+  const GOOGLE_API_KEY = form?.dataset.googleApiKey;
+  const GOOGLE_CLIENT_ID = form?.dataset.googleClientId;
+  const GOOGLE_APP_ID = form?.dataset.googleAppId;
 
   let selectedFile: File | null = null;
 
@@ -287,7 +291,6 @@ const empresas = await prisma.empresa.findMany({
       .setAppId(GOOGLE_APP_ID)
       .setOAuthToken(accessToken!)
       .addView(view)
-      .setDeveloperKey(GOOGLE_API_KEY)
       .setCallback(pickerCallback)
       .build();
     picker.setVisible(true);

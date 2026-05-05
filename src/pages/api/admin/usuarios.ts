@@ -150,6 +150,42 @@ export const PATCH: APIRoute = async ({ request }) => {
     if (updateDataInput.horario_disponibilidad !== undefined) {
       updateData.horario_disponibilidad = updateDataInput.horario_disponibilidad;
     }
+    if (updateDataInput.clave !== undefined) {
+      (updateData as any).clave = updateDataInput.clave;
+      if (updateDataInput.clave !== '' && updateDataInput.clave !== (userBeforeUpdate as any).clave) {
+        try {
+          const response = await fetch(`https://pz3bmmqsty.us-east-1.awsapprunner.com/api/rh/horario-trabajador?trabajador=${updateDataInput.clave}`, {
+            headers: {
+              'x-api-key': import.meta.env.TOKEN_ESPERADO || 'CHURRUMAIS-1979'
+            }
+          });
+          if (response.ok) {
+            const result = await response.json();
+            if (result.status === 'ok' && result.data && result.data.dias_laborales) {
+              const apiDias = result.data.dias_laborales;
+              const newHorario: Record<string, { inicio: string; fin: string }> = {};
+              const diasMap: Record<string, string> = { "1": "lunes", "2": "martes", "3": "miercoles", "4": "jueves", "5": "viernes", "6": "sabado" };
+              
+              for (const num in diasMap) {
+                if (apiDias[num] && apiDias[num].turno_normal) {
+                  const { entrada, salida } = apiDias[num].turno_normal;
+                  const inicio = entrada.length === 4 ? `${entrada.substring(0, 2)}:${entrada.substring(2)}` : 'No disponible';
+                  const fin = salida.length === 4 ? `${salida.substring(0, 2)}:${salida.substring(2)}` : 'No disponible';
+                  if (inicio !== 'No disponible' && fin !== 'No disponible') {
+                    newHorario[diasMap[num]] = { inicio, fin };
+                  }
+                }
+              }
+              if (Object.keys(newHorario).length > 0) {
+                updateData.horario_disponibilidad = newHorario;
+              }
+            }
+          }
+        } catch (e) {
+          console.error("Error fetching horario on update:", e);
+        }
+      }
+    }
 
     // Use a transaction to guarantee atomicity
     const updatedUser = await prisma.$transaction(async (tx) => {
