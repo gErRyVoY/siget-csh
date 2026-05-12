@@ -25,7 +25,7 @@ export const GET: APIRoute = async ({ request }) => {
     // Default view: Non-privileged users only see their own tickets.
     // Privileged users can see all tickets, but can filter by solicitante if needed.
     if (!isPrivileged) {
-      where.solicitanteId = parseInt(userId, 10);
+      where.solicitanteId = parseInt(String(userId), 10);
     } else {
       const solicitanteId = params.get('solicitanteId');
       if (solicitanteId) {

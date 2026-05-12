@@ -71,6 +71,62 @@ export default defineConfig({
           where: { mail: profile.email },
         });
 
+        // --- Consulta a API de Recursos Humanos ---
+        let claveTrabajador: string | undefined = undefined;
+        let horarioDisponibilidad: Record<string, { inicio: string; fin: string }> | undefined = undefined;
+
+        try {
+          // Usamos la URL base configurada o localhost
+          const baseUrl = process.env.API_RH_URL || 'http://127.0.0.1:8000';
+          const rhResponse = await fetch(`${baseUrl}/api/rh/consultar-trabajador?email=${profile.email}`, {
+            headers: {
+              'accept': 'application/json',
+              'x-api-key': process.env.TOKEN_ESPERADO || 'CHURRUMAIS-1979'
+            }
+          });
+
+          if (rhResponse.ok) {
+            const rhData = await rhResponse.json();
+            if (rhData.status === 'success' && rhData.data?.trabajador) {
+              claveTrabajador = rhData.data.trabajador;
+              
+              // Consultar horario con la clave obtenida
+              const horarioResponse = await fetch(`${baseUrl}/api/rh/horario-trabajador?trabajador=${claveTrabajador}`, {
+                headers: {
+                  'x-api-key': process.env.TOKEN_ESPERADO || 'CHURRUMAIS-1979'
+                }
+              });
+
+              if (horarioResponse.ok) {
+                const horarioResult = await horarioResponse.json();
+                if (horarioResult.status === 'ok' && horarioResult.data && horarioResult.data.dias_laborales) {
+                  const apiDias = horarioResult.data.dias_laborales;
+                  const newHorario: Record<string, { inicio: string; fin: string }> = {};
+                  const diasMap: Record<string, string> = { "1": "lunes", "2": "martes", "3": "miercoles", "4": "jueves", "5": "viernes", "6": "sabado" };
+                  
+                  for (const num in diasMap) {
+                    if (apiDias[num] && apiDias[num].turno_normal) {
+                      const { entrada, salida } = apiDias[num].turno_normal;
+                      const inicio = entrada.length === 4 ? `${entrada.substring(0, 2)}:${entrada.substring(2)}` : 'No disponible';
+                      const fin = salida.length === 4 ? `${salida.substring(0, 2)}:${salida.substring(2)}` : 'No disponible';
+                      if (inicio !== 'No disponible' && fin !== 'No disponible') {
+                        newHorario[diasMap[num]] = { inicio, fin };
+                      }
+                    }
+                  }
+                  if (Object.keys(newHorario).length > 0) {
+                    horarioDisponibilidad = newHorario;
+                  }
+                }
+              }
+            }
+          } else {
+            console.log(`API RH no encontró el correo o devolvió error: ${profile.email}`);
+          }
+        } catch (error) {
+          console.error("Error al consultar API de RH en el login:", error);
+        }
+
         if (!dbUser) {
           const ouParts = userData.orgUnitPath.split('/').filter(part => part);
           const firstLevelOU = ouParts[0];
@@ -85,16 +141,6 @@ export default defineConfig({
             .replace(/^campus\s+/, '')
             .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
             .replace(/\s+/g, '-');
-
-          // Mapping specific OUs
-          if (slug === 'corporativo-humanitas') {
-            // "Corporativo Humanitas" maps to "corporativo" (ID 14)
-            // But verify if we need to set slug to 'corporativo'
-            // Yes, checking seed.ts: slug: 'corporativo' exists.
-            // But wait, variable is const? No, lines 83-87 define 'const slug'.
-            // I need to change it to 'let slug' or handle it differently.
-            // I will replace the whole block.
-          }
 
           const empresa = await prisma.empresa.findUnique({
             where: { slug: slug === 'corporativo-humanitas' ? 'corporativo' : slug },
@@ -117,6 +163,8 @@ export default defineConfig({
               rolId: defaultRoleId,
               activo: true,
               vacaciones: false,
+              ...(claveTrabajador && { clave: claveTrabajador }),
+              ...(horarioDisponibilidad && { horario_disponibilidad: horarioDisponibilidad }),
             }
           });
           console.log(`Usuario ${profile.email} creado exitosamente.`);
@@ -128,6 +176,8 @@ export default defineConfig({
               apellidos: profile.family_name ?? dbUser.apellidos,
               image: userData.thumbnailPhotoUrl ?? dbUser.image,
               ultimo_login: new Date(),
+              ...(claveTrabajador && { clave: claveTrabajador }),
+              ...(horarioDisponibilidad && { horario_disponibilidad: horarioDisponibilidad }),
             }
           });
         }

@@ -87,6 +87,7 @@ model Usuario {
   tickets_solicitados     Ticket[]                 @relation("Solicitante")
   traslados_auditor_docs  Traslado[]               @relation("AuditorDocs")
   traslados_auditor_req   Traslado[]               @relation("AuditorReq")
+  incidencias             Incidencia[]
   empresa                 Empresa                  @relation(fields: [empresaId], references: [id])
   rol                     Rol                      @relation(fields: [rolId], references: [id])
 
@@ -483,4 +484,23 @@ enum EstatusCorreo {
   Enviado
   Pendiente
   Fallido
+}
+
+model Incidencia {
+  id                   Int      @id @default(autoincrement())
+  usuarioId            Int
+  mes                  Int
+  quincena             Int
+  fecha                DateTime? @db.Timestamp(6)
+  entrada_turno        String?  @db.VarChar(10)
+  salida_turno         String?  @db.VarChar(10)
+  tiempo_turno         Int?
+  observaciones        String?
+  entrada_comida       String?  @db.VarChar(10)
+  salida_comida        String?  @db.VarChar(10)
+  observaciones_comida String?
+  usuario              Usuario  @relation(fields: [usuarioId], references: [id])
+
+  @@index([usuarioId])
+  @@map("incidencia")
 }

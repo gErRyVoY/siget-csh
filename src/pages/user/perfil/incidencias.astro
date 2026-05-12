@@ -1,0 +1,718 @@
+---
+import MainLayout from "@/layouts/MainLayout.astro";
+import { getSession } from "auth-astro/server";
+import { prisma } from "@/lib/db";
+
+const session = await getSession(Astro.request);
+if (!session || !session.user) {
+  return Astro.redirect("/login");
+}
+
+const userId = Number(session.user.id);
+const dbUser = await prisma.usuario.findUnique({
+  where: { id: userId },
+  include: { rol: true },
+});
+
+if (!dbUser) {
+  return Astro.redirect("/login");
+}
+
+const atiendeTickets =
+  dbUser.rol.atiendeTicketsCsh || dbUser.rol.atiendeTicketsMkt;
+
+if (!atiendeTickets) {
+  return Astro.redirect("/");
+}
+
+const currentDate = new Date();
+const currentMonth = currentDate.getMonth() + 1;
+const currentYear = currentDate.getFullYear();
+
+const years = Array.from(
+  { length: currentYear - 2021 + 1 },
+  (_, i) => currentYear - i,
+);
+const months = [
+  { value: 1, label: "Enero" },
+  { value: 2, label: "Febrero" },
+  { value: 3, label: "Marzo" },
+  { value: 4, label: "Abril" },
+  { value: 5, label: "Mayo" },
+  { value: 6, label: "Junio" },
+  { value: 7, label: "Julio" },
+  { value: 8, label: "Agosto" },
+  { value: 9, label: "Septiembre" },
+  { value: 10, label: "Octubre" },
+  { value: 11, label: "Noviembre" },
+  { value: 12, label: "Diciembre" },
+];
+
+const horario = JSON.stringify(dbUser.horario_disponibilidad ?? {});
+const clave = dbUser.clave ?? "";
+---
+
+<MainLayout title="Reporte de incidencias">
+  <div class="max-w-5xl mx-auto space-y-6">
+    <div class="flex items-center justify-between">
+      <a
+        href="/user/perfil"
+        class="bg-muted-foreground text-white hover:bg-muted-foreground/80 px-6 py-2 rounded-md text-sm font-semibold transition-colors"
+        >Volver al perfil</a
+      >
+    </div>
+
+    <div
+      class="bg-card border border-muted-foreground/30 rounded-lg p-6 shadow-sm"
+      id="incidencias-container"
+      data-clave={clave}
+      data-horario={horario}
+    >
+      <form
+        id="consultar-form"
+        class="flex flex-col sm:flex-row items-end gap-4 mb-6"
+      >
+        <div class="space-y-2 w-full sm:w-1/3">
+          <label for="mes" class="block text-sm font-medium">Mes</label>
+          <select
+            id="mes"
+            name="mes"
+            class="w-full rounded-md border-border bg-input p-2 accent-secondary focus:outline-none focus:ring-1 focus:ring-secondary"
+          >
+            {
+              months.map((m) => (
+                <option value={m.value} selected={m.value === currentMonth}>
+                  {m.label}
+                </option>
+              ))
+            }
+          </select>
+        </div>
+
+        <div class="space-y-2 w-full sm:w-1/3">
+          <label for="anio" class="block text-sm font-medium">Año</label>
+          <select
+            id="anio"
+            name="anio"
+            class="w-full rounded-md border-border bg-input p-2 accent-secondary focus:outline-none focus:ring-1 focus:ring-secondary"
+          >
+            {
+              years.map((y) => (
+                <option value={y} selected={y === currentYear}>
+                  {y}
+                </option>
+              ))
+            }
+          </select>
+        </div>
+
+        <div class="w-full sm:w-1/3">
+          <button
+            type="submit"
+            id="btn-consultar"
+            class="w-full bg-primary text-primary-foreground hover:bg-primary/90 px-6 py-2 rounded-md text-sm font-semibold transition-colors"
+          >
+            Consultar
+          </button>
+        </div>
+      </form>
+
+      <div id="guardar-container-top" class="mb-4 hidden">
+        <div class="flex justify-end">
+          <button
+            class="bg-secondary text-secondary-foreground hover:bg-secondary/90 px-6 py-2 rounded-md text-sm font-semibold transition-colors btn-guardar-incidencias"
+          >
+            Guardar incidencias
+          </button>
+        </div>
+      </div>
+
+      <div id="resultados-container" class="space-y-6">
+        <!-- Results will be injected here -->
+      </div>
+
+      <div id="guardar-container" class="mt-8 hidden border-t pt-4">
+        <div class="flex justify-end">
+          <button
+            class="bg-secondary text-secondary-foreground hover:bg-secondary/90 px-6 py-2 rounded-md text-sm font-semibold transition-colors btn-guardar-incidencias"
+          >
+            Guardar incidencias
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</MainLayout>
+
+<script>
+  import { toast } from "@/lib/toast";
+
+  document.addEventListener("astro:page-load", () => {
+    const container = document.getElementById("incidencias-container");
+    if (!container) return;
+
+    const form = document.getElementById("consultar-form") as HTMLFormElement;
+    const btnConsultar = document.getElementById(
+      "btn-consultar",
+    ) as HTMLButtonElement;
+    const resultadosContainer = document.getElementById("resultados-container");
+    const guardarContainer = document.getElementById("guardar-container");
+    const guardarContainerTop = document.getElementById(
+      "guardar-container-top",
+    );
+    const btnsGuardar = document.querySelectorAll(".btn-guardar-incidencias");
+
+    const clave = container.dataset.clave;
+    const horarioStr = container.dataset.horario;
+    let horario: Record<string, any> = {};
+
+    try {
+      horario = horarioStr ? JSON.parse(horarioStr) : {};
+    } catch {
+      horario = {};
+    }
+
+    const diasSemana = [
+      "domingo",
+      "lunes",
+      "martes",
+      "miércoles",
+      "jueves",
+      "viernes",
+      "sábado",
+    ];
+
+    let incidenciasToSave: any[] = [];
+
+    function parseTime(tStr: string | null) {
+      if (!tStr) return null;
+      if (tStr.length === 4) {
+        return {
+          h: parseInt(tStr.substring(0, 2), 10),
+          m: parseInt(tStr.substring(2, 4), 10),
+        };
+      }
+      return null;
+    }
+
+    function timeDiffMins(
+      t1: { h: number; m: number },
+      t2: { h: number; m: number },
+    ) {
+      return t1.h * 60 + t1.m - (t2.h * 60 + t2.m);
+    }
+
+    function parseHorarioTime(tStr: string | null) {
+      if (!tStr || tStr === "No disponible") return null;
+      const [h, m] = tStr.split(":");
+      return { h: parseInt(h, 10), m: parseInt(m, 10) };
+    }
+
+    function formatDate(dateStr: string) {
+      const d = new Date(dateStr);
+      // d is in UTC based on format "2026-05-01T00:00:00", we want local day
+      const dayName = diasSemana[d.getUTCDay()];
+      const dayNum = d.getUTCDate().toString().padStart(2, "0");
+      return {
+        dayName,
+        dayNum,
+        dayNameNormalized: dayName
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, ""),
+      };
+    }
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      if (!clave) {
+        toast.error("El usuario no tiene una clave asignada.");
+        return;
+      }
+
+      if (Object.keys(horario).length === 0) {
+        toast.error("Debe actualizar su horario antes.");
+        return;
+      }
+
+      btnConsultar.disabled = true;
+      btnConsultar.textContent = "Consultando...";
+      if (resultadosContainer) resultadosContainer.innerHTML = "";
+      if (guardarContainer) guardarContainer.classList.add("hidden");
+      if (guardarContainerTop) guardarContainerTop.classList.add("hidden");
+      incidenciasToSave = [];
+
+      const formData = new FormData(form);
+      const mes = formData.get("mes");
+      const anio = formData.get("anio");
+
+      try {
+        const [resHR, resLocal] = await Promise.all([
+          fetch(
+            `https://pz3bmmqsty.us-east-1.awsapprunner.com/api/rh/consultar-asistencias?trabajador=${clave}&mes=${mes}&anio=${anio}`,
+            {
+              headers: {
+                accept: "application/json",
+                "x-api-key": "CHURRUMAIS-1979",
+              },
+            },
+          ),
+          fetch(`/api/user/incidencias?mes=${mes}&anio=${anio}`),
+        ]);
+
+        if (!resHR.ok) {
+          throw new Error("Error al consultar la API de asistencias");
+        }
+
+        const dataHR = await resHR.json();
+        const dataLocal = resLocal.ok ? await resLocal.json() : { data: [] };
+        const savedIncidencias = dataLocal.data || [];
+
+        if (
+          dataHR.status !== "ok" ||
+          !dataHR.data ||
+          dataHR.data.length === 0
+        ) {
+          if (resultadosContainer)
+            resultadosContainer.innerHTML =
+              "<p class='text-center text-muted-foreground'>No se encontraron registros para este periodo.</p>";
+          return;
+        }
+
+        const sortedRegistros = dataHR.data.sort(
+          (a: any, b: any) =>
+            new Date(b.fecha).getTime() - new Date(a.fecha).getTime(),
+        );
+
+        renderResultados(
+          sortedRegistros,
+          parseInt(mes as string),
+          parseInt(anio as string),
+          savedIncidencias,
+        );
+      } catch (err: any) {
+        toast.error(err.message || "Error desconocido");
+      } finally {
+        btnConsultar.disabled = false;
+        btnConsultar.textContent = "Consultar";
+      }
+    });
+
+    function renderResultados(
+      registros: any[],
+      mes: number,
+      anio: number,
+      savedIncidencias: any[],
+    ) {
+      if (!resultadosContainer) return;
+      let html = "";
+
+      incidenciasToSave = [];
+      const todayStr = new Date().toISOString().split("T")[0];
+
+      registros.forEach((r, index) => {
+        const { dayName, dayNum, dayNameNormalized } = formatDate(r.fecha);
+        const horarioDia = horario[dayNameNormalized];
+
+        if (
+          !horarioDia ||
+          horarioDia.inicio === "No disponible" ||
+          horarioDia.fin === "No disponible"
+        ) {
+          // No laboral day in schedule, skipping logic for simplicity unless user specifies otherwise,
+          // but we might still show it. We'll skip for now if it's not a working day.
+          return;
+        }
+
+        const rDateStr = new Date(r.fecha).toISOString().split("T")[0];
+        const isToday = rDateStr === todayStr;
+
+        const savedRecord = savedIncidencias.find((s) => {
+          if (!s.fecha) return false;
+          const sDateStr = new Date(s.fecha).toISOString().split("T")[0];
+          return sDateStr === rDateStr;
+        });
+
+        const isSaved = !!savedRecord;
+
+        const hInicio = parseHorarioTime(horarioDia.inicio);
+        const hFin = parseHorarioTime(horarioDia.fin);
+
+        const rEntrada = parseTime(r.entrada_turno);
+        const rSalida = parseTime(r.salida_turno);
+        const rEntComida = parseTime(r.entrada_comida);
+        const rSalComida = parseTime(r.salida_comida);
+
+        let statusClass = "";
+        let statusText = "";
+        let extraText = "";
+        let requiresObs = false;
+        let requiresObsComida = false;
+        let showRow = false;
+        let tiempoTurno: number | null = null;
+        let reqObsText = "Motivo:";
+        let reqObsComidaText = "Motivo:";
+
+        // Evaluar condiciones
+        const isAllNull =
+          !r.entrada_turno &&
+          !r.salida_turno &&
+          !r.entrada_comida &&
+          !r.salida_comida;
+
+        if (isAllNull) {
+          statusText = "Inasistencia";
+          statusClass = "text-red-600 font-bold";
+          requiresObs = true;
+          showRow = true;
+        } else {
+          // Parcial nulls
+          const isEntradaNull = !r.entrada_turno;
+          const isSalidaNull = !r.salida_turno;
+          const isEntComidaNull = !r.entrada_comida;
+          const isSalComidaNull = !r.salida_comida;
+
+          if (
+            isEntradaNull ||
+            isSalidaNull ||
+            isEntComidaNull ||
+            isSalComidaNull
+          ) {
+            statusText = "Registro incompleto";
+            statusClass = "text-red-600 font-bold";
+            showRow = true;
+
+            if (isSalidaNull && !isSalComidaNull) {
+              requiresObs = true;
+              reqObsText = "";
+            } else if (isSalidaNull && isSalComidaNull) {
+              requiresObs = true;
+              requiresObsComida = true;
+            } else if (
+              !isEntradaNull &&
+              isSalidaNull &&
+              isEntComidaNull &&
+              isSalComidaNull
+            ) {
+              requiresObs = true;
+            } else {
+              requiresObs = true;
+            }
+          } else if (hInicio && rEntrada) {
+            // Tiempos
+            const diffEntrada = timeDiffMins(rEntrada, hInicio); // > 0 means late
+            if (diffEntrada > 5) {
+              const minsRetardo = diffEntrada - 5;
+              statusText = "Retardo";
+              statusClass = "text-red-600 font-bold";
+              tiempoTurno = -minsRetardo;
+              extraText = `${minsRetardo} minutos`;
+              requiresObs = true;
+              showRow = true;
+            } else {
+              // Check extra time
+              if (hFin && rSalida) {
+                const earlyMins = -diffEntrada; // positive if early
+                const lateMins = timeDiffMins(rSalida, hFin); // positive if left late
+
+                let totalExtra = 0;
+                if (earlyMins >= 60) totalExtra += earlyMins;
+                if (lateMins >= 60) totalExtra += lateMins;
+
+                if (totalExtra >= 60) {
+                  statusText = "Tiempo extra";
+                  statusClass = "text-green-600 font-bold";
+                  tiempoTurno = totalExtra;
+                  extraText = `${totalExtra} minutos`;
+                  requiresObs = true;
+                  showRow = true;
+                }
+              }
+            }
+          }
+
+          if (rEntComida && rSalComida) {
+            const diffComida = timeDiffMins(rSalComida, rEntComida);
+            if (diffComida > 30) {
+              if (statusText === "") {
+                statusText = "Horario excedido";
+                statusClass = "text-red-600 font-bold";
+                showRow = true;
+              }
+              requiresObsComida = true;
+            }
+          }
+        }
+
+        if (showRow) {
+          // Format time string manually
+          const formatT = (t: string | null) => {
+            if (!t) return "";
+            if (t.length === 4)
+              return `${t.substring(0, 2)}:${t.substring(2, 4)}`;
+            return t;
+          };
+
+          const obsId = `obs-${index}`;
+          const obsComidaId = `obs-comida-${index}`;
+
+          const savedObs = savedRecord ? savedRecord.observaciones : "";
+          const savedObsComida = savedRecord
+            ? savedRecord.observaciones_comida
+            : "";
+
+          let toggleChecked = isSaved ? false : !isToday;
+
+          // Push to state
+          incidenciasToSave.push({
+            index,
+            fecha: r.fecha,
+            entrada_turno: r.entrada_turno,
+            salida_turno: r.salida_turno,
+            entrada_comida: r.entrada_comida,
+            salida_comida: r.salida_comida,
+            tiempo_turno: tiempoTurno,
+            mes,
+            quincena: parseInt(dayNum) <= 15 ? 1 : 2,
+            requiresObs,
+            requiresObsComida,
+          });
+
+          html += `
+            <div class="border rounded-md overflow-hidden bg-card mb-4 relative pb-10 sm:pb-0" id="row-${index}">
+                <div class="bg-muted-foreground/80 text-white flex justify-between items-center px-4 py-2">
+                    <span class="font-bold capitalize">${dayName} ${dayNum}</span>
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs font-semibold select-none toggle-label w-12 text-right" id="label-toggle-${index}">${toggleChecked ? "Enviar" : "Omitir"}</span>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="toggle-${index}" class="sr-only peer incidencia-toggle" ${toggleChecked ? "checked" : ""} data-index="${index}">
+                            <div class="w-11 h-6 bg-muted-foreground peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                        </label>
+                    </div>
+                </div>
+                <div class="flex flex-col sm:flex-row">
+                    <div class="p-4 border-b sm:border-b-0 sm:border-r flex flex-col justify-center items-center ${statusClass} sm:w-[150px] shrink-0 text-center">
+                        <span>${statusText}</span>
+                        ${extraText ? `<span class="mt-1">${extraText}</span>` : ""}
+                    </div>
+                    <div class="p-4 border-b sm:border-b-0 sm:border-r space-y-2 sm:w-[250px] flex-shrink-0 text-sm">
+                        <div class="flex justify-between font-bold">
+                            <span>Entrada laboral:</span>
+                            <span>${horarioDia.inicio}</span>
+                        </div>
+                        <div class="flex justify-between text-muted-foreground mb-2">
+                            <span>Registro entrada:</span>
+                            <span class="text-foreground">${formatT(r.entrada_turno)}</span>
+                        </div>
+                        <div class="flex justify-between font-bold pt-2 border-t">
+                            <span>Salida laboral:</span>
+                            <span>${horarioDia.fin}</span>
+                        </div>
+                        <div class="flex justify-between text-muted-foreground">
+                            <span>Registro salida:</span>
+                            <span class="text-foreground">${formatT(r.salida_turno)}</span>
+                        </div>
+                        <div class="flex justify-between text-muted-foreground pt-2 border-t mt-2">
+                            <span>Entrada comida:</span>
+                            <span>${formatT(r.entrada_comida)}</span>
+                        </div>
+                        <div class="flex justify-between text-muted-foreground">
+                            <span>Salida comida:</span>
+                            <span class="text-foreground">${formatT(r.salida_comida)}</span>
+                        </div>
+                        ${requiresObsComida && statusText !== "Horario excedido" ? '<div class="text-red-600 font-bold mt-2">Horario excedido</div>' : ""}
+                    </div>
+                    <div class="p-4 space-y-4 flex-1">
+                        ${
+                          requiresObs
+                            ? `
+                            <div>
+                                <label class="block font-bold text-sm mb-1">Motivo (Turno):</label>
+                                <textarea id="${obsId}" class="w-full text-sm border-border bg-input p-2 rounded-md ${isSaved ? "opacity-60 cursor-not-allowed" : ""}" rows="2" placeholder="${reqObsText}" ${isSaved ? "disabled" : ""}>${savedObs || ""}</textarea>
+                            </div>
+                        `
+                            : ""
+                        }
+                        ${
+                          requiresObsComida
+                            ? `
+                            <div>
+                                <label class="block font-bold text-sm mb-1">Motivo (Comida):</label>
+                                <textarea id="${obsComidaId}" class="w-full text-sm border-border bg-input p-2 rounded-md ${isSaved ? "opacity-60 cursor-not-allowed" : ""}" rows="2" placeholder="${reqObsComidaText}" ${isSaved ? "disabled" : ""}>${savedObsComida || ""}</textarea>
+                            </div>
+                        `
+                            : ""
+                        }
+                    </div>
+                </div>
+                ${
+                  isSaved
+                    ? `
+                <div class="absolute bottom-2 sm:bottom-4 right-4 text-xs">
+                    <button type="button" class="text-primary hover:underline font-medium btn-editar" data-index="${index}">Editar</button>
+                </div>
+                `
+                    : ""
+                }
+            </div>
+            `;
+        }
+      });
+
+      if (html === "") {
+        resultadosContainer.innerHTML =
+          "<p class='text-center text-muted-foreground'>No se encontraron incidencias en este periodo (horario cumplido).</p>";
+      } else {
+        resultadosContainer.innerHTML = html;
+        if (guardarContainer) guardarContainer.classList.remove("hidden");
+        if (guardarContainerTop) guardarContainerTop.classList.remove("hidden");
+
+        // Attach event listeners for toggles
+        document.querySelectorAll(".incidencia-toggle").forEach((toggle) => {
+          toggle.addEventListener("change", (e) => {
+            const t = e.target as HTMLInputElement;
+            const idx = t.dataset.index;
+            const label = document.getElementById(`label-toggle-${idx}`);
+            if (label) {
+              label.textContent = t.checked ? "Enviar" : "Omitir";
+            }
+          });
+        });
+
+        // Attach event listeners for Edit buttons
+        document.querySelectorAll(".btn-editar").forEach((btn) => {
+          btn.addEventListener("click", (e) => {
+            const b = e.target as HTMLButtonElement;
+            const idx = b.dataset.index;
+
+            const obsEl = document.getElementById(
+              `obs-${idx}`,
+            ) as HTMLTextAreaElement;
+            const obsComidaEl = document.getElementById(
+              `obs-comida-${idx}`,
+            ) as HTMLTextAreaElement;
+
+            if (obsEl) {
+              obsEl.disabled = false;
+              obsEl.classList.remove("opacity-60", "cursor-not-allowed");
+            }
+            if (obsComidaEl) {
+              obsComidaEl.disabled = false;
+              obsComidaEl.classList.remove("opacity-60", "cursor-not-allowed");
+            }
+
+            const toggle = document.getElementById(
+              `toggle-${idx}`,
+            ) as HTMLInputElement;
+            if (toggle) {
+              toggle.checked = true;
+              toggle.dispatchEvent(new Event("change"));
+            }
+
+            b.style.display = "none";
+          });
+        });
+      }
+    }
+
+    btnsGuardar?.forEach((btnGuardar) => {
+      btnGuardar.addEventListener("click", async () => {
+        let valid = true;
+        const payload: any[] = [];
+
+        incidenciasToSave.forEach((inc) => {
+          const toggle = document.getElementById(
+            `toggle-${inc.index}`,
+          ) as HTMLInputElement;
+          // Only send if toggle is checked
+          if (!toggle || !toggle.checked) {
+            return;
+          }
+
+          const obsEl = document.getElementById(
+            `obs-${inc.index}`,
+          ) as HTMLTextAreaElement;
+          const obsComidaEl = document.getElementById(
+            `obs-comida-${inc.index}`,
+          ) as HTMLTextAreaElement;
+
+          let valTurno = obsEl ? obsEl.value.trim() : "";
+          let valComida = obsComidaEl ? obsComidaEl.value.trim() : "";
+
+          if (inc.requiresObs) {
+            if (valTurno.length < 5) {
+              if (obsEl) obsEl.classList.add("border-red-500");
+              valid = false;
+            } else {
+              if (obsEl) obsEl.classList.remove("border-red-500");
+            }
+          }
+
+          if (inc.requiresObsComida) {
+            if (valComida.length < 5) {
+              if (obsComidaEl) obsComidaEl.classList.add("border-red-500");
+              valid = false;
+            } else {
+              if (obsComidaEl) obsComidaEl.classList.remove("border-red-500");
+            }
+          }
+
+          if (valid) {
+            payload.push({
+              mes: inc.mes,
+              quincena: inc.quincena,
+              fecha: inc.fecha,
+              entrada_turno: inc.entrada_turno,
+              salida_turno: inc.salida_turno,
+              tiempo_turno: inc.tiempo_turno,
+              observaciones: valTurno || null,
+              entrada_comida: inc.entrada_comida,
+              salida_comida: inc.salida_comida,
+              observaciones_comida: valComida || null,
+            });
+          }
+        });
+
+        if (!valid) {
+          toast.error(
+            "Por favor, llena los motivos requeridos (mínimo 5 caracteres) marcados en rojo.",
+          );
+          return;
+        }
+
+        if (payload.length === 0) {
+          toast.error("No hay incidencias seleccionadas para enviar.");
+          return;
+        }
+
+        btnsGuardar.forEach((b: any) => {
+          b.disabled = true;
+          b.textContent = "Guardando...";
+        });
+
+        try {
+          const res = await fetch("/api/user/incidencias", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ incidencias: payload }),
+          });
+
+          if (!res.ok) {
+            throw new Error((await res.json()).message || "Error al guardar");
+          }
+
+          toast.success("Incidencias guardadas correctamente.");
+          setTimeout(() => {
+            window.location.reload();
+          }, 1500);
+        } catch (err: any) {
+          toast.error(err.message);
+          btnsGuardar.forEach((b: any) => {
+            b.disabled = false;
+            b.textContent = "Guardar incidencias";
+          });
+        }
+      });
+    });
+  });
+</script>

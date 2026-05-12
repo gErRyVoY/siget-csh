@@ -75,7 +75,7 @@ export const PATCH: APIRoute = async ({ request, locals }) => {
                 }
             }
         });
-        const oldTraslado = ticketWithTraslado?.traslados?.[0];
+        const oldTraslado = ticketWithTraslado?.traslados;
 
         // Fields specific to Traslado
         const {
@@ -152,6 +152,25 @@ export const PATCH: APIRoute = async ({ request, locals }) => {
                 data: updateData,
                 include: { estatus: true, atiende: true }
             });
+
+            // --- Actualización de carga_actual por reasignación manual ---
+            if (ticketBeforeUpdate.atiendeId !== ticketAfterUpdate.atiendeId) {
+                if (ticketBeforeUpdate.atiendeId) {
+                    await tx.usuario.updateMany({
+                        where: { 
+                            id: ticketBeforeUpdate.atiendeId,
+                            carga_actual: { gt: 0 }
+                        },
+                        data: { carga_actual: { decrement: 1 } }
+                    });
+                }
+                if (ticketAfterUpdate.atiendeId) {
+                    await tx.usuario.update({
+                        where: { id: ticketAfterUpdate.atiendeId },
+                        data: { carga_actual: { increment: 1 } }
+                    });
+                }
+            }
 
             // Resolving Names for Transfer History
             const fieldChanges: { field: string, oldValue: any, newValue: any }[] = [];
