@@ -478,6 +478,34 @@ const clave = dbUser.clave ?? "";
             requiresObsComida,
           });
 
+          // Calcular distintivos de horario
+          let entradaClass = "text-foreground";
+          let salidaClass = "text-foreground";
+          let comidaClass = "text-foreground";
+
+          if (hInicio && rEntrada) {
+            const diffEnt = timeDiffMins(rEntrada, hInicio);
+            if (diffEnt > 5) {
+              entradaClass = "text-destructive font-bold";
+            } else if (diffEnt <= -60) {
+              entradaClass = "text-green-600 font-bold";
+            }
+          }
+
+          if (hFin && rSalida) {
+            const diffSal = timeDiffMins(rSalida, hFin);
+            if (diffSal >= 60) {
+              salidaClass = "text-green-600 font-bold";
+            }
+          }
+
+          if (rEntComida && rSalComida) {
+            const diffCom = timeDiffMins(rSalComida, rEntComida);
+            if (diffCom > 30) {
+              comidaClass = "text-destructive font-bold";
+            }
+          }
+
           html += `
             <div class="border rounded-md overflow-hidden bg-card mb-4 relative pb-10 sm:pb-0" id="row-${index}">
                 <div class="bg-muted-foreground/80 text-white flex justify-between items-center px-4 py-2">
@@ -496,29 +524,29 @@ const clave = dbUser.clave ?? "";
                         ${extraText ? `<span class="mt-1">${extraText}</span>` : ""}
                     </div>
                     <div class="p-4 border-b sm:border-b-0 sm:border-r space-y-2 sm:w-[250px] flex-shrink-0 text-sm">
-                        <div class="flex justify-between font-bold">
+                        <div class="flex justify-between items-center font-bold">
                             <span>Entrada laboral:</span>
                             <span>${horarioDia.inicio}</span>
                         </div>
-                        <div class="flex justify-between text-muted-foreground mb-2">
+                        <div class="flex justify-between items-center text-muted-foreground mb-2">
                             <span>Registro entrada:</span>
-                            <span class="text-foreground">${formatT(r.entrada_turno)}</span>
+                            <span class="${entradaClass}">${formatT(r.entrada_turno)}</span>
                         </div>
-                        <div class="flex justify-between font-bold pt-2 border-t">
+                        <div class="flex justify-between items-center font-bold pt-2 border-t">
                             <span>Salida laboral:</span>
                             <span>${horarioDia.fin}</span>
                         </div>
-                        <div class="flex justify-between text-muted-foreground">
+                        <div class="flex justify-between items-center text-muted-foreground">
                             <span>Registro salida:</span>
-                            <span class="text-foreground">${formatT(r.salida_turno)}</span>
+                            <span class="${salidaClass}">${formatT(r.salida_turno)}</span>
                         </div>
-                        <div class="flex justify-between text-muted-foreground pt-2 border-t mt-2">
+                        <div class="flex justify-between items-center text-muted-foreground pt-2 border-t mt-2">
                             <span>Entrada comida:</span>
-                            <span>${formatT(r.entrada_comida)}</span>
+                            <span class="${comidaClass}">${formatT(r.entrada_comida)}</span>
                         </div>
-                        <div class="flex justify-between text-muted-foreground">
+                        <div class="flex justify-between items-center text-muted-foreground">
                             <span>Salida comida:</span>
-                            <span class="text-foreground">${formatT(r.salida_comida)}</span>
+                            <span class="${comidaClass}">${formatT(r.salida_comida)}</span>
                         </div>
                         ${requiresObsComida && statusText !== "Horario excedido" ? '<div class="text-red-600 font-bold mt-2">Horario excedido</div>' : ""}
                     </div>
