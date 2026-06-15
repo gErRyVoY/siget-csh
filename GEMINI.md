@@ -88,6 +88,13 @@ A continuación se listan los proyectos prioritarios. Tu tarea es ayudar a refin
     * **Infraestructura y Despliegue (CI/CD):** Implementado. El flujo con GitHub Actions, Docker, AWS ECR, Secrets Manager y App Runner está operativo.
 
 # Historial de Cambios (Log)
+## 2026-06-15 (Sesión 24 - Corrección Vista de Traslados)
+*   **Vista de Detalle de Ticket (`/tickets/view/[id].astro`):**
+    *   **Bug Fix Crítico:** Se diagnosticó y corrigió un error que impedía mostrar la vista específica de traslados en la página de detalle de un ticket (p. ej. `/tickets/view/6`).
+    *   **Causa Raíz:** El esquema Prisma define `traslados` en `Ticket` como `Traslado?` (relación uno-a-uno), pero el código lo trataba como un array: usaba `ticket.traslados.length > 0` (siempre `undefined`) e indexaba con `ticket.traslados[0]`. Esto hacía que `isTraslado = false` siempre y se mostraba la vista genérica en lugar de la vista de traslado.
+    *   **Solución:** Se actualizó la lógica a `ticket.traslados != null` y `ticket.traslados ?? null`.
+    *   **Metodología de Diagnóstico:** Se revisaron CHANGELOG.md, historial de git y se consultó la BD directamente con un script Node temporal para confirmar que el objeto traslado existía en BD pero no se detectaba en la UI.
+
 ## 2026-05-12 (Sesión 23 - Módulo de Reporte de Incidencias)
 *   **Gestión de Incidencias (`/user/perfil/incidencias.astro` y `/api/user/incidencias.ts`):**
     *   **Rediseño Responsivo:** Se actualizó la interfaz para presentar una vista horizontal (tipo cuadrícula) en escritorio y vertical apilada en móviles.

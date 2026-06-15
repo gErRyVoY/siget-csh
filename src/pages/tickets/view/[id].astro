@@ -95,7 +95,7 @@ const ticket = await prisma.ticket.findUnique({
                 },
                 descuento: true,
                 bloque: true,
-            },
+            }
         },
     },
 });
@@ -266,8 +266,8 @@ const fieldMap: Record<string, string> = {
     auditor_req: "Auditor Requisitos/Adeudos",
 };
 
-const isTraslado = ticket.traslados && ticket.traslados.length > 0;
-const traslado = isTraslado ? ticket.traslados[0] : null;
+const isTraslado = ticket.traslados != null;
+const traslado = ticket.traslados ?? null;
 
 const currentUserId = session?.user?.id ? parseInt(String(session.user.id), 10) : -1;
 const isOwner = ticket.solicitanteId === currentUserId;

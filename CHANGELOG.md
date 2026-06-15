@@ -5,6 +5,12 @@ Todos los cambios notables en este proyecto serán documentados en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Versionado Semántico](https://semver.org/lang/es/).
 
+## 2026-06-15 (Sesión 24 - Corrección Vista de Traslados)
+*   **Vista de Detalle de Ticket (`/tickets/view/[id].astro`):**
+    *   **Bug Fix Crítico:** Se corrigió un error que impedía mostrar la vista específica de traslados (campos de Matrícula, Campus Origen/Destino, Carrera, Bloque, Auditores, etc.) en la página de detalle de un ticket.
+    *   **Causa Raíz:** El esquema de Prisma define la relación `Ticket → Traslado` como **uno-a-uno** (`Traslado?`), pero el código la trataba como un array, evaluando `ticket.traslados.length > 0` (siempre `undefined`) y accediendo con `ticket.traslados[0]`. Esto hacía que `isTraslado` fuera siempre `false` y se renderizara la vista genérica.
+    *   **Solución:** Se actualizó la lógica de detección a `ticket.traslados != null` y el acceso al objeto a `ticket.traslados ?? null`, alineando el código con el esquema real de la BD.
+
 ## 2026-05-12 (Sesión 23 - Módulo de Reporte de Incidencias)
 *   **Gestión de Incidencias (`/user/perfil/incidencias.astro` y `/api/user/incidencias.ts`):**
     *   **Rediseño Responsivo:** Se actualizó la interfaz para presentar una vista horizontal (tipo cuadrícula) en escritorio y vertical apilada en móviles.
