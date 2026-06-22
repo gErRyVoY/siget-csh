@@ -2,13 +2,12 @@ import type { APIRoute } from "astro";
 import { prisma } from "@/lib/db";
 
 export const GET: APIRoute = async () => {
-    const ticketCounts = await prisma.ticket.groupBy({
-        by: ["estatusId"],
-        _count: { id: true },
-    });
-    const activeCycle = await prisma.ciclo.findFirst({ where: { activo: true } });
-
-    const statuses = await prisma.estatus.findMany();
+    // ⚡ Phase 1: Run all independent queries in parallel
+    const [ticketCounts, activeCycle, statuses] = await Promise.all([
+        prisma.ticket.groupBy({ by: ["estatusId"], _count: { id: true } }),
+        prisma.ciclo.findFirst({ where: { activo: true } }),
+        prisma.estatus.findMany(),
+    ]);
 
     const getCount = (name: string) => {
         const status = statuses.find((s) => s.nombre === name);
@@ -18,6 +17,7 @@ export const GET: APIRoute = async () => {
         );
     };
 
+    // ⚡ Phase 2: trasladosCount depends on activeCycle result
     const trasladosCount = activeCycle
         ? await prisma.ticket.count({
             where: {

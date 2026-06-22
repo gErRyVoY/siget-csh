@@ -116,7 +116,10 @@ export function initializeUserEditForm() {
                     toast.success('Rol modificado. Recargando permisos para aplicar exclusiones...', {
                         duration: 3000
                     });
-                    setTimeout(() => window.location.reload(), 1500);
+                    setTimeout(async () => {
+                        const { navigate } = await import('astro:transitions/client');
+                        navigate(window.location.pathname);
+                    }, 1500);
                 } else {
                     toast.success('Usuario actualizado correctamente');
                 }

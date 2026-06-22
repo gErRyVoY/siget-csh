@@ -73,21 +73,23 @@ export const GET: APIRoute = async ({ request }) => {
     const limitParam = params.get('limit');
     const limit = limitParam === 'all' ? undefined : parseInt(limitParam || '10', 10);
 
-    // --- Fetch data ---
-    const totalTickets = await prisma.ticket.count({ where });
-    const tickets = await prisma.ticket.findMany({
-      where,
-      skip: limit ? (page - 1) * limit : undefined,
-      take: limit,
-      orderBy: { fechaalta: 'desc' },
-      include: {
-        estatus: true,
-        categoria: true,
-        solicitante: { select: { nombres: true, apellidos: true } },
-        atiende: { select: { nombres: true, apellidos: true } },
-        empresa: { select: { nombre: true } },
-      },
-    });
+    // ⚡ Fetch count + data in parallel
+    const [totalTickets, tickets] = await Promise.all([
+      prisma.ticket.count({ where }),
+      prisma.ticket.findMany({
+        where,
+        skip: limit ? (page - 1) * limit : undefined,
+        take: limit,
+        orderBy: { fechaalta: 'desc' },
+        include: {
+          estatus: true,
+          categoria: true,
+          solicitante: { select: { nombres: true, apellidos: true } },
+          atiende: { select: { nombres: true, apellidos: true } },
+          empresa: { select: { nombre: true } },
+        },
+      }),
+    ]);
 
     const totalPages = limit ? Math.ceil(totalTickets / limit) : 1;
 

@@ -187,7 +187,6 @@ const getTicketDateColor = (date: Date, status: string) => {
                 <button
                     id="reset-filters"
                     class="bg-secondary text-secondary-foreground hover:bg-secondary/80 px-4 py-2 rounded-md font-medium transition-colors text-sm"
-                    onclick="window.location.href = window.location.pathname"
                 >
                     Limpiar Filtros
                 </button>
@@ -501,6 +500,11 @@ const getTicketDateColor = (date: Date, status: string) => {
             });
         });
     });
+    document.addEventListener('astro:page-load', () => {
+        // Botón limpiar filtros
+        const resetBtn = document.getElementById('reset-filters');
+        if (resetBtn) resetBtn.addEventListener('click', () => navigate(window.location.pathname));
+    });
 
     // Manejo de filtros
     const selects = document.querySelectorAll("select");
@@ -534,7 +538,7 @@ const getTicketDateColor = (date: Date, status: string) => {
             }
             // Resetear a página 1 al filtrar
             url.searchParams.set("page", "1");
-            window.location.href = url.toString();
+            navigate(url.toString());
         });
     });
 
@@ -548,7 +552,7 @@ const getTicketDateColor = (date: Date, status: string) => {
             const currentPage = parseInt(url.searchParams.get("page") || "1");
             if (currentPage > 1) {
                 url.searchParams.set("page", (currentPage - 1).toString());
-                window.location.href = url.toString();
+                navigate(url.toString());
             }
         });
     }
@@ -558,7 +562,7 @@ const getTicketDateColor = (date: Date, status: string) => {
             const url = new URL(window.location.href);
             const currentPage = parseInt(url.searchParams.get("page") || "1");
             url.searchParams.set("page", (currentPage + 1).toString());
-            window.location.href = url.toString();
+            navigate(url.toString());
         });
     }
 </script>

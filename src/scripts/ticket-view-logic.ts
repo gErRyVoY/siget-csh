@@ -241,8 +241,9 @@ export function initEditForm() {
                 throw new Error(errorData.message || 'Error al actualizar el ticket');
             }
             toast.success('Los cambios han sido guardados.');
-            setTimeout(() => {
-                window.location.href = `${window.location.pathname}?new_entry=true`;
+            setTimeout(async () => {
+                const { navigate } = await import('astro:transitions/client');
+                navigate(`${window.location.pathname}?new_entry=true`);
             }, 1000);
         } catch (error) {
             const message = error instanceof Error ? error.message : 'Ocurrió un error desconocido.';

@@ -5,6 +5,53 @@ Todos los cambios notables en este proyecto serán documentados en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Versionado Semántico](https://semver.org/lang/es/).
 
+## 2026-06-22 — Sesión 25 — Optimización de Navegación Global (Anti-Parpadeo) y Queries Paralelas
+
+### Problema resuelto
+Al cambiar entre vistas o aplicar filtros en las listas de tickets, el área de contenido central mostraba un **"parpadeo blanco"** (flash blanco) breve antes de cargar la nueva página. Esto ocurría porque `window.location.href` y `window.location.reload()` fuerzan una recarga completa del navegador, evitando el sistema de View Transitions de Astro.
+
+### Solución implementada
+Se reemplazó sistemáticamente **toda** navegación programática (`window.location.href = ...`, `window.location.reload()`) por `navigate()` de `astro:transitions/client` en los archivos de frontend, y se paralelizaron queries independientes de Prisma con `Promise.all()` en los endpoints de la API.
+
+### Cambios en Frontend (navegación suave)
+
+*   **Listas de Tickets de Soporte y Marketing:**
+    *   `tickets/soporte/usuario/index.astro` — filtros, paginación y botón "Limpiar Filtros"
+    *   `tickets/marketing/index.astro` — filtros, paginación y botón "Limpiar Filtros"
+    *   `tickets/marketing/usuario/index.astro` — filtros, paginación y botón "Limpiar Filtros"
+    *   **Patrón aplicado:** Se eliminó el atributo `onclick` inline del botón reset (que bloqueaba el uso de `navigate` del script) y se movió la lógica a un `addEventListener` dentro del bloque `<script>`. Todas las llamadas `window.location.href = url.toString()` se reemplazaron por `navigate(url.toString())`.
+
+*   **Vista de Detalle de Ticket (`/tickets/view/[id].astro`):**
+    *   Se agregó `import { navigate } from 'astro:transitions/client'` al bloque `<script>` principal.
+    *   Se reemplazó `setTimeout(() => window.location.reload(), 1000)` (ejecutado tras guardar cambios de traslado) por `navigate(window.location.pathname + window.location.search)`.
+
+*   **Listado de Usuarios (`/admin/usuarios/index.astro`):**
+    *   La navegación al seleccionar una empresa/campus ya usaba `navigate()`. Se verificó que el buscador de autocompletado también usa `navigate()` correctamente.
+
+### Cambios en Scripts TypeScript
+
+*   **`src/scripts/ticket-view-logic.ts`:**
+    *   Se reemplazó `window.location.href = \`...\`?new_entry=true\`` por un `import()` dinámico de `astro:transitions/client` para llamar `navigate()`. Esto mantiene el query param `?new_entry=true` que activa la animación de "flash" al nuevo entry del historial del ticket.
+
+*   **`src/scripts/user-edit-form-logic.ts`:**
+    *   Se reemplazó `window.location.reload()` (ejecutado al cambiar el rol de un usuario) por un `import()` dinámico de `navigate()` para mantener la transición suave al recargar la vista de edición.
+
+### Cambios en API (queries paralelas)
+
+*   **`src/pages/api/tickets/list.ts`:** Se paralelizaron `prisma.ticket.count()` y `prisma.ticket.findMany()` con `Promise.all()`, reduciendo la latencia percibida al listar tickets.
+*   **`src/pages/api/dashboard/stats.ts`:** Se paralelizaron las queries de `groupBy`, `findFirst` (ciclo activo) y `findMany` (estatus) con `Promise.all()`.
+
+---
+
+## 2026-06-22 (Corrección de Restricción Única en Clave)
+*   **Edición de Usuarios (`/api/admin/usuarios.ts`):**
+    *   **Bug Fix Crítico:** Se solucionó el error 500 (Unique constraint failed on the fields: `clave`) al intentar guardar cambios en la edición de usuarios.
+    *   **Causa Raíz:** Cuando el campo "Clave" se dejaba vacío, el formulario web enviaba una cadena vacía (`""`). Prisma intentaba actualizar el campo `clave` del usuario en la base de datos a `""`. Debido a la restricción de unicidad (`@unique`), si otro usuario ya tenía la clave vacía o si se intentaba guardar, fallaba.
+    *   **Solución:** Se implementó una sanitización en la API del PATCH para que cualquier cadena vacía o que contenga solo espacios en blanco se guarde como `null` en la base de datos.
+    *   **Depuración de Base de Datos:** Se ejecutó un script para limpiar y actualizar los registros existentes con clave vacía `""` a `NULL` en la base de datos de producción.
+*   **Listado de Usuarios (`/admin/usuarios/[campus].astro`):**
+    *   **Mejora de UX (Transición Suave):** Se implementó Astro `navigate` en la navegación al hacer clic en las filas de usuarios de la tabla. Esto activa el ClientRouter y el overlay de carga (`#page-loading-overlay`) para lograr una transición fluida y visualmente consistente con el resto de la aplicación, evitando reloads duros y parpadeos blancos.
+
 ## 2026-06-15 (Sesión 24 - Corrección Vista de Traslados)
 *   **Vista de Detalle de Ticket (`/tickets/view/[id].astro`):**
     *   **Bug Fix Crítico:** Se corrigió un error que impedía mostrar la vista específica de traslados (campos de Matrícula, Campus Origen/Destino, Carrera, Bloque, Auditores, etc.) en la página de detalle de un ticket.

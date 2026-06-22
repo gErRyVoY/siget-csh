@@ -172,7 +172,6 @@ const getTicketDateColor = (date: Date, status: string) => {
                 <button
                     id="reset-filters"
                     class="bg-secondary text-secondary-foreground hover:bg-secondary/80 px-4 py-2 rounded-md font-medium transition-colors text-sm"
-                    onclick="window.location.href = window.location.pathname"
                 >
                     Limpiar Filtros
                 </button>
@@ -482,6 +481,10 @@ const getTicketDateColor = (date: Date, status: string) => {
             });
         });
     });
+    // Botón limpiar filtros
+    const resetBtn = document.getElementById("reset-filters");
+    if (resetBtn) resetBtn.addEventListener("click", () => navigate(window.location.pathname));
+
     const selects = document.querySelectorAll("select");
     selects.forEach((select) => {
         select.addEventListener("change", () => {
@@ -501,11 +504,11 @@ const getTicketDateColor = (date: Date, status: string) => {
                 url.searchParams.set(paramName, value);
             }
             url.searchParams.set("page", "1");
-            window.location.href = url.toString();
+            navigate(url.toString());
         });
     });
 
-    // PaginaciÃ³n (igual que antes)
+    // Paginación
     const prevBtn = document.getElementById("prev-page");
     const nextBtn = document.getElementById("next-page");
     if (prevBtn)
@@ -514,7 +517,7 @@ const getTicketDateColor = (date: Date, status: string) => {
             const p = parseInt(url.searchParams.get("page") || "1");
             if (p > 1) {
                 url.searchParams.set("page", (p - 1).toString());
-                window.location.href = url.toString();
+                navigate(url.toString());
             }
         });
     if (nextBtn)
@@ -522,6 +525,6 @@ const getTicketDateColor = (date: Date, status: string) => {
             const url = new URL(window.location.href);
             const p = parseInt(url.searchParams.get("page") || "1");
             url.searchParams.set("page", (p + 1).toString());
-            window.location.href = url.toString();
+            navigate(url.toString());
         });
 </script>

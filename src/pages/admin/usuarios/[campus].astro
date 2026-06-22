@@ -19,7 +19,7 @@ if (["Magno", "Ejecutivo"].includes(empresa.tipo)) {
 ---
 
 <MainLayout title={title}>
-  <div class="max-w-7xl mx-auto">
+  <div class="max-w-7xl mx-auto" id="campus-container" data-campus-slug={campus}>
     <div class="flex justify-between items-center mb-6">
       <h1 class="text-2xl font-bold">{title}</h1>
     </div>
@@ -104,17 +104,24 @@ if (["Magno", "Ejecutivo"].includes(empresa.tipo)) {
   </div>
 </MainLayout>
 
-<script define:vars={{ campusSlug: campus }}>
+<script>
+  import { navigate } from 'astro:transitions/client';
+  import { toast } from '@/lib/toast';
+
   function initUserList() {
+    const container = document.getElementById("campus-container");
+    if (!container) return;
+    const campusSlug = container.dataset.campusSlug;
+
     const tableBody = document.getElementById("users-table-body");
     const noUsersMessage = document.getElementById("no-users-message");
     const paginationInfo = document.getElementById("pagination-info");
     const paginationControls = document.getElementById("pagination-controls");
-    const limitSelect = document.getElementById("limit-select");
-    const statusSelect = document.getElementById("status-select");
-    const vacationSelect = document.getElementById("vacation-select");
+    const limitSelect = document.getElementById("limit-select") as HTMLSelectElement;
+    const statusSelect = document.getElementById("status-select") as HTMLSelectElement;
+    const vacationSelect = document.getElementById("vacation-select") as HTMLSelectElement;
 
-    if (!tableBody || !paginationControls) return; // Exit if essential elements aren't there
+    if (!tableBody || !paginationControls || !limitSelect || !statusSelect || !vacationSelect) return;
 
     let currentPage = 1;
     let currentLimit = "10";
@@ -131,12 +138,12 @@ if (["Magno", "Ejecutivo"].includes(empresa.tipo)) {
 
         tableBody.innerHTML = "";
         if (users.length === 0) {
-          noUsersMessage.classList.remove("hidden");
+          if (noUsersMessage) noUsersMessage.classList.remove("hidden");
           tableBody.classList.add("hidden");
         } else {
-          noUsersMessage.classList.add("hidden");
+          if (noUsersMessage) noUsersMessage.classList.add("hidden");
           tableBody.classList.remove("hidden");
-          users.forEach((user) => {
+          users.forEach((user: any) => {
             const row = document.createElement("tr");
             row.className =
               "border-b hover:bg-[#797979]/40 transition-colors cursor-pointer";
@@ -165,8 +172,12 @@ if (["Magno", "Ejecutivo"].includes(empresa.tipo)) {
               </div>
             `;
 
-            row.onclick = () =>
-              (window.location.href = `/admin/usuarios/editar/${user.id}`);
+            row.onclick = (e) => {
+              const target = e.target as HTMLElement;
+              if (target.closest('input, label, button, a')) return;
+              navigate(`/admin/usuarios/editar/${user.id}`);
+            };
+
             row.innerHTML = `
                         <td class="p-4 font-medium text-foreground">${user.nombres} ${user.apellidos}</td>
                         <td class="p-4">${activoToggleHtml}</td>
@@ -189,25 +200,25 @@ if (["Magno", "Ejecutivo"].includes(empresa.tipo)) {
       // Activo Toggles
       document.querySelectorAll('.toggle-activo').forEach(toggle => {
         toggle.addEventListener('change', async (e) => {
-          const checkbox = e.target;
+          const checkbox = e.target as HTMLInputElement;
           const userId = checkbox.dataset.userId;
+          if (!userId) return;
           const newValue = checkbox.checked;
-          const label = checkbox.nextElementSibling.nextElementSibling;
+          const label = checkbox.nextElementSibling?.nextElementSibling as HTMLElement;
 
           // Optimistic UI update
-          if (newValue) {
-            label.textContent = 'Activo';
-            label.className = 'ml-2 text-xs font-semibold activo-label text-black';
-          } else {
-            label.textContent = 'Inactivo';
-            label.className = 'ml-2 text-xs font-semibold activo-label text-secondary';
+          if (label) {
+            label.textContent = newValue ? 'Activo' : 'Inactivo';
+            label.className = newValue 
+              ? 'ml-2 text-xs font-semibold activo-label text-black'
+              : 'ml-2 text-xs font-semibold activo-label text-secondary';
           }
 
           try {
             const response = await fetch('/api/admin/usuarios', {
               method: 'PATCH',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ id: parseInt(userId), activo: newValue })
+              body: JSON.stringify({ id: parseInt(userId, 10), activo: newValue })
             });
 
             if (!response.ok) {
@@ -215,25 +226,18 @@ if (["Magno", "Ejecutivo"].includes(empresa.tipo)) {
               throw new Error(errorData.message || 'Error al actualizar');
             }
             
-            if (window.toast) {
-              window.toast.success(`Estado actualizado correctamente.`);
-            }
-          } catch (error) {
+            toast.success(`Estado actualizado correctamente.`);
+          } catch (error: any) {
             console.error('Error updating user status:', error);
             // Revert UI
             checkbox.checked = !newValue;
-            if (!newValue) {
-              label.textContent = 'Activo';
-              label.className = 'ml-2 text-xs font-semibold activo-label text-black';
-            } else {
-              label.textContent = 'Inactivo';
-              label.className = 'ml-2 text-xs font-semibold activo-label text-secondary';
+            if (label) {
+              label.textContent = !newValue ? 'Activo' : 'Inactivo';
+              label.className = !newValue 
+                ? 'ml-2 text-xs font-semibold activo-label text-black'
+                : 'ml-2 text-xs font-semibold activo-label text-secondary';
             }
-            if (window.toast) {
-              window.toast.error(error.message || 'Error al actualizar el estado.');
-            } else {
-              alert('Error al actualizar el estado.');
-            }
+            toast.error(error.message || 'Error al actualizar el estado.');
           }
         });
       });
@@ -241,25 +245,25 @@ if (["Magno", "Ejecutivo"].includes(empresa.tipo)) {
       // Vacaciones Toggles
       document.querySelectorAll('.toggle-vacaciones').forEach(toggle => {
         toggle.addEventListener('change', async (e) => {
-          const checkbox = e.target;
+          const checkbox = e.target as HTMLInputElement;
           const userId = checkbox.dataset.userId;
+          if (!userId) return;
           const newValue = checkbox.checked;
-          const label = checkbox.nextElementSibling.nextElementSibling;
+          const label = checkbox.nextElementSibling?.nextElementSibling as HTMLElement;
 
           // Optimistic UI update
-          if (newValue) {
-            label.textContent = 'Sí';
-            label.className = 'ml-2 text-xs font-semibold vacaciones-label text-secondary';
-          } else {
-            label.textContent = 'No';
-            label.className = 'ml-2 text-xs font-semibold vacaciones-label text-black';
+          if (label) {
+            label.textContent = newValue ? 'Sí' : 'No';
+            label.className = newValue 
+              ? 'ml-2 text-xs font-semibold vacaciones-label text-secondary'
+              : 'ml-2 text-xs font-semibold vacaciones-label text-black';
           }
 
           try {
             const response = await fetch('/api/admin/usuarios', {
               method: 'PATCH',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ id: parseInt(userId), vacaciones: newValue })
+              body: JSON.stringify({ id: parseInt(userId, 10), vacaciones: newValue })
             });
 
             if (!response.ok) {
@@ -267,31 +271,24 @@ if (["Magno", "Ejecutivo"].includes(empresa.tipo)) {
               throw new Error(errorData.message || 'Error al actualizar');
             }
 
-            if (window.toast) {
-              window.toast.success(`Estado de vacaciones actualizado.`);
-            }
-          } catch (error) {
+            toast.success(`Estado de vacaciones actualizado.`);
+          } catch (error: any) {
             console.error('Error updating user vacation status:', error);
             // Revert UI
             checkbox.checked = !newValue;
-            if (!newValue) {
-              label.textContent = 'Sí';
-              label.className = 'ml-2 text-xs font-semibold vacaciones-label text-secondary';
-            } else {
-              label.textContent = 'No';
-              label.className = 'ml-2 text-xs font-semibold vacaciones-label text-black';
+            if (label) {
+              label.textContent = !newValue ? 'Sí' : 'No';
+              label.className = !newValue 
+                ? 'ml-2 text-xs font-semibold vacaciones-label text-secondary'
+                : 'ml-2 text-xs font-semibold vacaciones-label text-black';
             }
-            if (window.toast) {
-              window.toast.error(error.message || 'Error al actualizar vacaciones.');
-            } else {
-              alert('Error al actualizar vacaciones.');
-            }
+            toast.error(error.message || 'Error al actualizar vacaciones.');
           }
         });
       });
     }
 
-    function renderPagination(pagination) {
+    function renderPagination(pagination: any) {
       if (!paginationInfo || !paginationControls) return;
       const { page, totalUsers, totalPages } = pagination;
       paginationInfo.textContent = `Mostrando ${tableBody.rows.length} de ${totalUsers} usuarios`;
@@ -321,18 +318,18 @@ if (["Magno", "Ejecutivo"].includes(empresa.tipo)) {
       paginationControls.appendChild(nextButton);
     }
 
-    limitSelect.addEventListener("change", (e) => {
-      currentLimit = e.target.value;
+    limitSelect.addEventListener("change", () => {
+      currentLimit = limitSelect.value;
       currentPage = 1;
       fetchAndRenderUsers();
     });
-    statusSelect.addEventListener("change", (e) => {
-      currentStatus = e.target.value;
+    statusSelect.addEventListener("change", () => {
+      currentStatus = statusSelect.value;
       currentPage = 1;
       fetchAndRenderUsers();
     });
-    vacationSelect.addEventListener("change", (e) => {
-      currentVacation = e.target.value;
+    vacationSelect.addEventListener("change", () => {
+      currentVacation = vacationSelect.value;
       currentPage = 1;
       fetchAndRenderUsers();
     });

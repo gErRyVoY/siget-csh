@@ -1,8 +1,8 @@
 # Plan de Trabajo (SIGET-CSH)
 
-**Tarea Actual:** Proyecto en AWS (Despliegue App Runner y RDS)
+**Tarea Actual:** Optimización UX — Navegación suave (anti-parpadeo) global completada ✅
 
-**Estado:** Retomando AWS (Migración a Cloudflare pausada temporalmente por instrucción del usuario. Fusión de características a main completada exitosamente).
+**Estado:** Completado. Todos los `window.location.href` y `window.location.reload()` han sido reemplazados por `navigate()` de Astro View Transitions en todo el proyecto. Pendiente: despliegue a AWS.
 
 **Pasos Siguientes:**
 1. Estabilizar y continuar el flujo de despliegue usando la infraestructura AWS (ECR, App Runner, RDS).
@@ -21,6 +21,9 @@
 - ✅ **Auditoría de BD y Seed:** Se detectó que las tablas de Categorías y Subcategorías estaban vacías en producción (AWS RDS). Se confirmó que el archivo `seed.ts` es correcto. La pérdida de datos se debió a un fallo en un despliegue anterior donde el seed borró las tablas pero se interrumpió antes de poblarlas. Se ejecutó exitosamente el seed completo en RDS restaurando las **12 categorías** y **142 subcategorías** faltantes.
 - ✅ Autenticación (API key) añadida al endpoint de Traslados y refactorización del dropdown de Asignación de Agentes con la nueva lógica RBAC.
 - ✅ Implementado buscador dinámico (autocompletado) de usuarios en la vista administrativa e integrado control dinámico (BD) del Modo Oscuro.
+- ✅ Corregido error 500 al guardar usuarios editados (Unique constraint failed en la columna `clave`) sanitizando valores vacíos a `null` y limpiando la base de datos.
+- ✅ **Optimización de Navegación Global (Sesión 25):** Se eliminó el "parpadeo blanco" en todas las transiciones de vistas reemplazando `window.location.href` y `window.location.reload()` por `navigate()` de `astro:transitions/client`. Afecta: listas de tickets (soporte y marketing), vista de detalle, formularios de edición de usuario y ticket. Se utilizaron `import()` dinámicos de `navigate` en los scripts `.ts` para compatibilidad fuera del contexto Astro.
+- ✅ **Queries paralelas (API):** Se paralelizaron `count()` + `findMany()` en `api/tickets/list.ts` y múltiples queries en `api/dashboard/stats.ts` con `Promise.all()` para reducir latencia.
 
 **Pasos Siguientes (Próxima Iteración):**
 1.  **Seguridad Adicional y Middleware:**
@@ -88,6 +91,15 @@ A continuación se listan los proyectos prioritarios. Tu tarea es ayudar a refin
     * **Infraestructura y Despliegue (CI/CD):** Implementado. El flujo con GitHub Actions, Docker, AWS ECR, Secrets Manager y App Runner está operativo.
 
 # Historial de Cambios (Log)
+## 2026-06-22 (Corrección de Restricción Única en Clave)
+*   **Edición de Usuarios (`/api/admin/usuarios.ts`):**
+    *   **Bug Fix Crítico:** Se solucionó el error 500 (Unique constraint failed on the fields: `clave`) al intentar guardar cambios en la edición de usuarios.
+    *   **Causa Raíz:** Cuando el campo "Clave" se dejaba vacío, el formulario web enviaba una cadena vaciva (`""`). Prisma intentaba actualizar el campo `clave` del usuario en la base de datos a `""`. Debido a la restricción de unicidad (`@unique`), si otro usuario ya tenía la clave vacía o si se intentaba guardar, fallaba.
+    *   **Solución:** Se implementó una sanitización en la API del PATCH para que cualquier cadena vacía o que contenga solo espacios en blanco se guarde como `null` en la base de datos.
+    *   **Depuración de Base de Datos:** Se ejecutó un script para limpiar y actualizar los registros existentes con clave vacía `""` a `NULL` en la base de datos de producción.
+*   **Listado de Usuarios (`/admin/usuarios/[campus].astro`):**
+    *   **Mejora de UX (Transición Suave):** Se implementó Astro `navigate` en la navegación al hacer clic en las filas de usuarios de la tabla. Esto activa el ClientRouter y el overlay de carga (`#page-loading-overlay`) para lograr una transición fluida y visualmente consistente con el resto de la aplicación, evitando reloads duros y parpadeos blancos.
+
 ## 2026-06-15 (Sesión 24 - Corrección Vista de Traslados)
 *   **Vista de Detalle de Ticket (`/tickets/view/[id].astro`):**
     *   **Bug Fix Crítico:** Se diagnosticó y corrigió un error que impedía mostrar la vista específica de traslados en la página de detalle de un ticket (p. ej. `/tickets/view/6`).

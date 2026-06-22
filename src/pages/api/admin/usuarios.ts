@@ -33,7 +33,12 @@ export const GET: APIRoute = async ({ request }) => {
   }
 
   try {
-    const empresa = await prisma.empresa.findUnique({ where: { slug: campusSlug } });
+    // ⚡ Resolve empresa + session in parallel (were sequential before)
+    const [empresa, session] = await Promise.all([
+      prisma.empresa.findUnique({ where: { slug: campusSlug } }),
+      getSession(request),
+    ]);
+
     if (!empresa) {
       return new Response(JSON.stringify({ message: 'Empresa no encontrada' }), { status: 404 });
     }
@@ -44,26 +49,13 @@ export const GET: APIRoute = async ({ request }) => {
     };
 
     // --- RBAC: Marketing Roles Restriction ---
-    // If the requester is a Marketing Team Member, they can ONLY see users with 'Marketing' support level.
-    const session = await getSession(request);
-    if (session?.user?.id) {
-      const requesterId = parseInt(session.user.id as string);
-      const requester = await prisma.usuario.findUnique({
-        where: { id: requesterId },
-        include: { rol: true }
-      });
-
-      const MARKETING_ROLES = ["Director Marketing", "Diseñador", "Community manager", "Editor"];
-      if (requester?.rol && MARKETING_ROLES.includes(requester.rol.rol)) {
-        // Filter by specific Marketing roles instead of generic 'Marketing' support level
-        // This ensures 'Director Marketing' (who has 'Director' level) is also included/visible
-        where.rol = {
-          rol: { in: MARKETING_ROLES }
-        };
-      }
+    // Use role info already in the session token — avoids an extra DB query.
+    const MARKETING_ROLES = ["Director Marketing", "Diseñador", "Community manager", "Editor"];
+    const sessionRole = (session?.user as any)?.rol as string | undefined;
+    if (sessionRole && MARKETING_ROLES.includes(sessionRole)) {
+      where.rol = { rol: { in: MARKETING_ROLES } };
     }
     // -----------------------------------------
-
 
     const status = params.get('status');
     if (status === 'active') where.activo = true;
@@ -77,14 +69,17 @@ export const GET: APIRoute = async ({ request }) => {
     const limitParam = params.get('limit');
     const limit = limitParam === 'all' ? undefined : parseInt(limitParam || '10', 10);
 
-    const totalUsers = await prisma.usuario.count({ where });
-    const users = await prisma.usuario.findMany({
-      where,
-      skip: limit ? (page - 1) * limit : undefined,
-      take: limit,
-      orderBy: { nombres: 'asc' },
-      include: { rol: true },
-    });
+    // ⚡ Run count + findMany in parallel
+    const [totalUsers, users] = await Promise.all([
+      prisma.usuario.count({ where }),
+      prisma.usuario.findMany({
+        where,
+        skip: limit ? (page - 1) * limit : undefined,
+        take: limit,
+        orderBy: { nombres: 'asc' },
+        include: { rol: true },
+      }),
+    ]);
 
     const totalPages = limit ? Math.ceil(totalUsers / limit) : 1;
 
@@ -151,10 +146,11 @@ export const PATCH: APIRoute = async ({ request }) => {
       updateData.horario_disponibilidad = updateDataInput.horario_disponibilidad;
     }
     if (updateDataInput.clave !== undefined) {
-      (updateData as any).clave = updateDataInput.clave;
-      if (updateDataInput.clave !== '' && updateDataInput.clave !== (userBeforeUpdate as any).clave) {
+      const finalClave = (typeof updateDataInput.clave === 'string' ? updateDataInput.clave.trim() : updateDataInput.clave) || null;
+      (updateData as any).clave = finalClave;
+      if (finalClave && finalClave !== (userBeforeUpdate as any).clave) {
         try {
-          const response = await fetch(`https://pz3bmmqsty.us-east-1.awsapprunner.com/api/rh/horario-trabajador?trabajador=${updateDataInput.clave}`, {
+          const response = await fetch(`https://pz3bmmqsty.us-east-1.awsapprunner.com/api/rh/horario-trabajador?trabajador=${finalClave}`, {
             headers: {
               'x-api-key': import.meta.env.TOKEN_ESPERADO || 'CHURRUMAIS-1979'
             }

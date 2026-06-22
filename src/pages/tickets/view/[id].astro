@@ -1160,6 +1160,7 @@ console.log("CAREER DEBUG:", { ofertaDesc, carreraOriginal: traslado?.carrera?.d
         handleNewHistoryEntry,
     } from "@/scripts/ticket-view-logic.ts";
     import { toast } from "@/lib/toast";
+    import { navigate } from "astro:transitions/client";
 
     document.addEventListener("astro:page-load", () => {
         init();
@@ -1340,7 +1341,7 @@ console.log("CAREER DEBUG:", { ofertaDesc, carreraOriginal: traslado?.carrera?.d
                              });
                              if (!res.ok) throw new Error("Error updating ticket");
                              toast.success("Ticket actualizado correctamente");
-                             setTimeout(() => window.location.reload(), 1000);
+                             setTimeout(() => navigate(window.location.pathname + window.location.search), 1000);
                          } catch (e) {
                              console.error(e);
                              toast.error("Error al actualizar");
