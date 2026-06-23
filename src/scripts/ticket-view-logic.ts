@@ -151,6 +151,26 @@ export function initEditForm() {
             return;
         }
 
+        // Validación: El ingeniero asignado no puede ser el mismo auditor
+        const atiendeSelect = document.getElementById('atiendeId') as HTMLSelectElement | null;
+        const auditorDocsSelect = document.getElementById('auditor_docsId') as HTMLSelectElement | null;
+        const auditorReqSelect = document.getElementById('auditor_reqId') as HTMLSelectElement | null;
+
+        const atiendeId = atiendeSelect ? atiendeSelect.value : "";
+        const auditorDocsId = auditorDocsSelect ? auditorDocsSelect.value : "";
+        const auditorReqId = auditorReqSelect ? auditorReqSelect.value : "";
+
+        if (atiendeId) {
+            if (atiendeId === auditorDocsId) {
+                toast.error('El ingeniero asignado no puede ser el auditor de documentos.');
+                return;
+            }
+            if (atiendeId === auditorReqId) {
+                toast.error('El ingeniero asignado no puede ser el auditor de adeudos.');
+                return;
+            }
+        }
+
         // Confirmation Logic for Creator on Closed Tickets
         const isCreator = window.ticketViewData?.isCreator;
         const currentStatus = ticket.estatus.nombre;

@@ -5,13 +5,20 @@ Todos los cambios notables en este proyecto serán documentados en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Versionado Semántico](https://semver.org/lang/es/).
 
-## 2026-06-23 (Remoción de "Bloques" en Carrera para Traslados)
+## 2026-06-23 (Mejoras y Restricciones en Traslados)
 
-### Cambios en Frontend (Formulario de Traslado)
-
+### Remoción de "Bloques" en Carrera
 *   **`src/pages/tickets/soporte/traslado.astro`:**
     *   Se añadió una validación en la función `consultarDetalleAlumno` para limpiar el valor de la carrera devuelto por la API cuando el campus origen es `"Virtual"`.
-    *   La limpieza remueve la palabra "Bloques" (independientemente de mayúsculas o minúsculas) y cualquier espacio en blanco precedente, asegurando que coincida exactamente con las opciones permitidas en `carreraOptions` y pase la validación.
+    *   La limpieza remueve la palabra "Bloques" (independientemente de mayúsculas o minúsculas) y cualquier espacio en blanco precedente, asegurando que coincida exactamente con las opciones permitidas en `carreraOptions`.
+
+### Restricción de Asignación de Auditores
+*   **`src/pages/api/tickets/update.ts` (API):**
+    *   Se implementó una validación robusta en el backend que verifica el `atiendeId` final contra el `auditor_docsId` y `auditor_reqId` (tanto los que llegan en el payload como los previamente existentes en la base de datos). Devuelve un error 400 si el ingeniero asignado coincide con alguno de los auditores del traslado.
+*   **`src/pages/tickets/view/[id].astro` (Frontend):**
+    *   Se añadió una validación defensiva en el manejador del botón `btn-save-transfer-changes` para evitar que el usuario intente guardar cambios si el ingeniero asignado coincide con el auditor de documentos o con el auditor de adeudos, mostrando un mensaje de advertencia mediante `toast.error`.
+*   **`src/scripts/ticket-view-logic.ts` (Frontend):**
+    *   Se integró la misma validación preventiva en la función de submit general `initEditForm` para garantizar la integridad y coherencia desde el envío del formulario.
 
 ---
 

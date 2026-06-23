@@ -99,6 +99,32 @@ export const PATCH: APIRoute = async ({ request, locals }) => {
             descripcion_calif
         } = updateDataInput;
 
+        // Validación: El ingeniero asignado no puede ser el mismo auditor
+        let finalAtiendeId: number | null = ticketBeforeUpdate.atiendeId;
+        if ('atiendeId' in updateDataInput) {
+            const parsed = Number(updateDataInput.atiendeId);
+            finalAtiendeId = parsed > 0 ? parsed : null;
+        }
+
+        let finalAuditorDocsId: number | null = oldTraslado?.auditor_docsId ?? null;
+        if (auditor_docsId !== undefined) {
+            finalAuditorDocsId = auditor_docsId ? Number(auditor_docsId) : null;
+        }
+
+        let finalAuditorReqId: number | null = oldTraslado?.auditor_reqId ?? null;
+        if (auditor_reqId !== undefined) {
+            finalAuditorReqId = auditor_reqId ? Number(auditor_reqId) : null;
+        }
+
+        if (finalAtiendeId !== null) {
+            if (finalAtiendeId === finalAuditorDocsId) {
+                return new Response(JSON.stringify({ message: 'El ingeniero asignado no puede ser el auditor de documentos.' }), { status: 400 });
+            }
+            if (finalAtiendeId === finalAuditorReqId) {
+                return new Response(JSON.stringify({ message: 'El ingeniero asignado no puede ser el auditor de adeudos.' }), { status: 400 });
+            }
+        }
+
         let trasladoUpdateData: any = {};
         if (matricula !== undefined) trasladoUpdateData.matricula = matricula;
         if (alumno !== undefined) trasladoUpdateData.alumno = alumno;

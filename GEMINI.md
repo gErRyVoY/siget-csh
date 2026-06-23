@@ -10,6 +10,7 @@
 3. Probar el proyecto en local con la base de datos PostgreSQL para verificar la integridad tras la fusión.
 
 **Pasos Completados:**
+- ✅ **Restricción de Asignación de Auditores en Traslados (2026-06-23):** Implementada validación en el frontend (formulario de traslados y submit general) y en el backend (API patch) para evitar que el ingeniero asignado al ticket ('Atiende') coincida con el auditor de documentos o con el auditor de adeudos.
 - ✅ **Remoción de "Bloques" en Carrera (2026-06-23):** Implementada validación en el formulario de traslados (`consultarDetalleAlumno`) para remover la palabra "Bloques" (y el espacio previo) al consultar alumnos con campus origen "Virtual", asegurando la coincidencia exacta con `carreraOptions` y pasando la validación de oferta académica.
 - ✅ Implementada validación en el login de `auth.config.ts` consultando la API `/api/rh/consultar-trabajador` para obtener la `clave` y posteriormente sincronizar el `horario_disponibilidad` guardándolo en BD.
 - ✅ Añadidas columnas `alias` (Usuario), `atiendeTicketsCsh` y `atiendeTicketsMkt` (Rol) a la base de datos vía SQL directo para evitar la congelación del cliente `dev`.
@@ -92,9 +93,11 @@ A continuación se listan los proyectos prioritarios. Tu tarea es ayudar a refin
     * **Infraestructura y Despliegue (CI/CD):** Implementado. El flujo con GitHub Actions, Docker, AWS ECR, Secrets Manager y App Runner está operativo.
 
 # Historial de Cambios (Log)
-## 2026-06-23 (Remoción de "Bloques" en Carrera para Traslados)
+## 2026-06-23 (Mejoras y Restricciones en Traslados)
 *   **Formulario de Traslados (`/tickets/soporte/traslado.astro`):**
-    *   **Limpieza de Carreras:** Se añadió una validación insensible a mayúsculas/minúsculas en el método `consultarDetalleAlumno` para limpiar la palabra "Bloques" (y el espacio previo) de la carrera obtenida de la API de alumnos si el campus origen es "Virtual". Esto previene fallas de validación de oferta académica en el frontend.
+    *   **Limpieza de Carreras:** Se añadió una validación en el método `consultarDetalleAlumno` para limpiar la palabra "Bloques" (y el espacio previo) de la carrera obtenida de la API de alumnos si el campus origen es "Virtual".
+*   **Gestión de Tickets y Traslados (Detalle):**
+    *   **Restricción de Asignación de Auditores:** Se implementó una lógica de validación tanto en el frontend (`view/[id].astro` y `ticket-view-logic.ts`) como en el backend (`api/tickets/update.ts`) para impedir que un traslado guarde al mismo ingeniero asignado ("Atiende") como "Auditor de Documentos" o "Auditor de Adeudos" (escolares o financieros). Devuelve un error 400 en la API y bloquea con `toast.error` en la UI si coinciden.
 
 ## 2026-06-22 (Corrección de Restricción Única en Clave)
 *   **Edición de Usuarios (`/api/admin/usuarios.ts`):**

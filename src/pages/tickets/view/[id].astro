@@ -1303,9 +1303,30 @@ console.log("CAREER DEBUG:", { ofertaDesc, carreraOriginal: traslado?.carrera?.d
                      saveBtn.replaceWith(newSaveBtn);
                      
                      newSaveBtn.addEventListener("click", async () => {
-                         const originalText = newSaveBtn.textContent || "Guardar cambios";
-                         newSaveBtn.textContent = "Guardando...";
-                         newSaveBtn.disabled = true;
+                          const originalText = newSaveBtn.textContent || "Guardar cambios";
+
+                          // Validación: El ingeniero asignado no puede ser el mismo auditor
+                          const atiendeSelect = document.querySelector("select[name='atiendeId']") as HTMLSelectElement | null;
+                          const auditorDocsSelect = document.querySelector("select[name='auditor_docsId']") as HTMLSelectElement | null;
+                          const auditorReqSelect = document.querySelector("select[name='auditor_reqId']") as HTMLSelectElement | null;
+
+                          const atiendeId = atiendeSelect ? atiendeSelect.value : "";
+                          const auditorDocsId = auditorDocsSelect ? auditorDocsSelect.value : "";
+                          const auditorReqId = auditorReqSelect ? auditorReqSelect.value : "";
+
+                          if (atiendeId) {
+                              if (atiendeId === auditorDocsId) {
+                                  toast.error("El ingeniero asignado no puede ser el auditor de documentos.");
+                                  return;
+                              }
+                              if (atiendeId === auditorReqId) {
+                                  toast.error("El ingeniero asignado no puede ser el auditor de adeudos.");
+                                  return;
+                              }
+                          }
+
+                          newSaveBtn.textContent = "Guardando...";
+                          newSaveBtn.disabled = true;
 
                          const payload = {
                              ticketId: (window as any).ticketViewData.ticketId,
