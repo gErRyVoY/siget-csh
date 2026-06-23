@@ -5,6 +5,16 @@ Todos los cambios notables en este proyecto serán documentados en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Versionado Semántico](https://semver.org/lang/es/).
 
+## 2026-06-23 (Remoción de "Bloques" en Carrera para Traslados)
+
+### Cambios en Frontend (Formulario de Traslado)
+
+*   **`src/pages/tickets/soporte/traslado.astro`:**
+    *   Se añadió una validación en la función `consultarDetalleAlumno` para limpiar el valor de la carrera devuelto por la API cuando el campus origen es `"Virtual"`.
+    *   La limpieza remueve la palabra "Bloques" (independientemente de mayúsculas o minúsculas) y cualquier espacio en blanco precedente, asegurando que coincida exactamente con las opciones permitidas en `carreraOptions` y pase la validación.
+
+---
+
 ## 2026-06-22 — Sesión 25 — Optimización de Navegación Global (Anti-Parpadeo) y Queries Paralelas
 
 ### Problema resuelto

@@ -10,6 +10,7 @@
 3. Probar el proyecto en local con la base de datos PostgreSQL para verificar la integridad tras la fusión.
 
 **Pasos Completados:**
+- ✅ **Remoción de "Bloques" en Carrera (2026-06-23):** Implementada validación en el formulario de traslados (`consultarDetalleAlumno`) para remover la palabra "Bloques" (y el espacio previo) al consultar alumnos con campus origen "Virtual", asegurando la coincidencia exacta con `carreraOptions` y pasando la validación de oferta académica.
 - ✅ Implementada validación en el login de `auth.config.ts` consultando la API `/api/rh/consultar-trabajador` para obtener la `clave` y posteriormente sincronizar el `horario_disponibilidad` guardándolo en BD.
 - ✅ Añadidas columnas `alias` (Usuario), `atiendeTicketsCsh` y `atiendeTicketsMkt` (Rol) a la base de datos vía SQL directo para evitar la congelación del cliente `dev`.
 - ✅ Actualizado el sistema de Roles (`auth.config.ts`) para incluir y propagar los nuevos campos sin alterar el `DefaultSession["user"]` negativamente.
@@ -91,6 +92,10 @@ A continuación se listan los proyectos prioritarios. Tu tarea es ayudar a refin
     * **Infraestructura y Despliegue (CI/CD):** Implementado. El flujo con GitHub Actions, Docker, AWS ECR, Secrets Manager y App Runner está operativo.
 
 # Historial de Cambios (Log)
+## 2026-06-23 (Remoción de "Bloques" en Carrera para Traslados)
+*   **Formulario de Traslados (`/tickets/soporte/traslado.astro`):**
+    *   **Limpieza de Carreras:** Se añadió una validación insensible a mayúsculas/minúsculas en el método `consultarDetalleAlumno` para limpiar la palabra "Bloques" (y el espacio previo) de la carrera obtenida de la API de alumnos si el campus origen es "Virtual". Esto previene fallas de validación de oferta académica en el frontend.
+
 ## 2026-06-22 (Corrección de Restricción Única en Clave)
 *   **Edición de Usuarios (`/api/admin/usuarios.ts`):**
     *   **Bug Fix Crítico:** Se solucionó el error 500 (Unique constraint failed on the fields: `clave`) al intentar guardar cambios en la edición de usuarios.

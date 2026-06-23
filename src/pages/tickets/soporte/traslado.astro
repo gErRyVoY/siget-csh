@@ -1175,6 +1175,9 @@ const descuentoOptions = descuentos.map((d) => d.descripcion);
                                 escolarizadaCheckbox.checked = true;
                                 escolarizadaCheckbox.dispatchEvent(new Event('change'));
                             }
+                            if (campus.toLowerCase() === "virtual") {
+                                rawCarrera = rawCarrera.replace(/\s*bloques/gi, '').replace(/  +/g, ' ').trim();
+                            }
                             carreraInput.value = formatCarrera(rawCarrera);
                             validate(["carrera"]);
                             handleEscolarizadaLogic();
