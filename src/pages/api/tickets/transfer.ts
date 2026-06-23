@@ -103,25 +103,7 @@ export const POST: APIRoute = async ({ request }) => {
             }
         }
 
-        // 4. Auditors ... (unchanged code for auditors logic, assuming it's above or I include it)
-        // Find User with auditor_docs = true. 
-        let auditorDocs = await prisma.usuario.findFirst({
-            where: { auditor_docs: true, empresaId: empresaOrigen.id, activo: true }
-        });
-        if (!auditorDocs) {
-            auditorDocs = await prisma.usuario.findFirst({
-                where: { auditor_docs: true, activo: true }
-            });
-        }
-
-        let auditorReq = await prisma.usuario.findFirst({
-            where: { auditor_req: true, empresaId: empresaOrigen.id, activo: true }
-        });
-        if (!auditorReq) {
-            auditorReq = await prisma.usuario.findFirst({
-                where: { auditor_req: true, activo: true }
-            });
-        }
+        // 4. Auditors - No longer automatically assigned upon creation
 
         // ... (rest of imports)
 
@@ -206,8 +188,8 @@ export const POST: APIRoute = async ({ request }) => {
                     mail_escuela: mail_escuela ? String(mail_escuela) : null,
                     telefono: telefono ? String(telefono) : null,
                     tel_movil: tel_movil ? String(tel_movil) : null,
-                    auditor_docsId: auditorDocs?.id,
-                    auditor_reqId: auditorReq?.id,
+                    auditor_docsId: null,
+                    auditor_reqId: null,
                 }
             });
 
@@ -237,8 +219,6 @@ export const POST: APIRoute = async ({ request }) => {
 
         const targetUsers: number[] = [];
         if (atiendeId) targetUsers.push(atiendeId);
-        if (auditorDocs) targetUsers.push(auditorDocs.id);
-        if (auditorReq && auditorReq.id !== auditorDocs?.id) targetUsers.push(auditorReq.id);
 
         // Send notifications
         sendNotification(notificationPayload, targetUsers.length > 0 ? targetUsers : undefined);

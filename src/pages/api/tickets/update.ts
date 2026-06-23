@@ -85,6 +85,7 @@ export const PATCH: APIRoute = async ({ request, locals }) => {
             destinoId,
             carreraId,
             nuevo_ingreso,
+            tiene_descuento,
             bloque_nombre,
             bloqueId,
             descuentoId,
@@ -134,10 +135,21 @@ export const PATCH: APIRoute = async ({ request, locals }) => {
         if (typeof nuevo_ingreso === 'boolean') trasladoUpdateData.nuevo_ingreso = nuevo_ingreso;
         if (bloque_nombre !== undefined) trasladoUpdateData.bloque_nombre = bloque_nombre;
         if (bloqueId) trasladoUpdateData.bloqueId = bloqueId === 'null' ? null : Number(bloqueId);
-        if (descuentoId) trasladoUpdateData.descuentoId = Number(descuentoId);
-
-        // If exact discount name is passed but no ID, we might just log the name change from the frontend if needed?
-        // Actually the frontend passes ID now.
+        
+        if (descuentoId) {
+            trasladoUpdateData.descuentoId = Number(descuentoId);
+        } else if (tiene_descuento !== undefined) {
+            if (tiene_descuento === false) {
+                trasladoUpdateData.descuentoId = 1; // N/A
+            } else if (descuento_nombre) {
+                const descuento = await prisma.descuento.findFirst({
+                    where: { descripcion: descuento_nombre, activo: true }
+                });
+                if (descuento) {
+                    trasladoUpdateData.descuentoId = descuento.id;
+                }
+            }
+        }
 
         // Auditors & Validations
         if (auditor_docsId !== undefined) trasladoUpdateData.auditor_docsId = auditor_docsId ? Number(auditor_docsId) : null;

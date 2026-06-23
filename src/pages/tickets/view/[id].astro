@@ -293,8 +293,7 @@ const fieldMap: Record<string, string> = {
 const isTraslado = ticket.traslados != null;
 const traslado = ticket.traslados ?? null;
 
-const currentUserId = session?.user?.id ? parseInt(String(session.user.id), 10) : -1;
-const isOwner = ticket.solicitanteId === currentUserId;
+const currentUserId = userId; // Alias: userId ya declarado en el bloque de access control
 
 // Permission Logic for Auditors
 const canEditDocs = isPrivileged || (traslado && traslado.auditor_docsId === currentUserId);
@@ -533,19 +532,19 @@ console.log("CAREER DEBUG:", { ofertaDesc, carreraOriginal: traslado?.carrera?.d
                                             type="checkbox" 
                                             id="tiene_descuento" 
                                             name="tiene_descuento" 
-                                            checked={!!traslado.descuento} 
+                                            checked={traslado.descuento && traslado.descuentoId !== 1 && traslado.descuento.descripcion.toUpperCase() !== 'N/A'} 
                                             class="rounded border-input text-primary focus:ring-primary"
                                             disabled={!isPrivileged && !isOwner}
                                         />
                                         <label for="tiene_descuento" class="text-xs font-medium text-muted-foreground">¿Tiene descuento?</label>
                                     </div>
-                                    <div id="descuento-container" class={`relative ${!!traslado.descuento ? '' : 'hidden'}`}>
+                                    <div id="descuento-container" class={`relative ${traslado.descuento && traslado.descuentoId !== 1 && traslado.descuento.descripcion.toUpperCase() !== 'N/A' ? '' : 'hidden'}`}>
                                         <input type="hidden" id="descuentoId" name="descuentoId" value={traslado.descuentoId || ''} />
                                         <input 
                                             type="text" 
                                             id="descuento-valor" 
                                             name="descuento-valor"
-                                            value={traslado.descuento?.descripcion || ''}
+                                            value={traslado.descuento && traslado.descuentoId !== 1 && traslado.descuento.descripcion.toUpperCase() !== 'N/A' ? traslado.descuento.descripcion : ''}
                                             class="w-full rounded-md border-border bg-input px-3 py-2 text-sm"
                                             placeholder="Buscar descuento..."
                                             autocomplete="off"
@@ -663,7 +662,7 @@ console.log("CAREER DEBUG:", { ofertaDesc, carreraOriginal: traslado?.carrera?.d
                                         class="w-full rounded-md border-border bg-input p-1 text-sm"
                                         disabled={!isPrivileged}
                                     >
-                                        <option value="">Sin asignar</option>
+                                        <option value="" selected={!traslado.auditor_docsId}>Sin asignar</option>
                                         {cshAuditorDocs.map(u => (
                                             <option value={u.id} selected={u.id === traslado.auditor_docsId}>{u.nombres} {u.apellidos}</option>
                                         ))}
@@ -707,7 +706,7 @@ console.log("CAREER DEBUG:", { ofertaDesc, carreraOriginal: traslado?.carrera?.d
                                         class="w-full rounded-md border-border bg-input p-1 text-sm"
                                         disabled={!isPrivileged}
                                     >
-                                        <option value="">Sin asignar</option>
+                                        <option value="" selected={!traslado.auditor_reqId}>Sin asignar</option>
                                         {cshAuditorReq.map(u => (
                                             <option value={u.id} selected={u.id === traslado.auditor_reqId}>{u.nombres} {u.apellidos}</option>
                                         ))}

@@ -1148,6 +1148,17 @@ const descuentoOptions = descuentos.map((d) => d.descripcion);
             const campus = campusOrigenInput.value.trim();
 
             if (matricula && campus && campusOptions.includes(campus)) {
+                const loadingToast = toast.info(
+                    `<div class="flex items-center gap-2">
+                        <svg class="animate-spin h-4 w-4 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <span>Buscando alumno...</span>
+                    </div>`,
+                    { allowHtml: true, duration: 0 }
+                );
+
                 try {
                     const url = `https://pz3bmmqsty.us-east-1.awsapprunner.com/api/alumnos/consultar-detalle?campus=${encodeURIComponent(campus)}&matricula=${encodeURIComponent(matricula)}`;
                     const res = await fetch(url, {
@@ -1160,6 +1171,8 @@ const descuentoOptions = descuentos.map((d) => d.descripcion);
                     try {
                         json = await res.json();
                     } catch (e) {}
+
+                    loadingToast.dismiss();
 
                     if (res.ok && json?.status === "success" && json?.data) {
                         const data = json.data;
@@ -1197,6 +1210,7 @@ const descuentoOptions = descuentos.map((d) => d.descripcion);
                         toast.error("Ocurrió un error al consultar el alumno.");
                     }
                 } catch (e) {
+                    loadingToast.dismiss();
                     console.error("Error fetching alumno details", e);
                     toast.error("Error de conexión al consultar el alumno.");
                 }

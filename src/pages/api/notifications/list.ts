@@ -64,6 +64,7 @@ export const GET: APIRoute = async ({ request }) => {
             const userTickets = await prisma.ticket.findMany({
                 where: { solicitanteId: userId },
                 orderBy: { fechaact: 'desc' },
+                take: 100, // Optimize: fetch only the 100 most recently updated tickets
                 include: {
                     historial_solicitudes: {
                         orderBy: { fecha_cambio: 'desc' },

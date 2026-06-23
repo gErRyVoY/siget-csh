@@ -63,6 +63,8 @@ export const GET: APIRoute = async ({ request }) => {
                 where: {
                     solicitanteId: userId,
                 },
+                orderBy: { fechaact: 'desc' },
+                take: 100, // Optimize: count only among the 100 most recently updated tickets
                 include: {
                     historial_solicitudes: {
                         orderBy: { fecha_cambio: 'desc' },

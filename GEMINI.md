@@ -1,8 +1,8 @@
 # Plan de Trabajo (SIGET-CSH)
 
-**Tarea Actual:** Seguridad — Control de acceso granular a vista de ticket completado ✅
+**Tarea Actual:** Bug Fix — Corrección de descuento en detalle de ticket y optimización de notificaciones ✅
 
-**Estado:** Completado. Se implementó verificación de permisos a nivel de ticket individual en `view/[id].astro`. Pendiente: despliegue a AWS.
+**Estado:** Completado. Se solucionó el error del checkbox de descuento y se implementaron mejoras de rendimiento y feedback visual en el dropdown y clic de notificaciones. Pendiente: despliegue a AWS.
 
 **Pasos Siguientes:**
 1. Estabilizar y continuar el flujo de despliegue usando la infraestructura AWS (ECR, App Runner, RDS).
@@ -10,9 +10,15 @@
 3. Probar el proyecto en local con la base de datos PostgreSQL para verificar la integridad tras la fusión.
 
 **Pasos Completados:**
+- ✅ **Descuento y Notificaciones (2026-06-23):** Se corrigió el bug del checkbox "¿Tiene descuento?" en la vista de detalle de tickets (que se marcaba por defecto al existir el descuento `1` / `"N/A"`). Se agregaron optimizaciones de base de datos (`take: 100`) para acelerar la consulta de notificaciones de usuarios comunes, un spinner inmediato al abrir el dropdown de notificaciones y la animación de parpadeo blanco (overlay de carga) al hacer clic sobre cualquier notificación.
+- ✅ **Indicador de Carga en Búsqueda de Alumno (2026-06-23):** Se modificó la librería de toasts (`toast.ts`) para devolver un manejador con función `.dismiss()`. En el formulario de traslados, al consultar la API de alumnos, se muestra un toast temporal con spinner SVG (`"Buscando alumno..."`) y se descarta al obtener respuesta.
+- ✅ **Sin Asignación Automática de Auditores en Traslados (2026-06-23):** Se eliminó la búsqueda y asignación automática de `auditor_docsId` and `auditor_reqId` al crear nuevos tickets de traslado en `api/tickets/transfer.ts`. Ahora ambos campos inician en `null` y deben ser asignados manualmente en la vista de detalle. También se removieron los auditores del listado de destinatarios SSE al crear el traslado.
+- ✅ **Sincronización de Horario al Editar Usuarios (2026-06-23):** Se implementó una recarga suave automática de la vista de edición de usuarios cuando la clave ha sido modificada al hacer clic en "Guardar cambios", permitiendo que los campos de horario de disponibilidad se refresquen instantáneamente con los datos sincronizados desde la API de RH mediante SSR. Además, se agregaron indicadores visuales al enviar el formulario (deshabilitar botón, cambiar texto a `"Guardando..."` y activar el overlay de carga).
+- ✅ **Indicador de Carga en Lista de Usuarios (2026-06-23):** Se integró un spinner e indicador visual de carga ("Cargando usuarios...") en la tabla de usuarios de `[campus].astro` durante la consulta HTTP a la API. Esto previene que la tabla se muestre vacía al navegar hacia atrás o cambiar de campus.
 - ✅ **Control de Acceso Granular a Vista de Ticket (2026-06-23):** Se implementó verificación de permisos SSR en `tickets/view/[id].astro`. Solo pueden ver un ticket: (1) el solicitante que lo creó, (2) usuarios con rol privilegiado CSH para tickets no-Marketing, (3) agentes de Marketing para tickets de esa categoría. Si no se cumple ninguna condición, se redirige a `/` con la cookie `siget_flash_unauthorized`.
 - ✅ **Restricción de Asignación de Auditores en Traslados (2026-06-23):** Implementada validación en el frontend (formulario de traslados y submit general) y en el backend (API patch) para evitar que el ingeniero asignado al ticket ('Atiende') coincida con el auditor de documentos o con el auditor de adeudos.
 - ✅ **Remoción de "Bloques" en Carrera (2026-06-23):** Implementada validación en el formulario de traslados (`consultarDetalleAlumno`) para remover la palabra "Bloques" (y el espacio previo) al consultar alumnos con campus origen "Virtual", asegurando la coincidencia exacta con `carreraOptions` y pasando la validación de oferta académica.
+- ✅ **Selección por Defecto "Sin Asignar" en Auditores (2026-06-23):** Se configuraron los dropdowns de auditores en la vista de detalle de traslados para seleccionar la opción "Sin asignar" por defecto cuando no hay auditores definidos en la BD (valores `null`), en lugar de mostrar de forma automática el primer usuario de la lista.
 - ✅ Implementada validación en el login de `auth.config.ts` consultando la API `/api/rh/consultar-trabajador` para obtener la `clave` y posteriormente sincronizar el `horario_disponibilidad` guardándolo en BD.
 - ✅ Añadidas columnas `alias` (Usuario), `atiendeTicketsCsh` y `atiendeTicketsMkt` (Rol) a la base de datos vía SQL directo para evitar la congelación del cliente `dev`.
 - ✅ Actualizado el sistema de Roles (`auth.config.ts`) para incluir y propagar los nuevos campos sin alterar el `DefaultSession["user"]` negativamente.
@@ -94,11 +100,17 @@ A continuación se listan los proyectos prioritarios. Tu tarea es ayudar a refin
     * **Infraestructura y Despliegue (CI/CD):** Implementado. El flujo con GitHub Actions, Docker, AWS ECR, Secrets Manager y App Runner está operativo.
 
 # Historial de Cambios (Log)
-## 2026-06-23 (Mejoras y Restricciones en Traslados)
+## 2026-06-23 (Sincronización de Horario y Restricciones de Traslados)
+*   **Edición de Usuarios (`/admin/usuarios/editar/[id].astro` y logic):**
+    *   **Refresco de Horario por Clave:** Se implementó una recarga suave automática mediante `navigate()` al guardar los cambios del usuario si la clave de empleado cambió, permitiendo reflejar el horario recuperado y formateado por la API de RH en el frontend.
+    *   **Indicador de Carga al Guardar:** Al presionar "Guardar cambios", el botón se deshabilita temporalmente, su texto cambia a "Guardando..." y se muestra el overlay global `#page-loading-overlay` para proveer feedback inmediato de guardado al usuario.
+*   **Listado de Usuarios (`/admin/usuarios/[campus].astro`):**
+    *   **Spinner de Carga:** Se implementó un indicador visual con spinner animado mientras se cargan los registros mediante fetch, previniendo el parpadeo en blanco/vacío al regresar a la lista de usuarios.
 *   **Formulario de Traslados (`/tickets/soporte/traslado.astro`):**
     *   **Limpieza de Carreras:** Se añadió una validación en el método `consultarDetalleAlumno` para limpiar la palabra "Bloques" (y el espacio previo) de la carrera obtenida de la API de alumnos si el campus origen es "Virtual".
 *   **Gestión de Tickets y Traslados (Detalle):**
     *   **Restricción de Asignación de Auditores:** Se implementó una lógica de validación tanto en el frontend (`view/[id].astro` y `ticket-view-logic.ts`) como en el backend (`api/tickets/update.ts`) para impedir que un traslado guarde al mismo ingeniero asignado ("Atiende") como "Auditor de Documentos" o "Auditor de Adeudos" (escolares o financieros). Devuelve un error 400 en la API y bloquea con `toast.error` en la UI si coinciden.
+    *   **Selección por Defecto "Sin Asignar":** Se corrigió la pre-selección automática en los dropdowns de auditores cuando no tienen valor asignado (`null`). Ahora se muestra "Sin asignar" de forma correcta en lugar del primer auditor ordenado alfabéticamente.
 
 ## 2026-06-22 (Corrección de Restricción Única en Clave)
 *   **Edición de Usuarios (`/api/admin/usuarios.ts`):**

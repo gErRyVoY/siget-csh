@@ -212,6 +212,7 @@ secciones.forEach((sec) => {
       data-user-id={user.id}
       data-horario={horarioString}
       data-original-rol-id={user.rolId}
+      data-original-clave={user.clave || ""}
     >
       <fieldset disabled={!canEdit} class="space-y-6">
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">

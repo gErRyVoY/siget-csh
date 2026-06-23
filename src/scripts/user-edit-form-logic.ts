@@ -74,6 +74,20 @@ export function initializeUserEditForm() {
     function initFormSubmit() {
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
+
+            const submitBtn = form.querySelector('button[type="submit"]') as HTMLButtonElement | null;
+            const originalText = submitBtn ? submitBtn.textContent : 'Guardar cambios';
+
+            if (submitBtn) {
+                submitBtn.textContent = 'Guardando...';
+                submitBtn.disabled = true;
+            }
+
+            const overlay = document.getElementById('page-loading-overlay');
+            if (overlay) {
+                overlay.style.display = 'block';
+            }
+
             const formData = new FormData(form);
             const horarioData: Record<string, { inicio: FormDataEntryValue | null, fin: FormDataEntryValue | null }> = {};
 
@@ -112,21 +126,46 @@ export function initializeUserEditForm() {
                 }
 
                 const originalRolIdText = form.dataset.originalRolId;
-                if (originalRolIdText && data.rolId !== parseInt(originalRolIdText, 10)) {
-                    toast.success('Rol modificado. Recargando permisos para aplicar exclusiones...', {
-                        duration: 3000
-                    });
+                const originalClave = form.dataset.originalClave || "";
+                const claveCambiada = data.clave !== originalClave;
+
+                if ((originalRolIdText && data.rolId !== parseInt(originalRolIdText, 10)) || claveCambiada) {
+                    if (claveCambiada) {
+                        toast.success('Usuario actualizado. Sincronizando horario...', {
+                            duration: 3000
+                        });
+                        // Actualizar la clave original en el dataset para futuros submits
+                        form.dataset.originalClave = data.clave;
+                    } else {
+                        toast.success('Rol modificado. Recargando permisos para aplicar exclusiones...', {
+                            duration: 3000
+                        });
+                    }
                     setTimeout(async () => {
                         const { navigate } = await import('astro:transitions/client');
                         navigate(window.location.pathname);
                     }, 1500);
                 } else {
                     toast.success('Usuario actualizado correctamente');
+                    if (submitBtn) {
+                        submitBtn.textContent = originalText;
+                        submitBtn.disabled = false;
+                    }
+                    if (overlay) {
+                        overlay.style.display = 'none';
+                    }
                 }
 
             } catch (error: any) {
                 console.error('Submit error:', error);
                 toast.error(error.message || 'Error al actualizar el usuario');
+                if (submitBtn) {
+                    submitBtn.textContent = originalText;
+                    submitBtn.disabled = false;
+                }
+                if (overlay) {
+                    overlay.style.display = 'none';
+                }
             }
         });
     }

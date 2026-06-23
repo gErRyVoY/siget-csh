@@ -181,7 +181,7 @@ class ToastManager {
         return toast;
     }
 
-    public show(options: ToastOptions): void {
+    public show(options: ToastOptions): { dismiss: () => void } {
         const position = options.position || this.config.defaultPosition;
         const duration = options.duration ?? this.config.defaultDuration;
 
@@ -200,11 +200,19 @@ class ToastManager {
             toast.classList.add('toast-show');
         });
 
+        let timerId: any = null;
         if (duration > 0) {
-            setTimeout(() => {
+            timerId = setTimeout(() => {
                 this.removeToast(toast);
             }, duration);
         }
+
+        return {
+            dismiss: () => {
+                if (timerId) clearTimeout(timerId);
+                this.removeToast(toast);
+            }
+        };
     }
 
     private removeToast(toast: HTMLElement): void {
@@ -224,20 +232,20 @@ class ToastManager {
         }, 300);
     }
 
-    public success(message: string, options?: Partial<ToastOptions>): void {
-        this.show({ ...options, message, type: 'success' });
+    public success(message: string, options?: Partial<ToastOptions>): { dismiss: () => void } {
+        return this.show({ ...options, message, type: 'success' });
     }
 
-    public error(message: string, options?: Partial<ToastOptions>): void {
-        this.show({ ...options, message, type: 'error' });
+    public error(message: string, options?: Partial<ToastOptions>): { dismiss: () => void } {
+        return this.show({ ...options, message, type: 'error' });
     }
 
-    public warning(message: string, options?: Partial<ToastOptions>): void {
-        this.show({ ...options, message, type: 'warning' });
+    public warning(message: string, options?: Partial<ToastOptions>): { dismiss: () => void } {
+        return this.show({ ...options, message, type: 'warning' });
     }
 
-    public info(message: string, options?: Partial<ToastOptions>): void {
-        this.show({ ...options, message, type: 'info' });
+    public info(message: string, options?: Partial<ToastOptions>): { dismiss: () => void } {
+        return this.show({ ...options, message, type: 'info' });
     }
 
     public clear(): void {

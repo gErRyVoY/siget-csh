@@ -5,6 +5,70 @@ Todos los cambios notables en este proyecto serán documentados en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Versionado Semántico](https://semver.org/lang/es/).
 
+## 2026-06-23 (Corrección de Descuento en Vista de Ticket y Optimizaciones de Notificaciones)
+
+### Bug Fix: Checkbox "¿Tiene descuento?" en Detalle de Ticket
+*   **`src/pages/tickets/view/[id].astro` (Frontend):**
+    *   **Causa del bug:** La base de datos tiene una relación no nula de descuento que por defecto apunta a `1` ("N/A") cuando no se aplica descuento. Como `traslado.descuento` siempre estaba definido, la condición `!!traslado.descuento` resultaba siempre verdadera y marcaba el checkbox.
+    *   **Solución:** Se corrigió la condición de marcado del checkbox, la clase de visibilidad del contenedor y el valor por defecto para que solo se activen si `descuentoId !== 1` y la descripción no es `"N/A"`.
+*   **`src/pages/api/tickets/update.ts` (API):**
+    *   Se implementó la lógica en el backend (petición PATCH) para procesar los campos `tiene_descuento` y `descuento_nombre` de forma correcta. Si `tiene_descuento` es falso se actualiza el `descuentoId` a `1` ("N/A"), y si es verdadero se busca el descuento correspondiente por su descripción para guardar su ID correspondiente.
+
+### UI/UX y Rendimiento: Optimizaciones en Sistema de Notificaciones
+*   **`src/layouts/MainLayout.astro` (Frontend):**
+    *   **Feedback Inmediato:** Se añadió un spinner de carga y mensaje visual ("Cargando notificaciones...") dentro del listado al abrir el dropdown de notificaciones. Esto evita que el menú se muestre vacío o desactualizado durante la petición de red.
+    *   **Transición Visual:** Al hacer clic en cualquier notificación para ver el ticket, se activa inmediatamente el overlay de carga `#page-loading-overlay` (el parpadeo blanco/loader central) para dar feedback instantáneo de que la navegación ha comenzado.
+*   **`src/pages/api/notifications/list.ts` & `count.ts` (API):**
+    *   Se optimizó la consulta a la base de datos para usuarios comunes añadiendo una cláusula `take: 100` y ordenamiento `orderBy: { fechaact: 'desc' }`. Esto evita procesar en memoria todo el historial de tickets del usuario, reduciendo significativamente el tiempo de respuesta de las notificaciones.
+
+---
+
+## 2026-06-23 (Indicador de carga en Búsqueda de Alumno)
+
+### UI/UX: Feedback Visual en Autocompletado de Alumnos
+*   **`src/lib/toast.ts`:**
+    *   Se modificaron los métodos `show`, `success`, `error`, `warning` y `info` para retornar un objeto con un método `dismiss()`. Esto permite descartar manualmente notificaciones activas de forma programática.
+*   **`src/pages/tickets/soporte/traslado.astro`:**
+    *   Se integró un toast informativo temporal con un spinner de carga SVG (`"Buscando alumno..."`) que se dispara al iniciar la consulta de detalles del alumno en `consultarDetalleAlumno()`.
+    *   El toast se descarta automáticamente al recibir respuesta (tanto exitosa como errónea) utilizando el método `dismiss()` antes de mostrar el resultado definitivo.
+
+---
+
+## 2026-06-23 (Lógica de Asignación Avanzada de Tickets)
+
+### Refactor: `src/services/ticketAssignmentService.ts`
+Se refactorizó la función `findBestAgentHybrid` y sus helpers para considerar las tres variables de disponibilidad del agente en todos los pasos de la estrategia de asignación (específica, por rol, fallback):
+
+*   **`atiendeTicketsCsh` / `atiendeTicketsMkt` (flag del Rol):** Se añadió un filtro a nivel de query de BD (`rol: { atiendeTicketsCsh: true }` o `atiendeTicketsMkt: true`) en `findAgentsByRolePermissions`. También se creó la función centralizada `isAgentAvailable()` que aplica esta validación en `findAgentsBySpecificAssignment`. El fallback (`findAgentByFallback`) también filtra por `atiendeTicketsCsh: true`.
+*   **`vacaciones` (flag del Usuario):** Ya se filtraba en queries, pero ahora también se valida dentro de `isAgentAvailable()` de forma consistente para las asignaciones específicas.
+*   **`horario_disponibilidad` (Json del Usuario):** Se corrigió el comportamiento de `filterBySchedule`: antes rechazaba a agentes sin horario definido (`return false`). Ahora los considera **disponibles sin restricción** (`return true`), lo que evita que ingenieros correctamente configurados (pero sin horario asignado aún) nunca reciban tickets.
+*   **Marketing vs CSH:** La detección de categoría Marketing (`isMarketing`) ahora se calcula una sola vez y se propaga a todos los helpers, eliminando la constante duplicada y asegurando coherencia.
+
+---
+
+## 2026-06-23 (Corrección: Sin Asignación Automática de Auditores en Traslados Nuevos)
+
+### Bug Fix: Auditores No Se Asignan al Crear Traslados
+*   **`src/pages/api/tickets/transfer.ts` (API):**
+    *   **Causa del bug:** Al crear un nuevo ticket de traslado, el endpoint buscaba y asignaba automáticamente usuarios con `auditor_docs: true` y `auditor_req: true` en los campos `auditor_docsId` y `auditor_reqId` del registro en BD.
+    *   **Corrección:** Se eliminó toda la lógica de búsqueda automática de auditores. Ahora los campos `auditor_docsId` y `auditor_reqId` se guardan como `null` al crear el traslado, debiendo ser asignados manualmente por un privilegiado en la vista de detalle del ticket.
+    *   **Notificaciones:** Se eliminaron también los auditores del listado de destinatarios de la notificación SSE al crear el traslado, ya que ya no hay auditores pre-asignados.
+
+---
+
+## 2026-06-23 (Sincronización de Horario al Editar Usuarios)
+
+### Administración: Refresco de Horario al Actualizar Clave y Mejoras en Lista
+*   **`src/pages/admin/usuarios/editar/[id].astro` (Frontend):**
+    *   Se agregó el atributo `data-original-clave` al formulario para poder identificar si la clave ha cambiado tras guardar.
+*   **`src/scripts/user-edit-form-logic.ts` (Frontend):**
+    *   Se modificó la lógica de envío de datos del formulario para que si la clave ha cambiado, se fuerce una recarga suave de la página mediante `navigate()`. Esto refresca la vista y muestra los horarios de disponibilidad obtenidos por el servidor (SSR) desde la API de RH tras guardar la clave.
+    *   **Feedback de guardado:** Se implementó una lógica interactiva en el submit que deshabilita el botón de "Guardar cambios", cambia su texto a `"Guardando..."` y activa el overlay de carga global (`#page-loading-overlay`) para simular el parpadeo/espera visual mientras la petición se procesa en el backend.
+*   **`src/pages/admin/usuarios/[campus].astro` (Frontend):**
+    *   Se implementó un spinner de carga y mensaje visual ("Cargando usuarios...") en la tabla de usuarios mientras se realiza el `fetch` asíncrono de datos desde el cliente. Esto elimina la visualización de una tabla vacía al volver atrás o filtrar, mejorando la respuesta percibida.
+
+---
+
 ## 2026-06-23 (Restricción de Acceso a Vista de Ticket)
 
 ### Seguridad: Control de Acceso Granular por Ticket
@@ -33,6 +97,12 @@ y este proyecto adhiere a [Versionado Semántico](https://semver.org/lang/es/).
     *   Se añadió una validación defensiva en el manejador del botón `btn-save-transfer-changes` para evitar que el usuario intente guardar cambios si el ingeniero asignado coincide con el auditor de documentos o con el auditor de adeudos, mostrando un mensaje de advertencia mediante `toast.error`.
 *   **`src/scripts/ticket-view-logic.ts` (Frontend):**
     *   Se integró la misma validación preventiva en la función de submit general `initEditForm` para garantizar la integridad y coherencia desde el envío del formulario.
+
+### Selección por Defecto "Sin Asignar" en Auditores
+*   **`src/pages/tickets/view/[id].astro` (Frontend):**
+    *   Se modificaron los selectores de `auditor_docsId` y `auditor_reqId` agregando la expresión `selected={!traslado.auditor_docsId}` y `selected={!traslado.auditor_reqId}` en la opción de "Sin asignar" (`value=""`).
+    *   Esto corrige el problema en el cual el navegador pre-seleccionaba por defecto al primer auditor de la lista (ej. Rogelio Elizalde o Angel Montes) cuando el ticket no tenía auditores asignados en la BD (valores `null`), forzando ahora a mostrar "Sin asignar".
+    *   El backend en `src/pages/api/tickets/update.ts` y la serialización del formulario en el frontend ya gestionan correctamente el envío de la cadena vacía `""` convirtiéndola a `null` en la BD de Prisma.
 
 ---
 
