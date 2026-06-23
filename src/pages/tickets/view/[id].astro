@@ -121,9 +121,33 @@ if (!ticket) {
 
 const session = await getSession(Astro.request);
 const PRIVILEGED_ROLES = [1, 2, 3, 4, 5, 6, 15];
-const isPrivileged = session?.user
-    ? PRIVILEGED_ROLES.includes(session.user.rol?.id ?? -1)
-    : false;
+const MARKETING_CATEGORY_ID = 12;
+
+const userRoleId = session?.user?.rol?.id ?? -1;
+const userId = session?.user?.id ? parseInt(String(session.user.id), 10) : -1;
+const isPrivileged = PRIVILEGED_ROLES.includes(userRoleId);
+const isMktAgent = session?.user?.rol?.atiendeTicketsMkt === true;
+
+// --- Control de Acceso a nivel de ticket ---
+// Determinar si el usuario puede ver este ticket:
+// 1. Es el solicitante que lo levantó (siempre puede verlo)
+// 2. Tiene rol privilegiado CSH y el ticket NO es de Marketing
+// 3. Tiene rol de Marketing y el ticket SÍ es de Marketing
+const isOwner = ticket.solicitanteId === userId;
+const canViewAsCsh = isPrivileged && ticket.categoriaId !== MARKETING_CATEGORY_ID;
+const canViewAsMkt = isMktAgent && ticket.categoriaId === MARKETING_CATEGORY_ID;
+
+if (!isOwner && !canViewAsCsh && !canViewAsMkt) {
+    Astro.cookies.set('siget_flash_unauthorized', '1', {
+        path: '/',
+        maxAge: 30,
+        sameSite: 'lax',
+        httpOnly: false,
+        secure: false,
+    });
+    return Astro.redirect("/");
+}
+
 const isReadOnly = false; // Reverted: Allow editing for all statuses
 
 
@@ -154,7 +178,7 @@ statuses = await prisma.estatus.findMany({
     where: { nombre: { in: ALLOWED_STATUSES } },
 });
 
-const MARKETING_CATEGORY_ID = 12;
+// MARKETING_CATEGORY_ID ya está definido arriba en el bloque de access control
 
 if (isPrivileged) {
     // Privileged users see all agents

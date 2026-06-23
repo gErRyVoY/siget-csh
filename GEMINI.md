@@ -1,8 +1,8 @@
 # Plan de Trabajo (SIGET-CSH)
 
-**Tarea Actual:** Optimización UX — Navegación suave (anti-parpadeo) global completada ✅
+**Tarea Actual:** Seguridad — Control de acceso granular a vista de ticket completado ✅
 
-**Estado:** Completado. Todos los `window.location.href` y `window.location.reload()` han sido reemplazados por `navigate()` de Astro View Transitions en todo el proyecto. Pendiente: despliegue a AWS.
+**Estado:** Completado. Se implementó verificación de permisos a nivel de ticket individual en `view/[id].astro`. Pendiente: despliegue a AWS.
 
 **Pasos Siguientes:**
 1. Estabilizar y continuar el flujo de despliegue usando la infraestructura AWS (ECR, App Runner, RDS).
@@ -10,6 +10,7 @@
 3. Probar el proyecto en local con la base de datos PostgreSQL para verificar la integridad tras la fusión.
 
 **Pasos Completados:**
+- ✅ **Control de Acceso Granular a Vista de Ticket (2026-06-23):** Se implementó verificación de permisos SSR en `tickets/view/[id].astro`. Solo pueden ver un ticket: (1) el solicitante que lo creó, (2) usuarios con rol privilegiado CSH para tickets no-Marketing, (3) agentes de Marketing para tickets de esa categoría. Si no se cumple ninguna condición, se redirige a `/` con la cookie `siget_flash_unauthorized`.
 - ✅ **Restricción de Asignación de Auditores en Traslados (2026-06-23):** Implementada validación en el frontend (formulario de traslados y submit general) y en el backend (API patch) para evitar que el ingeniero asignado al ticket ('Atiende') coincida con el auditor de documentos o con el auditor de adeudos.
 - ✅ **Remoción de "Bloques" en Carrera (2026-06-23):** Implementada validación en el formulario de traslados (`consultarDetalleAlumno`) para remover la palabra "Bloques" (y el espacio previo) al consultar alumnos con campus origen "Virtual", asegurando la coincidencia exacta con `carreraOptions` y pasando la validación de oferta académica.
 - ✅ Implementada validación en el login de `auth.config.ts` consultando la API `/api/rh/consultar-trabajador` para obtener la `clave` y posteriormente sincronizar el `horario_disponibilidad` guardándolo en BD.

@@ -5,6 +5,20 @@ Todos los cambios notables en este proyecto serán documentados en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Versionado Semántico](https://semver.org/lang/es/).
 
+## 2026-06-23 (Restricción de Acceso a Vista de Ticket)
+
+### Seguridad: Control de Acceso Granular por Ticket
+*   **`src/pages/tickets/view/[id].astro` (Frontend/SSR):**
+    *   Se implementó una verificación de permisos a nivel de ticket individual en la capa SSR de la página.
+    *   **Reglas de acceso:** Un usuario autenticado puede ver un ticket si cumple al menos una de las siguientes condiciones:
+        1.  Es el **solicitante** (creador) del ticket (`ticket.solicitanteId === userId`).
+        2.  Tiene un **rol privilegiado CSH** (IDs: 1, 2, 3, 4, 5, 6, 15) y el ticket **no es** de la categoría Marketing.
+        3.  Tiene el flag **`atiendeTicketsMkt: true`** en su rol y el ticket **sí es** de la categoría Marketing (ID 12).
+    *   Si ninguna condición se cumple, se establece la cookie `siget_flash_unauthorized` y se redirige al dashboard (`/`), mostrando el mensaje de "no autorizado" al recargar.
+    *   **Motivación:** Evitar que usuarios sin perfil de ingeniero accedan directamente a tickets ajenos pegando la URL en el navegador (e.g., `/tickets/view/7?new_entry=true`).
+
+---
+
 ## 2026-06-23 (Mejoras y Restricciones en Traslados)
 
 ### Remoción de "Bloques" en Carrera
