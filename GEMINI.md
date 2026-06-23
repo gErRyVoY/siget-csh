@@ -1,13 +1,14 @@
 # Plan de Trabajo (SIGET-CSH)
 
-**Tarea Actual:** Bug Fix — Corrección de descuento en detalle de ticket y optimización de notificaciones ✅
+**Tarea Actual:** Pendiente — Configuración de AWS SES e integración de Notificaciones por Correo ⏳
 
-**Estado:** Completado. Se solucionó el error del checkbox de descuento y se implementaron mejoras de rendimiento y feedback visual en el dropdown y clic de notificaciones. Pendiente: despliegue a AWS.
+**Estado:** Pendiente de inicio. El plan de configuración técnica está listo en `implementation_plan.md`. Se requiere la verificación de dominio/remitente en AWS SES y la definición de credenciales/permisos en IAM para proceder con el desarrollo del backend.
 
 **Pasos Siguientes:**
-1. Estabilizar y continuar el flujo de despliegue usando la infraestructura AWS (ECR, App Runner, RDS).
-2. Revisar si existen configuraciones pendientes en GitHub Actions o AWS.
-3. Probar el proyecto en local con la base de datos PostgreSQL para verificar la integridad tras la fusión.
+1. Verificación del dominio o remitente `siget@humanitas.edu.mx` en AWS SES.
+2. Definición del método de credenciales (Opción A: Adjuntar política `AmazonSESFullAccess` al usuario de IAM existente; Opción B: Crear Secrets Manager con nuevas llaves).
+3. Implementación de `src/services/emailService.ts` utilizando el SDK de AWS SES y guardado de registros en `notificaciones_correo`.
+4. Integración en `api/tickets/create.ts` y `api/tickets/transfer.ts`.
 
 **Pasos Completados:**
 - ✅ **Descuento y Notificaciones (2026-06-23):** Se corrigió el bug del checkbox "¿Tiene descuento?" en la vista de detalle de tickets (que se marcaba por defecto al existir el descuento `1` / `"N/A"`). Se agregaron optimizaciones de base de datos (`take: 100`) para acelerar la consulta de notificaciones de usuarios comunes, un spinner inmediato al abrir el dropdown de notificaciones y la animación de parpadeo blanco (overlay de carga) al hacer clic sobre cualquier notificación.
