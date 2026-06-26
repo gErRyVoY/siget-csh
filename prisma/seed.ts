@@ -1,4 +1,4 @@
-﻿import { PrismaClient, TipoEmpresa, NivelSoporte, Prioridad, Prisma } from '@prisma/client';
+import { PrismaClient, TipoEmpresa, NivelSoporte, Prioridad, Prisma } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
@@ -8,6 +8,7 @@ async function main() {
   // --- Limpiar datos existentes (en orden de dependencia) ---
   console.log('Cleaning existing data...');
   await prisma.notificacionesCorreo.deleteMany({});
+  await prisma.plantillaCorreo.deleteMany({});
   await prisma.historialSolicitud.deleteMany({});
   await prisma.traslado.deleteMany({});
   await prisma.ticket.deleteMany({});
@@ -845,6 +846,84 @@ async function main() {
   await prisma.permisoCategoria.createMany({
     data: permisosData,
     skipDuplicates: true,
+  });
+
+  // --- Insertar Plantillas de Correo ---
+  console.log('Seeding plantillas de correo...');
+  await prisma.plantillaCorreo.createMany({
+    data: [
+      {
+        id: 1,
+        nombre: 'ticket_creado',
+        contenido: `<h2>Hola {{agenteNombre}},</h2>
+<p>Se ha creado y asignado a ti un nuevo ticket en el sistema.</p>
+<div style="background-color: #f9fafb; border-left: 4px solid #0c2340; padding: 15px; margin: 15px 0;">
+  <strong>ID del Ticket:</strong> #{{ticketId}}<br>
+  <strong>Categoría:</strong> {{categoria}}<br>
+  <strong>Solicitante:</strong> {{solicitanteNombre}}<br>
+  <strong>Prioridad:</strong> {{prioridad}}<br>
+  <strong>Descripción:</strong> {{descripcion}}
+</div>
+<p>Por favor, haz clic en el siguiente botón para ver los detalles del ticket y comenzar a trabajar en él:</p>
+<a href="{{ticketUrl}}" class="btn">Ver Ticket</a>`,
+        tipo: 'Notificacion_sistema',
+        activo: true
+      },
+      {
+        id: 2,
+        nombre: 'ticket_actualizado',
+        contenido: `<h2>Hola {{solicitanteNombre}},</h2>
+<p>El ticket #{{ticketId}} ha cambiado de estado.</p>
+<div style="background-color: #f9fafb; border-left: 4px solid #0c2340; padding: 15px; margin: 15px 0;">
+  <strong>ID del Ticket:</strong> #{{ticketId}}<br>
+  <strong>Categoría:</strong> {{categoria}}<br>
+  <strong>Nuevo Estatus:</strong> <span style="background-color: #e0f2fe; color: #0369a1; padding: 2px 6px; border-radius: 4px; font-weight: bold;">{{estatus}}</span><br>
+  <strong>Descripción:</strong> {{descripcion}}
+</div>
+{{comentarioSection}}
+<p>Haz clic en el siguiente botón para ver el historial completo y detalles del ticket:</p>
+<a href="{{ticketUrl}}" class="btn">Ir al Ticket</a>`,
+        tipo: 'Notificacion_sistema',
+        activo: true
+      },
+      {
+        id: 3,
+        nombre: 'ticket_asignado',
+        contenido: `<h2>Hola {{agenteNombre}},</h2>
+<p>Se te ha reasignado el ticket #{{ticketId}} en el sistema.</p>
+<div style="background-color: #f9fafb; border-left: 4px solid #0c2340; padding: 15px; margin: 15px 0;">
+  <strong>ID del Ticket:</strong> #{{ticketId}}<br>
+  <strong>Categoría:</strong> {{categoria}}<br>
+  <strong>Solicitante:</strong> {{solicitanteNombre}}<br>
+  <strong>Prioridad:</strong> {{prioridad}}<br>
+  <strong>Descripción:</strong> {{descripcion}}
+</div>
+<p>Por favor, haz clic en el siguiente botón para ver los detalles del ticket:</p>
+<a href="{{ticketUrl}}" class="btn">Ver Ticket</a>`,
+        tipo: 'Notificacion_sistema',
+        activo: true
+      },
+      {
+        id: 4,
+        nombre: 'traslado_creado',
+        contenido: `<h2>Hola {{agenteNombre}},</h2>
+<p>Se ha iniciado un nuevo trámite de traslado en el sistema.</p>
+<div style="background-color: #f9fafb; border-left: 4px solid #0c2340; padding: 15px; margin: 15px 0;">
+  <strong>Folio:</strong> {{folio}}<br>
+  <strong>Matrícula:</strong> {{matricula}}<br>
+  <strong>Alumno:</strong> {{alumno}}<br>
+  <strong>Carrera:</strong> {{carrera}}<br>
+  <strong>Origen:</strong> {{origen}}<br>
+  <strong>Destino:</strong> {{destino}}<br>
+  <strong>Prioridad:</strong> {{prioridad}}<br>
+  <strong>Descripción:</strong> {{descripcion}}
+</div>
+<p>Haz clic en el siguiente botón para auditar y gestionar este traslado:</p>
+<a href="{{ticketUrl}}" class="btn">Ver Detalle del Traslado</a>`,
+        tipo: 'Notificacion_sistema',
+        activo: true
+      }
+    ],
   });
 
   console.log(`Seeding finished.`);

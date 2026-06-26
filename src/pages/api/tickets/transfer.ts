@@ -4,6 +4,7 @@ import { prisma } from '@/lib/db';
 import { findBestAgentHybrid } from '@/services/ticketAssignmentService';
 import { sendNotification } from '../notifications/sse';
 import { ensureActiveCycle } from '@/services/cycleService';
+import { sendTicketNotification } from '@/services/emailService';
 
 export const POST: APIRoute = async ({ request }) => {
     const session = await getSession(request);
@@ -222,6 +223,55 @@ export const POST: APIRoute = async ({ request }) => {
 
         // Send notifications
         sendNotification(notificationPayload, targetUsers.length > 0 ? targetUsers : undefined);
+
+        // Enviar correo de notificación del traslado al agente asignado
+        if (atiendeId) {
+            (async () => {
+                try {
+                    const [agente, solicitante] = await Promise.all([
+                        prisma.usuario.findUnique({
+                            where: { id: atiendeId },
+                            select: { nombres: true, apellidos: true, mail: true }
+                        }),
+                        prisma.usuario.findUnique({
+                            where: { id: solicitanteId },
+                            select: { nombres: true, apellidos: true }
+                        })
+                    ]);
+
+                    if (agente && agente.mail) {
+                        const originUrl = new URL(request.url).origin;
+                        const solicitanteNombre = solicitante
+                            ? `${solicitante.nombres} ${solicitante.apellidos}`
+                            : "Usuario";
+                        const agenteNombre = `${agente.nombres} ${agente.apellidos}`;
+
+                        await sendTicketNotification({
+                            ticketId: nuevoTicket.id,
+                            event: "traslado_creado",
+                            destinatarioId: atiendeId,
+                            destinatarioMail: agente.mail,
+                            originUrl,
+                            ticketInfo: {
+                                categoria: "Alumno / Traslado",
+                                descripcion: descripcionTicket,
+                                prioridad: "Media",
+                                solicitanteNombre,
+                                agenteNombre,
+                                folio: `TRL-${nuevoTicket.id}`,
+                                matricula,
+                                alumno: nombreCompleto,
+                                carrera,
+                                origen: campusOrigen,
+                                destino: campusDestino
+                            }
+                        });
+                    }
+                } catch (emailErr) {
+                    console.error('[EmailNotificationError] Error al procesar notificación de traslado creado:', emailErr);
+                }
+            })();
+        }
 
         return new Response(JSON.stringify(nuevoTicket), { status: 201 });
 

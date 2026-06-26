@@ -1,16 +1,16 @@
 # Plan de Trabajo (SIGET-CSH)
 
-**Tarea Actual:** Pendiente — Configuración de AWS SES e integración de Notificaciones por Correo ⏳
+**Tarea Actual:** Completada — Configuración de AWS SES e integración de Notificaciones por Correo ✅
 
-**Estado:** Pendiente de inicio. El plan de configuración técnica está listo en `implementation_plan.md`. Se requiere la verificación de dominio/remitente en AWS SES y la definición de credenciales/permisos en IAM para proceder con el desarrollo del backend.
+**Estado:** Completado. Se implementó el servicio de correos con el SDK de AWS SES, integrándose asíncronamente en los endpoints de creación, traslado y actualización de tickets, guardando el registro histórico en base de datos. El proyecto compila con éxito.
 
 **Pasos Siguientes:**
-1. Verificación del dominio o remitente `siget@humanitas.edu.mx` en AWS SES.
-2. Definición del método de credenciales (Opción A: Adjuntar política `AmazonSESFullAccess` al usuario de IAM existente; Opción B: Crear Secrets Manager con nuevas llaves).
-3. Implementación de `src/services/emailService.ts` utilizando el SDK de AWS SES y guardado de registros en `notificaciones_correo`.
-4. Integración en `api/tickets/create.ts` y `api/tickets/transfer.ts`.
+1. Monitoreo del volumen de correos y rebotes en el AWS SES Dashboard.
+2. Siguiente ciclo de desarrollo de backend y UI.
 
 **Pasos Completados:**
+- ✅ **Botón de Resetear Horario (2026-06-25):** Se implementó un botón en la UI de edición de usuarios dentro del desplegable "Horario de disponibilidad". Este botón permite restablecer a "No disponible" todos los días laborales de forma masiva en el cliente, mostrando un mensaje toast de confirmación y con un estilo centrado, gris y animado al hover consistente con el resto de la interfaz.
+- ✅ **Integración de AWS SES y Notificaciones por Correo (2026-06-25):** Se implementó el servicio de correos centralizado (`src/services/emailService.ts`) que gestiona el envío de correos transaccionales mediante el SDK de AWS SES y registra las notificaciones en la tabla `notificaciones_correo` de Prisma. Se integró en la creación de tickets, flujos de traslados y actualizaciones (reasignación de agentes, cambios de estatus y nuevos comentarios) con lógica asíncrona en segundo plano para evitar bloqueos y soporte auto-reparable de plantillas en base de datos. Se validó la compilación exitosa del proyecto.
 - ✅ **Descuento y Notificaciones (2026-06-23):** Se corrigió el bug del checkbox "¿Tiene descuento?" en la vista de detalle de tickets (que se marcaba por defecto al existir el descuento `1` / `"N/A"`). Se agregaron optimizaciones de base de datos (`take: 100`) para acelerar la consulta de notificaciones de usuarios comunes, un spinner inmediato al abrir el dropdown de notificaciones y la animación de parpadeo blanco (overlay de carga) al hacer clic sobre cualquier notificación.
 - ✅ **Indicador de Carga en Búsqueda de Alumno (2026-06-23):** Se modificó la librería de toasts (`toast.ts`) para devolver un manejador con función `.dismiss()`. En el formulario de traslados, al consultar la API de alumnos, se muestra un toast temporal con spinner SVG (`"Buscando alumno..."`) y se descarta al obtener respuesta.
 - ✅ **Sin Asignación Automática de Auditores en Traslados (2026-06-23):** Se eliminó la búsqueda y asignación automática de `auditor_docsId` and `auditor_reqId` al crear nuevos tickets de traslado en `api/tickets/transfer.ts`. Ahora ambos campos inician en `null` y deben ser asignados manualmente en la vista de detalle. También se removieron los auditores del listado de destinatarios SSE al crear el traslado.

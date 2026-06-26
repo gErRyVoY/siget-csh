@@ -41,7 +41,7 @@ export function initializeUserEditForm() {
             return;
         }
 
-        container.innerHTML = dias.map(dia => {
+        let html = dias.map(dia => {
             const normalizedDia = dia.normalize("NFD").replace(/[̀-ͯ]/g, "");
             return `
                 <div class="space-y-1">
@@ -61,6 +61,21 @@ export function initializeUserEditForm() {
             `;
         }).join('');
 
+        // Añadir botón para resetear horario al final en una fila sola y centrada
+        html += `
+            <div class="col-span-full flex justify-center mt-4">
+                <button
+                    type="button"
+                    id="reset-horario-btn"
+                    class="bg-muted text-muted-foreground hover:bg-muted/80 px-6 py-2 rounded-md text-sm font-semibold transition-colors"
+                >
+                    Resetear horario
+                </button>
+            </div>
+        `;
+
+        container.innerHTML = html;
+
         dias.forEach(dia => {
             const normalizedDia = dia.normalize("NFD").replace(/[̀-ͯ]/g, "");
             const horarioDia = horario && horario[normalizedDia] ? horario[normalizedDia] : { inicio: 'No disponible', fin: 'No disponible' };
@@ -69,6 +84,21 @@ export function initializeUserEditForm() {
             if (inicioSelect) inicioSelect.value = horarioDia.inicio;
             if (finSelect) finSelect.value = horarioDia.fin;
         });
+
+        // Event listener para el botón de resetear horario
+        const resetBtn = document.getElementById('reset-horario-btn');
+        if (resetBtn) {
+            resetBtn.addEventListener('click', () => {
+                dias.forEach(dia => {
+                    const normalizedDia = dia.normalize("NFD").replace(/[̀-ͯ]/g, "");
+                    const inicioSelect = document.getElementById(`${normalizedDia}-inicio`) as HTMLSelectElement;
+                    const finSelect = document.getElementById(`${normalizedDia}-fin`) as HTMLSelectElement;
+                    if (inicioSelect) inicioSelect.value = 'No disponible';
+                    if (finSelect) finSelect.value = 'No disponible';
+                });
+                toast.success('Horario reseteado en la vista. Recuerda guardar los cambios.');
+            });
+        }
     }
 
     function initFormSubmit() {

@@ -3,6 +3,7 @@ import { getSession } from 'auth-astro/server';
 import { prisma } from '@/lib/db';
 import type { Prisma, Prioridad } from '@prisma/client';
 import { sendNotification } from '../notifications/sse';
+import { sendTicketNotification } from '@/services/emailService';
 
 const PRIVILEGED_ROLES = [1, 2, 3, 4, 5, 6, 15];
 
@@ -397,6 +398,89 @@ export const PATCH: APIRoute = async ({ request, locals }) => {
         }
 
         sendNotification(notificationPayload, targetUsers);
+
+        // Enviar correos de notificación de forma asíncrona en background
+        (async () => {
+            try {
+                // Obtener datos del solicitante, agente y categoría del ticket
+                const [solicitante, agente, categoria] = await Promise.all([
+                    prisma.usuario.findUnique({
+                        where: { id: ticketBeforeUpdate.solicitanteId },
+                        select: { nombres: true, apellidos: true, mail: true }
+                    }),
+                    updatedTicket.atiendeId ? prisma.usuario.findUnique({
+                        where: { id: updatedTicket.atiendeId },
+                        select: { nombres: true, apellidos: true, mail: true }
+                    }) : null,
+                    prisma.categoria.findUnique({
+                        where: { id: updatedTicket.categoriaId },
+                        select: { nombre: true }
+                    })
+                ]);
+
+                const solicitanteNombre = solicitante ? `${solicitante.nombres} ${solicitante.apellidos}` : "Usuario";
+                const agenteNombre = agente ? `${agente.nombres} ${agente.apellidos}` : "No asignado";
+                const originUrl = new URL(request.url).origin;
+
+                const ticketInfo = {
+                    categoria: categoria?.nombre || "General",
+                    descripcion: updatedTicket.descripcion || "",
+                    prioridad: updatedTicket.prioridad,
+                    solicitanteNombre,
+                    agenteNombre,
+                    estatus: updatedTicket.estatus?.nombre || "",
+                    comentario: newComment || undefined
+                };
+
+                // 1. Notificación de Reasignación de Agente
+                if (ticketBeforeUpdate.atiendeId !== updatedTicket.atiendeId && updatedTicket.atiendeId) {
+                    if (agente && agente.mail) {
+                        await sendTicketNotification({
+                            ticketId,
+                            event: "ticket_asignado",
+                            destinatarioId: updatedTicket.atiendeId,
+                            destinatarioMail: agente.mail,
+                            originUrl,
+                            ticketInfo
+                        });
+                    }
+                }
+
+                // 2. Notificación de Actualización (Estatus o Comentario)
+                const estatusCambio = ticketBeforeUpdate.estatusId !== updatedTicket.estatusId;
+                const hayComentario = !!newComment;
+
+                if (estatusCambio || hayComentario) {
+                    // Notificar al solicitante (si no fue él quien actualizó)
+                    if (currentUserId !== ticketBeforeUpdate.solicitanteId && solicitante && solicitante.mail) {
+                        await sendTicketNotification({
+                            ticketId,
+                            event: "ticket_actualizado",
+                            destinatarioId: ticketBeforeUpdate.solicitanteId,
+                            destinatarioMail: solicitante.mail,
+                            originUrl,
+                            ticketInfo
+                        });
+                    }
+
+                    // Notificar al agente asignado (si hay agente y no fue él quien actualizó,
+                    // y tampoco se le acaba de reasignar, porque en ese caso ya se le envió el correo de ticket_asignado)
+                    const agenteReasignado = ticketBeforeUpdate.atiendeId !== updatedTicket.atiendeId;
+                    if (updatedTicket.atiendeId && currentUserId !== updatedTicket.atiendeId && !agenteReasignado && agente && agente.mail) {
+                        await sendTicketNotification({
+                            ticketId,
+                            event: "ticket_actualizado",
+                            destinatarioId: updatedTicket.atiendeId,
+                            destinatarioMail: agente.mail,
+                            originUrl,
+                            ticketInfo
+                        });
+                    }
+                }
+            } catch (emailErr) {
+                console.error('[EmailNotificationError] Error al procesar notificación de actualización de ticket:', emailErr);
+            }
+        })();
 
         return new Response(JSON.stringify(updatedTicket), { status: 200 });
 

@@ -4,6 +4,7 @@ import { prisma } from '../../../lib/db';
 import { sendNotification } from '../notifications/sse';
 import { findBestAgentHybrid } from '../../../services/ticketAssignmentService';
 import { ensureActiveCycle } from '../../../services/cycleService';
+import { sendTicketNotification } from '../../../services/emailService';
 
 export const POST: APIRoute = async ({ request }) => {
   const session = await getSession(request);
@@ -118,7 +119,6 @@ export const POST: APIRoute = async ({ request }) => {
     }
 
     // Notificar
-    // Notificar
     const notificationPayload = {
       type: 'ticket_created' as const,
       message: `Se ha creado un nuevo ticket #${nuevoTicket.id}`,
@@ -133,6 +133,53 @@ export const POST: APIRoute = async ({ request }) => {
 
     // Si hay agente asignado, notificar solo a él. Si no, broadcast (o lógica futura de admins)
     sendNotification(notificationPayload, targetUsers.length > 0 ? targetUsers : undefined);
+
+    // Enviar correo de notificación al agente de forma asíncrona
+    if (atiendeId) {
+      (async () => {
+        try {
+          const [agente, solicitante, categoria] = await Promise.all([
+            prisma.usuario.findUnique({
+              where: { id: atiendeId },
+              select: { nombres: true, apellidos: true, mail: true }
+            }),
+            prisma.usuario.findUnique({
+              where: { id: solicitanteId },
+              select: { nombres: true, apellidos: true }
+            }),
+            prisma.categoria.findUnique({
+              where: { id: parsedCategoriaId },
+              select: { nombre: true }
+            })
+          ]);
+
+          if (agente && agente.mail) {
+            const originUrl = new URL(request.url).origin;
+            const solicitanteNombre = solicitante
+              ? `${solicitante.nombres} ${solicitante.apellidos}`
+              : "Usuario";
+            const agenteNombre = `${agente.nombres} ${agente.apellidos}`;
+
+            await sendTicketNotification({
+              ticketId: nuevoTicket.id,
+              event: "ticket_creado",
+              destinatarioId: atiendeId,
+              destinatarioMail: agente.mail,
+              originUrl,
+              ticketInfo: {
+                categoria: categoria?.nombre || "General",
+                descripcion: descripcion,
+                prioridad: prioridad,
+                solicitanteNombre,
+                agenteNombre,
+              }
+            });
+          }
+        } catch (emailErr) {
+          console.error('[EmailNotificationError] Error al procesar notificación de ticket creado:', emailErr);
+        }
+      })();
+    }
 
     return new Response(JSON.stringify(nuevoTicket), {
       status: 201,
