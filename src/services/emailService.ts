@@ -110,7 +110,7 @@ function getHtmlWrapper(title: string, contentHtml: string): string {
       font-family: 'Cinzel', Georgia, serif;
       margin: 0;
       font-size: 24px;
-      font-weight: 600;
+      font-weight: 400;
     }
     .content {
       padding: 30px 20px;
@@ -143,7 +143,7 @@ function getHtmlWrapper(title: string, contentHtml: string): string {
   <div class="wrapper">
     <div class="container">
       <div class="header">
-        <img src="https://siget.humanitas.edu.mx/logo-h-white.png" alt="Logo Universidad Humanitas" style="max-width: 150px;">
+        <img src="https://raw.githubusercontent.com/gErRyVoY/siget-csh/siget-apprunner-new/public/logo-h-white.png" alt="Logo Universidad Humanitas" style="max-width: 150px;">
         <h1>Centro de Soporte Humanitas</h1>
       </div>
       <div class="content">
