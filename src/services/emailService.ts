@@ -150,7 +150,7 @@ function getHtmlWrapper(title: string, contentHtml: string): string {
   <div class="wrapper">
     <div class="container">
       <div class="header">
-        <img src="https://raw.githubusercontent.com/gErRyVoY/siget-csh/siget-apprunner-new/public/logo-h-white.png" alt="Logo Universidad Humanitas" style="max-width: 50px;">
+        <img src="https://raw.githubusercontent.com/gErRyVoY/siget-csh/siget-apprunner-new/public/logo-h-white-v2.png" alt="Logo Universidad Humanitas" style="max-width: 50px;">
         <h1>CENTRO DE SOPORTE HUMANITAS</h1>
       </div>
       <div class="content">
