@@ -105,14 +105,17 @@ function getHtmlWrapper(title: string, contentHtml: string): string {
       color: #ffffff;
       padding: 30px 20px;
       text-align: center;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      gap: 1rem;
+    }
+    .header img {
+      display: inline-block;
+      vertical-align: middle;
+      max-width: 50px;
     }
     .header h1 {
+      display: inline-block;
+      vertical-align: middle;
       font-family: 'Cinzel', Georgia, serif;
-      margin: 0;
+      margin: 0 0 0 14px;
       font-size: 24px;
       font-weight: 300;
     }
