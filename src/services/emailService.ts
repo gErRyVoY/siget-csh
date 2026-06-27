@@ -105,12 +105,16 @@ function getHtmlWrapper(title: string, contentHtml: string): string {
       color: #ffffff;
       padding: 30px 20px;
       text-align: center;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 1rem;
     }
     .header h1 {
       font-family: 'Cinzel', Georgia, serif;
       margin: 0;
       font-size: 24px;
-      font-weight: 400;
+      font-weight: 300;
     }
     .content {
       padding: 30px 20px;
@@ -143,8 +147,8 @@ function getHtmlWrapper(title: string, contentHtml: string): string {
   <div class="wrapper">
     <div class="container">
       <div class="header">
-        <img src="https://raw.githubusercontent.com/gErRyVoY/siget-csh/siget-apprunner-new/public/logo-h-white.png" alt="Logo Universidad Humanitas" style="max-width: 150px;">
-        <h1>Centro de Soporte Humanitas</h1>
+        <img src="https://raw.githubusercontent.com/gErRyVoY/siget-csh/siget-apprunner-new/public/logo-h-white.png" alt="Logo Universidad Humanitas" style="max-width: 50px;">
+        <h1>CENTRO DE SOPORTE HUMANITAS</h1>
       </div>
       <div class="content">
         ${contentHtml}
