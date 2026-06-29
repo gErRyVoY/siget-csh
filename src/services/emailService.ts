@@ -69,94 +69,40 @@ export async function sendEmail({ to, subject, htmlBody }: SendEmailParams): Pro
 
 /**
  * Wraps content in a standardized Universidad Humanitas HTML template.
+ * NOTE: All styles are intentionally inline to preserve design when emails
+ * are forwarded, as email clients strip <style> blocks on forward.
  */
 function getHtmlWrapper(title: string, contentHtml: string): string {
   const currentYear = new Date().getFullYear();
+
+  // --- Inline style constants ---
+  const bodyStyle = "font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f3f4f6; margin: 0; padding: 0;";
+  const wrapperStyle = "width: 100%; background-color: #f3f4f6; padding: 20px 0;";
+  const containerStyle = "max-width: 600px; margin: 0 auto; background-color: #ffffff; overflow: hidden;";
+  const headerStyle = "background-color: #caab55; color: #ffffff; padding: 30px 20px; text-align: center;";
+  const logoStyle = "display: inline-block; vertical-align: middle; max-width: 50px; width: 50px;";
+  const h1Style = "display: inline-block; vertical-align: middle; font-family: Georgia, 'Times New Roman', serif; margin: 0 0 0 14px; font-size: 22px; font-weight: 400; color: #ffffff; letter-spacing: 1px;";
+  const contentStyle = "padding: 30px 20px; color: #374151; line-height: 1.6; font-size: 16px;";
+  const footerStyle = "background-color: #caab55; padding: 20px; text-align: center; font-size: 12px; color: #ffffff; border-top: 3px solid #b8962e;";
+
   return `<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${title}</title>
-  <style>
-    @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400..900&family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap');
-    body {
-      font-family: 'Montserrat', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background-color: #f3f4f6;
-      margin: 0;
-      padding: 0;
-      -webkit-font-smoothing: antialiased;
-    }
-    .wrapper {
-      width: 100%;
-      background-color: #f3f4f6;
-      padding: 20px 0;
-    }
-    .container {
-      max-width: 600px;
-      margin: 0 auto;
-      background-color: #ffffff;
-      /*border-radius: 8px;*/
-      overflow: hidden;
-      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-    }
-    .header {
-      background-color: #caab55; /* Dorado Institucional */
-      color: #ffffff;
-      padding: 30px 20px;
-      text-align: center;
-    }
-    .header img {
-      display: inline-block;
-      vertical-align: middle;
-      max-width: 50px;
-    }
-    .header h1 {
-      display: inline-block;
-      vertical-align: middle;
-      font-family: 'Cinzel', Georgia, serif;
-      margin: 0 0 0 14px;
-      font-size: 24px;
-      font-weight: 300;
-    }
-    .content {
-      padding: 30px 20px;
-      color: #374151;
-      line-height: 1.6;
-      font-size: 16px;
-    }
-    .btn {
-      display: inline-block;
-      background-color: #881912; /* Guinda */
-      color: #ffffff !important;
-      text-decoration: none;
-      padding: 12px 24px;
-      /*border-radius: 6px;*/
-      font-weight: bold;
-      margin-top: 20px;
-      text-align: center;
-    }
-    .footer {
-      background-color: #caab55;
-      padding: 20px;
-      text-align: center;
-      font-size: 12px;
-      color: #ffffff;
-      border-top: 1px solid #e5e7eb;
-    }
-  </style>
 </head>
-<body>
-  <div class="wrapper">
-    <div class="container">
-      <div class="header">
-        <img src="https://raw.githubusercontent.com/gErRyVoY/siget-csh/siget-apprunner-new/public/logo-h-white-v2.png" alt="Logo Universidad Humanitas" style="max-width: 50px;">
-        <h1>CENTRO DE SOPORTE HUMANITAS</h1>
+<body style="${bodyStyle}">
+  <div style="${wrapperStyle}">
+    <div style="${containerStyle}">
+      <div style="${headerStyle}">
+        <img src="https://raw.githubusercontent.com/gErRyVoY/siget-csh/siget-apprunner-new/public/logo-h-white-v2.png" alt="Logo Universidad Humanitas" style="${logoStyle}">
+        <h1 style="${h1Style}">CENTRO DE SOPORTE HUMANITAS</h1>
       </div>
-      <div class="content">
+      <div style="${contentStyle}">
         ${contentHtml}
       </div>
-      <div class="footer">
+      <div style="${footerStyle}">
         Este es un correo automático generado por el Sistema de Gestión de Tickets (SiGeT).<br>
         Por favor, no respondas a este mensaje.<br>
         &copy; ${currentYear} Universidad Humanitas. Todos los derechos reservados.
@@ -192,62 +138,66 @@ interface TicketNotificationParams {
 }
 
 /**
- * Resolves or seeds the default templates in the database if they don't exist.
+ * Resolves or upserts the default templates in the database.
+ * Always updates the content to ensure inline styles are applied,
+ * fixing any existing records that may have CSS classes instead of inline styles.
  */
 async function getOrCreatePlantilla(nombre: string, event: string) {
   const existing = await prisma.plantillaCorreo.findFirst({
     where: { nombre, activo: true }
   });
 
-  if (existing) return existing;
-
   // Fallback contents for templates
   let contenido = "";
   let subject = "";
 
+  // NOTE: Buttons use fully inline styles (no class="btn") so they render
+  // correctly even when the email is forwarded by the recipient.
+  const btnStyle = "display: inline-block; background-color: #881912; color: #ffffff; text-decoration: none; padding: 12px 28px; font-weight: bold; margin-top: 20px; text-align: center; font-size: 15px; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;";
+
   if (event === "ticket_creado") {
     subject = "Nuevo ticket asignado #{{ticketId}}";
-    contenido = `<h2>Hola {{agenteNombre}},</h2>
-<p>Se ha creado y asignado a ti un nuevo ticket en el sistema.</p>
+    contenido = `<h2 style="color: #1f2937; margin: 0 0 12px;">Hola {{agenteNombre}},</h2>
+<p style="margin: 0 0 16px;">Se ha creado y asignado a ti un <strong>nuevo ticket</strong> en el sistema.</p>
 <div style="background-color: #f9fafb; border-left: 4px solid #caab55; padding: 15px; margin: 15px 0;">
-  <strong>Folio del ticket:</strong> #{{ticketId}}<br>
+  <strong>ID del Ticket:</strong> #{{ticketId}}<br>
   <strong>Categoría:</strong> {{categoria}}<br>
   <strong>Solicitante:</strong> {{solicitanteNombre}}<br>
   <strong>Prioridad:</strong> {{prioridad}}<br>
   <strong>Descripción:</strong> {{descripcion}}
 </div>
-<p>Por favor, haz clic en el siguiente botón para ver los detalles del ticket y comenzar a trabajar en él:</p>
-<a href="{{ticketUrl}}" class="btn">Ver ticket</a>`;
+<p style="margin: 16px 0;">Por favor, haz clic en el siguiente botón para ver los detalles del ticket y comenzar a trabajar en él:</p>
+<a href="{{ticketUrl}}" style="${btnStyle}">Ver Ticket</a>`;
   } else if (event === "ticket_actualizado") {
     subject = "Actualización de estatus: ticket #{{ticketId}}";
-    contenido = `<h2>Hola {{solicitanteNombre}},</h2>
-<p>El ticket #{{ticketId}} ha cambiado de estado.</p>
+    contenido = `<h2 style="color: #1f2937; margin: 0 0 12px;">Hola {{solicitanteNombre}},</h2>
+<p style="margin: 0 0 16px;">El ticket <strong>#{{ticketId}}</strong> ha cambiado de estado.</p>
 <div style="background-color: #f9fafb; border-left: 4px solid #caab55; padding: 15px; margin: 15px 0;">
-  <strong>Folio del ticket:</strong> #{{ticketId}}<br>
+  <strong>ID del Ticket:</strong> #{{ticketId}}<br>
   <strong>Categoría:</strong> {{categoria}}<br>
-  <strong>Nuevo estatus:</strong> <span style="background-color: #e0f2fe; color: #0369a1; padding: 2px 6px; font-weight: bold;">{{estatus}}</span><br>
+  <strong>Nuevo estatus:</strong> <span style="background-color: #e0f2fe; color: #0369a1; padding: 2px 8px; font-weight: bold;">{{estatus}}</span><br>
   <strong>Descripción:</strong> {{descripcion}}
 </div>
 {{comentarioSection}}
-<p>Haz clic en el siguiente botón para ver el historial completo y detalles del ticket:</p>
-<a href="{{ticketUrl}}" class="btn">Ir al ticket</a>`;
+<p style="margin: 16px 0;">Haz clic en el siguiente botón para ver el historial completo y detalles del ticket:</p>
+<a href="{{ticketUrl}}" style="${btnStyle}">Ir al Ticket</a>`;
   } else if (event === "ticket_asignado") {
     subject = "Ticket reasignado #{{ticketId}}";
-    contenido = `<h2>Hola {{agenteNombre}},</h2>
-<p>Se te ha reasignado el ticket #{{ticketId}} en el sistema.</p>
+    contenido = `<h2 style="color: #1f2937; margin: 0 0 12px;">Hola {{agenteNombre}},</h2>
+<p style="margin: 0 0 16px;">Se te ha <strong>reasignado</strong> el ticket <strong>#{{ticketId}}</strong> en el sistema.</p>
 <div style="background-color: #f9fafb; border-left: 4px solid #caab55; padding: 15px; margin: 15px 0;">
-  <strong>Folio del ticket:</strong> #{{ticketId}}<br>
+  <strong>ID del Ticket:</strong> #{{ticketId}}<br>
   <strong>Categoría:</strong> {{categoria}}<br>
   <strong>Solicitante:</strong> {{solicitanteNombre}}<br>
   <strong>Prioridad:</strong> {{prioridad}}<br>
   <strong>Descripción:</strong> {{descripcion}}
 </div>
-<p>Por favor, haz clic en el siguiente botón para ver los detalles del ticket:</p>
-<a href="{{ticketUrl}}" class="btn">Ver ticket</a>`;
+<p style="margin: 16px 0;">Por favor, haz clic en el siguiente botón para ver los detalles del ticket:</p>
+<a href="{{ticketUrl}}" style="${btnStyle}">Ver Ticket</a>`;
   } else if (event === "traslado_creado") {
     subject = "Nuevo traslado #TRL-{{ticketId}}";
-    contenido = `<h2>Hola {{agenteNombre}},</h2>
-<p>Se ha iniciado un nuevo trámite de traslado en el sistema.</p>
+    contenido = `<h2 style="color: #1f2937; margin: 0 0 12px;">Hola {{agenteNombre}},</h2>
+<p style="margin: 0 0 16px;">Se ha iniciado un <strong>nuevo trámite de traslado</strong> en el sistema.</p>
 <div style="background-color: #f9fafb; border-left: 4px solid #caab55; padding: 15px; margin: 15px 0;">
   <strong>Folio:</strong> #TRL-{{ticketId}}<br>
   <strong>Matrícula:</strong> {{matricula}}<br>
@@ -258,8 +208,16 @@ async function getOrCreatePlantilla(nombre: string, event: string) {
   <strong>Prioridad:</strong> {{prioridad}}<br>
   <strong>Descripción:</strong> {{descripcion}}
 </div>
-<p>Haz clic en el siguiente botón para auditar y gestionar este traslado:</p>
-<a href="{{ticketUrl}}" class="btn">Ver traslado</a>`;
+<p style="margin: 16px 0;">Haz clic en el siguiente botón para auditar y gestionar este traslado:</p>
+<a href="{{ticketUrl}}" style="${btnStyle}">Ver Traslado</a>`;
+  }
+
+  // Upsert: update existing template content (to apply inline styles) or create new one
+  if (existing) {
+    return await prisma.plantillaCorreo.update({
+      where: { id: existing.id },
+      data: { contenido }
+    });
   }
 
   return await prisma.plantillaCorreo.create({

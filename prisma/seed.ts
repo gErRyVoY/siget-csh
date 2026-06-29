@@ -848,68 +848,68 @@ async function main() {
     skipDuplicates: true,
   });
 
-  // --- Insertar Plantillas de Correo ---
+  // --- Insertar / Actualizar Plantillas de Correo ---
+  // Se usa upsert para que el seed sea idempotente: actualiza si ya existe, crea si no.
+  // IMPORTANTE: Los estilos deben ser 100% inline para que sobrevivan al reenvío
+  // de correos en clientes como Gmail u Outlook (estos descartan <style> al reenviar).
   console.log('Seeding plantillas de correo...');
-  await prisma.plantillaCorreo.createMany({
-    data: [
-      {
-        id: 1,
-        nombre: 'ticket_creado',
-        contenido: `<h2>Hola {{agenteNombre}},</h2>
-<p>Se ha creado y asignado a ti un nuevo ticket en el sistema.</p>
-<div style="background-color: #f9fafb; border-left: 4px solid #0c2340; padding: 15px; margin: 15px 0;">
+
+  const btnStyle = "display: inline-block; background-color: #881912; color: #ffffff; text-decoration: none; padding: 12px 28px; font-weight: bold; margin-top: 20px; text-align: center; font-size: 15px; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;";
+  const infoBoxStyle = "background-color: #f9fafb; border-left: 4px solid #caab55; padding: 15px; margin: 15px 0;";
+
+  const plantillas = [
+    {
+      id: 1,
+      nombre: 'ticket_creado',
+      contenido: `<h2 style="color: #1f2937; margin: 0 0 12px;">Hola {{agenteNombre}},</h2>
+<p style="margin: 0 0 16px;">Se ha creado y asignado a ti un <strong>nuevo ticket</strong> en el sistema.</p>
+<div style="${infoBoxStyle}">
   <strong>ID del Ticket:</strong> #{{ticketId}}<br>
   <strong>Categoría:</strong> {{categoria}}<br>
   <strong>Solicitante:</strong> {{solicitanteNombre}}<br>
   <strong>Prioridad:</strong> {{prioridad}}<br>
   <strong>Descripción:</strong> {{descripcion}}
 </div>
-<p>Por favor, haz clic en el siguiente botón para ver los detalles del ticket y comenzar a trabajar en él:</p>
-<a href="{{ticketUrl}}" class="btn">Ver Ticket</a>`,
-        tipo: 'Notificacion_sistema',
-        activo: true
-      },
-      {
-        id: 2,
-        nombre: 'ticket_actualizado',
-        contenido: `<h2>Hola {{solicitanteNombre}},</h2>
-<p>El ticket #{{ticketId}} ha cambiado de estado.</p>
-<div style="background-color: #f9fafb; border-left: 4px solid #0c2340; padding: 15px; margin: 15px 0;">
+<p style="margin: 16px 0;">Por favor, haz clic en el siguiente botón para ver los detalles del ticket y comenzar a trabajar en él:</p>
+<a href="{{ticketUrl}}" style="${btnStyle}">Ver Ticket</a>`,
+    },
+    {
+      id: 2,
+      nombre: 'ticket_actualizado',
+      contenido: `<h2 style="color: #1f2937; margin: 0 0 12px;">Hola {{solicitanteNombre}},</h2>
+<p style="margin: 0 0 16px;">El ticket <strong>#{{ticketId}}</strong> ha cambiado de estado.</p>
+<div style="${infoBoxStyle}">
   <strong>ID del Ticket:</strong> #{{ticketId}}<br>
   <strong>Categoría:</strong> {{categoria}}<br>
-  <strong>Nuevo Estatus:</strong> <span style="background-color: #e0f2fe; color: #0369a1; padding: 2px 6px; border-radius: 4px; font-weight: bold;">{{estatus}}</span><br>
+  <strong>Nuevo estatus:</strong> <span style="background-color: #e0f2fe; color: #0369a1; padding: 2px 8px; font-weight: bold;">{{estatus}}</span><br>
   <strong>Descripción:</strong> {{descripcion}}
 </div>
 {{comentarioSection}}
-<p>Haz clic en el siguiente botón para ver el historial completo y detalles del ticket:</p>
-<a href="{{ticketUrl}}" class="btn">Ir al Ticket</a>`,
-        tipo: 'Notificacion_sistema',
-        activo: true
-      },
-      {
-        id: 3,
-        nombre: 'ticket_asignado',
-        contenido: `<h2>Hola {{agenteNombre}},</h2>
-<p>Se te ha reasignado el ticket #{{ticketId}} en el sistema.</p>
-<div style="background-color: #f9fafb; border-left: 4px solid #0c2340; padding: 15px; margin: 15px 0;">
+<p style="margin: 16px 0;">Haz clic en el siguiente botón para ver el historial completo y detalles del ticket:</p>
+<a href="{{ticketUrl}}" style="${btnStyle}">Ir al Ticket</a>`,
+    },
+    {
+      id: 3,
+      nombre: 'ticket_asignado',
+      contenido: `<h2 style="color: #1f2937; margin: 0 0 12px;">Hola {{agenteNombre}},</h2>
+<p style="margin: 0 0 16px;">Se te ha <strong>reasignado</strong> el ticket <strong>#{{ticketId}}</strong> en el sistema.</p>
+<div style="${infoBoxStyle}">
   <strong>ID del Ticket:</strong> #{{ticketId}}<br>
   <strong>Categoría:</strong> {{categoria}}<br>
   <strong>Solicitante:</strong> {{solicitanteNombre}}<br>
   <strong>Prioridad:</strong> {{prioridad}}<br>
   <strong>Descripción:</strong> {{descripcion}}
 </div>
-<p>Por favor, haz clic en el siguiente botón para ver los detalles del ticket:</p>
-<a href="{{ticketUrl}}" class="btn">Ver Ticket</a>`,
-        tipo: 'Notificacion_sistema',
-        activo: true
-      },
-      {
-        id: 4,
-        nombre: 'traslado_creado',
-        contenido: `<h2>Hola {{agenteNombre}},</h2>
-<p>Se ha iniciado un nuevo trámite de traslado en el sistema.</p>
-<div style="background-color: #f9fafb; border-left: 4px solid #0c2340; padding: 15px; margin: 15px 0;">
-  <strong>Folio:</strong> {{folio}}<br>
+<p style="margin: 16px 0;">Por favor, haz clic en el siguiente botón para ver los detalles del ticket:</p>
+<a href="{{ticketUrl}}" style="${btnStyle}">Ver Ticket</a>`,
+    },
+    {
+      id: 4,
+      nombre: 'traslado_creado',
+      contenido: `<h2 style="color: #1f2937; margin: 0 0 12px;">Hola {{agenteNombre}},</h2>
+<p style="margin: 0 0 16px;">Se ha iniciado un <strong>nuevo trámite de traslado</strong> en el sistema.</p>
+<div style="${infoBoxStyle}">
+  <strong>Folio:</strong> #TRL-{{ticketId}}<br>
   <strong>Matrícula:</strong> {{matricula}}<br>
   <strong>Alumno:</strong> {{alumno}}<br>
   <strong>Carrera:</strong> {{carrera}}<br>
@@ -918,13 +918,25 @@ async function main() {
   <strong>Prioridad:</strong> {{prioridad}}<br>
   <strong>Descripción:</strong> {{descripcion}}
 </div>
-<p>Haz clic en el siguiente botón para auditar y gestionar este traslado:</p>
-<a href="{{ticketUrl}}" class="btn">Ver Detalle del Traslado</a>`,
+<p style="margin: 16px 0;">Haz clic en el siguiente botón para auditar y gestionar este traslado:</p>
+<a href="{{ticketUrl}}" style="${btnStyle}">Ver Traslado</a>`,
+    },
+  ];
+
+  for (const plantilla of plantillas) {
+    await prisma.plantillaCorreo.upsert({
+      where: { id: plantilla.id },
+      update: { contenido: plantilla.contenido, activo: true },
+      create: {
+        id: plantilla.id,
+        nombre: plantilla.nombre,
+        contenido: plantilla.contenido,
         tipo: 'Notificacion_sistema',
-        activo: true
-      }
-    ],
-  });
+        activo: true,
+      },
+    });
+  }
+  console.log(`  ✓ ${plantillas.length} plantillas de correo sincronizadas.`);
 
   console.log(`Seeding finished.`);
 }
