@@ -9,6 +9,7 @@
 2. Siguiente ciclo de desarrollo de backend y UI.
 
 **Pasos Completados:**
+- ✅ **CSS Inline en Notificaciones por Correo (2026-06-29):** Se refactorizaron los estilos CSS a formato 100% inline en `src/services/emailService.ts` y en las plantillas de `prisma/seed.ts` (usando `upsert` para que sea idempotente) garantizando que el diseño institucional (colores dorado, guinda y estructura de botones) sobreviva al reenvío del correo en clientes de email (como Gmail u Outlook) que remueven la etiqueta `<style>` del `<head>`.
 - ✅ **Botón de Resetear Horario (2026-06-25):** Se implementó un botón en la UI de edición de usuarios dentro del desplegable "Horario de disponibilidad". Este botón permite restablecer a "No disponible" todos los días laborales de forma masiva en el cliente, mostrando un mensaje toast de confirmación y con un estilo centrado, gris y animado al hover consistente con el resto de la interfaz.
 - ✅ **Integración de AWS SES y Notificaciones por Correo (2026-06-25):** Se implementó el servicio de correos centralizado (`src/services/emailService.ts`) que gestiona el envío de correos transaccionales mediante el SDK de AWS SES y registra las notificaciones en la tabla `notificaciones_correo` de Prisma. Se integró en la creación de tickets, flujos de traslados y actualizaciones (reasignación de agentes, cambios de estatus y nuevos comentarios) con lógica asíncrona en segundo plano para evitar bloqueos y soporte auto-reparable de plantillas en base de datos. Se validó la compilación exitosa del proyecto.
 - ✅ **Descuento y Notificaciones (2026-06-23):** Se corrigió el bug del checkbox "¿Tiene descuento?" en la vista de detalle de tickets (que se marcaba por defecto al existir el descuento `1` / `"N/A"`). Se agregaron optimizaciones de base de datos (`take: 100`) para acelerar la consulta de notificaciones de usuarios comunes, un spinner inmediato al abrir el dropdown de notificaciones y la animación de parpadeo blanco (overlay de carga) al hacer clic sobre cualquier notificación.
@@ -101,6 +102,15 @@ A continuación se listan los proyectos prioritarios. Tu tarea es ayudar a refin
     * **Infraestructura y Despliegue (CI/CD):** Implementado. El flujo con GitHub Actions, Docker, AWS ECR, Secrets Manager y App Runner está operativo.
 
 # Historial de Cambios (Log)
+## 2026-06-29 (Estilos Inline para Reenvío de Correos y Actualización de Seed)
+*   **Servicio de Notificación por Correo (`src/services/emailService.ts`):**
+    *   **CSS Inline:** Se eliminó la etiqueta `<style>` del Wrapper principal y se migraron todos los estilos CSS a propiedades `style="..."` inline en cada elemento HTML para evitar la pérdida de estilos (colores de cabecera, contenedor, etc.) cuando un usuario reenvía el correo.
+    *   **Estilos en Botones:** Se removió la clase `class="btn"` de las plantillas y se implementaron botones con estilos inline consistentes (color guinda `#881912` y fuente limpia).
+    *   **Auto-reparación de Plantillas (Upsert):** Se modificó `getOrCreatePlantilla` para realizar un `upsert` en la base de datos, asegurando que los registros ya existentes con clases obsoletas de CSS se actualicen con el contenido inline en el próximo envío.
+*   **Base de datos / Seed (`prisma/seed.ts`):**
+    *   **Idempotencia con Upsert:** Se reemplazó el método `createMany` por iteraciones individuales `upsert` que actualizan el `contenido` de la plantilla si ya existe, evitando fallas de duplicados al sembrar de nuevo.
+    *   **Sincronización:** Se integró el HTML con estilos inline correspondiente a cada evento directamente en el seed del proyecto.
+
 ## 2026-06-23 (Sincronización de Horario y Restricciones de Traslados)
 *   **Edición de Usuarios (`/admin/usuarios/editar/[id].astro` y logic):**
     *   **Refresco de Horario por Clave:** Se implementó una recarga suave automática mediante `navigate()` al guardar los cambios del usuario si la clave de empleado cambió, permitiendo reflejar el horario recuperado y formateado por la API de RH en el frontend.
