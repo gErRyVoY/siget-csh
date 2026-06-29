@@ -1,5 +1,8 @@
 # Plan de Trabajo (SIGET-CSH)
 
+> [!WARNING]
+> **Flujo de Despliegue (CI/CD):** No se deben realizar dos `git push` seguidos al repositorio. El último fallará debido al tiempo que le toma a AWS App Runner procesar y completar el despliegue automático del commit previo. Se debe hacer **un solo `git push`** cuando sea solicitado y esperar a que finalice la compilación/despliegue en curso.
+
 **Tarea Actual:** Completada — Configuración de AWS SES e integración de Notificaciones por Correo ✅
 
 **Estado:** Completado. Se implementó el servicio de correos con el SDK de AWS SES, integrándose asíncronamente en los endpoints de creación, traslado y actualización de tickets, guardando el registro histórico en base de datos. El proyecto compila con éxito.
