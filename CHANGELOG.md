@@ -8,6 +8,15 @@ Todos los cambios notables en este proyecto serán documentados en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Versionado Semántico](https://semver.org/lang/es/).
 
+## 2026-06-30 (Filtros de Quincena y Reposición de Horario en Incidencias)
+
+### UI/UX: Lógica de Tiempos y Filtros en Reporte de Incidencias
+*   **`src/pages/user/perfil/incidencias.astro` (Frontend):**
+    *   **Reposición de Tiempo:** Se implementó una regla de horario para marcar con "Reposición de tiempo" (con status y registros en color verde) a aquellos días en los que el usuario registró su entrada antes del horario laboral de entrada y su salida después del de salida.
+    *   **Filtros de Quincenas:** Se añadieron botones de control dinámicos ("Ver todo", "Quincena 1" y "Quincena 2") en el extremo opuesto al botón "Guardar incidencias" (tanto arriba como abajo de la lista de incidencias). Estos botones se muestran únicamente cuando el listado de incidencias del mes consultado contiene días del 16 en adelante, y se sincronizan visualmente al hacer clic en ellos para filtrar la vista instantáneamente.
+
+---
+
 ## 2026-06-23 (Corrección de Descuento en Vista de Ticket y Optimizaciones de Notificaciones)
 
 ### Bug Fix: Checkbox "¿Tiene descuento?" en Detalle de Ticket

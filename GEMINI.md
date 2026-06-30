@@ -12,6 +12,7 @@
 2. Siguiente ciclo de desarrollo de backend y UI.
 
 **Pasos Completados:**
+- ✅ **Filtros de Quincena y Reposición de Horario (2026-06-30):** En la vista de incidencias, se implementaron botones dinámicos para filtrar registros de Quincena 1 (días 1-15) y Quincena 2 (días 16 en adelante) de forma sincronizada si se detecta que los registros superan el día 16. Además, se configuró la lógica para detectar reposiciones de tiempo (entrada antes del horario de entrada laboral y salida después del de salida) marcándolas en color verde.
 - ✅ **CSS Inline en Notificaciones por Correo (2026-06-29):** Se refactorizaron los estilos CSS a formato 100% inline en `src/services/emailService.ts` y en las plantillas de `prisma/seed.ts` (usando `upsert` para que sea idempotente) garantizando que el diseño institucional (colores dorado, guinda y estructura de botones) sobreviva al reenvío del correo en clientes de email (como Gmail u Outlook) que remueven la etiqueta `<style>` del `<head>`.
 - ✅ **Botón de Resetear Horario (2026-06-25):** Se implementó un botón en la UI de edición de usuarios dentro del desplegable "Horario de disponibilidad". Este botón permite restablecer a "No disponible" todos los días laborales de forma masiva en el cliente, mostrando un mensaje toast de confirmación y con un estilo centrado, gris y animado al hover consistente con el resto de la interfaz.
 - ✅ **Integración de AWS SES y Notificaciones por Correo (2026-06-25):** Se implementó el servicio de correos centralizado (`src/services/emailService.ts`) que gestiona el envío de correos transaccionales mediante el SDK de AWS SES y registra las notificaciones en la tabla `notificaciones_correo` de Prisma. Se integró en la creación de tickets, flujos de traslados y actualizaciones (reasignación de agentes, cambios de estatus y nuevos comentarios) con lógica asíncrona en segundo plano para evitar bloqueos y soporte auto-reparable de plantillas en base de datos. Se validó la compilación exitosa del proyecto.
@@ -105,6 +106,11 @@ A continuación se listan los proyectos prioritarios. Tu tarea es ayudar a refin
     * **Infraestructura y Despliegue (CI/CD):** Implementado. El flujo con GitHub Actions, Docker, AWS ECR, Secrets Manager y App Runner está operativo.
 
 # Historial de Cambios (Log)
+## 2026-06-30 (Filtros de Quincena y Reposición de Horario en Incidencias)
+*   **Reporte de Incidencias (`src/pages/user/perfil/incidencias.astro`):**
+    *   **Reposición de Tiempo:** Se añadió una validación para marcar como "Reposición de tiempo" (en verde, status y campos de registro) si el usuario ingresó antes del inicio laboral y salió después del fin laboral.
+    *   **Filtros de Quincenas:** Si se cargan incidencias del día 16 en adelante, se renderizan al inicio y final del listado botones alineados al extremo izquierdo de "Guardar incidencias" para filtrar las filas por "Quincena 1" o "Quincena 2" de manera sincronizada.
+
 ## 2026-06-29 (Estilos Inline para Reenvío de Correos y Actualización de Seed)
 *   **Servicio de Notificación por Correo (`src/services/emailService.ts`):**
     *   **CSS Inline:** Se eliminó la etiqueta `<style>` del Wrapper principal y se migraron todos los estilos CSS a propiedades `style="..."` inline en cada elemento HTML para evitar la pérdida de estilos (colores de cabecera, contenedor, etc.) cuando un usuario reenvía el correo.

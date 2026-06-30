@@ -118,9 +118,10 @@ const clave = dbUser.clave ?? "";
       </form>
 
       <div id="guardar-container-top" class="mb-4 hidden">
-        <div class="flex justify-end">
+        <div class="flex flex-col sm:flex-row justify-between items-center gap-4">
+          <div id="quincena-filters-top" class="flex gap-2 w-full sm:w-auto"></div>
           <button
-            class="bg-secondary text-secondary-foreground hover:bg-secondary/90 px-6 py-2 rounded-md text-sm font-semibold transition-colors btn-guardar-incidencias"
+            class="bg-secondary text-secondary-foreground hover:bg-secondary/90 px-6 py-2 rounded-md text-sm font-semibold transition-colors btn-guardar-incidencias w-full sm:w-auto text-center"
           >
             Guardar incidencias
           </button>
@@ -132,9 +133,10 @@ const clave = dbUser.clave ?? "";
       </div>
 
       <div id="guardar-container" class="mt-8 hidden border-t pt-4">
-        <div class="flex justify-end">
+        <div class="flex flex-col sm:flex-row justify-between items-center gap-4">
+          <div id="quincena-filters-bottom" class="flex gap-2 w-full sm:w-auto"></div>
           <button
-            class="bg-secondary text-secondary-foreground hover:bg-secondary/90 px-6 py-2 rounded-md text-sm font-semibold transition-colors btn-guardar-incidencias"
+            class="bg-secondary text-secondary-foreground hover:bg-secondary/90 px-6 py-2 rounded-md text-sm font-semibold transition-colors btn-guardar-incidencias w-full sm:w-auto text-center"
           >
             Guardar incidencias
           </button>
@@ -296,9 +298,7 @@ const clave = dbUser.clave ?? "";
         btnConsultar.disabled = false;
         btnConsultar.textContent = "Consultar";
       }
-    });
-
-    function renderResultados(
+    })    function renderResultados(
       registros: any[],
       mes: number,
       anio: number,
@@ -309,6 +309,7 @@ const clave = dbUser.clave ?? "";
 
       incidenciasToSave = [];
       const todayStr = new Date().toISOString().split("T")[0];
+      let rendered16Plus = false;
 
       registros.forEach((r, index) => {
         const { dayName, dayNum, dayNameNormalized } = formatDate(r.fecha);
@@ -401,7 +402,26 @@ const clave = dbUser.clave ?? "";
           } else if (hInicio && rEntrada) {
             // Tiempos
             const diffEntrada = timeDiffMins(rEntrada, hInicio); // > 0 means late
-            if (diffEntrada > 5) {
+            
+            // Check if it qualifies as Reposición (entry before start AND exit after end)
+            let isReposicion = false;
+            let minsExtraReposicion = 0;
+            if (hFin && rSalida) {
+              const diffSalida = timeDiffMins(rSalida, hFin); // > 0 means late exit
+              if (diffEntrada < 0 && diffSalida > 0) {
+                isReposicion = true;
+                minsExtraReposicion = (-diffEntrada) + diffSalida;
+              }
+            }
+
+            if (isReposicion) {
+              statusText = "Reposición de tiempo";
+              statusClass = "text-green-600 font-bold";
+              tiempoTurno = minsExtraReposicion;
+              extraText = `${minsExtraReposicion} minutos`;
+              requiresObs = true;
+              showRow = true;
+            } else if (diffEntrada > 5) {
               const minsRetardo = diffEntrada - 5;
               statusText = "Retardo";
               statusClass = "text-red-600 font-bold";
@@ -463,6 +483,11 @@ const clave = dbUser.clave ?? "";
 
           let toggleChecked = isSaved ? false : !isToday;
 
+          const dayInt = parseInt(dayNum, 10);
+          if (dayInt >= 16) {
+            rendered16Plus = true;
+          }
+
           // Push to state
           incidenciasToSave.push({
             index,
@@ -473,7 +498,7 @@ const clave = dbUser.clave ?? "";
             salida_comida: r.salida_comida,
             tiempo_turno: tiempoTurno,
             mes,
-            quincena: parseInt(dayNum) <= 15 ? 1 : 2,
+            quincena: dayInt <= 15 ? 1 : 2,
             requiresObs,
             requiresObsComida,
           });
@@ -487,14 +512,14 @@ const clave = dbUser.clave ?? "";
             const diffEnt = timeDiffMins(rEntrada, hInicio);
             if (diffEnt > 5) {
               entradaClass = "text-destructive font-bold";
-            } else if (diffEnt <= -60) {
+            } else if (diffEnt < 0) {
               entradaClass = "text-green-600 font-bold";
             }
           }
 
           if (hFin && rSalida) {
             const diffSal = timeDiffMins(rSalida, hFin);
-            if (diffSal >= 60) {
+            if (diffSal > 0) {
               salidaClass = "text-green-600 font-bold";
             }
           }
@@ -507,7 +532,7 @@ const clave = dbUser.clave ?? "";
           }
 
           html += `
-            <div class="border rounded-md overflow-hidden bg-card mb-4 relative pb-10 sm:pb-0" id="row-${index}">
+            <div class="border rounded-md overflow-hidden bg-card mb-4 relative pb-10 sm:pb-0 incidencia-card-row" id="row-${index}" data-day="${parseInt(dayNum, 10)}">
                 <div class="bg-muted-foreground/80 text-white flex justify-between items-center px-4 py-2">
                     <span class="font-bold capitalize">${dayName} ${dayNum}</span>
                     <div class="flex items-center gap-2">
@@ -587,6 +612,12 @@ const clave = dbUser.clave ?? "";
         }
       });
 
+      // Clear filters first
+      const filtersTop = document.getElementById("quincena-filters-top");
+      const filtersBottom = document.getElementById("quincena-filters-bottom");
+      if (filtersTop) filtersTop.innerHTML = "";
+      if (filtersBottom) filtersBottom.innerHTML = "";
+
       if (html === "") {
         resultadosContainer.innerHTML =
           "<p class='text-center text-muted-foreground'>No se encontraron incidencias en este periodo (horario cumplido).</p>";
@@ -594,6 +625,19 @@ const clave = dbUser.clave ?? "";
         resultadosContainer.innerHTML = html;
         if (guardarContainer) guardarContainer.classList.remove("hidden");
         if (guardarContainerTop) guardarContainerTop.classList.remove("hidden");
+
+        // Setup fortnight filters if we have rendered days >= 16
+        if (rendered16Plus) {
+          const btnHtml = `
+            <button type="button" class="btn-q-all bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-2 rounded-md text-xs font-semibold transition-colors cursor-pointer" data-filter="all">Ver todo</button>
+            <button type="button" class="btn-q-1 bg-muted text-muted-foreground hover:bg-muted/80 px-4 py-2 rounded-md text-xs font-semibold transition-colors cursor-pointer" data-filter="1">Quincena 1</button>
+            <button type="button" class="btn-q-2 bg-muted text-muted-foreground hover:bg-muted/80 px-4 py-2 rounded-md text-xs font-semibold transition-colors cursor-pointer" data-filter="2">Quincena 2</button>
+          `;
+          if (filtersTop) filtersTop.innerHTML = btnHtml;
+          if (filtersBottom) filtersBottom.innerHTML = btnHtml;
+
+          setupFortnightFilters();
+        }
 
         // Attach event listeners for toggles
         document.querySelectorAll(".incidencia-toggle").forEach((toggle) => {
@@ -641,6 +685,51 @@ const clave = dbUser.clave ?? "";
           });
         });
       }
+    }
+
+    function setupFortnightFilters() {
+      const allButtons = document.querySelectorAll(".btn-q-all, .btn-q-1, .btn-q-2");
+      
+      allButtons.forEach(btn => {
+        btn.addEventListener("click", (e) => {
+          const target = e.currentTarget as HTMLButtonElement;
+          const filterType = target.dataset.filter;
+          
+          const rows = document.querySelectorAll(".incidencia-card-row");
+          rows.forEach((row: any) => {
+            const day = parseInt(row.dataset.day, 10);
+            if (filterType === "all") {
+              row.classList.remove("hidden");
+            } else if (filterType === "1") {
+              if (day <= 15) {
+                row.classList.remove("hidden");
+              } else {
+                row.classList.add("hidden");
+              }
+            } else if (filterType === "2") {
+              if (day >= 16) {
+                row.classList.remove("hidden");
+              } else {
+                row.classList.add("hidden");
+              }
+            }
+          });
+
+          // Sync active styles across both top and bottom sets of buttons
+          const sameFilterButtons = document.querySelectorAll(`[data-filter="${filterType}"]`);
+          const otherFilterButtons = document.querySelectorAll(`[data-filter]:not([data-filter="${filterType}"])`);
+
+          sameFilterButtons.forEach(b => {
+            b.classList.remove("bg-muted", "text-muted-foreground", "hover:bg-muted/80");
+            b.classList.add("bg-primary", "text-primary-foreground", "hover:bg-primary/90");
+          });
+
+          otherFilterButtons.forEach(b => {
+            b.classList.remove("bg-primary", "text-primary-foreground", "hover:bg-primary/90");
+            b.classList.add("bg-muted", "text-muted-foreground", "hover:bg-muted/80");
+          });
+        });
+      });
     }
 
     btnsGuardar?.forEach((btnGuardar) => {
