@@ -130,18 +130,18 @@ const GOOGLE_APP_ID = import.meta.env.GOOGLE_APP_ID || process.env.GOOGLE_APP_ID
           <div class="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
             <button
               type="button"
-              class="bg-amber-600 hover:bg-amber-600/90 text-white px-6 py-2 rounded-md text-sm font-semibold transition-colors btn-ver-tabla w-full sm:w-auto text-center cursor-pointer font-bold"
+              class="bg-amber-600 hover:bg-amber-600/90 text-white px-6 py-2 rounded-md text-sm transition-colors btn-ver-tabla w-full sm:w-auto text-center cursor-pointer font-bold"
             >
               Ver tabla
             </button>
             <button
               type="button"
-              class="bg-primary text-primary-foreground hover:bg-primary/90 px-6 py-2 rounded-md text-sm font-semibold transition-colors btn-enviar-reporte w-full sm:w-auto text-center cursor-pointer font-bold"
+              class="bg-primary text-primary-foreground hover:bg-primary/90 px-6 py-2 rounded-md text-sm transition-colors btn-enviar-reporte w-full sm:w-auto text-center cursor-pointer font-bold"
             >
               Enviar reporte
             </button>
             <button
-              class="bg-secondary text-secondary-foreground hover:bg-secondary/90 px-6 py-2 rounded-md text-sm font-semibold transition-colors btn-guardar-incidencias w-full sm:w-auto text-center font-bold"
+              class="bg-secondary text-secondary-foreground hover:bg-secondary/90 px-6 py-2 rounded-md text-sm transition-colors btn-guardar-incidencias w-full sm:w-auto text-center font-bold"
             >
               Guardar incidencias
             </button>
@@ -159,18 +159,18 @@ const GOOGLE_APP_ID = import.meta.env.GOOGLE_APP_ID || process.env.GOOGLE_APP_ID
           <div class="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
             <button
               type="button"
-              class="bg-amber-600 hover:bg-amber-600/90 text-white px-6 py-2 rounded-md text-sm font-semibold transition-colors btn-ver-tabla w-full sm:w-auto text-center cursor-pointer font-bold"
+              class="bg-amber-600 hover:bg-amber-600/90 text-white px-6 py-2 rounded-md text-sm transition-colors btn-ver-tabla w-full sm:w-auto text-center cursor-pointer font-bold"
             >
               Ver tabla
             </button>
             <button
               type="button"
-              class="bg-primary text-primary-foreground hover:bg-primary/90 px-6 py-2 rounded-md text-sm font-semibold transition-colors btn-enviar-reporte w-full sm:w-auto text-center cursor-pointer font-bold"
+              class="bg-primary text-primary-foreground hover:bg-primary/90 px-6 py-2 rounded-md text-sm transition-colors btn-enviar-reporte w-full sm:w-auto text-center cursor-pointer font-bold"
             >
               Enviar reporte
             </button>
             <button
-              class="bg-secondary text-secondary-foreground hover:bg-secondary/90 px-6 py-2 rounded-md text-sm font-semibold transition-colors btn-guardar-incidencias w-full sm:w-auto text-center font-bold"
+              class="bg-secondary text-secondary-foreground hover:bg-secondary/90 px-6 py-2 rounded-md text-sm transition-colors btn-guardar-incidencias w-full sm:w-auto text-center font-bold"
             >
               Guardar incidencias
             </button>
@@ -181,7 +181,7 @@ const GOOGLE_APP_ID = import.meta.env.GOOGLE_APP_ID || process.env.GOOGLE_APP_ID
   </div>
 
   <!-- Modal de Enviar Reporte de Incidencias -->
-  <div id="enviar-reporte-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+  <div id="enviar-reporte-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 items-center justify-center p-4 hidden">
     <div class="bg-card text-card-foreground border border-muted-foreground/30 rounded-lg max-w-md w-full shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
       <!-- Modal Header -->
       <div class="px-6 py-4 border-b border-border flex items-center justify-between">
@@ -206,7 +206,7 @@ const GOOGLE_APP_ID = import.meta.env.GOOGLE_APP_ID || process.env.GOOGLE_APP_ID
   </div>
 
   <!-- Modal de Tabla de Incidencias -->
-  <div id="ver-tabla-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+  <div id="ver-tabla-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 items-center justify-center p-4 hidden">
     <div class="bg-card text-card-foreground border border-muted-foreground/30 rounded-lg max-w-5xl w-full shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
       <!-- Modal Header -->
       <div class="px-6 py-4 border-b border-border flex items-center justify-between bg-muted/30">
@@ -893,11 +893,15 @@ const GOOGLE_APP_ID = import.meta.env.GOOGLE_APP_ID || process.env.GOOGLE_APP_ID
         }
 
         modal.classList.remove("hidden");
+        modal.classList.add("flex");
       });
     });
 
     const closeModal = () => {
-      if (modal) modal.classList.add("hidden");
+      if (modal) {
+        modal.classList.add("hidden");
+        modal.classList.remove("flex");
+      }
     };
 
     modalClose?.addEventListener("click", closeModal);
@@ -905,7 +909,10 @@ const GOOGLE_APP_ID = import.meta.env.GOOGLE_APP_ID || process.env.GOOGLE_APP_ID
 
     // Table Modal Events and Render Logic
     const closeTablaModal = () => {
-      if (tablaModal) tablaModal.classList.add("hidden");
+      if (tablaModal) {
+        tablaModal.classList.add("hidden");
+        tablaModal.classList.remove("flex");
+      }
     };
 
     tablaModalClose?.addEventListener("click", closeTablaModal);
@@ -954,6 +961,7 @@ const GOOGLE_APP_ID = import.meta.env.GOOGLE_APP_ID || process.env.GOOGLE_APP_ID
           if (sorted.length === 0) {
             tablaCalendarioContainer.innerHTML = `<p class="text-center text-muted-foreground py-8">No hay registros disponibles para generar la tabla.</p>`;
             tablaModal.classList.remove("hidden");
+            tablaModal.classList.add("flex");
             return;
           }
 
@@ -1064,6 +1072,7 @@ const GOOGLE_APP_ID = import.meta.env.GOOGLE_APP_ID || process.env.GOOGLE_APP_ID
           tablaCalendarioContainer.innerHTML = calendarHtml;
 
           tablaModal.classList.remove("hidden");
+          tablaModal.classList.add("flex");
           console.log("[Ver Tabla] Modal abierto exitosamente.");
         } catch (error) {
           console.error("[Ver Tabla] Error crítico al pintar el calendario:", error);

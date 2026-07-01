@@ -47,12 +47,12 @@ function buildCalendarTable(sortedData: any[], schedule: any): string {
 
   // Colores de estado
   const colorMap: Record<string, string> = {
-    ok:        "#d1fae5",  // verde claro – a tiempo
-    tarde:     "#fee2e2",  // rojo claro – tardanza
-    orange:    "#ffedd5",  // naranja – 6-15 min
-    repo:      "#d1fae5",  // verde claro – reposición
-    inasist:   "#f3f4f6",  // gris claro – inasistencia / sin registro
-    sinReg:    "#fef9c3",  // amarillo claro – sin datos parciales
+    ok: "#d1fae5",  // verde claro – a tiempo
+    tarde: "#fee2e2",  // rojo claro – tardanza
+    orange: "#ffedd5",  // naranja – 6-15 min
+    repo: "#d1fae5",  // verde claro – reposición
+    inasist: "#f3f4f6",  // gris claro – inasistencia / sin registro
+    sinReg: "#fef9c3",  // amarillo claro – sin datos parciales
   };
 
   // Encabezados Lun-Sáb
@@ -161,8 +161,8 @@ function buildCalendarTable(sortedData: any[], schedule: any): string {
 
     cells.push(
       `<td style="position:relative;width:${CELL_W};height:${CELL_H};background-color:${bgColor};border:1px solid #d1d5db;padding:4px 5px;vertical-align:top;">` +
-        watermarkNum +
-        `<div style="margin-top:2px;">${innerContent}</div>` +
+      watermarkNum +
+      `<div style="margin-top:2px;">${innerContent}</div>` +
       `</td>`
     );
   }
@@ -231,10 +231,10 @@ export const POST: APIRoute = async ({ request }) => {
     }));
 
     const fechas = dataToInsert.map((d) => d.fecha);
-    await prisma.incidencia.deleteMany({
+    await (prisma as any).incidencia.deleteMany({
       where: { usuarioId: userId, fecha: { in: fechas } },
     });
-    await prisma.incidencia.createMany({ data: dataToInsert });
+    await (prisma as any).incidencia.createMany({ data: dataToInsert });
 
     // 2. Obtener datos del director y colaborador
     const director = await prisma.usuario.findFirst({
@@ -252,8 +252,8 @@ export const POST: APIRoute = async ({ request }) => {
 
     // 3. Texto del periodo
     const meses = [
-      "enero","febrero","marzo","abril","mayo","junio",
-      "julio","agosto","septiembre","octubre","noviembre","diciembre",
+      "enero", "febrero", "marzo", "abril", "mayo", "junio",
+      "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre",
     ];
     const mesName = meses[mes - 1] || "";
     let periodText = "";
@@ -271,8 +271,8 @@ export const POST: APIRoute = async ({ request }) => {
     );
 
     // 5. Lista textual de incidencias con colores inline
-    const diasSemana = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
-    const diasSemanaNorm = ["domingo","lunes","martes","miercoles","jueves","viernes","sabado"];
+    const diasSemana = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
+    const diasSemanaNorm = ["domingo", "lunes", "martes", "miercoles", "jueves", "viernes", "sabado"];
 
     const lines = sortedData.map((inc) => {
       const date = inc.fecha;
@@ -355,11 +355,11 @@ export const POST: APIRoute = async ({ request }) => {
     const htmlList = `
       <div style="background-color:#f9fafb;border-left:4px solid #caab55;padding:15px;margin:15px 0;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;font-size:14px;line-height:1.6;color:#374151;">
         ${lines
-          .map(
-            (line) =>
-              `<div style="margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid #e5e7eb;">${line}</div>`
-          )
-          .join("")}
+        .map(
+          (line) =>
+            `<div style="margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid #e5e7eb;">${line}</div>`
+        )
+        .join("")}
       </div>
     `;
 
