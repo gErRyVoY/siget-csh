@@ -2,16 +2,21 @@
 
 > [!WARNING]
 > **Flujo de Despliegue (CI/CD):** No se deben realizar dos `git push` seguidos al repositorio. El último fallará debido al tiempo que le toma a AWS App Runner procesar y completar el despliegue automático del commit previo. Se debe hacer **un solo `git push`** cuando sea solicitado y esperar a que finalice la compilación/despliegue en curso.
+>
+> **⚠️ REGLA CRÍTICA PARA EL ASISTENTE:** El asistente **NO debe ejecutar `git push`** en ninguna circunstancia a menos que el usuario lo solicite **de forma explícita**. Se permiten `git add` y `git commit` para preparar los cambios, pero el push queda **reservado exclusivamente para cuando el usuario lo indique**.
 
 **Tarea Actual:** Completada — Configuración de AWS SES e integración de Notificaciones por Correo ✅
 
-**Estado:** Completado. Se implementó el servicio de correos con el SDK de AWS SES, integrándose asíncronamente en los endpoints de creación, traslado y actualización de tickets, guardando el registro histórico en base de datos. El proyecto compila con éxito.
+**Tarea Actual:** Completada — Sustitución de carga de imagen por Tabla HTML en el Reporte de Incidencias ✅
+
+**Estado:** Completado. Se eliminó la lógica de subida de archivos a S3 (AWS SDK, URL firmadas, Drag & Drop, Google Drive Picker) del flujo de envío de reportes de incidencias. En su lugar, el backend genera una tabla HTML calendario responsiva con estilos CSS 100% inline (compatible con reenvío en Gmail/Outlook), incluyendo colores condicionales para EL/SL y una leyenda de estados. El modal de confirmación fue simplificado. El proyecto compila con éxito.
 
 **Pasos Siguientes:**
 1. Monitoreo del volumen de correos y rebotes en el AWS SES Dashboard.
 2. Siguiente ciclo de desarrollo de backend y UI.
 
 **Pasos Completados:**
+- ✅ **Sustitución de carga de imagen por Tabla HTML en el Reporte de Incidencias (2026-07-01):** Se eliminó la lógica de subida de archivos a S3 (AWS SDK, URL firmadas, Drag & Drop, Google Drive Picker) del flujo de envío de reportes de incidencias. En su lugar, el backend genera una tabla HTML calendario responsiva con estilos CSS 100% inline (compatible con reenvío en Gmail/Outlook), incluyendo colores condicionales para EL/SL y una leyenda de estados. Los destinatarios del correo son ahora de producción: Director CSH en `Para:` y el colaborador que envía en `CC:`. El modal de confirmación fue simplificado. El proyecto compila con éxito.
 - ✅ **Filtros de Quincena y Reposición de Horario (2026-06-30):** En la vista de incidencias, se implementaron botones dinámicos para filtrar registros de Quincena 1 (días 1-15) y Quincena 2 (días 16 en adelante) de forma sincronizada si se detecta que los registros superan el día 16. Además, se configuró la lógica para detectar reposiciones de tiempo (entrada antes del horario de entrada laboral y salida después del de salida) marcándolas en color verde.
 - ✅ **CSS Inline en Notificaciones por Correo (2026-06-29):** Se refactorizaron los estilos CSS a formato 100% inline en `src/services/emailService.ts` y en las plantillas de `prisma/seed.ts` (usando `upsert` para que sea idempotente) garantizando que el diseño institucional (colores dorado, guinda y estructura de botones) sobreviva al reenvío del correo en clientes de email (como Gmail u Outlook) que remueven la etiqueta `<style>` del `<head>`.
 - ✅ **Botón de Resetear Horario (2026-06-25):** Se implementó un botón en la UI de edición de usuarios dentro del desplegable "Horario de disponibilidad". Este botón permite restablecer a "No disponible" todos los días laborales de forma masiva en el cliente, mostrando un mensaje toast de confirmación y con un estilo centrado, gris y animado al hover consistente con el resto de la interfaz.

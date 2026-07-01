@@ -499,6 +499,7 @@ model Incidencia {
   entrada_comida       String?  @db.VarChar(10)
   salida_comida        String?  @db.VarChar(10)
   observaciones_comida String?
+  imagen_reporte       String?
   usuario              Usuario  @relation(fields: [usuarioId], references: [id])
 
   @@index([usuarioId])

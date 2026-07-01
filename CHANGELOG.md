@@ -8,6 +8,23 @@ Todos los cambios notables en este proyecto serán documentados en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Versionado Semántico](https://semver.org/lang/es/).
 
+## 2026-07-01 (Sustitución de Imagen S3 por Tabla HTML en Reporte de Incidencias)
+
+### Refactor: Eliminación de AWS S3 del flujo de Reporte de Incidencias
+*   **`src/pages/user/perfil/incidencias.astro` (Frontend):**
+    *   **Modal simplificado:** Se eliminó la sección de carga de archivos (Drag & Drop y el botón de Google Drive Picker) del modal "Enviar reporte". El modal ahora muestra únicamente el periodo seleccionado y un texto de confirmación, con el botón "Enviar" habilitado de forma directa.
+    *   **Limpieza de código:** Se removieron ~200 líneas de código obsoleto del cliente: funciones `handleFileSelect`, `initGoogleDrive`, `openDrivePicker`, `drivePickerCallback`, eventos de Drag & Drop, variables de estado de Google API y referencias DOM a elementos eliminados.
+    *   **Submit simplificado:** El handler del botón "Enviar" ahora realiza el POST directamente a `/api/user/incidencias/send-report` sin pasos intermedios de generación de URL firmada ni subida a S3.
+*   **`src/pages/api/user/incidencias/send-report.ts` (API):**
+    *   **Eliminación de S3:** Se removieron los imports `@aws-sdk/client-s3` y `@aws-sdk/s3-request-presigner`, la obtención de URL firmada de S3 y el parámetro `s3Key` del payload.
+    *   **Tabla HTML Calendario:** Se implementó la función `buildCalendarTable()` que genera una tabla HTML `<table>/<tr>/<td>` con estilos CSS 100% inline para máxima compatibilidad en reenvíos de Gmail/Outlook. La tabla incluye: encabezado Lun-Sáb con fondo institucional guinda, colores condicionales por celda (verde para a tiempo/reposición, rojo para tardanza >15 min, naranja para 6-15 min, gris para inasistencia), marcas de agua semitransparentes del número de día, y siglas EL/SL/SC/RC con colores.
+    *   **Leyenda de colores:** Se añade automáticamente una leyenda debajo de la tabla describiendo cada color de estado.
+    *   **Destinatarios de producción:** Se eliminó el correo de prueba `gerardo.omana@humanitas.edu.mx`. El correo ahora se envía al Director CSH (`Para:`) y al colaborador que envía (`CC:`).
+*   **`src/services/emailService.ts` (Servicio):**
+    *   Se añadió el campo opcional `cc?: string` a la interfaz `SendEmailParams` y se incorporó `CcAddresses` al comando `SendEmailCommand` de AWS SES para soportar el envío en copia.
+
+---
+
 ## 2026-06-30 (Filtros de Quincena y Reposición de Horario en Incidencias)
 
 ### UI/UX: Lógica de Tiempos y Filtros en Reporte de Incidencias

@@ -24,6 +24,7 @@ const FROM_NAME = process.env.SES_FROM_NAME || "Centro de Soporte Humanitas";
 
 export interface SendEmailParams {
   to: string;
+  cc?: string;
   subject: string;
   htmlBody: string;
 }
@@ -31,7 +32,7 @@ export interface SendEmailParams {
 /**
  * Sends a raw HTML email using AWS SES.
  */
-export async function sendEmail({ to, subject, htmlBody }: SendEmailParams): Promise<{ success: boolean; messageId?: string; error?: string }> {
+export async function sendEmail({ to, cc, subject, htmlBody }: SendEmailParams): Promise<{ success: boolean; messageId?: string; error?: string }> {
   if (!isSesConfigured || !sesClient) {
     const errorMsg = "AWS SES no está configurado. Verifica las variables de entorno en el archivo .env.";
     console.warn(`[EmailService] ${errorMsg}`);
@@ -42,6 +43,7 @@ export async function sendEmail({ to, subject, htmlBody }: SendEmailParams): Pro
     const command = new SendEmailCommand({
       Destination: {
         ToAddresses: [to],
+        ...(cc ? { CcAddresses: [cc] } : {}),
       },
       Message: {
         Body: {
@@ -72,7 +74,7 @@ export async function sendEmail({ to, subject, htmlBody }: SendEmailParams): Pro
  * NOTE: All styles are intentionally inline to preserve design when emails
  * are forwarded, as email clients strip <style> blocks on forward.
  */
-function getHtmlWrapper(title: string, contentHtml: string): string {
+export function getHtmlWrapper(title: string, contentHtml: string): string {
   const currentYear = new Date().getFullYear();
 
   // --- Inline style constants ---

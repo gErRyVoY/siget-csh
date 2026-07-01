@@ -50,6 +50,10 @@ const months = [
 
 const horario = JSON.stringify(dbUser.horario_disponibilidad ?? {});
 const clave = dbUser.clave ?? "";
+
+const GOOGLE_API_KEY = import.meta.env.GOOGLE_API_KEY || process.env.GOOGLE_API_KEY || "";
+const GOOGLE_CLIENT_ID = import.meta.env.GOOGLE_CLIENT_ID || process.env.GOOGLE_CLIENT_ID || "";
+const GOOGLE_APP_ID = import.meta.env.GOOGLE_APP_ID || process.env.GOOGLE_APP_ID || "";
 ---
 
 <MainLayout title="Reporte de incidencias">
@@ -67,6 +71,9 @@ const clave = dbUser.clave ?? "";
       id="incidencias-container"
       data-clave={clave}
       data-horario={horario}
+      data-google-api-key={GOOGLE_API_KEY}
+      data-google-client-id={GOOGLE_CLIENT_ID}
+      data-google-app-id={GOOGLE_APP_ID}
     >
       <form
         id="consultar-form"
@@ -119,12 +126,26 @@ const clave = dbUser.clave ?? "";
 
       <div id="guardar-container-top" class="mb-4 hidden">
         <div class="flex flex-col sm:flex-row justify-between items-center gap-4">
-          <div id="quincena-filters-top" class="flex gap-2 w-full sm:w-auto"></div>
-          <button
-            class="bg-secondary text-secondary-foreground hover:bg-secondary/90 px-6 py-2 rounded-md text-sm font-semibold transition-colors btn-guardar-incidencias w-full sm:w-auto text-center"
-          >
-            Guardar incidencias
-          </button>
+          <div id="quincena-filters-top" class="flex gap-2 w-full sm:w-auto text-center"></div>
+          <div class="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+            <button
+              type="button"
+              class="bg-amber-600 hover:bg-amber-600/90 text-white px-6 py-2 rounded-md text-sm font-semibold transition-colors btn-ver-tabla w-full sm:w-auto text-center cursor-pointer font-bold"
+            >
+              Ver tabla
+            </button>
+            <button
+              type="button"
+              class="bg-primary text-primary-foreground hover:bg-primary/90 px-6 py-2 rounded-md text-sm font-semibold transition-colors btn-enviar-reporte w-full sm:w-auto text-center cursor-pointer font-bold"
+            >
+              Enviar reporte
+            </button>
+            <button
+              class="bg-secondary text-secondary-foreground hover:bg-secondary/90 px-6 py-2 rounded-md text-sm font-semibold transition-colors btn-guardar-incidencias w-full sm:w-auto text-center font-bold"
+            >
+              Guardar incidencias
+            </button>
+          </div>
         </div>
       </div>
 
@@ -134,13 +155,73 @@ const clave = dbUser.clave ?? "";
 
       <div id="guardar-container" class="mt-8 hidden border-t pt-4">
         <div class="flex flex-col sm:flex-row justify-between items-center gap-4">
-          <div id="quincena-filters-bottom" class="flex gap-2 w-full sm:w-auto"></div>
-          <button
-            class="bg-secondary text-secondary-foreground hover:bg-secondary/90 px-6 py-2 rounded-md text-sm font-semibold transition-colors btn-guardar-incidencias w-full sm:w-auto text-center"
-          >
-            Guardar incidencias
-          </button>
+          <div id="quincena-filters-bottom" class="flex gap-2 w-full sm:w-auto text-center"></div>
+          <div class="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+            <button
+              type="button"
+              class="bg-amber-600 hover:bg-amber-600/90 text-white px-6 py-2 rounded-md text-sm font-semibold transition-colors btn-ver-tabla w-full sm:w-auto text-center cursor-pointer font-bold"
+            >
+              Ver tabla
+            </button>
+            <button
+              type="button"
+              class="bg-primary text-primary-foreground hover:bg-primary/90 px-6 py-2 rounded-md text-sm font-semibold transition-colors btn-enviar-reporte w-full sm:w-auto text-center cursor-pointer font-bold"
+            >
+              Enviar reporte
+            </button>
+            <button
+              class="bg-secondary text-secondary-foreground hover:bg-secondary/90 px-6 py-2 rounded-md text-sm font-semibold transition-colors btn-guardar-incidencias w-full sm:w-auto text-center font-bold"
+            >
+              Guardar incidencias
+            </button>
+          </div>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal de Enviar Reporte de Incidencias -->
+  <div id="enviar-reporte-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-card text-card-foreground border border-muted-foreground/30 rounded-lg max-w-md w-full shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+      <!-- Modal Header -->
+      <div class="px-6 py-4 border-b border-border flex items-center justify-between">
+        <h3 class="text-lg font-bold text-foreground">Enviar Reporte de Incidencias</h3>
+        <button type="button" id="modal-close" class="text-muted-foreground hover:text-foreground text-xl font-bold cursor-pointer select-none">&times;</button>
+      </div>
+      <!-- Modal Body -->
+      <div class="p-6 space-y-4">
+        <p class="text-sm text-foreground" id="modal-period-text">
+          Se enviará el reporte correspondiente al periodo seleccionado.
+        </p>
+        <p class="text-xs text-muted-foreground">
+          Al confirmar, se generará una tabla calendarizada con los registros y motivos justificados del periodo y se enviará por correo al Director del CSH.
+        </p>
+      </div>
+      <!-- Modal Footer -->
+      <div class="px-6 py-4 border-t border-border bg-muted/30 flex justify-end gap-3">
+        <button type="button" id="modal-cancel" class="bg-input border border-border hover:bg-muted text-foreground py-2 px-4 rounded-md text-sm font-semibold transition-colors cursor-pointer">Cancelar</button>
+        <button type="button" id="modal-submit" class="bg-primary text-primary-foreground hover:bg-primary/90 py-2 px-4 rounded-md text-sm font-semibold transition-colors cursor-pointer">Enviar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal de Tabla de Incidencias -->
+  <div id="ver-tabla-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-card text-card-foreground border border-muted-foreground/30 rounded-lg max-w-5xl w-full shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+      <!-- Modal Header -->
+      <div class="px-6 py-4 border-b border-border flex items-center justify-between bg-muted/30">
+        <h3 class="text-lg font-bold text-foreground" id="tabla-modal-title">Tabla de Incidencias</h3>
+        <button type="button" id="tabla-modal-close" class="text-muted-foreground hover:text-foreground text-xl font-bold cursor-pointer select-none">&times;</button>
+      </div>
+      <!-- Modal Body -->
+      <div class="p-6 overflow-auto max-h-[75vh]">
+        <div id="tabla-calendario-container" class="w-full">
+          <!-- Calendar template table will be injected here -->
+        </div>
+      </div>
+      <!-- Modal Footer -->
+      <div class="px-6 py-4 border-t border-border bg-muted/30 flex justify-end">
+        <button type="button" id="tabla-modal-cancel" class="bg-input border border-border hover:bg-muted text-foreground py-2 px-6 rounded-md text-sm font-semibold transition-colors cursor-pointer">Cerrar</button>
       </div>
     </div>
   </div>
@@ -148,6 +229,13 @@ const clave = dbUser.clave ?? "";
 
 <script>
   import { toast } from "@/lib/toast";
+
+  declare global {
+    interface Window {
+      gapi: any;
+      google: any;
+    }
+  }
 
   document.addEventListener("astro:page-load", () => {
     const container = document.getElementById("incidencias-container");
@@ -163,11 +251,27 @@ const clave = dbUser.clave ?? "";
       "guardar-container-top",
     );
     const btnsGuardar = document.querySelectorAll(".btn-guardar-incidencias");
+    const btnsEnviarReporte = document.querySelectorAll(".btn-enviar-reporte");
+    const btnsVerTabla = document.querySelectorAll(".btn-ver-tabla");
+
+    // Modal elements
+    const modal = document.getElementById("enviar-reporte-modal");
+    const modalClose = document.getElementById("modal-close");
+    const modalCancel = document.getElementById("modal-cancel");
+    const modalSubmit = document.getElementById("modal-submit") as HTMLButtonElement;
+    const modalPeriodText = document.getElementById("modal-period-text");
+
+    // Table Modal Elements
+    const tablaModal = document.getElementById("ver-tabla-modal");
+    const tablaModalClose = document.getElementById("tabla-modal-close");
+    const tablaModalCancel = document.getElementById("tabla-modal-cancel");
+    const tablaModalTitle = document.getElementById("tabla-modal-title");
+    const tablaCalendarioContainer = document.getElementById("tabla-calendario-container");
 
     const clave = container.dataset.clave;
     const horarioStr = container.dataset.horario;
-    let horario: Record<string, any> = {};
 
+    let horario: Record<string, any> = {};
     try {
       horario = horarioStr ? JSON.parse(horarioStr) : {};
     } catch {
@@ -185,6 +289,12 @@ const clave = dbUser.clave ?? "";
     ];
 
     let incidenciasToSave: any[] = [];
+    let currentFortnightFilter = "all";
+
+    let registrosAPI: any[] = [];
+    let currentMes = 0;
+    let currentAnio = 0;
+    let savedIncidenciasLocal: any[] = [];
 
     function parseTime(tStr: string | null) {
       if (!tStr) return null;
@@ -212,7 +322,6 @@ const clave = dbUser.clave ?? "";
 
     function formatDate(dateStr: string) {
       const d = new Date(dateStr);
-      // d is in UTC based on format "2026-05-01T00:00:00", we want local day
       const dayName = diasSemana[d.getUTCDay()];
       const dayNum = d.getUTCDate().toString().padStart(2, "0");
       return {
@@ -298,13 +407,21 @@ const clave = dbUser.clave ?? "";
         btnConsultar.disabled = false;
         btnConsultar.textContent = "Consultar";
       }
-    })    function renderResultados(
+    });
+
+    function renderResultados(
       registros: any[],
       mes: number,
       anio: number,
       savedIncidencias: any[],
     ) {
       if (!resultadosContainer) return;
+      
+      registrosAPI = registros;
+      currentMes = mes;
+      currentAnio = anio;
+      savedIncidenciasLocal = savedIncidencias;
+
       let html = "";
 
       incidenciasToSave = [];
@@ -320,8 +437,6 @@ const clave = dbUser.clave ?? "";
           horarioDia.inicio === "No disponible" ||
           horarioDia.fin === "No disponible"
         ) {
-          // No laboral day in schedule, skipping logic for simplicity unless user specifies otherwise,
-          // but we might still show it. We'll skip for now if it's not a working day.
           return;
         }
 
@@ -347,6 +462,7 @@ const clave = dbUser.clave ?? "";
         let statusClass = "";
         let statusText = "";
         let extraText = "";
+        let reposicionExtraText = ""; // Minutos de reposición cuando hay retardo + salida tardía
         let requiresObs = false;
         let requiresObsComida = false;
         let showRow = false;
@@ -429,6 +545,13 @@ const clave = dbUser.clave ?? "";
               extraText = `${minsRetardo} minutos`;
               requiresObs = true;
               showRow = true;
+              // Comprobar si además hay salida tardía (reposición parcial)
+              if (hFin && rSalida) {
+                const diffSalRetardo = timeDiffMins(rSalida, hFin); // >0 si salida tardía
+                if (diffSalRetardo > 5) {
+                  reposicionExtraText = `${diffSalRetardo} minutos`;
+                }
+              }
             } else {
               // Check extra time
               if (hFin && rSalida) {
@@ -458,6 +581,17 @@ const clave = dbUser.clave ?? "";
                 statusText = "Horario excedido";
                 statusClass = "text-red-600 font-bold";
                 showRow = true;
+                // Calcular reposición parcial si la entrada fue anticipada o la salida tardía
+                if (hInicio && rEntrada && hFin && rSalida) {
+                  const diffEntRepo = timeDiffMins(rEntrada, hInicio);
+                  const diffSalRepo = timeDiffMins(rSalida, hFin);
+                  let minsRepo = 0;
+                  if (diffEntRepo < -5) minsRepo += (-diffEntRepo);
+                  if (diffSalRepo > 5) minsRepo += diffSalRepo;
+                  if (minsRepo > 0) {
+                    reposicionExtraText = `${minsRepo} minutos`;
+                  }
+                }
               }
               requiresObsComida = true;
             }
@@ -519,7 +653,7 @@ const clave = dbUser.clave ?? "";
 
           if (hFin && rSalida) {
             const diffSal = timeDiffMins(rSalida, hFin);
-            if (diffSal > 0) {
+            if (diffSal > 5) {
               salidaClass = "text-green-600 font-bold";
             }
           }
@@ -544,9 +678,10 @@ const clave = dbUser.clave ?? "";
                     </div>
                 </div>
                 <div class="flex flex-col sm:flex-row">
-                    <div class="p-4 border-b sm:border-b-0 sm:border-r flex flex-col justify-center items-center ${statusClass} sm:w-[150px] shrink-0 text-center">
-                        <span>${statusText}</span>
-                        ${extraText ? `<span class="mt-1">${extraText}</span>` : ""}
+                    <div class="p-4 border-b sm:border-b-0 sm:border-r flex flex-col justify-center items-center ${statusText === 'Horario excedido' ? '' : statusClass} sm:w-[150px] shrink-0 text-center">
+                        ${statusText !== 'Horario excedido' ? `<span>${statusText}</span>` : ''}
+                        ${statusText !== 'Horario excedido' && extraText ? `<span class="mt-1">${extraText}</span>` : ''}
+                        ${reposicionExtraText ? `<span class="mt-2 text-green-600 font-bold">Reposición de tiempo</span><span class="text-green-600 font-bold">${reposicionExtraText}</span>` : ''}
                     </div>
                     <div class="p-4 border-b sm:border-b-0 sm:border-r space-y-2 sm:w-[250px] flex-shrink-0 text-sm">
                         <div class="flex justify-between items-center font-bold">
@@ -573,7 +708,7 @@ const clave = dbUser.clave ?? "";
                             <span>Salida comida:</span>
                             <span class="${comidaClass}">${formatT(r.salida_comida)}</span>
                         </div>
-                        ${requiresObsComida && statusText !== "Horario excedido" ? '<div class="text-red-600 font-bold mt-2">Horario excedido</div>' : ""}
+                        ${requiresObsComida ? '<div class="text-red-600 font-bold mt-2">Horario excedido</div>' : ''}
                     </div>
                     <div class="p-4 space-y-4 flex-1">
                         ${
@@ -694,6 +829,7 @@ const clave = dbUser.clave ?? "";
         btn.addEventListener("click", (e) => {
           const target = e.currentTarget as HTMLButtonElement;
           const filterType = target.dataset.filter;
+          currentFortnightFilter = filterType || "all";
           
           const rows = document.querySelectorAll(".incidencia-card-row");
           rows.forEach((row: any) => {
@@ -731,6 +867,322 @@ const clave = dbUser.clave ?? "";
         });
       });
     }
+
+    // Modal Events and Functionality
+    btnsEnviarReporte.forEach(btn => {
+      btn.addEventListener("click", () => {
+        if (!modal) return;
+
+        // Calcular el texto del periodo activo
+        const mesesNombres = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+        const activeMes = (document.getElementById("mes") as HTMLSelectElement).value;
+        const activeAnio = (document.getElementById("anio") as HTMLSelectElement).value;
+        const activeMesName = mesesNombres[parseInt(activeMes, 10) - 1];
+
+        let periodStr = "";
+        if (currentFortnightFilter === "1") {
+          periodStr = `Quincena 1 (días 1 al 15) de ${activeMesName} de ${activeAnio}`;
+        } else if (currentFortnightFilter === "2") {
+          periodStr = `Quincena 2 (días 16 en adelante) de ${activeMesName} de ${activeAnio}`;
+        } else {
+          periodStr = `Mes completo (${activeMesName} de ${activeAnio})`;
+        }
+
+        if (modalPeriodText) {
+          modalPeriodText.innerHTML = `Se enviará el reporte correspondiente a: <strong class="text-foreground">${periodStr}</strong>.`;
+        }
+
+        modal.classList.remove("hidden");
+      });
+    });
+
+    const closeModal = () => {
+      if (modal) modal.classList.add("hidden");
+    };
+
+    modalClose?.addEventListener("click", closeModal);
+    modalCancel?.addEventListener("click", closeModal);
+
+    // Table Modal Events and Render Logic
+    const closeTablaModal = () => {
+      if (tablaModal) tablaModal.classList.add("hidden");
+    };
+
+    tablaModalClose?.addEventListener("click", closeTablaModal);
+    tablaModalCancel?.addEventListener("click", closeTablaModal);
+    document.getElementById("tabla-modal-cancel")?.addEventListener("click", closeTablaModal);
+
+    btnsVerTabla.forEach(btn => {
+      btn.addEventListener("click", () => {
+        try {
+          console.log("[Ver Tabla] Clic en botón. registrosAPI:", registrosAPI);
+          if (!tablaModal || !tablaCalendarioContainer) {
+            console.error("[Ver Tabla] Modal o contenedor no encontrados en el DOM");
+            return;
+          }
+
+          const mesesNombres = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+          const activeMes = (document.getElementById("mes") as HTMLSelectElement).value;
+          const activeAnio = (document.getElementById("anio") as HTMLSelectElement).value;
+          const activeMesName = mesesNombres[parseInt(activeMes, 10) - 1];
+
+          let periodStr = "";
+          if (currentFortnightFilter === "1") {
+            periodStr = `Quincena 1 - ${activeMesName} de ${activeAnio}`;
+          } else if (currentFortnightFilter === "2") {
+            periodStr = `Quincena 2 - ${activeMesName} de ${activeAnio}`;
+          } else {
+            periodStr = `${activeMesName} de ${activeAnio}`;
+          }
+
+          if (tablaModalTitle) {
+            tablaModalTitle.innerHTML = `<span class="text-primary font-black uppercase text-base sm:text-lg tracking-wider">${periodStr}</span>`;
+          }
+
+          // Filtrar incidencias activas en el periodo seleccionado
+          const filtered = registrosAPI.filter((r) => {
+            const d = new Date(r.fecha);
+            const dayNum = d.getUTCDate();
+            if (currentFortnightFilter === "1") return dayNum <= 15;
+            if (currentFortnightFilter === "2") return dayNum >= 16;
+            return true;
+          });
+
+          // Ordenar cronológicamente (más antiguo primero)
+          const sorted = [...filtered].sort((a, b) => new Date(a.fecha).getTime() - new Date(b.fecha).getTime());
+
+          if (sorted.length === 0) {
+            tablaCalendarioContainer.innerHTML = `<p class="text-center text-muted-foreground py-8">No hay registros disponibles para generar la tabla.</p>`;
+            tablaModal.classList.remove("hidden");
+            return;
+          }
+
+          const formatT = (t: string | null) => {
+            if (!t) return "";
+            if (t.length === 4) return `${t.substring(0, 2)}:${t.substring(2, 4)}`;
+            return t;
+          };
+
+          let calendarHtml = `
+            <!-- Cabecera de Días en Escritorio -->
+            <div class="hidden md:grid md:grid-cols-6 gap-2 text-center font-bold text-sm text-foreground/80 mb-3 border-b border-border pb-2 uppercase tracking-wide">
+              <div>Lun</div>
+              <div>Mar</div>
+              <div>Mie</div>
+              <div>Jue</div>
+              <div>Vie</div>
+              <div>Sab</div>
+            </div>
+            
+            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
+          `;
+
+          // Insertar celdas vacías al principio si es necesario para alinear (solo en md en adelante)
+          const firstDayNum = new Date(sorted[0].fecha).getUTCDay(); // 0 = dom, 1 = lun, etc.
+          const emptyCellsCount = firstDayNum === 0 ? 0 : firstDayNum - 1;
+          if (emptyCellsCount > 0 && emptyCellsCount < 6) {
+            for (let i = 0; i < emptyCellsCount; i++) {
+              calendarHtml += `<div class="hidden md:block border border-border/10 bg-muted/[0.02] rounded-md min-h-[7.5rem] relative"></div>`;
+            }
+          }
+
+          sorted.forEach((r) => {
+            const { dayName, dayNum, dayNameNormalized } = formatDate(r.fecha);
+            const horarioDia = horario[dayNameNormalized];
+            
+            const hInicio = parseHorarioTime(horarioDia?.inicio);
+            const hFin = parseHorarioTime(horarioDia?.fin);
+            const rEntrada = parseTime(r.entrada_turno);
+            const rSalida = parseTime(r.salida_turno);
+
+            const isAllNull = !r.entrada_turno && !r.salida_turno && !r.entrada_comida && !r.salida_comida;
+
+            let celdaContenido = "";
+
+            if (isAllNull) {
+              celdaContenido = `<div class="text-[#ca1c1c] font-black text-sm select-none">SL (-:--)</div>`;
+            } else {
+              // EL
+              let elClass = "text-muted-foreground";
+              if (r.entrada_turno && hInicio && rEntrada) {
+                const diffEnt = timeDiffMins(rEntrada, hInicio);
+                if (diffEnt < 0) {
+                  elClass = "text-[#16a34a] font-bold";
+                } else if (diffEnt > 15) {
+                  elClass = "text-[#ca1c1c] font-bold";
+                } else if (diffEnt >= 6 && diffEnt <= 15) {
+                  elClass = "text-[#ea580c] font-bold";
+                } else {
+                  elClass = "text-foreground font-bold";
+                }
+                celdaContenido += `<div class="${elClass}">EL (${formatT(r.entrada_turno)})</div>`;
+              } else if (!r.entrada_turno) {
+                celdaContenido += `<div class="text-[#ca1c1c] font-bold">EL (-:--)</div>`;
+              }
+
+              // SC (Salida comida)
+              if (r.entrada_comida) {
+                celdaContenido += `<div class="text-muted-foreground">SC (${formatT(r.entrada_comida)})</div>`;
+              }
+
+              // RC (Regreso comida)
+              if (r.salida_comida) {
+                celdaContenido += `<div class="text-muted-foreground">RC (${formatT(r.salida_comida)})</div>`;
+              }
+
+              // SL
+              let slClass = "text-muted-foreground";
+              if (r.salida_turno && hFin && rSalida) {
+                const diffSal = timeDiffMins(rSalida, hFin);
+                if (diffSal > 5) {
+                  slClass = "text-[#16a34a] font-bold";
+                } else {
+                  slClass = "text-foreground font-bold";
+                }
+                celdaContenido += `<div class="${slClass}">SL (${formatT(r.salida_turno)})</div>`;
+              } else if (!r.salida_turno) {
+                celdaContenido += `<div class="text-[#ca1c1c] font-bold">SL (-:--)</div>`;
+              }
+            }
+
+            calendarHtml += `
+              <div class="border border-border bg-card hover:bg-muted/10 transition-colors rounded-md p-3 min-h-[7.5rem] relative flex flex-col justify-center items-start text-xs font-semibold leading-relaxed shadow-sm">
+                <!-- Marca de Agua con el Número del Día -->
+                <div class="absolute inset-0 flex items-center justify-center text-5xl font-black text-foreground/[0.12] select-none pointer-events-none z-0">${parseInt(dayNum, 10)}</div>
+                
+                <!-- Contenido de Asistencias -->
+                <div class="relative z-10 w-full space-y-0.5 text-left">
+                  <!-- Nombre del día en pantallas pequeñas -->
+                  <div class="md:hidden text-[10px] uppercase text-muted-foreground border-b border-border pb-0.5 mb-1 font-bold">${dayName}</div>
+                  ${celdaContenido}
+                </div>
+              </div>
+            `;
+          });
+
+          calendarHtml += `</div>`;
+          tablaCalendarioContainer.innerHTML = calendarHtml;
+
+          tablaModal.classList.remove("hidden");
+          console.log("[Ver Tabla] Modal abierto exitosamente.");
+        } catch (error) {
+          console.error("[Ver Tabla] Error crítico al pintar el calendario:", error);
+          toast.error("Error al renderizar el calendario. Revisa la consola del navegador.");
+        }
+      });
+    });
+
+
+    // Modal submit handler
+    modalSubmit.addEventListener("click", async () => {
+      const activeMes = (document.getElementById("mes") as HTMLSelectElement).value;
+      const activeAnio = (document.getElementById("anio") as HTMLSelectElement).value;
+
+      // 1. Filtrar incidencias activas en el periodo seleccionado y validadas
+      const activeIncidencias = incidenciasToSave.filter((inc) => {
+        const toggle = document.getElementById(`toggle-${inc.index}`) as HTMLInputElement;
+        const isToggled = toggle ? toggle.checked : false;
+        if (!isToggled) return false;
+
+        const dateObj = new Date(inc.fecha);
+        const dayNum = dateObj.getUTCDate();
+
+        if (currentFortnightFilter === "1") return dayNum <= 15;
+        if (currentFortnightFilter === "2") return dayNum >= 16;
+        return true;
+      });
+
+      if (activeIncidencias.length === 0) {
+        toast.error("No hay incidencias seleccionadas para enviar en esta quincena/periodo.");
+        return;
+      }
+
+      // Validar justificaciones en el cliente
+      let valid = true;
+      const payload: any[] = [];
+
+      activeIncidencias.forEach((inc) => {
+        const obsEl = document.getElementById(`obs-${inc.index}`) as HTMLTextAreaElement;
+        const obsComidaEl = document.getElementById(`obs-comida-${inc.index}`) as HTMLTextAreaElement;
+
+        let valTurno = obsEl ? obsEl.value.trim() : "";
+        let valComida = obsComidaEl ? obsComidaEl.value.trim() : "";
+
+        if (inc.requiresObs) {
+          if (valTurno.length < 5) {
+            if (obsEl) obsEl.classList.add("border-red-500");
+            valid = false;
+          } else {
+            if (obsEl) obsEl.classList.remove("border-red-500");
+          }
+        }
+
+        if (inc.requiresObsComida) {
+          if (valComida.length < 5) {
+            if (obsComidaEl) obsComidaEl.classList.add("border-red-500");
+            valid = false;
+          } else {
+            if (obsComidaEl) obsComidaEl.classList.remove("border-red-500");
+          }
+        }
+
+        payload.push({
+          mes: inc.mes,
+          quincena: inc.quincena,
+          fecha: inc.fecha,
+          entrada_turno: inc.entrada_turno,
+          salida_turno: inc.salida_turno,
+          tiempo_turno: inc.tiempo_turno,
+          observaciones: valTurno || null,
+          entrada_comida: inc.entrada_comida,
+          salida_comida: inc.salida_comida,
+          observaciones_comida: valComida || null,
+        });
+      });
+
+      if (!valid) {
+        toast.error("Por favor, llena los motivos requeridos (mínimo 5 caracteres) marcados en rojo.");
+        return;
+      }
+
+      // Cambiar estado a cargando
+      modalSubmit.disabled = true;
+      modalSubmit.innerHTML = `<span class="animate-spin inline-block w-4 h-4 border-2 border-current border-t-transparent rounded-full mr-2"></span> Enviando...`;
+      if (modalCancel) (modalCancel as HTMLButtonElement).disabled = true;
+      if (modalClose) (modalClose as HTMLButtonElement).disabled = true;
+
+      try {
+        // Enviar reporte de incidencias final
+        const quincenaVal = currentFortnightFilter === "all" ? 0 : parseInt(currentFortnightFilter, 10);
+        const reportRes = await fetch("/api/user/incidencias/send-report", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            mes: parseInt(activeMes, 10),
+            anio: parseInt(activeAnio, 10),
+            quincena: quincenaVal,
+            incidencias: payload,
+          }),
+        });
+
+        if (!reportRes.ok) {
+          throw new Error((await reportRes.json()).message || "Fallo al enviar el reporte.");
+        }
+
+        toast.success("Reporte enviado exitosamente.");
+        closeModal();
+        setTimeout(() => {
+          window.location.reload();
+        }, 1500);
+
+      } catch (err: any) {
+        toast.error(err.message || "Ocurrió un error al enviar el reporte.");
+        modalSubmit.disabled = false;
+        modalSubmit.textContent = "Enviar";
+        if (modalCancel) (modalCancel as HTMLButtonElement).disabled = false;
+        if (modalClose) (modalClose as HTMLButtonElement).disabled = false;
+      }
+    });
 
     btnsGuardar?.forEach((btnGuardar) => {
       btnGuardar.addEventListener("click", async () => {
