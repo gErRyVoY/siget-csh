@@ -19,9 +19,33 @@ if (["Magno", "Ejecutivo"].includes(empresa.tipo)) {
 ---
 
 <MainLayout title={title}>
-  <div class="max-w-7xl mx-auto" id="campus-container" data-campus-slug={campus}>
+  <div class="max-w-7xl mx-auto" id="campus-container" data-campus-slug={campus} data-tckt-virtual={empresa.tckt_virtual ? "true" : "false"}>
     <div class="flex justify-between items-center mb-6">
       <h1 class="text-2xl font-bold">{title}</h1>
+    </div>
+
+    <!-- Tarjeta de Configuración de Empresa -->
+    <div class="bg-card border rounded-lg p-6 mb-6">
+      <h2 class="text-lg font-semibold mb-2 flex items-center gap-2">
+        <svg class="h-5 w-5 text-muted-foreground" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+        </svg>
+        Configuración de Campus
+      </h2>
+      <div class="flex items-center justify-between gap-4 flex-wrap">
+        <div>
+          <p class="text-sm font-medium text-foreground">Permitir Campus Virtual como origen</p>
+          <p class="text-xs text-muted-foreground">Los usuarios de esta empresa podrán seleccionar "Virtual" como campus origen en solicitudes de traslado.</p>
+        </div>
+        <div class="flex items-center">
+          <label class="relative inline-flex items-center cursor-pointer">
+            <input type="checkbox" id="toggle-tckt-virtual" class="sr-only peer" {empresa.tckt_virtual ? 'checked' : ''}>
+            <div class="w-11 h-6 bg-muted peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+            <span id="tckt-virtual-label" class="ml-2 text-sm font-semibold text-foreground">{empresa.tckt_virtual ? 'Activado' : 'Desactivado'}</span>
+          </label>
+        </div>
+      </div>
     </div>
 
     <div class="flex justify-between items-center mb-4 gap-4 flex-wrap">
@@ -112,6 +136,36 @@ if (["Magno", "Ejecutivo"].includes(empresa.tipo)) {
     const container = document.getElementById("campus-container");
     if (!container) return;
     const campusSlug = container.dataset.campusSlug;
+
+    // Toggle de Campus Virtual
+    const tcktVirtualToggle = document.getElementById("toggle-tckt-virtual") as HTMLInputElement;
+    const tcktVirtualLabel = document.getElementById("tckt-virtual-label");
+    if (tcktVirtualToggle && tcktVirtualLabel) {
+      tcktVirtualToggle.addEventListener("change", async () => {
+        const newValue = tcktVirtualToggle.checked;
+        tcktVirtualLabel.textContent = newValue ? 'Activado' : 'Desactivado';
+        
+        try {
+          const response = await fetch('/api/admin/empresa', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ slug: campusSlug, tckt_virtual: newValue })
+          });
+          
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || 'Error al actualizar');
+          }
+          
+          toast.success(`Configuración de campus actualizada.`);
+        } catch (error: any) {
+          console.error('Error al actualizar campus:', error);
+          tcktVirtualToggle.checked = !newValue;
+          tcktVirtualLabel.textContent = !newValue ? 'Activado' : 'Desactivado';
+          toast.error(error.message || 'Error al actualizar configuración.');
+        }
+      });
+    }
 
     const tableBody = document.getElementById("users-table-body");
     const noUsersMessage = document.getElementById("no-users-message");

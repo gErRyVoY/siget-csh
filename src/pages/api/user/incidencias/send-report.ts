@@ -402,6 +402,7 @@ export const POST: APIRoute = async ({ request }) => {
       cc: ccEmail,
       subject: emailSubject,
       htmlBody: htmlWrapped,
+      fromName: colaboradorName,
     });
 
     if (!sendResult.success) {

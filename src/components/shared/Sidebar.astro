@@ -157,11 +157,18 @@ const adminSections = [
                 label: "Tickets",
                 icon: ManageTicketsIcon,
             }] : []),
-            ...(secciones.includes("admin_siget_usuarios") ? [{
-                href: "/admin/usuarios",
-                label: "Usuarios",
-                icon: ManageUsersIcon,
-            }] : []),
+            ...(secciones.includes("admin_siget_usuarios") ? [
+                {
+                    href: "/admin/usuarios",
+                    label: "Usuarios",
+                    icon: ManageUsersIcon,
+                },
+                {
+                    href: "/admin/empresas",
+                    label: "Empresas",
+                    icon: ManageTicketsIcon,
+                }
+            ] : []),
         ],
     }] : []),
     ...(canSeeAdminMarketing ? [{

@@ -13,6 +13,7 @@ model Empresa {
   slug              String      @unique @db.VarChar(50)
   tipo              TipoEmpresa
   activa            Boolean     @default(true)
+  tckt_virtual      Boolean     @default(false)
   bloques           Bloque[]
   tickets           Ticket[]
   traslados_destino Traslado[]  @relation("Destino")

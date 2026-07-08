@@ -263,7 +263,9 @@ export function initEditForm() {
             toast.success('Los cambios han sido guardados.');
             setTimeout(async () => {
                 const { navigate } = await import('astro:transitions/client');
-                navigate(`${window.location.pathname}?new_entry=true`);
+                const params = new URLSearchParams(window.location.search);
+                params.set('new_entry', 'true');
+                navigate(`${window.location.pathname}?${params.toString()}`);
             }, 1000);
         } catch (error) {
             const message = error instanceof Error ? error.message : 'Ocurrió un error desconocido.';

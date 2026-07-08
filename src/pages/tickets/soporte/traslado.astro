@@ -2,6 +2,7 @@
 import MainLayout from "@/layouts/MainLayout.astro";
 import UserTransferIcon from "@/components/icons/UserTransferIcon.astro";
 import { prisma } from "@/lib/db";
+import { getSession } from "auth-astro/server";
 import {
     campusOptions,
     carreraOptions,
@@ -17,6 +18,42 @@ const descuentos = await prisma.descuento.findMany({
     select: { descripcion: true },
 });
 const descuentoOptions = descuentos.map((d) => d.descripcion);
+
+// Precargar campus origen si el usuario pertenece a un campus Magno o Ejecutivo, o si tiene habilitado tckt_virtual
+const session = await getSession(Astro.request);
+const userId = session?.user?.id ? parseInt(String(session.user.id), 10) : null;
+let preloadedCampus = "";
+let preloadedReadOnly = false;
+if (userId) {
+    const usuario = await prisma.usuario.findUnique({
+        where: { id: userId },
+        select: { empresa: { select: { nombre: true, tipo: true, tckt_virtual: true } } },
+    });
+    const empresa = usuario?.empresa;
+    if (empresa) {
+        const allowVirtual = empresa.tckt_virtual;
+        const isMagnoEjecutivo = ["Magno", "Ejecutivo"].includes(empresa.tipo);
+
+        if (isMagnoEjecutivo && allowVirtual) {
+            // Opción A: pre-cargar con "Virtual" pero no bloquear
+            preloadedCampus = "Virtual";
+            preloadedReadOnly = false;
+        } else if (isMagnoEjecutivo) {
+            // Solo Magno/Ejecutivo sin Virtual: bloquear con su campus
+            const campusMatch = campusOptions.find(
+                (c) => c.toLowerCase() === empresa.nombre.toLowerCase()
+            );
+            if (campusMatch) {
+                preloadedCampus = campusMatch;
+                preloadedReadOnly = true;
+            }
+        } else if (allowVirtual) {
+            // Si no es Magno/Ejecutivo pero tiene allowVirtual: forzar Virtual y bloquear
+            preloadedCampus = "Virtual";
+            preloadedReadOnly = true;
+        }
+    }
+}
 ---
 
 <MainLayout title="Solicitud de nuevo traslado">
@@ -48,6 +85,8 @@ const descuentoOptions = descuentos.map((d) => d.descripcion);
                     data-google-api-key={GOOGLE_API_KEY}
                     data-google-client-id={GOOGLE_CLIENT_ID}
                     data-google-app-id={GOOGLE_APP_ID}
+                    data-preloaded-campus={preloadedCampus}
+                    data-preloaded-readonly={preloadedReadOnly ? "true" : "false"}
                 >
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <!-- Campus origen -->
@@ -455,6 +494,8 @@ const descuentoOptions = descuentos.map((d) => d.descripcion);
         const GOOGLE_API_KEY = form.dataset.googleApiKey;
         const GOOGLE_CLIENT_ID = form.dataset.googleClientId;
         const GOOGLE_APP_ID = form.dataset.googleAppId;
+        const preloadedCampus = form.dataset.preloadedCampus || "";
+        const preloadedReadOnly = form.dataset.preloadedReadonly === "true";
 
         // --- FIELD REFS ---
         const matriculaInput = document.getElementById(
@@ -536,6 +577,22 @@ const descuentoOptions = descuentos.map((d) => d.descripcion);
             reason: string | null;
         }
         let stagedFiles: StagedFile[] = [];
+
+        // --- PRECARGAR CAMPUS ORIGEN ---
+        // Si el usuario pertenece a un campus de tipo Magno o Ejecutivo, se precarga el campo.
+        if (preloadedCampus && campusOrigenInput) {
+            campusOrigenInput.value = preloadedCampus;
+            if (preloadedReadOnly) {
+                campusOrigenInput.readOnly = true;
+                campusOrigenInput.classList.add("cursor-not-allowed", "opacity-75");
+                campusOrigenInput.title = "Campus de origen asignado automáticamente según tu campus.";
+            } else {
+                campusOrigenInput.readOnly = false;
+                campusOrigenInput.classList.remove("cursor-not-allowed", "opacity-75");
+                campusOrigenInput.title = "";
+            }
+        }
+
 
         // --- VALIDATION HELPERS ---
         const showError = (fieldId: string, message: string) => {
@@ -1093,11 +1150,15 @@ const descuentoOptions = descuentos.map((d) => d.descripcion);
         };
 
         // --- LISTENERS ---
-        setupAutocomplete(
-            "campus-origen",
-            "campus-origen-suggestions",
-            campusOptions,
-        );
+        // Solo registrar autocompletado para campus-origen si no está precargado (readOnly)
+        if (!preloadedCampus) {
+            setupAutocomplete(
+                "campus-origen",
+                "campus-origen-suggestions",
+                campusOptions,
+            );
+        }
+
         setupAutocomplete(
             "campus-destino",
             "campus-destino-suggestions",

@@ -72,6 +72,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
     "/admin/secciones": "admin_siget_secciones",
     "/admin/tickets": "admin_siget_tickets",
     "/admin/usuarios": "admin_siget_usuarios",
+    "/admin/empresas": "admin_siget_usuarios",
     "/admin/roles": "admin_siget_roles",
     "/base-de-conocimientos": "base_conocimientos",
     "/horario-de-atencion": "horario_atencion",

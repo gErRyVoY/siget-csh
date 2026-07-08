@@ -27,12 +27,13 @@ export interface SendEmailParams {
   cc?: string;
   subject: string;
   htmlBody: string;
+  fromName?: string;
 }
 
 /**
  * Sends a raw HTML email using AWS SES.
  */
-export async function sendEmail({ to, cc, subject, htmlBody }: SendEmailParams): Promise<{ success: boolean; messageId?: string; error?: string }> {
+export async function sendEmail({ to, cc, subject, htmlBody, fromName }: SendEmailParams): Promise<{ success: boolean; messageId?: string; error?: string }> {
   if (!isSesConfigured || !sesClient) {
     const errorMsg = "AWS SES no está configurado. Verifica las variables de entorno en el archivo .env.";
     console.warn(`[EmailService] ${errorMsg}`);
@@ -57,7 +58,7 @@ export async function sendEmail({ to, cc, subject, htmlBody }: SendEmailParams):
           Data: subject,
         },
       },
-      Source: `"${FROM_NAME}" <${FROM_EMAIL}>`,
+      Source: `"${fromName || FROM_NAME}" <${FROM_EMAIL}>`,
     });
 
     const response = await sesClient.send(command);
@@ -117,9 +118,10 @@ export function getHtmlWrapper(title: string, contentHtml: string): string {
 
 interface TicketNotificationParams {
   ticketId: number;
-  event: "ticket_creado" | "ticket_actualizado" | "ticket_asignado" | "traslado_creado";
+  event: "ticket_creado" | "ticket_creado_solicitante" | "ticket_actualizado" | "ticket_asignado" | "traslado_creado";
   destinatarioId: number;
   destinatarioMail: string;
+  fromName?: string;
   originUrl?: string; // e.g. "http://localhost:4321" or production domain
   ticketInfo: {
     categoria: string;
@@ -169,6 +171,19 @@ async function getOrCreatePlantilla(nombre: string, event: string) {
   <strong>Descripción:</strong> {{descripcion}}
 </div>
 <p style="margin: 16px 0;">Por favor, haz clic en el siguiente botón para ver los detalles del ticket y comenzar a trabajar en él:</p>
+<a href="{{ticketUrl}}" style="${btnStyle}">Ver Ticket</a>`;
+  } else if (event === "ticket_creado_solicitante") {
+    subject = "Confirmación: Ticket creado #{{ticketId}}";
+    contenido = `<h2 style="color: #1f2937; margin: 0 0 12px;">Hola {{solicitanteNombre}},</h2>
+<p style="margin: 0 0 16px;">Hemos recibido tu solicitud y se ha creado el ticket <strong>#{{ticketId}}</strong> exitosamente.</p>
+<div style="background-color: #f9fafb; border-left: 4px solid #caab55; padding: 15px; margin: 15px 0;">
+  <strong>ID del Ticket:</strong> #{{ticketId}}<br>
+  <strong>Categoría:</strong> {{categoria}}<br>
+  <strong>Agente asignado:</strong> {{agenteNombre}}<br>
+  <strong>Prioridad:</strong> {{prioridad}}<br>
+  <strong>Descripción:</strong> {{descripcion}}
+</div>
+<p style="margin: 16px 0;">Te notificaremos cuando haya actualizaciones. Puedes revisar los detalles haciendo clic en el siguiente botón:</p>
 <a href="{{ticketUrl}}" style="${btnStyle}">Ver Ticket</a>`;
   } else if (event === "ticket_actualizado") {
     subject = "Actualización de estatus: ticket #{{ticketId}}";
@@ -241,6 +256,7 @@ export async function sendTicketNotification({
   event,
   destinatarioId,
   destinatarioMail,
+  fromName,
   originUrl = "https://siget.humanitas.edu.mx",
   ticketInfo,
 }: TicketNotificationParams): Promise<void> {
@@ -257,9 +273,11 @@ export async function sendTicketNotification({
       ? `[Traslados] Nuevo traslado asignado #TRL-${ticketId}`
       : event === "ticket_creado"
         ? `[SiGeT] Nuevo ticket asignado #${ticketId}`
-        : event === "ticket_asignado"
-          ? `[SiGeT] Ticket reasignado #${ticketId}`
-          : `[SiGeT] Actualización del ticket #${ticketId}`;
+        : event === "ticket_creado_solicitante"
+          ? `[SiGeT] Confirmación de ticket #${ticketId}`
+          : event === "ticket_asignado"
+            ? `[SiGeT] Ticket reasignado #${ticketId}`
+            : `[SiGeT] Actualización del ticket #${ticketId}`;
 
     // Populate template fields
     let templateHtml = plantilla.contenido || "";
@@ -305,6 +323,7 @@ export async function sendTicketNotification({
       to: destinatarioMail,
       subject,
       htmlBody,
+      fromName,
     });
 
     // Write log to DB

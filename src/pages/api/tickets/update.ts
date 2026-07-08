@@ -441,6 +441,7 @@ export const PATCH: APIRoute = async ({ request, locals }) => {
                             destinatarioId: updatedTicket.atiendeId,
                             destinatarioMail: agente.mail,
                             originUrl,
+                            fromName: solicitanteNombre,
                             ticketInfo
                         });
                     }
@@ -459,6 +460,7 @@ export const PATCH: APIRoute = async ({ request, locals }) => {
                             destinatarioId: ticketBeforeUpdate.solicitanteId,
                             destinatarioMail: solicitante.mail,
                             originUrl,
+                            fromName: agenteNombre,
                             ticketInfo
                         });
                     }
@@ -473,6 +475,7 @@ export const PATCH: APIRoute = async ({ request, locals }) => {
                             destinatarioId: updatedTicket.atiendeId,
                             destinatarioMail: agente.mail,
                             originUrl,
+                            fromName: solicitanteNombre,
                             ticketInfo
                         });
                     }

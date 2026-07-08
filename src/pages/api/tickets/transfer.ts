@@ -252,6 +252,7 @@ export const POST: APIRoute = async ({ request }) => {
                             destinatarioId: atiendeId,
                             destinatarioMail: agente.mail,
                             originUrl,
+                            fromName: solicitanteNombre,
                             ticketInfo: {
                                 categoria: "Alumno / Traslado",
                                 descripcion: descripcionTicket,
@@ -266,6 +267,32 @@ export const POST: APIRoute = async ({ request }) => {
                                 destino: campusDestino
                             }
                         });
+
+                        // Notificar al creador del traslado
+                        if (solicitante && solicitanteId) {
+                            const solicitanteEntity = await prisma.usuario.findUnique({
+                                where: { id: solicitanteId },
+                                select: { mail: true }
+                            });
+                            
+                            if (solicitanteEntity && solicitanteEntity.mail) {
+                                await sendTicketNotification({
+                                    ticketId: nuevoTicket.id,
+                                    event: "ticket_creado_solicitante",
+                                    destinatarioId: solicitanteId,
+                                    destinatarioMail: solicitanteEntity.mail,
+                                    originUrl,
+                                    fromName: agenteNombre,
+                                    ticketInfo: {
+                                        categoria: "Alumno / Traslado",
+                                        descripcion: descripcionTicket,
+                                        prioridad: "Media",
+                                        solicitanteNombre,
+                                        agenteNombre,
+                                    }
+                                });
+                            }
+                        }
                     }
                 } catch (emailErr) {
                     console.error('[EmailNotificationError] Error al procesar notificación de traslado creado:', emailErr);

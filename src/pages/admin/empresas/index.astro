@@ -1,0 +1,219 @@
+---
+import MainLayout from "@/layouts/MainLayout.astro";
+import { prisma } from "@/lib/db";
+
+const empresas = await prisma.empresa.findMany({
+  orderBy: { nombre: "asc" },
+  include: {
+    _count: {
+      select: { usuarios: true },
+    },
+  },
+});
+---
+
+<MainLayout title="Gestión de Empresas">
+  <div class="max-w-7xl mx-auto">
+    <div class="flex justify-between items-center mb-6">
+      <div>
+        <h1 class="text-2xl font-bold">Gestión de Empresas</h1>
+        <p class="text-sm text-muted-foreground">Configura opciones globales y accesos por campus/empresa.</p>
+      </div>
+      <a
+        href="/admin/usuarios"
+        class="bg-muted-foreground text-white hover:bg-muted-foreground/80 px-6 py-2 rounded-md text-sm font-semibold transition-colors"
+      >
+        Volver a Usuarios
+      </a>
+    </div>
+
+    <!-- Filtros rápidos -->
+    <div class="flex justify-between items-center mb-4 gap-4 flex-wrap bg-card border rounded-lg p-4">
+      <div class="flex items-center gap-4 flex-wrap">
+        <div>
+          <label for="tipo-select" class="mr-2 text-sm font-medium">Filtrar por Tipo:</label>
+          <select id="tipo-select" class="bg-input border rounded-md p-2 text-sm">
+            <option value="all">Todos</option>
+            <option value="Magno">Magno</option>
+            <option value="Ejecutivo">Ejecutivo</option>
+            <option value="Oficina">Oficina</option>
+            <option value="Social">Social</option>
+          </select>
+        </div>
+        <div>
+          <label for="virtual-select" class="mr-2 text-sm font-medium">Campus Virtual Origen:</label>
+          <select id="virtual-select" class="bg-input border rounded-md p-2 text-sm">
+            <option value="all">Todos</option>
+            <option value="true">Habilitado</option>
+            <option value="false">Deshabilitado</option>
+          </select>
+        </div>
+      </div>
+      <div class="text-sm text-muted-foreground">
+        Total: <span id="company-count" class="font-semibold text-foreground">{empresas.length}</span> empresas
+      </div>
+    </div>
+
+    <!-- Tabla de Empresas -->
+    <div class="bg-card border rounded-lg overflow-hidden shadow-sm">
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm text-left">
+          <thead class="bg-muted/50 border-b border-border">
+            <tr>
+              <th class="p-4 font-semibold text-foreground">Nombre</th>
+              <th class="p-4 font-semibold text-foreground">Tipo</th>
+              <th class="p-4 font-semibold text-foreground">Usuarios</th>
+              <th class="p-4 font-semibold text-foreground text-center">Campus Virtual Origen</th>
+              <th class="p-4 font-semibold text-foreground text-right">Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="companies-table-body">
+            {
+              empresas.map((empresa) => (
+                <tr 
+                  class="company-row border-b hover:bg-muted/30 transition-colors"
+                  data-tipo={empresa.tipo}
+                  data-tckt-virtual={empresa.tckt_virtual ? "true" : "false"}
+                >
+                  <td class="p-4 font-medium text-foreground">
+                    {empresa.nombre}
+                  </td>
+                  <td class="p-4">
+                    <span class={`px-2 py-1 rounded-full text-xs font-semibold ${
+                      empresa.tipo === 'Magno' ? 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300' :
+                      empresa.tipo === 'Ejecutivo' ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300' :
+                      empresa.tipo === 'Oficina' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300' :
+                      'bg-slate-100 text-slate-800 dark:bg-slate-900/30 dark:text-slate-300'
+                    }`}>
+                      {empresa.tipo}
+                    </span>
+                  </td>
+                  <td class="p-4 text-muted-foreground">
+                    {empresa._count.usuarios} {empresa._count.usuarios === 1 ? 'usuario' : 'usuarios'}
+                  </td>
+                  <td class="p-4 text-center">
+                    <div class="flex items-center justify-center">
+                      <label class="relative inline-flex items-center cursor-pointer">
+                        <input 
+                          type="checkbox" 
+                          class="sr-only peer toggle-tckt-virtual" 
+                          data-company-slug={empresa.slug}
+                          checked={empresa.tckt_virtual}
+                        />
+                        <div class="w-9 h-5 bg-muted peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary"></div>
+                      </label>
+                    </div>
+                  </td>
+                  <td class="p-4 text-right">
+                    <a
+                      href={`/admin/usuarios/${empresa.slug}`}
+                      class="text-xs font-semibold bg-secondary text-secondary-foreground hover:bg-secondary/80 px-3 py-1.5 rounded-md transition-colors inline-flex items-center gap-1"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-users"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                      Ver Usuarios
+                    </a>
+                  </td>
+                </tr>
+              ))
+            }
+          </tbody>
+        </table>
+      </div>
+      <div
+        id="no-companies-message"
+        class="hidden p-8 text-center text-muted-foreground"
+      >
+        No se encontraron empresas con los filtros seleccionados.
+      </div>
+    </div>
+  </div>
+</MainLayout>
+
+<script>
+  import { toast } from '@/lib/toast';
+
+  function initCompaniesList() {
+    const tableBody = document.getElementById("companies-table-body");
+    const noCompaniesMessage = document.getElementById("no-companies-message");
+    const tipoSelect = document.getElementById("tipo-select") as HTMLSelectElement;
+    const virtualSelect = document.getElementById("virtual-select") as HTMLSelectElement;
+    const countSpan = document.getElementById("company-count");
+
+    if (!tableBody || !tipoSelect || !virtualSelect || !countSpan) return;
+
+    // Lógica de Filtros en el Cliente
+    function applyFilters() {
+      const tipoVal = tipoSelect.value;
+      const virtualVal = virtualSelect.value;
+      const rows = tableBody.querySelectorAll(".company-row");
+      let visibleCount = 0;
+
+      rows.forEach((row: any) => {
+        const rowTipo = row.dataset.tipo;
+        const rowVirtual = row.dataset.tcktVirtual;
+
+        const matchesTipo = tipoVal === "all" || rowTipo === tipoVal;
+        const matchesVirtual = virtualVal === "all" || rowVirtual === virtualVal;
+
+        if (matchesTipo && matchesVirtual) {
+          row.classList.remove("hidden");
+          visibleCount++;
+        } else {
+          row.classList.add("hidden");
+        }
+      });
+
+      countSpan.textContent = visibleCount.toString();
+      if (visibleCount === 0) {
+        noCompaniesMessage?.classList.remove("hidden");
+      } else {
+        noCompaniesMessage?.classList.add("hidden");
+      }
+    }
+
+    tipoSelect.addEventListener("change", applyFilters);
+    virtualSelect.addEventListener("change", applyFilters);
+
+    // Event Listeners para los toggles de tckt_virtual
+    const toggles = tableBody.querySelectorAll(".toggle-tckt-virtual");
+    toggles.forEach((toggle: any) => {
+      toggle.addEventListener("change", async (e: any) => {
+        const checkbox = e.target as HTMLInputElement;
+        const companySlug = checkbox.dataset.companySlug;
+        if (!companySlug) return;
+
+        const newValue = checkbox.checked;
+        const row = checkbox.closest(".company-row") as HTMLElement;
+
+        // Actualizar dataset para que el filtro funcione con el nuevo valor
+        if (row) {
+          row.dataset.tcktVirtual = newValue ? "true" : "false";
+        }
+
+        try {
+          const response = await fetch('/api/admin/empresa', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ slug: companySlug, tckt_virtual: newValue })
+          });
+
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || 'Error al actualizar');
+          }
+
+          toast.success(`Configuración actualizada correctamente.`);
+        } catch (error: any) {
+          console.error('Error al actualizar empresa:', error);
+          checkbox.checked = !newValue;
+          if (row) {
+            row.dataset.tcktVirtual = (!newValue) ? "true" : "false";
+          }
+          toast.error(error.message || 'Error al actualizar la configuración.');
+        }
+      });
+    });
+  }
+
+  document.addEventListener("astro:page-load", initCompaniesList);
+</script>

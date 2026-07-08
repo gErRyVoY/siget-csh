@@ -620,7 +620,7 @@ console.log("CAREER DEBUG:", { ofertaDesc, carreraOriginal: traslado?.carrera?.d
                         </div>
 
                         {/* 3-Column Assignment Section (Existing Logic kept as is, just wrapped) */}
-                        <div class="grid grid-cols-1 custom-lg:grid-cols-3 gap-4">
+                        <div class={`grid grid-cols-1 ${isPrivileged ? "custom-lg:grid-cols-3" : ""} gap-4`}>
                             <style>
                                 @media (min-width: 1100px) {
                                     .custom-lg\:grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
@@ -649,116 +649,120 @@ console.log("CAREER DEBUG:", { ofertaDesc, carreraOriginal: traslado?.carrera?.d
                                 </div>
                             </div>
 
-                            {/* Col 2: Rev. Documentos */}
-                            <div class="space-y-2 bg-muted/10 p-3 rounded-md border border-border/50">
-                                <h4 class="font-semibold text-sm border-b border-border pb-2 mb-2">Rev. documentos</h4>
-                                
-                                {/* Row 1: Assign Auditor */}
-                                <div class="flex flex-col gap-1 mb-3">
-                                    <label class="block text-xs text-muted-foreground">Auditor:</label>
-                                    <select 
-                                        id="auditor_docsId"
-                                        name="auditor_docsId" 
-                                        class="w-full rounded-md border-border bg-input p-1 text-sm"
-                                        disabled={!isPrivileged}
-                                    >
-                                        <option value="" selected={!traslado.auditor_docsId}>Sin asignar</option>
-                                        {cshAuditorDocs.map(u => (
-                                            <option value={u.id} selected={u.id === traslado.auditor_docsId}>{u.nombres} {u.apellidos}</option>
-                                        ))}
-                                    </select>
-                                </div>
+                            {isPrivileged && (
+                                <>
+                                    {/* Col 2: Rev. Documentos */}
+                                    <div class="space-y-2 bg-muted/10 p-3 rounded-md border border-border/50">
+                                        <h4 class="font-semibold text-sm border-b border-border pb-2 mb-2">Rev. documentos</h4>
+                                        
+                                        {/* Row 1: Assign Auditor */}
+                                        <div class="flex flex-col gap-1 mb-3">
+                                            <label class="block text-xs text-muted-foreground">Auditor:</label>
+                                            <select 
+                                                id="auditor_docsId"
+                                                name="auditor_docsId" 
+                                                class="w-full rounded-md border-border bg-input p-1 text-sm"
+                                                disabled={!isPrivileged}
+                                            >
+                                                <option value="" selected={!traslado.auditor_docsId}>Sin asignar</option>
+                                                {cshAuditorDocs.map(u => (
+                                                    <option value={u.id} selected={u.id === traslado.auditor_docsId}>{u.nombres} {u.apellidos}</option>
+                                                ))}
+                                            </select>
+                                        </div>
 
-                                {/* Row 2: Validation */}
-                                <div class="space-y-1">
-                                    <div class="flex items-center gap-2">
-                                        <input 
-                                            type="checkbox" 
-                                            name="validacion_docs" 
-                                            id="validacion_docs" 
-                                            checked={traslado.validacion_docs} 
-                                            class="rounded" 
-                                            disabled={!canEditDocs}
-                                        />
-                                        <label for="validacion_docs" class="text-xs font-medium">Documentación correcta</label>
+                                        {/* Row 2: Validation */}
+                                        <div class="space-y-1">
+                                            <div class="flex items-center gap-2">
+                                                <input 
+                                                    type="checkbox" 
+                                                    name="validacion_docs" 
+                                                    id="validacion_docs" 
+                                                    checked={traslado.validacion_docs} 
+                                                    class="rounded" 
+                                                    disabled={!canEditDocs}
+                                                />
+                                                <label for="validacion_docs" class="text-xs font-medium">Documentación correcta</label>
+                                            </div>
+                                            <textarea 
+                                                name="descripcion_docs" 
+                                                id="descripcion_docs"
+                                                rows="5" 
+                                                placeholder="Comentarios..." 
+                                                class="w-full text-xs rounded border-border bg-input p-1"
+                                                disabled={!canEditDocs}
+                                            >{traslado.descripcion_docs}</textarea>
+                                        </div>
                                     </div>
-                                    <textarea 
-                                        name="descripcion_docs" 
-                                        id="descripcion_docs"
-                                        rows="5" 
-                                        placeholder="Comentarios..." 
-                                        class="w-full text-xs rounded border-border bg-input p-1"
-                                        disabled={!canEditDocs}
-                                    >{traslado.descripcion_docs}</textarea>
-                                </div>
-                            </div>
 
-                            {/* Col 3: Rev. Adeudos */}
-                            <div class="space-y-2 bg-muted/10 p-3 rounded-md border border-border/50">
-                                <h4 class="font-semibold text-sm border-b border-border pb-2 mb-2">Rev. adeudos</h4>
-                                
-                                {/* Row 1: Assign Auditor */}
-                                <div class="flex flex-col gap-1 mb-3">
-                                    <label class="text-xs text-muted-foreground">Auditor:</label>
-                                    <select 
-                                        id="auditor_reqId"
-                                        name="auditor_reqId" 
-                                        class="w-full rounded-md border-border bg-input p-1 text-sm"
-                                        disabled={!isPrivileged}
-                                    >
-                                        <option value="" selected={!traslado.auditor_reqId}>Sin asignar</option>
-                                        {cshAuditorReq.map(u => (
-                                            <option value={u.id} selected={u.id === traslado.auditor_reqId}>{u.nombres} {u.apellidos}</option>
-                                        ))}
-                                    </select>
-                                </div>
+                                    {/* Col 3: Rev. Adeudos */}
+                                    <div class="space-y-2 bg-muted/10 p-3 rounded-md border border-border/50">
+                                        <h4 class="font-semibold text-sm border-b border-border pb-2 mb-2">Rev. adeudos</h4>
+                                        
+                                        {/* Row 1: Assign Auditor */}
+                                        <div class="flex flex-col gap-1 mb-3">
+                                            <label class="text-xs text-muted-foreground">Auditor:</label>
+                                            <select 
+                                                id="auditor_reqId"
+                                                name="auditor_reqId" 
+                                                class="w-full rounded-md border-border bg-input p-1 text-sm"
+                                                disabled={!isPrivileged}
+                                            >
+                                                <option value="" selected={!traslado.auditor_reqId}>Sin asignar</option>
+                                                {cshAuditorReq.map(u => (
+                                                    <option value={u.id} selected={u.id === traslado.auditor_reqId}>{u.nombres} {u.apellidos}</option>
+                                                ))}
+                                            </select>
+                                        </div>
 
-                                {/* Row 2a: Edocta */}
-                                <div class="space-y-1 mb-2">
-                                    <div class="flex items-center gap-2">
-                                        <input 
-                                            type="checkbox" 
-                                            name="validacion_edocta" 
-                                            id="validacion_edocta" 
-                                            checked={traslado.validacion_edocta} 
-                                            class="rounded"
-                                            disabled={!canEditReq}
-                                        />
-                                        <label for="validacion_edocta" class="text-xs font-medium">Sin adeudo financiero</label>
+                                        {/* Row 2a: Edocta */}
+                                        <div class="space-y-1 mb-2">
+                                            <div class="flex items-center gap-2">
+                                                <input 
+                                                    type="checkbox" 
+                                                    name="validacion_edocta" 
+                                                    id="validacion_edocta" 
+                                                    checked={traslado.validacion_edocta} 
+                                                    class="rounded"
+                                                    disabled={!canEditReq}
+                                                />
+                                                <label for="validacion_edocta" class="text-xs font-medium">Sin adeudo financiero</label>
+                                            </div>
+                                            <textarea 
+                                                name="descripcion_edocta" 
+                                                id="descripcion_edocta"
+                                                rows="1" 
+                                                placeholder="Comentarios Edocta..." 
+                                                class="w-full text-xs rounded border-border bg-input p-1"
+                                                disabled={!canEditReq}
+                                            >{traslado.descripcion_edocta}</textarea>
+                                        </div>
+
+                                        {/* Row 2b: Calif */}
+                                        <div class="space-y-1">
+                                            <div class="flex items-center gap-2">
+                                                <input 
+                                                    type="checkbox" 
+                                                    name="validacion_calif" 
+                                                    id="validacion_calif" 
+                                                    checked={traslado.validacion_calif} 
+                                                    class="rounded" 
+                                                    disabled={!canEditReq}
+                                                />
+                                                <label for="validacion_calif" class="text-xs font-medium">Sin adeudo escolar</label>
+                                            </div>
+                                            <textarea 
+                                                name="descripcion_calif" 
+                                                id="descripcion_calif"
+                                                rows="1" 
+                                                placeholder="Comentarios Calif..." 
+                                                class="w-full text-xs rounded border-border bg-input p-1"
+                                                disabled={!canEditReq}
+                                            >{traslado.descripcion_calif}</textarea>
+                                        </div>
                                     </div>
-                                    <textarea 
-                                        name="descripcion_edocta" 
-                                        id="descripcion_edocta"
-                                        rows="1" 
-                                        placeholder="Comentarios Edocta..." 
-                                        class="w-full text-xs rounded border-border bg-input p-1"
-                                        disabled={!canEditReq}
-                                    >{traslado.descripcion_edocta}</textarea>
-                                </div>
-
-                                {/* Row 2b: Calif */}
-                                <div class="space-y-1">
-                                    <div class="flex items-center gap-2">
-                                        <input 
-                                            type="checkbox" 
-                                            name="validacion_calif" 
-                                            id="validacion_calif" 
-                                            checked={traslado.validacion_calif} 
-                                            class="rounded" 
-                                            disabled={!canEditReq}
-                                        />
-                                        <label for="validacion_calif" class="text-xs font-medium">Sin adeudo escolar</label>
-                                    </div>
-                                    <textarea 
-                                        name="descripcion_calif" 
-                                        id="descripcion_calif"
-                                        rows="1" 
-                                        placeholder="Comentarios Calif..." 
-                                        class="w-full text-xs rounded border-border bg-input p-1"
-                                        disabled={!canEditReq}
-                                    >{traslado.descripcion_calif}</textarea>
-                                </div>
-                            </div>
+                                </>
+                            )}
                         </div>
                     </div>
                 ) : (
@@ -1037,7 +1041,7 @@ console.log("CAREER DEBUG:", { ofertaDesc, carreraOriginal: traslado?.carrera?.d
                                                 {entry.comentario}
                                             </p>
                                         )}
-                                        {fieldChanges.length > 0 && (
+                                        {fieldChanges.length > 0 && isPrivileged && (
                                             <div class="mt-2 text-xs p-2 bg-blue-50 border border-blue-200 dark:bg-blue-900/20 dark:border-blue-800 rounded-md">
                                                 <p class="font-semibold mb-1">
                                                     Cambios de campos:

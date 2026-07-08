@@ -159,21 +159,43 @@ export const POST: APIRoute = async ({ request }) => {
               ? `${solicitante.nombres} ${solicitante.apellidos}`
               : "Usuario";
             const agenteNombre = `${agente.nombres} ${agente.apellidos}`;
+            const categoriaNombre = categoria?.nombre || "General";
 
+            // Notificar al agente asignado
             await sendTicketNotification({
               ticketId: nuevoTicket.id,
               event: "ticket_creado",
               destinatarioId: atiendeId,
               destinatarioMail: agente.mail,
               originUrl,
+              fromName: solicitanteNombre,
               ticketInfo: {
-                categoria: categoria?.nombre || "General",
+                categoria: categoriaNombre,
                 descripcion: descripcion,
                 prioridad: prioridad,
                 solicitanteNombre,
                 agenteNombre,
               }
             });
+
+            // Notificar al creador del ticket
+            if (solicitante && solicitante.mail) {
+              await sendTicketNotification({
+                ticketId: nuevoTicket.id,
+                event: "ticket_creado_solicitante",
+                destinatarioId: userId,
+                destinatarioMail: solicitante.mail,
+                originUrl,
+                fromName: agenteNombre,
+                ticketInfo: {
+                  categoria: categoriaNombre,
+                  descripcion: descripcion,
+                  prioridad: prioridad,
+                  solicitanteNombre,
+                  agenteNombre,
+                }
+              });
+            }
           }
         } catch (emailErr) {
           console.error('[EmailNotificationError] Error al procesar notificación de ticket creado:', emailErr);
