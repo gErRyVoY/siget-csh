@@ -42,7 +42,7 @@ export const POST: APIRoute = async ({ request }) => {
         }
 
         // --- Validation ---
-        if (!matricula || !nombreCompleto || !campusOrigen || !campusDestino || !carrera || !bloqueSugerido) {
+        if (!matricula || !nombreCompleto || !campusOrigen || !campusDestino || !carrera) {
             return new Response(JSON.stringify({ message: 'Faltan campos requeridos.' }), { status: 400 });
         }
 
@@ -182,7 +182,7 @@ export const POST: APIRoute = async ({ request }) => {
                     destinoId: empresaDestino.id,
                     carreraId: carreraId,
                     bloqueId: null, // Optional now
-                    bloque_nombre: bloqueSugerido ? String(bloqueSugerido) : null,
+                    bloque_nombre: (bloqueSugerido && bloqueSugerido !== '0') ? String(bloqueSugerido) : null,
                     descuentoId,
                     planpagoId: planpagoId,
                     mail: mail ? String(mail) : null,

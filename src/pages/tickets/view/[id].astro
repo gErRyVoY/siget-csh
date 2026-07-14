@@ -1276,15 +1276,25 @@ console.log("CAREER DEBUG:", { ofertaDesc, carreraOriginal: traslado?.carrera?.d
 
                     const currentVal = bloqueSelect.dataset.currentVal 
                                         ? bloqueSelect.dataset.currentVal.toLowerCase().replace(/\s+/g, '-') 
-                                        : bloqueSelect.value;
+                                        : (bloqueSelect.value || "0");
                     
                     bloqueSelect.innerHTML = "";
+
+                    // Opción por defecto
+                    const defaultOption = document.createElement('option');
+                    defaultOption.value = "0";
+                    defaultOption.textContent = "Elige un bloque";
+                    if (!currentVal || currentVal === "0" || currentVal === "null" || currentVal === "") {
+                        defaultOption.selected = true;
+                    }
+                    bloqueSelect.appendChild(defaultOption);
+
                     filteredOptions.forEach(opt => {
                         const normalizedOpt = opt.toLowerCase().replace(/\s+/g, '-');
                         const optionEl = document.createElement('option');
                         optionEl.value = normalizedOpt;
                         optionEl.textContent = opt;
-                        if (normalizedOpt === currentVal) {
+                        if (normalizedOpt === currentVal && currentVal !== "0" && currentVal !== "") {
                             optionEl.selected = true;
                         }
                         bloqueSelect.appendChild(optionEl);
@@ -1369,7 +1379,7 @@ console.log("CAREER DEBUG:", { ofertaDesc, carreraOriginal: traslado?.carrera?.d
                              nuevo_ingreso: (document.getElementById("nuevo_ingreso") as HTMLInputElement)?.checked,
                              tiene_descuento: (document.getElementById("tiene_descuento") as HTMLInputElement)?.checked,
                              descuento_nombre: (document.getElementById("descuento-valor") as HTMLInputElement)?.value,
-                             bloque_nombre: (document.getElementById("bloque-sugerido") as HTMLSelectElement)?.value,
+                             bloque_nombre: (() => { const v = (document.getElementById("bloque-sugerido") as HTMLSelectElement)?.value; return (!v || v === "0") ? null : v; })(),
                              
                              auditor_docsId: (document.querySelector("select[name='auditor_docsId']") as HTMLSelectElement)?.value,
                              auditor_reqId: (document.querySelector("select[name='auditor_reqId']") as HTMLSelectElement)?.value,

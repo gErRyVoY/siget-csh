@@ -110,6 +110,12 @@ A continuación se listan los proyectos prioritarios. Tu tarea es ayudar a refin
     * **Infraestructura y Despliegue (CI/CD):** Implementado. El flujo con GitHub Actions, Docker, AWS ECR, Secrets Manager y App Runner está operativo.
 
 # Historial de Cambios (Log)
+## 2026-07-13 (Opción por defecto para Bloque Sugerido)
+*   **Vista de Detalle de Ticket (`/tickets/view/[id].astro`):**
+    *   **Opción de Bloque Sugerido por Defecto:** Se integró la opción `"Elige un bloque"` con valor `"0"` en el selector dinámico del bloque sugerido.
+    *   **Lógica de Selección:** Si el traslado no tiene un bloque previamente registrado (o es nulo/vacío), se auto-selecciona esta opción en lugar de tomar la primera opción de la lista (como el bloque 1).
+    *   **Lógica de Guardado:** Al guardar los cambios, si el valor seleccionado es `"0"`, la interfaz de usuario envía `null` al backend para persistir correctamente la ausencia de un bloque.
+
 ## 2026-06-30 (Filtros de Quincena y Reposición de Horario en Incidencias)
 *   **Reporte de Incidencias (`src/pages/user/perfil/incidencias.astro`):**
     *   **Reposición de Tiempo:** Se añadió una validación para marcar como "Reposición de tiempo" (en verde, status y campos de registro) si el usuario ingresó antes del inicio laboral y salió después del fin laboral.

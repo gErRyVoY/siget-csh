@@ -257,15 +257,14 @@ if (userId) {
                                 for="bloque-sugerido"
                                 class="block text-sm font-medium text-foreground mb-1"
                             >
-                                Bloque sugerido <span class="text-destructive"
-                                    >*</span
-                                >
+                                Bloque sugerido
                             </label>
                             <select
                                 id="bloque-sugerido"
                                 name="bloque-sugerido"
                                 class="w-full rounded-md border-border bg-input px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring"
                             >
+                                <option value="0">Elige un bloque</option>
                                 {
                                     bloqueOptions.map((option) => (
                                         <option
@@ -667,15 +666,24 @@ if (userId) {
                 filteredOptions = bloqueOptionsFull;
             }
 
-            const currentValue = bloqueSugeridoSelect.value;
+            const currentValue = bloqueSugeridoSelect.value || "0";
             bloqueSugeridoSelect.innerHTML = "";
+
+            // Opción por defecto
+            const defaultOption = document.createElement("option");
+            defaultOption.value = "0";
+            defaultOption.textContent = "Elige un bloque";
+            if (!currentValue || currentValue === "0" || currentValue === "null" || currentValue === "") {
+                defaultOption.selected = true;
+            }
+            bloqueSugeridoSelect.appendChild(defaultOption);
 
             filteredOptions.forEach((opt) => {
                 const normalizedOpt = opt.toLowerCase().replace(/\s+/g, "-");
                 const optionEl = document.createElement("option");
                 optionEl.value = normalizedOpt;
                 optionEl.textContent = opt;
-                if (normalizedOpt === currentValue) {
+                if (normalizedOpt === currentValue && currentValue !== "0" && currentValue !== "") {
                     optionEl.selected = true;
                 }
                 bloqueSugeridoSelect.appendChild(optionEl);
@@ -1386,7 +1394,7 @@ if (userId) {
                 "tiene-descuento": formData.get("tiene-descuento") === "on",
                 "descuento-valor": formData.get("descuento-valor"),
                 escolarizada: formData.get("escolarizada") === "on",
-                "bloque-sugerido": formData.get("bloque-sugerido"),
+                "bloque-sugerido": formData.get("bloque-sugerido") === "0" ? null : formData.get("bloque-sugerido"),
                 comentarios: formData.get("comentarios"),
                 mail: formData.get("mail"),
                 mail_escuela: formData.get("mail_escuela"),

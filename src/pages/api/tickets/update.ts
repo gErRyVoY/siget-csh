@@ -134,7 +134,7 @@ export const PATCH: APIRoute = async ({ request, locals }) => {
         if (destinoId) trasladoUpdateData.destinoId = Number(destinoId);
         if (carreraId) trasladoUpdateData.carreraId = Number(carreraId);
         if (typeof nuevo_ingreso === 'boolean') trasladoUpdateData.nuevo_ingreso = nuevo_ingreso;
-        if (bloque_nombre !== undefined) trasladoUpdateData.bloque_nombre = bloque_nombre;
+        if (bloque_nombre !== undefined) trasladoUpdateData.bloque_nombre = (bloque_nombre === null || bloque_nombre === '0') ? null : bloque_nombre;
         if (bloqueId) trasladoUpdateData.bloqueId = bloqueId === 'null' ? null : Number(bloqueId);
         
         if (descuentoId) {
