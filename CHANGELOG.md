@@ -8,7 +8,45 @@ Todos los cambios notables en este proyecto serán documentados en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Versionado Semántico](https://semver.org/lang/es/).
 
+## 2026-07-15 (Lógica Avanzada de Asignación v2, Redirección Post-Ticket y Mejoras de Notificaciones)
+
+### Feature: Lógica de Asignación Automática Mejorada
+*   **`src/services/ticketAssignmentService.ts` (Servicio):**
+    *   **Horario Obligatorio:** Un agente sin `horario_disponibilidad` definido ya no se considera disponible. Aplica para tickets CSH y Marketing por igual (antes Marketing no validaba horario).
+    *   **Asignación Forzada por Unicidad:** Si la categoría/subcategoría elegida tiene exactamente un único candidato en la BD (excluyendo al solicitante), el ticket se asigna a ese candidato aunque esté fuera de horario o de vacaciones.
+    *   **Eliminación del Fallback S-1:** Se eliminó el fallback que buscaba agentes de nivel `S_1`. Si no hay nadie disponible entre los candidatos válidos, el ticket queda directamente sin asignar.
+    *   **Logs de Diagnóstico:** Se añadieron mensajes de log en consola que explican por qué un agente es descartado (sin horario, fuera de horario, no trabaja el día, etc.).
+
+### Feature: Notificaciones por Correo con Nombres Personalizados
+*   **`src/services/emailService.ts` (Servicio):**
+    *   **Nuevo evento `ticket_sin_asignar`:** Plantilla HTML y asunto para notificar al solicitante cuando su ticket queda en espera por falta de disponibilidad de ingenieros.
+*   **`src/pages/api/tickets/create.ts` (API):**
+    *   **Bug Fix:** Se corrigió el uso de `userId` (variable inexistente) reemplazándolo por `solicitanteId` al enviar el correo de confirmación al creador del ticket.
+    *   **Correo al Solicitante (Caso A):** Al crear un ticket con agente asignado, el solicitante recibe un correo indicando el nombre del ingeniero que lo atenderá.
+    *   **Correo al Solicitante (Caso B):** Al crear un ticket sin agente disponible, el solicitante recibe un correo de tipo `ticket_sin_asignar` informando que su solicitud está en espera.
+*   **`src/pages/api/tickets/update.ts` (API):**
+    *   **Notificación de Primera Asignación:** Cuando un admin asigna manualmente un agente a un ticket que estaba sin asignar (`atiendeId` era `null`), el solicitante recibe un correo `ticket_creado_solicitante` informándole quién lo atenderá.
+
+### Fix: Redirección Post-Creación de Ticket
+*   **`src/pages/tickets/soporte/nuevo-ticket-csh.astro` y `nuevo-ticket-marketing.astro` (Frontend):**
+    *   Se añadió importación de `getSession` y cálculo SSR del atributo `data-redirect-url` en el formulario. Si el usuario tiene la sección `soporte_dashboard` / `marketing_dashboard` va al dashboard de soporte/marketing; si no (usuario regular), va a `/tickets/soporte/usuario` o `/tickets/marketing/usuario`. Esto elimina el toast de "sin permisos" que aparecía al crear tickets como usuario normal.
+*   **`src/lib/ticket-wizard.ts` y `src/lib/marketing-ticket-wizard.ts` (Cliente):**
+    *   Los wizards ahora leen el atributo `data-redirect-url` del formulario en vez de tener la URL hardcoded, respetando el rol del usuario que creó el ticket.
+
+### Feature: Rediseño del Dropdown de Notificaciones
+*   **`src/layouts/MainLayout.astro` (Frontend):**
+    *   **Nuevo formato por ítem:** Cada notificación muestra: `Ticket #N` (o `#TRL-N` si es traslado), badge de estatus con color, etiqueta dinámica ("Solicitante: nombre" para ingenieros, "Atiende: nombre" para usuarios), empresa y subcategoría/categoría del ticket.
+    *   **Botón "Omitir":** Cada ítem tiene un botón que descarta la notificación del dropdown con animación de colapso suave (opacity + max-height).
+    *   **Persistencia de omisiones:** Los IDs de tickets omitidos se guardan en `localStorage` bajo la clave `siget_dismissed_notifications` (máximo 200 IDs para evitar bloat).
+    *   **Click siempre descarta:** Al hacer click en cualquier notificación (incluyendo tickets con estatus Solucionado), el ítem se descarta del dropdown. Corrección de bug previo donde tickets solucionados no se eliminaban.
+    *   **Estado vacío corregido:** Se unificó el HTML del estado vacío en la constante `EMPTY_STATE_HTML`. Se añadió la función `checkEmptyState()` que se llama al final de cada render para mostrar "Estás al día" si todos los tickets fueron omitidos. El botón "Ver más" ahora solo aparece si `hasMore === true` y además hay ítems visibles en el DOM.
+*   **`src/pages/api/notifications/list.ts` (API):**
+    *   Se añadieron `atiende`, `subcategoria`, `empresa` y `traslados` al `include` de Prisma para soportar el nuevo formato del dropdown.
+
+---
+
 ## 2026-07-01 (Sustitución de Imagen S3 por Tabla HTML en Reporte de Incidencias)
+
 
 ### Refactor: Eliminación de AWS S3 del flujo de Reporte de Incidencias
 *   **`src/pages/user/perfil/incidencias.astro` (Frontend):**

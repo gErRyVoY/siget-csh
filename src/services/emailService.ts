@@ -118,7 +118,7 @@ export function getHtmlWrapper(title: string, contentHtml: string): string {
 
 interface TicketNotificationParams {
   ticketId: number;
-  event: "ticket_creado" | "ticket_creado_solicitante" | "ticket_actualizado" | "ticket_asignado" | "traslado_creado";
+  event: "ticket_creado" | "ticket_creado_solicitante" | "ticket_actualizado" | "ticket_asignado" | "traslado_creado" | "ticket_sin_asignar";
   destinatarioId: number;
   destinatarioMail: string;
   fromName?: string;
@@ -211,6 +211,22 @@ async function getOrCreatePlantilla(nombre: string, event: string) {
 </div>
 <p style="margin: 16px 0;">Por favor, haz clic en el siguiente botón para ver los detalles del ticket:</p>
 <a href="{{ticketUrl}}" style="${btnStyle}">Ver Ticket</a>`;
+  } else if (event === "ticket_sin_asignar") {
+    subject = "Tu ticket #{{ticketId}} está en espera de asignación";
+    contenido = `<h2 style="color: #1f2937; margin: 0 0 12px;">Hola {{solicitanteNombre}},</h2>
+<p style="margin: 0 0 16px;">Hemos recibido tu solicitud y creado el ticket <strong>#{{ticketId}}</strong> exitosamente.</p>
+<div style="background-color: #f9fafb; border-left: 4px solid #caab55; padding: 15px; margin: 15px 0;">
+  <strong>ID del Ticket:</strong> #{{ticketId}}<br>
+  <strong>Categoría:</strong> {{categoria}}<br>
+  <strong>Prioridad:</strong> {{prioridad}}<br>
+  <strong>Descripción:</strong> {{descripcion}}
+</div>
+<div style="background-color: #fef3c7; border-left: 4px solid #d97706; padding: 15px; margin: 15px 0;">
+  <strong style="color: #92400e;">⏳ En espera de asignación</strong><br>
+  <span style="color: #78350f;">En este momento todos nuestros ingenieros están fuera de horario. Tu ticket será atendido en cuanto uno esté disponible. Recibirás un correo de confirmación con el nombre del ingeniero asignado.</span>
+</div>
+<p style="margin: 16px 0;">Puedes revisar el estado de tu ticket en cualquier momento haciendo clic en el siguiente botón:</p>
+<a href="{{ticketUrl}}" style="${btnStyle}">Ver Ticket</a>`;
   } else if (event === "traslado_creado") {
     subject = "Nuevo traslado #TRL-{{ticketId}}";
     contenido = `<h2 style="color: #1f2937; margin: 0 0 12px;">Hola {{agenteNombre}},</h2>
@@ -277,7 +293,9 @@ export async function sendTicketNotification({
           ? `[SiGeT] Confirmación de ticket #${ticketId}`
           : event === "ticket_asignado"
             ? `[SiGeT] Ticket reasignado #${ticketId}`
-            : `[SiGeT] Actualización del ticket #${ticketId}`;
+            : event === "ticket_sin_asignar"
+              ? `[SiGeT] Tu ticket #${ticketId} está en espera de asignación`
+              : `[SiGeT] Actualización del ticket #${ticketId}`;
 
     // Populate template fields
     let templateHtml = plantilla.contenido || "";

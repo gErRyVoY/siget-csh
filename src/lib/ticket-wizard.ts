@@ -548,7 +548,8 @@ export function initTicketWizard(treeData: CategoriesTreeData) {
             toast.success('¡Ticket Enviado!', { duration: 3000 });
 
             setTimeout(() => {
-                window.location.href = '/tickets/soporte';
+                const redirectUrl = ticketForm.dataset.redirectUrl || '/tickets/soporte';
+                window.location.href = redirectUrl;
             }, 1500);
 
         } catch (error) {

@@ -445,6 +445,20 @@ export const PATCH: APIRoute = async ({ request, locals }) => {
                             ticketInfo
                         });
                     }
+
+                    // Notificar al solicitante si el ticket pasó de SIN ASIGNAR → CON AGENTE
+                    // (primera asignación vía panel admin: el solicitante ahora sabe quién lo atiende)
+                    if (!ticketBeforeUpdate.atiendeId && solicitante && solicitante.mail) {
+                        await sendTicketNotification({
+                            ticketId,
+                            event: "ticket_creado_solicitante",
+                            destinatarioId: ticketBeforeUpdate.solicitanteId,
+                            destinatarioMail: solicitante.mail,
+                            originUrl,
+                            fromName: agenteNombre,
+                            ticketInfo
+                        });
+                    }
                 }
 
                 // 2. Notificación de Actualización (Estatus o Comentario)

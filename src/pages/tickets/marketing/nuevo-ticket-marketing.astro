@@ -66,6 +66,7 @@ const GOOGLE_APP_ID = process.env.GOOGLE_APP_ID || '';
                 data-google-api-key={GOOGLE_API_KEY}
                 data-google-client-id={GOOGLE_CLIENT_ID}
                 data-google-app-id={GOOGLE_APP_ID}
+                data-redirect-url={session?.user?.secciones?.includes("marketing_dashboard") ? "/tickets/marketing" : "/tickets/marketing/usuario"}
             >
                 <!-- Campos dinámicos para datos del afectado (si aplica) -->
                 <div

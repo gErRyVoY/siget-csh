@@ -511,7 +511,8 @@ export function initMarketingTicketWizard(marketingCategory: CategoriaNode) {
             toast.success('¡Ticket de Marketing Creado!', { duration: 3000 });
 
             setTimeout(() => {
-                window.location.href = '/tickets/marketing/usuario';
+                const redirectUrl = (ticketForm as HTMLFormElement).dataset.redirectUrl || '/tickets/marketing/usuario';
+                window.location.href = redirectUrl;
             }, 1500);
 
         } catch (error) {

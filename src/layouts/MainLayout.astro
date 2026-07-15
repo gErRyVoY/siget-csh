@@ -241,6 +241,25 @@ const NOTIFICATION_FULL_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="24
 
             let eventSource: EventSource | null = null;
 
+            // Key for localStorage dismissed notifications
+            const DISMISSED_KEY = "siget_dismissed_notifications";
+
+            function getDismissedIds(): Set<number> {
+                try {
+                    const raw = localStorage.getItem(DISMISSED_KEY);
+                    if (raw) return new Set(JSON.parse(raw));
+                } catch {}
+                return new Set();
+            }
+
+            function addDismissedId(id: number) {
+                const dismissed = getDismissedIds();
+                dismissed.add(id);
+                // Keep only the last 200 dismissed IDs to prevent localStorage bloat
+                const arr = Array.from(dismissed).slice(-200);
+                localStorage.setItem(DISMISSED_KEY, JSON.stringify(arr));
+            }
+
             document.addEventListener("astro:page-load", () => {
                 const notificationBell =
                     document.getElementById("notification-bell");
@@ -319,6 +338,53 @@ const NOTIFICATION_FULL_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="24
                     }
                 };
 
+                const dismissNotificationItem = (ticketId: number, itemEl: HTMLElement) => {
+                    addDismissedId(ticketId);
+                    itemEl.style.transition = "opacity 0.2s, max-height 0.3s";
+                    itemEl.style.opacity = "0";
+                    itemEl.style.overflow = "hidden";
+                    itemEl.style.maxHeight = itemEl.offsetHeight + "px";
+                    setTimeout(() => {
+                        itemEl.style.maxHeight = "0";
+                        itemEl.style.paddingTop = "0";
+                        itemEl.style.paddingBottom = "0";
+                    }, 50);
+                    setTimeout(() => {
+                        itemEl.remove();
+                        if (count > 0) {
+                            count--;
+                            updateNotificationUI();
+                        }
+                        // Show empty state if no items remain
+                        if (!notificationList.querySelector("[data-ticket-id]")) {
+                            notificationList.innerHTML = `
+                                <div class="px-4 py-8 text-sm text-muted-foreground text-center flex flex-col items-center gap-2">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-muted-foreground/50"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12.5 17h-8.5a4 4 0 0 0 2 -3v-3a7 7 0 0 1 4 -6a2 2 0 0 1 4 0a7 7 0 0 1 4 6v3c.025 .912 .452 1.745 1.154 2.318" /><path d="M9 17v1a3 3 0 0 0 6 0v-1" /><path d="M16 19h6" /><path d="M19 16v6" /></svg>
+                                    <p>No hay notificaciones nuevas.</p>
+                                    <p class="text-xs opacity-70">Estás al día.</p>
+                                </div>
+                            `;
+                            loadMoreBtn.classList.add("hidden");
+                        }
+                    }, 350);
+                };
+
+                const EMPTY_STATE_HTML = `
+                    <div class="px-4 py-8 text-sm text-muted-foreground text-center flex flex-col items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-muted-foreground/50"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12.5 17h-8.5a4 4 0 0 0 2 -3v-3a7 7 0 0 1 4 -6a2 2 0 0 1 4 0a7 7 0 0 1 4 6v3c.025 .912 .452 1.745 1.154 2.318" /><path d="M9 17v1a3 3 0 0 0 6 0v-1" /><path d="M16 19h6" /><path d="M19 16v6" /></svg>
+                        <p>No hay notificaciones nuevas.</p>
+                        <p class="text-xs opacity-70">Estás al día.</p>
+                    </div>
+                `;
+
+                const checkEmptyState = () => {
+                    const hasVisibleItems = notificationList.querySelector("[data-ticket-id]");
+                    if (!hasVisibleItems) {
+                        notificationList.innerHTML = EMPTY_STATE_HTML;
+                        loadMoreBtn.classList.add("hidden");
+                    }
+                };
+
                 const renderNotifications = (
                     tickets: any[],
                     append = false,
@@ -328,22 +394,21 @@ const NOTIFICATION_FULL_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="24
                     }
 
                     if (tickets.length === 0 && !append) {
-                        notificationList.innerHTML = `
-                            <div class="px-4 py-8 text-sm text-muted-foreground text-center flex flex-col items-center gap-2">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-muted-foreground/50"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12.5 17h-8.5a4 4 0 0 0 2 -3v-3a7 7 0 0 1 4 -6a2 2 0 0 1 4 0a7 7 0 0 1 4 6v3c.025 .912 .452 1.745 1.154 2.318" /><path d="M9 17v1a3 3 0 0 0 6 0v-1" /><path d="M16 19h6" /><path d="M19 16v6" /></svg>
-                                <p>No hay notificaciones nuevas.</p>
-                                <p class="text-xs opacity-70">Estás al día.</p>
-                            </div>
-                        `;
+                        notificationList.innerHTML = EMPTY_STATE_HTML;
                         loadMoreBtn.classList.add("hidden");
                         return;
                     }
 
+                    const dismissedIds = getDismissedIds();
+
                     tickets.forEach((ticket: any) => {
-                        const item = document.createElement("a");
-                        item.href = `/tickets/view/${ticket.id}`;
+                        // Skip dismissed tickets
+                        if (dismissedIds.has(ticket.id)) return;
+
+                        const item = document.createElement("div");
+                        item.dataset.ticketId = ticket.id.toString();
                         item.className =
-                            "block px-4 py-3 hover:bg-muted/50 transition-colors border-b border-border last:border-0";
+                            "relative px-4 py-3 hover:bg-muted/50 transition-colors border-b border-border last:border-0 cursor-pointer";
 
                         const statusHexColors: { [key: string]: string } = {
                             Nuevo: "#a1a1aa",
@@ -355,45 +420,80 @@ const NOTIFICATION_FULL_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="24
                         };
 
                         const statusName = ticket.estatus?.nombre || "Estado";
-                        const bgColor =
-                            statusHexColors[statusName] || "#a1a1aa";
+                        const bgColor = statusHexColors[statusName] || "#a1a1aa";
 
-                        const lastComment =
-                            ticket.historial_solicitudes &&
-                            ticket.historial_solicitudes.length > 0
-                                ? ticket.historial_solicitudes[0].comentario
-                                : null;
-                        const subtitle = lastComment || ticket.descripcion;
+                        // Determine ticket label (TRL prefix if transfer)
+                        const isTransfer = ticket.traslados !== null;
+                        const ticketLabel = isTransfer
+                            ? `Ticket #TRL-${ticket.id}`
+                            : `Ticket #${ticket.id}`;
+
+                        // Person labels depending on viewer role
+                        // Resolver sees: "Solicitante: nombre"
+                        // User sees: "Atiende: nombre" (or "Sin asignar")
+                        const solicitante = ticket.solicitante
+                            ? `${ticket.solicitante.nombres} ${ticket.solicitante.apellidos}`
+                            : "—";
+                        const atiende = ticket.atiende
+                            ? `${ticket.atiende.nombres} ${ticket.atiende.apellidos}`
+                            : "Sin asignar";
+
+                        const personLabel = isResolver
+                            ? `<span class="text-muted-foreground/70">Solicitante:</span> ${solicitante}`
+                            : `<span class="text-muted-foreground/70">Atiende:</span> ${atiende}`;
+
+                        // Category/subcategory display
+                        const categoryLabel = ticket.subcategoria?.nombre || ticket.categoria?.nombre || "—";
+                        const empresaLabel = ticket.empresa?.nombre || "—";
 
                         item.innerHTML = `
-                            <div class="flex justify-between items-start mb-1">
-                                <span class="font-medium text-sm text-foreground">Ticket #${ticket.id}</span>
-                                <span class="text-xs px-2 py-0.5 rounded-full text-white" style="background-color: ${bgColor}">${statusName}</span>
+                            <button
+                                type="button"
+                                class="dismiss-btn absolute top-2 right-2 text-xs text-muted-foreground/60 hover:text-destructive transition-colors px-1 py-0.5 rounded hover:bg-destructive/10"
+                                data-ticket-id="${ticket.id}"
+                                title="Omitir notificación"
+                            >Omitir</button>
+                            <div class="flex justify-between items-start mb-1 pr-12">
+                                <span class="font-semibold text-sm text-foreground">${ticketLabel}</span>
+                                <span class="text-xs px-2 py-0.5 rounded-full text-white shrink-0 ml-2" style="background-color: ${bgColor}">${statusName}</span>
                             </div>
-                            <p class="text-sm text-muted-foreground line-clamp-2 mb-1">${subtitle}</p>
-                            <div class="flex justify-between items-center text-xs text-muted-foreground/70">
-                                <span>${ticket.solicitante.nombres} ${ticket.solicitante.apellidos}</span>
-                                <span>${ticket.categoria.nombre}</span>
+                            <div class="text-xs text-foreground/80 mb-1">${personLabel}</div>
+                            <div class="flex justify-between items-center text-xs text-muted-foreground/70 gap-2">
+                                <span class="truncate">${empresaLabel}</span>
+                                <span class="truncate text-right">${categoryLabel}</span>
                             </div>
                         `;
 
-                        // Always redirect notifications to 'mis-tickets' context
-                        item.href = `/tickets/view/${ticket.id}?source=mis-tickets`;
+                        // Click on the main area → navigate
+                        item.addEventListener("click", (e) => {
+                            // Don't navigate if clicking the dismiss button
+                            if ((e.target as HTMLElement).closest(".dismiss-btn")) return;
 
-                        item.addEventListener("click", () => {
-                            if (count > 0) {
-                                count--;
-                                updateNotificationUI();
-                            }
+                            dismissNotificationItem(ticket.id, item);
                             notificationDropdown.classList.add("hidden");
-                            
-                            // Mostrar el overlay de carga inmediatamente (parpadeo blanco)
+                            notificationDropdown.classList.remove("flex");
+
+                            // Show loading overlay
                             const overlay = document.getElementById("page-loading-overlay");
                             if (overlay) overlay.style.display = "block";
+
+                            window.location.href = `/tickets/view/${ticket.id}?source=mis-tickets`;
                         });
+
+                        // Dismiss button
+                        const dismissBtn = item.querySelector(".dismiss-btn");
+                        if (dismissBtn) {
+                            dismissBtn.addEventListener("click", (e) => {
+                                e.stopPropagation();
+                                dismissNotificationItem(ticket.id, item);
+                            });
+                        }
 
                         notificationList.appendChild(item);
                     });
+
+                    // After rendering, check if all tickets were filtered (dismissed) → show empty state
+                    checkEmptyState();
                 };
 
                 const fetchNotifications = async () => {
@@ -413,28 +513,16 @@ const NOTIFICATION_FULL_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="24
                         `;
                     }
 
-                    console.log(
-                        "[Debug] Fetching notifications page:",
-                        currentPage,
-                    );
-
                     try {
                         const res = await fetch(
                             `/api/notifications/list?page=${currentPage}&limit=5`,
                         );
-                        console.log(
-                            "[Debug] Notifications list response status:",
-                            res.status,
-                        );
                         if (res.ok) {
                             const data = await res.json();
-                            console.log(
-                                "[Debug] Notifications list data:",
-                                data,
-                            );
                             renderNotifications(data.tickets, currentPage > 1);
 
-                            if (data.hasMore) {
+                            // Only show "Ver más" if there are truly more results AND visible items exist
+                            if (data.hasMore && notificationList.querySelector("[data-ticket-id]")) {
                                 loadMoreBtn.classList.remove("hidden");
                                 loadMoreBtn.textContent = "Ver más";
                             } else {
@@ -451,19 +539,12 @@ const NOTIFICATION_FULL_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="24
 
                 const fetchNotificationCount = async () => {
                     try {
-                        console.log("[Debug] Fetching notification count...");
                         const res = await fetch("/api/notifications/count");
-                        console.log(
-                            "[Debug] Notification count response status:",
-                            res.status,
-                        );
                         if (res.ok) {
                             const data = await res.json();
-                            console.log(
-                                "[Debug] Notification count data:",
-                                data,
-                            );
-                            count = data.count;
+                            // Subtract dismissed count from actual count
+                            const dismissed = getDismissedIds();
+                            count = Math.max(0, data.count - dismissed.size);
                             updateNotificationUI();
                         }
                     } catch (error) {
@@ -475,19 +556,16 @@ const NOTIFICATION_FULL_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="24
                 };
 
                 notificationBell.addEventListener("click", (e) => {
-                    console.log("[Debug] Bell clicked");
                     e.stopPropagation();
                     const isHidden =
                         notificationDropdown.classList.contains("hidden");
 
                     if (isHidden) {
-                        console.log("[Debug] Opening dropdown");
                         notificationDropdown.classList.remove("hidden");
                         notificationDropdown.classList.add("flex");
                         currentPage = 1;
                         fetchNotifications();
                     } else {
-                        console.log("[Debug] Closing dropdown");
                         notificationDropdown.classList.add("hidden");
                         notificationDropdown.classList.remove("flex");
                     }
@@ -527,7 +605,6 @@ const NOTIFICATION_FULL_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="24
                     );
 
                     eventSource.onopen = () => {
-                        console.log("[SSE] Connected");
                         reconnectAttempts = 0;
                     };
 

@@ -14,23 +14,27 @@ interface AssignmentOptions {
 
 interface AssignmentResult {
     agentId: number | null;
-    assignmentType: 'specific' | 'role' | 'fallback' | 'none';
+    assignmentType: 'forced' | 'specific' | 'role' | 'none';
     reason?: string;
 }
 
 /**
- * Estrategia Híbrida de Asignación de Tickets
+ * Estrategia Híbrida de Asignación de Tickets (v2)
  *
- * Prioridad:
- * 1. Asignaciones específicas de usuario (AsignacionesCategorias)
- * 2. Permisos de rol (PermisoCategoria)
- * 3. Fallback a lógica default (S-1 para tickets CSH)
+ * Flujo de decisión:
+ * 1. Contar TODOS los candidatos para la categoría/subcategoría (sin filtrar disponibilidad).
+ * 2. Si hay exactamente 1 candidato → ASIGNACIÓN FORZADA (asigna aunque esté fuera de horario o de vacaciones).
+ * 3. Si hay 2+ candidatos → buscar disponibles:
+ *    a. Por asignación específica de usuario (AsignacionesCategorias)
+ *    b. Por permisos de rol (PermisoCategoria)
+ * 4. Si ningún candidato disponible → ticket SIN ASIGNAR.
  *
- * En todos los pasos se validan:
+ * Reglas de disponibilidad (aplican en pasos 3a y 3b):
  * - activo: true
  * - vacaciones: false
  * - rol.atiendeTicketsCsh / rol.atiendeTicketsMkt según la categoría
- * - horario_disponibilidad (si está definido, debe estar dentro del rango)
+ * - horario_disponibilidad: DEBE estar definido y el agente debe estar dentro del rango actual.
+ *   Un agente SIN horario definido se considera NO disponible.
  */
 export async function findBestAgentHybrid(
     options: AssignmentOptions
@@ -40,37 +44,53 @@ export async function findBestAgentHybrid(
 
     console.log(`[Assignment] Buscando agente para categoría ${categoriaId} (${isMarketing ? 'Marketing' : 'CSH'}), subcategoría ${subcategoriaId}`);
 
-    // PASO 1: Buscar asignaciones ESPECÍFICAS de usuario
-    const specificAgents = await findAgentsBySpecificAssignment(categoriaId, subcategoriaId, isMarketing);
+    // PASO 1: Contar todos los candidatos posibles (sin filtro de disponibilidad)
+    const allCandidates = await findAllCandidates(categoriaId, subcategoriaId, isMarketing);
 
-    if (specificAgents.length > 0) {
-        const agent = await selectBestAgent(specificAgents, solicitanteId, isMarketing);
-        if (agent) {
+    // Excluir al solicitante del conteo para evitar auto-asignación
+    const candidatesExcludingSelf = allCandidates.filter(a => a.id !== solicitanteId);
+
+    console.log(`[Assignment] Total de candidatos para cat ${categoriaId}: ${candidatesExcludingSelf.length}`);
+
+    // PASO 2: ASIGNACIÓN FORZADA — si solo hay un candidato posible, asignar sin importar disponibilidad
+    if (candidatesExcludingSelf.length === 1) {
+        const soleAgent = candidatesExcludingSelf[0];
+        console.log(`[Assignment] Asignación forzada al único candidato: ${soleAgent.id}`);
+        return { agentId: soleAgent.id, assignmentType: 'forced' };
+    }
+
+    // PASO 3: Hay 2+ candidatos → buscar disponibles
+    if (candidatesExcludingSelf.length > 1) {
+        // 3a: Asignaciones ESPECÍFICAS de usuario
+        const specificAgents = await findAgentsBySpecificAssignment(categoriaId, subcategoriaId, isMarketing);
+        const availableSpecific = filterByAvailability(specificAgents, solicitanteId);
+
+        if (availableSpecific.length > 0) {
+            const agent = selectByLowestLoad(availableSpecific);
             console.log(`[Assignment] Agente encontrado por asignación específica: ${agent.id}`);
             return { agentId: agent.id, assignmentType: 'specific' };
         }
-    }
 
-    // PASO 2: Buscar por PERMISOS DE ROL
-    const roleAgents = await findAgentsByRolePermissions(categoriaId, subcategoriaId, isMarketing);
+        // 3b: Permisos de ROL
+        const roleAgents = await findAgentsByRolePermissions(categoriaId, subcategoriaId, isMarketing);
+        const availableRole = filterByAvailability(roleAgents, solicitanteId);
 
-    if (roleAgents.length > 0) {
-        const agent = await selectBestAgent(roleAgents, solicitanteId, isMarketing);
-        if (agent) {
+        if (availableRole.length > 0) {
+            const agent = selectByLowestLoad(availableRole);
             console.log(`[Assignment] Agente encontrado por permiso de rol: ${agent.id}`);
             return { agentId: agent.id, assignmentType: 'role' };
         }
     }
 
-    // PASO 3: Fallback (solo para CSH general, nunca para Marketing)
-    const fallbackId = await findAgentByFallback(solicitanteId, isMarketing);
-    if (fallbackId) {
-        console.log(`[Assignment] Agente encontrado por fallback: ${fallbackId}`);
-        return { agentId: fallbackId, assignmentType: 'fallback' };
-    }
-
+    // PASO 4: Sin candidatos o ninguno disponible → sin asignar
     console.warn(`[Assignment] No se encontró ningún agente disponible para categoría ${categoriaId}`);
-    return { agentId: null, assignmentType: 'none', reason: 'No se encontraron agentes disponibles' };
+    return {
+        agentId: null,
+        assignmentType: 'none',
+        reason: candidatesExcludingSelf.length === 0
+            ? 'No hay ingenieros configurados para esta categoría'
+            : 'Ningún ingeniero disponible en este momento (fuera de horario o de vacaciones)'
+    };
 }
 
 // ------------------------------------------------------------------
@@ -78,8 +98,68 @@ export async function findBestAgentHybrid(
 // ------------------------------------------------------------------
 
 /**
- * Busca agentes con asignación específica a la categoría/subcategoría,
- * filtrando por disponibilidad real (activo, vacaciones, flag de rol).
+ * Obtiene TODOS los candidatos posibles para una categoría/subcategoría,
+ * sin importar su disponibilidad actual. Combina asignaciones específicas
+ * y permisos de rol para tener un conteo completo.
+ */
+async function findAllCandidates(
+    catId: number,
+    subId: number | null | undefined,
+    isMarketing: boolean
+): Promise<AgentWithRelations[]> {
+    // Candidatos por asignación específica (activos, sin filtrar horario/vacaciones)
+    const specificAssignments = await prisma.asignacionesCategorias.findMany({
+        where: {
+            categoriaId: catId,
+            activo: true,
+            ...(subId ? { OR: [{ subcategoriaId: subId }, { subcategoriaId: null }] } : { subcategoriaId: null })
+        },
+        include: {
+            atiende: {
+                include: { rol: true }
+            }
+        }
+    });
+
+    const specificUsers = specificAssignments
+        .map(a => a.atiende)
+        .filter(u => u.activo && hasCorrectRoleFlag(u as AgentWithRelations, isMarketing)) as AgentWithRelations[];
+
+    if (specificUsers.length > 0) {
+        return specificUsers;
+    }
+
+    // Si no hay asignaciones específicas, buscar por permisos de rol
+    const permissions = await prisma.permisoCategoria.findMany({
+        where: {
+            categoriaId: catId,
+            activo: true,
+            ...(subId ? { OR: [{ subcategoriaId: subId }, { subcategoriaId: null }] } : { subcategoriaId: null })
+        },
+        select: { rolId: true }
+    });
+
+    if (permissions.length === 0) return [];
+
+    const roleIds = permissions.map(p => p.rolId);
+
+    const roleUsers = await prisma.usuario.findMany({
+        where: {
+            rolId: { in: roleIds },
+            activo: true,
+            rol: isMarketing
+                ? { atiendeTicketsMkt: true }
+                : { atiendeTicketsCsh: true }
+        },
+        include: { rol: true }
+    });
+
+    return roleUsers as AgentWithRelations[];
+}
+
+/**
+ * Busca agentes con asignación específica a la categoría/subcategoría.
+ * Solo retorna agentes activos con el flag de rol correcto (no filtra por disponibilidad de tiempo).
  */
 async function findAgentsBySpecificAssignment(
     catId: number,
@@ -101,12 +181,15 @@ async function findAgentsBySpecificAssignment(
 
     return assignments
         .map(a => a.atiende)
-        .filter(u => isAgentAvailable(u as AgentWithRelations, isMarketing)) as AgentWithRelations[];
+        .filter(u =>
+            u.activo &&
+            !u.vacaciones &&
+            hasCorrectRoleFlag(u as AgentWithRelations, isMarketing)
+        ) as AgentWithRelations[];
 }
 
 /**
- * Busca agentes cuyos roles tienen permiso de atender la categoría/subcategoría,
- * filtrando por disponibilidad real y flag de atención.
+ * Busca agentes cuyos roles tienen permiso de atender la categoría/subcategoría.
  */
 async function findAgentsByRolePermissions(
     catId: number,
@@ -131,7 +214,6 @@ async function findAgentsByRolePermissions(
             rolId: { in: roleIds },
             activo: true,
             vacaciones: false,
-            // Filtrar por el flag del rol según tipo de categoría
             rol: isMarketing
                 ? { atiendeTicketsMkt: true }
                 : { atiendeTicketsCsh: true }
@@ -158,42 +240,27 @@ async function findAgentsByRolePermissions(
 }
 
 /**
- * Selecciona el mejor agente de una lista según:
- * 1. No sea el solicitante
- * 2. Esté en horario laboral (si tiene horario definido)
- * 3. Tenga menor carga de trabajo
+ * Filtra una lista de agentes aplicando:
+ * 1. Excluir al solicitante (evitar auto-asignación)
+ * 2. Verificar horario de disponibilidad (DEBE tener horario y estar dentro del rango actual)
+ *
+ * NOTA: Un agente SIN horario_disponibilidad definido se considera NO disponible
+ * para asignación automática.
  */
-async function selectBestAgent(
-    agents: AgentWithRelations[],
-    solicitanteId: number,
-    isMarketing: boolean
-): Promise<AgentWithRelations | null> {
-    // Filtrar al solicitante para evitar auto-asignación
-    const filtered = agents.filter(a => a.id !== solicitanteId);
-
-    if (filtered.length === 0) return null;
-
-    // Para Marketing, no se valida horario (pueden operar en distintos turnos)
-    // Para CSH, validar horario solo si el agente tiene uno definido
-    const available = isMarketing
-        ? filtered
-        : filterBySchedule(filtered);
-
-    if (available.length === 0) return null;
-
-    // Ordenar por carga de trabajo ascendente y retornar el de menor carga
-    available.sort((a, b) => a.carga_actual - b.carga_actual);
-    return available[0];
+function filterByAvailability(agents: AgentWithRelations[], solicitanteId: number): AgentWithRelations[] {
+    const withoutSelf = agents.filter(a => a.id !== solicitanteId);
+    return filterBySchedule(withoutSelf);
 }
 
 /**
  * Filtra agentes que estén dentro de su horario laboral al momento actual.
- * Si un agente NO tiene horario definido, se considera DISPONIBLE (sin restricción).
+ *
+ * REGLA: Si un agente NO tiene horario definido, se considera NO DISPONIBLE.
+ * El horario es obligatorio para recibir tickets automáticamente.
  */
 function filterBySchedule(agents: AgentWithRelations[]): AgentWithRelations[] {
     const now = new Date();
 
-    // Obtener nombre del día en español sin acentos (lunes, martes, ...)
     const dayOfWeekName = now
         .toLocaleString('es-MX', { weekday: 'long', timeZone: 'America/Mexico_City' })
         .toLowerCase()
@@ -208,9 +275,10 @@ function filterBySchedule(agents: AgentWithRelations[]): AgentWithRelations[] {
     });
 
     return agents.filter(agent => {
-        // Sin horario definido → disponible sin restricción
+        // Sin horario definido → NO disponible para asignación automática
         if (!agent.horario_disponibilidad || typeof agent.horario_disponibilidad !== 'object') {
-            return true;
+            console.log(`[Assignment] Agente ${agent.id} ignorado: sin horario definido`);
+            return false;
         }
 
         const schedule = agent.horario_disponibilidad as Record<string, { inicio?: string; fin?: string }>;
@@ -218,49 +286,29 @@ function filterBySchedule(agents: AgentWithRelations[]): AgentWithRelations[] {
 
         // Sin datos para hoy → no trabaja hoy
         if (!daySchedule || !daySchedule.inicio || !daySchedule.fin) {
+            console.log(`[Assignment] Agente ${agent.id} ignorado: no trabaja el día ${dayOfWeekName}`);
             return false;
         }
 
-        return currentTime >= daySchedule.inicio && currentTime <= daySchedule.fin;
+        const inSchedule = currentTime >= daySchedule.inicio && currentTime <= daySchedule.fin;
+        if (!inSchedule) {
+            console.log(`[Assignment] Agente ${agent.id} ignorado: fuera de horario (${currentTime} vs ${daySchedule.inicio}-${daySchedule.fin})`);
+        }
+        return inSchedule;
     });
 }
 
 /**
- * Fallback: busca agentes de soporte S-1 con el flag atiendeTicketsCsh activo.
- * Solo aplica para tickets de CSH; Marketing nunca usa este fallback.
+ * Selecciona el agente con menor carga de trabajo de una lista ya filtrada.
  */
-async function findAgentByFallback(
-    solicitanteId: number,
-    isMarketing: boolean
-): Promise<number | null> {
-    // Marketing nunca hace fallback al equipo de CSH
-    if (isMarketing) return null;
-
-    const fallbackAgents = await prisma.usuario.findMany({
-        where: {
-            activo: true,
-            vacaciones: false,
-            id: { not: solicitanteId },
-            rol: {
-                nivel_soporte: 'S_1',
-                atiendeTicketsCsh: true
-            }
-        },
-        include: { rol: true },
-        orderBy: { carga_actual: 'asc' }
-    });
-
-    const available = filterBySchedule(fallbackAgents as AgentWithRelations[]);
-    return available.length > 0 ? available[0].id : null;
+function selectByLowestLoad(agents: AgentWithRelations[]): AgentWithRelations {
+    return [...agents].sort((a, b) => a.carga_actual - b.carga_actual)[0];
 }
 
 /**
- * Validación centralizada de disponibilidad de un agente.
- * Verifica: activo, no en vacaciones, y flag correcto del rol.
+ * Verifica si el agente tiene el flag de rol correcto según el tipo de categoría.
  */
-function isAgentAvailable(agent: AgentWithRelations, isMarketing: boolean): boolean {
-    if (!agent.activo || agent.vacaciones) return false;
-    if (isMarketing && !agent.rol.atiendeTicketsMkt) return false;
-    if (!isMarketing && !agent.rol.atiendeTicketsCsh) return false;
-    return true;
+function hasCorrectRoleFlag(agent: AgentWithRelations, isMarketing: boolean): boolean {
+    if (isMarketing) return agent.rol.atiendeTicketsMkt;
+    return agent.rol.atiendeTicketsCsh;
 }

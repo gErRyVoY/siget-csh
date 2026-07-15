@@ -118,7 +118,7 @@ export const POST: APIRoute = async ({ request }) => {
       console.warn(`[Ticket ${nuevoTicket.id}] Creado sin asignar (razón: ${assignmentResult.reason})`);
     }
 
-    // Notificar
+    // Notificar via SSE
     const notificationPayload = {
       type: 'ticket_created' as const,
       message: `Se ha creado un nuevo ticket #${nuevoTicket.id}`,
@@ -131,77 +131,94 @@ export const POST: APIRoute = async ({ request }) => {
       targetUsers.push(atiendeId);
     }
 
-    // Si hay agente asignado, notificar solo a él. Si no, broadcast (o lógica futura de admins)
     sendNotification(notificationPayload, targetUsers.length > 0 ? targetUsers : undefined);
 
-    // Enviar correo de notificación al agente de forma asíncrona
-    if (atiendeId) {
-      (async () => {
-        try {
-          const [agente, solicitante, categoria] = await Promise.all([
-            prisma.usuario.findUnique({
-              where: { id: atiendeId },
-              select: { nombres: true, apellidos: true, mail: true }
-            }),
-            prisma.usuario.findUnique({
-              where: { id: solicitanteId },
-              select: { nombres: true, apellidos: true }
-            }),
-            prisma.categoria.findUnique({
-              where: { id: parsedCategoriaId },
-              select: { nombre: true }
-            })
-          ]);
+    // Enviar correos de notificación de forma asíncrona
+    (async () => {
+      try {
+        const originUrl = new URL(request.url).origin;
 
-          if (agente && agente.mail) {
-            const originUrl = new URL(request.url).origin;
-            const solicitanteNombre = solicitante
-              ? `${solicitante.nombres} ${solicitante.apellidos}`
-              : "Usuario";
-            const agenteNombre = `${agente.nombres} ${agente.apellidos}`;
-            const categoriaNombre = categoria?.nombre || "General";
+        const [solicitante, categoria] = await Promise.all([
+          prisma.usuario.findUnique({
+            where: { id: solicitanteId },
+            select: { nombres: true, apellidos: true, mail: true }
+          }),
+          prisma.categoria.findUnique({
+            where: { id: parsedCategoriaId },
+            select: { nombre: true }
+          })
+        ]);
 
-            // Notificar al agente asignado
+        const solicitanteNombre = solicitante
+          ? `${solicitante.nombres} ${solicitante.apellidos}`
+          : 'Usuario';
+        const categoriaNombre = categoria?.nombre || 'General';
+
+        if (atiendeId) {
+          // --- Caso A: Ticket con agente asignado ---
+          const agente = await prisma.usuario.findUnique({
+            where: { id: atiendeId },
+            select: { nombres: true, apellidos: true, mail: true }
+          });
+
+          const agenteNombre = agente ? `${agente.nombres} ${agente.apellidos}` : 'Agente';
+
+          const ticketInfo = {
+            categoria: categoriaNombre,
+            descripcion: descripcion,
+            prioridad: prioridad,
+            solicitanteNombre,
+            agenteNombre,
+          };
+
+          // Correo al agente: "Tienes un nuevo ticket de {solicitanteNombre}"
+          if (agente?.mail) {
             await sendTicketNotification({
               ticketId: nuevoTicket.id,
-              event: "ticket_creado",
+              event: 'ticket_creado',
               destinatarioId: atiendeId,
               destinatarioMail: agente.mail,
               originUrl,
               fromName: solicitanteNombre,
+              ticketInfo,
+            });
+          }
+
+          // Correo al solicitante: "Tu ticket fue asignado a {agenteNombre}"
+          if (solicitante?.mail) {
+            await sendTicketNotification({
+              ticketId: nuevoTicket.id,
+              event: 'ticket_creado_solicitante',
+              destinatarioId: solicitanteId,
+              destinatarioMail: solicitante.mail,
+              originUrl,
+              fromName: agenteNombre,
+              ticketInfo,
+            });
+          }
+        } else {
+          // --- Caso B: Ticket sin asignar (ningún agente disponible en este momento) ---
+          // Correo al solicitante: "Tu ticket está en espera de asignación"
+          if (solicitante?.mail) {
+            await sendTicketNotification({
+              ticketId: nuevoTicket.id,
+              event: 'ticket_sin_asignar',
+              destinatarioId: solicitanteId,
+              destinatarioMail: solicitante.mail,
+              originUrl,
               ticketInfo: {
                 categoria: categoriaNombre,
                 descripcion: descripcion,
                 prioridad: prioridad,
                 solicitanteNombre,
-                agenteNombre,
-              }
+              },
             });
-
-            // Notificar al creador del ticket
-            if (solicitante && solicitante.mail) {
-              await sendTicketNotification({
-                ticketId: nuevoTicket.id,
-                event: "ticket_creado_solicitante",
-                destinatarioId: userId,
-                destinatarioMail: solicitante.mail,
-                originUrl,
-                fromName: agenteNombre,
-                ticketInfo: {
-                  categoria: categoriaNombre,
-                  descripcion: descripcion,
-                  prioridad: prioridad,
-                  solicitanteNombre,
-                  agenteNombre,
-                }
-              });
-            }
           }
-        } catch (emailErr) {
-          console.error('[EmailNotificationError] Error al procesar notificación de ticket creado:', emailErr);
         }
-      })();
-    }
+      } catch (emailErr) {
+        console.error('[EmailNotificationError] Error al procesar notificación de ticket creado:', emailErr);
+      }
+    })();
 
     return new Response(JSON.stringify(nuevoTicket), {
       status: 201,

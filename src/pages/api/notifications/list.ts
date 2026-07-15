@@ -4,6 +4,21 @@ import { prisma } from '@/lib/db';
 
 const PRIVILEGED_ROLES = [1, 2, 3, 4, 5, 6, 15];
 
+const ticketInclude = {
+    solicitante: { select: { nombres: true, apellidos: true } },
+    atiende: { select: { nombres: true, apellidos: true } },
+    estatus: { select: { nombre: true, id: true } },
+    categoria: { select: { nombre: true } },
+    subcategoria: { select: { nombre: true } },
+    empresa: { select: { nombre: true } },
+    traslados: { select: { id: true } }, // Solo para saber si es traslado
+    historial_solicitudes: {
+        orderBy: { fecha_cambio: 'desc' as const },
+        take: 1,
+        select: { comentario: true, usuarioId: true }
+    }
+};
+
 export const GET: APIRoute = async ({ request }) => {
     const session = await getSession(request);
     const url = new URL(request.url);
@@ -32,59 +47,30 @@ export const GET: APIRoute = async ({ request }) => {
                 ]
             };
 
-            // Get total count for pagination check
-            totalCount = await prisma.ticket.count({ where: whereCondition });
-
-            // Get paginated items
-            tickets = await prisma.ticket.findMany({
-                where: whereCondition,
-                orderBy: { fechaact: 'desc' }, // Most recent first
-                take: limit,
-                skip: skip,
-                include: {
-                    solicitante: { select: { nombres: true, apellidos: true } },
-                    estatus: { select: { nombre: true, id: true } },
-                    categoria: { select: { nombre: true } },
-                    historial_solicitudes: {
-                        orderBy: { fecha_cambio: 'desc' },
-                        take: 1,
-                        select: { comentario: true }
-                    }
-                }
-            });
+            [totalCount, tickets] = await Promise.all([
+                prisma.ticket.count({ where: whereCondition }),
+                prisma.ticket.findMany({
+                    where: whereCondition,
+                    orderBy: { fechaact: 'desc' },
+                    take: limit,
+                    skip: skip,
+                    include: ticketInclude,
+                })
+            ]);
 
         } else {
             // Regular Users: Tickets requested by me with updates NOT by me
-            // Since we can't easily filter this in Prisma level efficiently without raw query or complex joins,
-            // and we need pagination, this is tricky.
-            // Strategy: Fetch a larger chunk of user's tickets, filter in memory, then slice.
-            // Warning: Pagination might be inexact if we filter in memory.
-            // Better approach for now: Fetch user tickets ordered by update time, filter, then slice.
-
             const userTickets = await prisma.ticket.findMany({
                 where: { solicitanteId: userId },
                 orderBy: { fechaact: 'desc' },
-                take: 100, // Optimize: fetch only the 100 most recently updated tickets
-                include: {
-                    historial_solicitudes: {
-                        orderBy: { fecha_cambio: 'desc' },
-                        take: 1,
-                    },
-                    estatus: { select: { nombre: true, id: true } },
-                    categoria: { select: { nombre: true } },
-                    solicitante: { select: { nombres: true, apellidos: true } }
-                }
+                take: 100,
+                include: ticketInclude,
             });
 
             // Filter: Last history not by user
             const filteredTickets = userTickets.filter(ticket => {
                 const lastHistory = ticket.historial_solicitudes[0];
-                const isNotByUser = lastHistory && lastHistory.usuarioId !== userId;
-
-                console.log(`[Debug List] Ticket ${ticket.id}: LastHistoryUser=${lastHistory?.usuarioId}, CurrentUser=${userId}, Keep=${isNotByUser}`);
-
-                // If there is history and the last one is NOT by the current user, it's a notification
-                return isNotByUser;
+                return lastHistory && lastHistory.usuarioId !== userId;
             });
 
             totalCount = filteredTickets.length;

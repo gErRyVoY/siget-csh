@@ -5,15 +5,17 @@
 >
 > **⚠️ REGLA CRÍTICA PARA EL ASISTENTE:** El asistente **NO debe ejecutar `git push`** en ninguna circunstancia a menos que el usuario lo solicite **de forma explícita**. Se permiten `git add` y `git commit` para preparar los cambios, pero el push queda **reservado exclusivamente para cuando el usuario lo indique**.
 
-**Tarea Actual:** Completada — Implementación de Campus Virtual como Origen de Traslados por Empresa (`tckt_virtual`) ✅
+**Tarea Actual:** Completada — Redirección post-ticket y Mejoras de Notificaciones ✅
 
-**Estado:** Completado. Se agregó el flag `tckt_virtual` a la tabla `empresa`, se creó una API REST (/api/admin/empresa), se implementó un panel superior con toggle en `/admin/usuarios/[campus].astro`, se diseñó una vista de gestión global en `/admin/empresas` con filtros de tipo y habilitación, se actualizó la barra lateral, y se integró la lógica de precarga inteligente (Opción A) en el formulario de traslados `/tickets/soporte/traslado`.
+**Estado:** Completado. Se corrigió la redirección al crear tickets (usuarios van a su vista de "mis tickets"), y se rediseñó el dropdown de notificaciones con nuevo formato visual, botón "Omitir" y persistencia en localStorage.
 
 **Pasos Siguientes:**
-1. Monitoreo y validación de las asignaciones de traslados.
-2. Siguiente ciclo de desarrollo de backend y UI.
+1. Monitoreo y validación en producción.
+2. Siguiente ciclo de desarrollo.
 
 **Pasos Completados:**
+- ✅ **Redirección Post-Ticket y Mejoras de Notificaciones (2026-07-15):** Se corrigió la redirección post-creación de tickets: ahora `nuevo-ticket-csh.astro` y `nuevo-ticket-marketing.astro` calculan en SSR si el usuario tiene `soporte_dashboard`/`marketing_dashboard` y pasan la URL destino correcta vía `data-redirect-url` al wizard. Los wizards (`ticket-wizard.ts` y `marketing-ticket-wizard.ts`) leen ese atributo para redirigir correctamente. Se rediseñó el dropdown de notificaciones en `MainLayout.astro`: nuevo formato (Ticket #N / #TRL-N para traslados, badge de estatus, Solicitante/Atiende según rol, empresa y subcategoría/categoría), botón "Omitir" por ítem con animación de colapso, persistencia de omisiones en `localStorage` (clave `siget_dismissed_notifications`, máx 200 IDs), y click en cualquier item (incluyendo Solucionado) ahora descarta la notificación. Se actualizó `api/notifications/list.ts` para incluir `atiende`, `subcategoria`, `empresa` y `traslados` en el include de Prisma.
+
 - ✅ **Campus Virtual como Origen por Empresa (2026-07-08):** Se agregó la columna `tckt_virtual` a `Empresa` en la BD (db push + prisma generate). Se creó el endpoint `api/admin/empresa` (GET/PATCH) con registro de Logs. Se añadió un toggle switch de configuración en el listado por campus y se desarrolló una nueva vista global en `/admin/empresas` con filtros y toggles de control. Por último, se adaptó el formulario de traslados para precargar y permitir edición flexible según este flag (Opción A).
 - ✅ **Sustitución de carga de imagen por Tabla HTML en el Reporte de Incidencias (2026-07-01):** Se eliminó la lógica de subida de archivos a S3 (AWS SDK, URL firmadas, Drag & Drop, Google Drive Picker) del flujo de envío de reportes de incidencias. En su lugar, el backend genera una tabla HTML calendario responsiva con estilos CSS 100% inline (compatible con reenvío en Gmail/Outlook), incluyendo colores condicionales para EL/SL y una leyenda de estados. El modal de confirmación fue simplificado. El proyecto compila con éxito.
 - ✅ **Filtros de Quincena y Reposición de Horario (2026-06-30):** En la vista de incidencias, se implementaron botones dinámicos para filtrar registros de Quincena 1 (días 1-15) y Quincena 2 (días 16 en adelante) de forma sincronizada si se detecta que los registros superan el día 16. Además, se configuró la lógica para detectar reposiciones de tiempo (entrada antes del horario de entrada laboral y salida después del de salida) marcándolas en color verde.
@@ -110,6 +112,21 @@ A continuación se listan los proyectos prioritarios. Tu tarea es ayudar a refin
     * **Infraestructura y Despliegue (CI/CD):** Implementado. El flujo con GitHub Actions, Docker, AWS ECR, Secrets Manager y App Runner está operativo.
 
 # Historial de Cambios (Log)
+## 2026-07-15 (Lógica Avanzada de Asignación de Tickets v2)
+*   **Servicio de Asignación (`src/services/ticketAssignmentService.ts`):**
+    *   **Horario Obligatorio:** Un agente **sin `horario_disponibilidad`** definido ya no se considera disponible. Aplica para tickets **CSH y Marketing** por igual (antes Marketing no validaba horario).
+    *   **Asignación Forzada por Unicidad:** Si la categoría/subcategoría elegida tiene exactamente **un único candidato** en la BD (excluyendo al solicitante), el ticket se asigna a ese candidato aunque esté fuera de horario o de vacaciones.
+    *   **Eliminación del Fallback S-1:** Se eliminó el fallback que buscaba agentes de nivel `S_1`. Si no hay nadie disponible entre los candidatos válidos, el ticket queda directamente sin asignar.
+    *   **Logs de Diagnóstico:** Se añadieron mensajes de log que explican por qué un agente es descartado (sin horario, fuera de horario, no trabaja el día, etc.).
+*   **Servicio de Correo (`src/services/emailService.ts`):**
+    *   **Nuevo evento `ticket_sin_asignar`:** Plantilla HTML y asunto para notificar al solicitante cuando su ticket queda en espera por falta de disponibilidad de ingenieros.
+*   **API de Creación (`src/pages/api/tickets/create.ts`):**
+    *   **Bug Fix:** Se corrigió el uso de `userId` (variable inexistente) reemplazándolo por `solicitanteId` al enviar el correo de confirmación al creador del ticket.
+    *   **Correo al Solicitante (Caso A):** Al crear un ticket con agente asignado, el solicitante recibe un correo indicando el nombre del ingeniero que lo atenderá.
+    *   **Correo al Solicitante (Caso B):** Al crear un ticket sin agente disponible, el solicitante recibe un correo de tipo `ticket_sin_asignar` informando que su solicitud está en espera.
+*   **API de Actualización (`src/pages/api/tickets/update.ts`):**
+    *   **Notificación de Primera Asignación:** Cuando un admin asigna manualmente un agente a un ticket que estaba sin asignar (`atiendeId` era `null`), el solicitante recibe un correo `ticket_creado_solicitante` informándole quién lo atenderá.
+
 ## 2026-07-13 (Opción por defecto para Bloque Sugerido)
 *   **Vista de Detalle de Ticket (`/tickets/view/[id].astro`):**
     *   **Opción de Bloque Sugerido por Defecto:** Se integró la opción `"Elige un bloque"` con valor `"0"` en el selector dinámico del bloque sugerido.
