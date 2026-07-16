@@ -36,6 +36,7 @@ export const POST: APIRoute = async ({ request }) => {
       entrada_comida: inc.entrada_comida || null,
       salida_comida: inc.salida_comida || null,
       observaciones_comida: inc.observaciones_comida || null,
+      omitida: !!inc.omitida,
     }));
 
     // Prevent duplicates by deleting existing records for the same dates

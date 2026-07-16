@@ -35,12 +35,12 @@ const timeDiffMins = (t1: any, t2: any) => t1.h * 60 + t1.m - (t2.h * 60 + t2.m)
 // ─────────────────────────────────────────────
 // Generador de tabla HTML para el correo
 // ─────────────────────────────────────────────
-function buildCalendarTable(sortedData: any[], schedule: any): string {
+function buildCalendarTable(sortedTodos: any[], schedule: any, activeMap: Map<string, any>): string {
   const diasSemana = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
   const diasHeaders = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
   const diasSemanaNorm = ["domingo", "lunes", "martes", "miercoles", "jueves", "viernes", "sabado"];
 
-  if (sortedData.length === 0) return "";
+  if (sortedTodos.length === 0) return "";
 
   const CELL_W = "85px";
   const CELL_H = "90px";
@@ -53,6 +53,7 @@ function buildCalendarTable(sortedData: any[], schedule: any): string {
     repo: "#d1fae5",  // verde claro – reposición
     inasist: "#f3f4f6",  // gris claro – inasistencia / sin registro
     sinReg: "#fef9c3",  // amarillo claro – sin datos parciales
+    especial: "#ede9fe",  // morado claro – Homeoffice / Vacaciones
   };
 
   // Encabezados Lun-Sáb
@@ -63,20 +64,19 @@ function buildCalendarTable(sortedData: any[], schedule: any): string {
     )
     .join("");
 
-  // Agrupar días en semanas (Lun=1 … Sáb=6, ignorar Dom=0)
-  const firstDay = sortedData[0].fecha;
   // getUTCDay(): 0=Dom,1=Lun,...,6=Sáb. Lunes es columna 0
-  let weekDayOffset = firstDay.getUTCDay() - 1;
-  if (weekDayOffset < 0) weekDayOffset = 6; // Domingo -> columna 6 (fuera, no lo usamos)
+  const firstDay = sortedTodos[0].fecha;
+  const firstDayNum = new Date(firstDay).getUTCDay();
+  const emptyCellsCount = firstDayNum === 0 ? 0 : firstDayNum - 1;
 
   // Construir array de celdas con huecos al inicio
   const cells: string[] = [];
-  for (let i = 0; i < weekDayOffset; i++) {
+  for (let i = 0; i < emptyCellsCount; i++) {
     cells.push(`<td style="width:${CELL_W};height:${CELL_H};border:1px solid #e5e7eb;background-color:#f9fafb;"></td>`);
   }
 
-  for (const inc of sortedData) {
-    const date = inc.fecha;
+  for (const inc of sortedTodos) {
+    const date = new Date(inc.fecha);
     const utcDay = date.getUTCDay(); // 0=Dom
     if (utcDay === 0) continue; // Ignorar domingos
 
@@ -84,6 +84,10 @@ function buildCalendarTable(sortedData: any[], schedule: any): string {
     const dayNameNorm = diasSemanaNorm[utcDay];
     const dayNum = date.getUTCDate().toString().padStart(2, "0");
     const hDia = schedule[dayNameNorm];
+
+    const dateStr = date.toISOString().split("T")[0];
+    const activeInc = activeMap.get(dateStr);
+    const isOmitida = activeInc ? activeInc.omitida : false;
 
     const rEnt = parseTime(inc.entrada_turno);
     const rSal = parseTime(inc.salida_turno);
@@ -93,11 +97,43 @@ function buildCalendarTable(sortedData: any[], schedule: any): string {
     const isAllNull =
       !inc.entrada_turno && !inc.salida_turno && !inc.entrada_comida && !inc.salida_comida;
 
+    // Detectar etiqueta especial (Homeoffice / Vacaciones) guardada en observaciones
+    const specialLabel = (isAllNull && activeInc && (activeInc.observaciones === "Homeoffice" || activeInc.observaciones === "Vacaciones"))
+      ? activeInc.observaciones as string
+      : null;
+
     // Determinar estado y color de fondo
     let bgColor = colorMap.ok;
     let statusLines: string[] = [];
 
-    if (isAllNull) {
+    if (isOmitida) {
+      // Omitido: renderizar como normal / a tiempo sin advertencias de color
+      bgColor = colorMap.ok;
+      if (inc.entrada_turno) {
+        statusLines.push(
+          `<span style="color:#16a34a;font-weight:700;font-size:10px;">EL ${formatTime(inc.entrada_turno)}</span>`
+        );
+      }
+      if (inc.entrada_comida) {
+        statusLines.push(
+          `<span style="color:#6b7280;font-size:9px;">SC ${formatTime(inc.entrada_comida)}</span>`
+        );
+      }
+      if (inc.salida_comida) {
+        statusLines.push(
+          `<span style="color:#6b7280;font-size:9px;">RC ${formatTime(inc.salida_comida)}</span>`
+        );
+      }
+      if (inc.salida_turno) {
+        statusLines.push(
+          `<span style="color:#16a34a;font-weight:700;font-size:10px;">SL ${formatTime(inc.salida_turno)}</span>`
+        );
+      }
+    } else if (specialLabel) {
+      // Homeoffice o Vacaciones: fondo morado
+      bgColor = colorMap.especial;
+      statusLines.push(`<span style="color:#7c3aed;font-size:10px;font-weight:700;">${specialLabel}</span>`);
+    } else if (isAllNull) {
       bgColor = colorMap.inasist;
       statusLines.push(`<span style="color:#6b7280;font-size:10px;font-weight:600;">Inasistencia</span>`);
     } else {
@@ -109,7 +145,7 @@ function buildCalendarTable(sortedData: any[], schedule: any): string {
         if (rEnt && hIni) {
           const diffEnt = timeDiffMins(rEnt, hIni);
           if (diffEnt < 0) {
-            elColor = "#16a34a"; // verde – reposición
+            elColor = "#16a34a"; // verde
           } else if (diffEnt > 15) {
             elColor = "#dc2626"; // rojo
             elBg = colorMap.tarde;
@@ -124,15 +160,17 @@ function buildCalendarTable(sortedData: any[], schedule: any): string {
           `<span style="color:${elColor};font-weight:700;font-size:10px;">EL ${formatTime(inc.entrada_turno)}</span>`
         );
       } else {
-        statusLines.push(`<span style="color:#9ca3af;font-size:9px;">Sin EL</span>`);
+        statusLines.push(`<span style="color:#dc2626;font-size:9px;font-weight:700;">EL (-:--)</span>`);
+        bgColor = colorMap.tarde;
       }
 
       // ── Salida Comida ──
-      if (inc.entrada_comida && inc.salida_comida) {
+      if (inc.entrada_comida) {
         statusLines.push(
           `<span style="color:#6b7280;font-size:9px;">SC ${formatTime(inc.entrada_comida)}</span>`
         );
-        // ── Regreso Comida ──
+      }
+      if (inc.salida_comida) {
         statusLines.push(
           `<span style="color:#6b7280;font-size:9px;">RC ${formatTime(inc.salida_comida)}</span>`
         );
@@ -143,13 +181,14 @@ function buildCalendarTable(sortedData: any[], schedule: any): string {
         let slColor = "#374151";
         if (rSal && hFin) {
           const diffSal = timeDiffMins(rSal, hFin);
-          if (diffSal > 5) slColor = "#16a34a"; // verde – reposición
+          if (diffSal > 5) slColor = "#16a34a"; // verde
         }
         statusLines.push(
           `<span style="color:${slColor};font-weight:700;font-size:10px;">SL ${formatTime(inc.salida_turno)}</span>`
         );
       } else {
-        statusLines.push(`<span style="color:#9ca3af;font-size:9px;">Sin SL</span>`);
+        statusLines.push(`<span style="color:#dc2626;font-size:9px;font-weight:700;">SL (-:--)</span>`);
+        bgColor = colorMap.tarde;
       }
     }
 
@@ -190,6 +229,23 @@ function buildCalendarTable(sortedData: any[], schedule: any): string {
   `;
 }
 
+// Helper para calcular la semana del año
+function getWeeksText(dates: Date[]): string {
+  if (dates.length === 0) return "";
+  const weeks = dates.map(d => {
+    const date = new Date(d.getTime());
+    date.setHours(0, 0, 0, 0);
+    date.setDate(date.getDate() + 3 - (date.getDay() + 6) % 7);
+    const week1 = new Date(date.getFullYear(), 0, 4);
+    return 1 + Math.round(((date.getTime() - week1.getTime()) / 86400000 - 3 + (week1.getDay() + 6) % 7) / 7);
+  });
+  const uniqueWeeks = Array.from(new Set(weeks)).sort((a, b) => a - b);
+  if (uniqueWeeks.length === 1) {
+    return `Semana #${uniqueWeeks[0]}`;
+  }
+  return `Semana #${uniqueWeeks[0]} a #${uniqueWeeks[uniqueWeeks.length - 1]}`;
+}
+
 // ─────────────────────────────────────────────
 // Handler
 // ─────────────────────────────────────────────
@@ -205,7 +261,7 @@ export const POST: APIRoute = async ({ request }) => {
   const userId = Number(session.user.id);
 
   try {
-    const { mes, anio, quincena, incidencias } = await request.json();
+    const { mes, anio, quincena, incidencias, todosLosRegistros } = await request.json();
 
     if (!mes || !anio || !Array.isArray(incidencias)) {
       return new Response(
@@ -214,7 +270,7 @@ export const POST: APIRoute = async ({ request }) => {
       );
     }
 
-    // 1. Guardar incidencias en la base de datos
+    // 1. Guardar incidencias en la base de datos (tanto Enviar como Omitir)
     const dataToInsert = incidencias.map((inc: any) => ({
       usuarioId: userId,
       mes: Number(inc.mes),
@@ -228,6 +284,7 @@ export const POST: APIRoute = async ({ request }) => {
       salida_comida: inc.salida_comida || null,
       observaciones_comida: inc.observaciones_comida || null,
       imagen_reporte: null,
+      omitida: !!inc.omitida,
     }));
 
     const fechas = dataToInsert.map((d) => d.fecha);
@@ -256,25 +313,45 @@ export const POST: APIRoute = async ({ request }) => {
       "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre",
     ];
     const mesName = meses[mes - 1] || "";
+    const capitalizedMesName = mesName.charAt(0).toUpperCase() + mesName.slice(1);
     let periodText = "";
     if (quincena === 1) {
-      periodText = `a la quincena 1 del mes de ${mesName} de ${anio}`;
+      periodText = `a la quincena 1 del mes de ${capitalizedMesName} de ${anio}`;
     } else if (quincena === 2) {
-      periodText = `a la quincena 2 del mes de ${mesName} de ${anio}`;
+      periodText = `a la quincena 2 del mes de ${capitalizedMesName} de ${anio}`;
     } else {
-      periodText = `al mes de ${mesName} de ${anio}`;
+      periodText = `al mes de ${capitalizedMesName} de ${anio}`;
     }
 
-    // 4. Ordenar datos cronológicamente
-    const sortedData = [...dataToInsert].sort(
-      (a, b) => a.fecha.getTime() - b.fecha.getTime()
+    // 4. Ordenar y filtrar todos los registros para la tabla calendario
+    const filteredTodos = (todosLosRegistros || []).filter((r: any) => {
+      const d = new Date(r.fecha);
+      const dayNum = d.getUTCDate();
+      if (quincena === 1) return dayNum <= 15;
+      if (quincena === 2) return dayNum >= 16;
+      return true;
+    });
+    const sortedTodos = [...filteredTodos].sort(
+      (a: any, b: any) => new Date(a.fecha).getTime() - new Date(b.fecha).getTime()
     );
 
-    // 5. Lista textual de incidencias con colores inline
+    // Mapear incidencias de la carga actual para marcar omitidas en la tabla
+    const activeMap = new Map<string, any>();
+    for (const inc of dataToInsert) {
+      const dateStr = inc.fecha.toISOString().split("T")[0];
+      activeMap.set(dateStr, inc);
+    }
+
+    // 5. Lista textual de incidencias (solo las no-omitidas) con colores inline
     const diasSemana = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
     const diasSemanaNorm = ["domingo", "lunes", "martes", "miercoles", "jueves", "viernes", "sabado"];
 
-    const lines = sortedData.map((inc) => {
+    const sortedData = [...dataToInsert].sort(
+      (a, b) => a.fecha.getTime() - b.fecha.getTime()
+    );
+    const nonOmittedIncidencias = sortedData.filter(inc => !inc.omitida);
+
+    const lines = nonOmittedIncidencias.map((inc) => {
       const date = inc.fecha;
       const dayName = diasSemana[date.getUTCDay()];
       const dayNameNorm = diasSemanaNorm[date.getUTCDay()];
@@ -291,7 +368,14 @@ export const POST: APIRoute = async ({ request }) => {
       const isAllNull =
         !inc.entrada_turno && !inc.salida_turno && !inc.entrada_comida && !inc.salida_comida;
 
-      if (isAllNull) {
+      // Detectar Homeoffice / Vacaciones por el campo observaciones
+      const specialLabel = (isAllNull && (inc.observaciones === "Homeoffice" || inc.observaciones === "Vacaciones"))
+        ? inc.observaciones
+        : null;
+
+      if (specialLabel) {
+        parts.push(`${specialLabel}.`);
+      } else if (isAllNull) {
         parts.push("Inasistencia.");
       } else {
         if (inc.entrada_turno && hIni) {
@@ -304,7 +388,7 @@ export const POST: APIRoute = async ({ request }) => {
           const elText = `<span style="${elStyle}">EL (${formatTime(inc.entrada_turno)})</span>`;
 
           if (diffEnt > 5) {
-            parts.push(`${elText} Se registra entrada ${diffEnt - 5} minutos tarde. Entrada laboral normal ${hDia.inicio} horas.`);
+            parts.push(`${elText} Se registra entrada ${diffEnt} minutos tarde. Entrada laboral normal ${hDia.inicio} horas.`);
           } else if (diffEnt < 0) {
             parts.push(`${elText} Se registra entrada ${-diffEnt} minutos antes. Entrada laboral normal ${hDia.inicio} horas.`);
           } else {
@@ -352,7 +436,7 @@ export const POST: APIRoute = async ({ request }) => {
       return parts.join(" ");
     });
 
-    const htmlList = `
+    const htmlList = lines.length > 0 ? `
       <div style="background-color:#f9fafb;border-left:4px solid #caab55;padding:15px;margin:15px 0;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;font-size:14px;line-height:1.6;color:#374151;">
         ${lines
         .map(
@@ -361,23 +445,32 @@ export const POST: APIRoute = async ({ request }) => {
         )
         .join("")}
       </div>
-    `;
+    ` : "";
 
-    // 6. Generar tabla calendario
-    const calendarTable = buildCalendarTable(sortedData, schedule);
+    // 6. Generar tabla calendario correcta usando sortedTodos
+    const calendarTable = buildCalendarTable(sortedTodos, schedule, activeMap);
 
-    // 7. Leyenda de colores
+    // 7. Leyenda de colores actualizada
     const legendHtml = `
       <div style="margin:10px 0 16px;font-family:'Segoe UI',sans-serif;font-size:11px;color:#6b7280;display:flex;flex-wrap:wrap;gap:8px;">
-        <span style="display:inline-flex;align-items:center;gap:4px;"><span style="display:inline-block;width:12px;height:12px;background-color:#d1fae5;border:1px solid #a7f3d0;border-radius:2px;"></span> A tiempo / Reposición</span>
-        <span style="display:inline-flex;align-items:center;gap:4px;"><span style="display:inline-block;width:12px;height:12px;background-color:#fee2e2;border:1px solid #fca5a5;border-radius:2px;"></span> Tardanza (&gt;15 min)</span>
-        <span style="display:inline-flex;align-items:center;gap:4px;"><span style="display:inline-block;width:12px;height:12px;background-color:#ffedd5;border:1px solid #fdba74;border-radius:2px;"></span> Tardanza leve (6-15 min)</span>
+        <span style="display:inline-flex;align-items:center;gap:4px;"><span style="display:inline-block;width:12px;height:12px;background-color:#d1fae5;border:1px solid #a7f3d0;border-radius:2px;"></span> A tiempo</span>
+        <span style="display:inline-flex;align-items:center;gap:4px;"><span style="display:inline-block;width:12px;height:12px;background-color:#fee2e2;border:1px solid #fca5a5;border-radius:2px;"></span> Justificar</span>
+        <span style="display:inline-flex;align-items:center;gap:4px;"><span style="display:inline-block;width:12px;height:12px;background-color:#ffedd5;border:1px solid #fdba74;border-radius:2px;"></span> Retardo</span>
         <span style="display:inline-flex;align-items:center;gap:4px;"><span style="display:inline-block;width:12px;height:12px;background-color:#f3f4f6;border:1px solid #d1d5db;border-radius:2px;"></span> Inasistencia</span>
+        <span style="display:inline-flex;align-items:center;gap:4px;"><span style="display:inline-block;width:12px;height:12px;background-color:#ede9fe;border:1px solid #c4b5fd;border-radius:2px;"></span> Homeoffice / Vacaciones</span>
       </div>
     `;
 
-    // 8. Ensamblar cuerpo del correo
-    const emailSubject = `[SiGeT] Reporte de incidencias - ${colaboradorName} - ${mesName} ${anio}`;
+    // 8. Ensamblar cuerpo y asunto dinámico del correo
+    let emailSubject = "";
+    if (quincena === 1) {
+      emailSubject = `[SiGeT] Reporte de incidencias - ${colaboradorName} - Quincena 1 ${capitalizedMesName} ${anio}`;
+    } else if (quincena === 2) {
+      emailSubject = `[SiGeT] Reporte de incidencias - ${colaboradorName} - Quincena 2 ${capitalizedMesName} ${anio}`;
+    } else {
+      emailSubject = `[SiGeT] Reporte de incidencias - ${colaboradorName} - ${capitalizedMesName} ${anio}`;
+    }
+
     const emailBody = `
       <p style="margin:0 0 16px;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;color:#374151;">Buen día Ing. ${directorName},</p>
       <p style="margin:0 0 16px;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;color:#374151;"><strong>Colaborador:</strong> ${colaboradorName}</p>

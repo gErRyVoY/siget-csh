@@ -50,6 +50,7 @@ const months = [
 
 const horario = JSON.stringify(dbUser.horario_disponibilidad ?? {});
 const clave = dbUser.clave ?? "";
+const colaboradorName = `${dbUser.nombres} ${dbUser.apellidos}`;
 
 const GOOGLE_API_KEY = import.meta.env.GOOGLE_API_KEY || process.env.GOOGLE_API_KEY || "";
 const GOOGLE_CLIENT_ID = import.meta.env.GOOGLE_CLIENT_ID || process.env.GOOGLE_CLIENT_ID || "";
@@ -71,6 +72,7 @@ const GOOGLE_APP_ID = import.meta.env.GOOGLE_APP_ID || process.env.GOOGLE_APP_ID
       id="incidencias-container"
       data-clave={clave}
       data-horario={horario}
+      data-colaborador-name={colaboradorName}
       data-google-api-key={GOOGLE_API_KEY}
       data-google-client-id={GOOGLE_CLIENT_ID}
       data-google-app-id={GOOGLE_APP_ID}
@@ -127,23 +129,33 @@ const GOOGLE_APP_ID = import.meta.env.GOOGLE_APP_ID || process.env.GOOGLE_APP_ID
       <div id="guardar-container-top" class="mb-4 hidden">
         <div class="flex flex-col sm:flex-row justify-between items-center gap-4">
           <div id="quincena-filters-top" class="flex gap-2 w-full sm:w-auto text-center"></div>
-          <div class="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+          <div class="flex flex-row justify-end gap-2 w-full sm:w-auto">
             <button
               type="button"
-              class="bg-amber-600 hover:bg-amber-600/90 text-white px-6 py-2 rounded-md text-sm transition-colors btn-ver-tabla w-full sm:w-auto text-center cursor-pointer font-bold"
+              class="bg-blue-600 hover:bg-blue-600/90 text-white p-2.5 rounded-md transition-colors btn-preview-reporte flex items-center justify-center cursor-pointer"
+              title="Previsualizar correo del reporte"
             >
-              Ver tabla
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-eye"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0z"/><circle cx="12" cy="12" r="3"/></svg>
             </button>
             <button
               type="button"
-              class="bg-primary text-primary-foreground hover:bg-primary/90 px-6 py-2 rounded-md text-sm transition-colors btn-enviar-reporte w-full sm:w-auto text-center cursor-pointer font-bold"
+              class="bg-amber-600 hover:bg-amber-600/90 text-white p-2.5 rounded-md transition-colors btn-ver-tabla flex items-center justify-center cursor-pointer"
+              title="Ver tabla"
             >
-              Enviar reporte
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-calendar"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>
             </button>
             <button
-              class="bg-secondary text-secondary-foreground hover:bg-secondary/90 px-6 py-2 rounded-md text-sm transition-colors btn-guardar-incidencias w-full sm:w-auto text-center font-bold"
+              type="button"
+              class="bg-primary text-primary-foreground hover:bg-primary/90 p-2.5 rounded-md transition-colors btn-enviar-reporte flex items-center justify-center cursor-pointer"
+              title="Enviar reporte"
             >
-              Guardar incidencias
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-mail"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+            </button>
+            <button
+              class="bg-secondary text-secondary-foreground hover:bg-secondary/90 p-2.5 rounded-md transition-colors btn-guardar-incidencias flex items-center justify-center font-bold"
+              title="Guardar incidencias"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-save"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
             </button>
           </div>
         </div>
@@ -156,23 +168,33 @@ const GOOGLE_APP_ID = import.meta.env.GOOGLE_APP_ID || process.env.GOOGLE_APP_ID
       <div id="guardar-container" class="mt-8 hidden border-t pt-4">
         <div class="flex flex-col sm:flex-row justify-between items-center gap-4">
           <div id="quincena-filters-bottom" class="flex gap-2 w-full sm:w-auto text-center"></div>
-          <div class="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+          <div class="flex flex-row justify-end gap-2 w-full sm:w-auto">
             <button
               type="button"
-              class="bg-amber-600 hover:bg-amber-600/90 text-white px-6 py-2 rounded-md text-sm transition-colors btn-ver-tabla w-full sm:w-auto text-center cursor-pointer font-bold"
+              class="bg-blue-600 hover:bg-blue-600/90 text-white p-2.5 rounded-md transition-colors btn-preview-reporte flex items-center justify-center cursor-pointer"
+              title="Previsualizar correo del reporte"
             >
-              Ver tabla
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-eye"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0z"/><circle cx="12" cy="12" r="3"/></svg>
             </button>
             <button
               type="button"
-              class="bg-primary text-primary-foreground hover:bg-primary/90 px-6 py-2 rounded-md text-sm transition-colors btn-enviar-reporte w-full sm:w-auto text-center cursor-pointer font-bold"
+              class="bg-amber-600 hover:bg-amber-600/90 text-white p-2.5 rounded-md transition-colors btn-ver-tabla flex items-center justify-center cursor-pointer"
+              title="Ver tabla"
             >
-              Enviar reporte
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-calendar"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>
             </button>
             <button
-              class="bg-secondary text-secondary-foreground hover:bg-secondary/90 px-6 py-2 rounded-md text-sm transition-colors btn-guardar-incidencias w-full sm:w-auto text-center font-bold"
+              type="button"
+              class="bg-primary text-primary-foreground hover:bg-primary/90 p-2.5 rounded-md transition-colors btn-enviar-reporte flex items-center justify-center cursor-pointer"
+              title="Enviar reporte"
             >
-              Guardar incidencias
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-mail"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+            </button>
+            <button
+              class="bg-secondary text-secondary-foreground hover:bg-secondary/90 p-2.5 rounded-md transition-colors btn-guardar-incidencias flex items-center justify-center font-bold"
+              title="Guardar incidencias"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-save"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
             </button>
           </div>
         </div>
@@ -225,6 +247,27 @@ const GOOGLE_APP_ID = import.meta.env.GOOGLE_APP_ID || process.env.GOOGLE_APP_ID
       </div>
     </div>
   </div>
+
+  <!-- Modal de Previsualización de Reporte -->
+  <div id="preview-reporte-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 items-center justify-center p-4 hidden">
+    <div class="bg-card text-card-foreground border border-muted-foreground/30 rounded-lg max-w-5xl w-full shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+      <!-- Modal Header -->
+      <div class="px-6 py-4 border-b border-border flex items-center justify-between bg-muted/30">
+        <h3 class="text-lg font-bold text-foreground" id="preview-modal-title">Previsualización del Correo</h3>
+        <button type="button" id="preview-modal-close" class="text-muted-foreground hover:text-foreground text-xl font-bold cursor-pointer select-none">&times;</button>
+      </div>
+      <!-- Modal Body -->
+      <div class="p-6 overflow-auto max-h-[75vh] bg-white text-black">
+        <div id="preview-reporte-container" class="w-full">
+          <!-- Live preview HTML will be injected here -->
+        </div>
+      </div>
+      <!-- Modal Footer -->
+      <div class="px-6 py-4 border-t border-border bg-muted/30 flex justify-end">
+        <button type="button" id="preview-modal-cancel" class="bg-input border border-border hover:bg-muted text-foreground py-2 px-6 rounded-md text-sm font-semibold transition-colors cursor-pointer">Cerrar</button>
+      </div>
+    </div>
+  </div>
 </MainLayout>
 
 <script>
@@ -253,6 +296,7 @@ const GOOGLE_APP_ID = import.meta.env.GOOGLE_APP_ID || process.env.GOOGLE_APP_ID
     const btnsGuardar = document.querySelectorAll(".btn-guardar-incidencias");
     const btnsEnviarReporte = document.querySelectorAll(".btn-enviar-reporte");
     const btnsVerTabla = document.querySelectorAll(".btn-ver-tabla");
+    const btnsPreviewReporte = document.querySelectorAll(".btn-preview-reporte");
 
     // Modal elements
     const modal = document.getElementById("enviar-reporte-modal");
@@ -268,8 +312,15 @@ const GOOGLE_APP_ID = import.meta.env.GOOGLE_APP_ID || process.env.GOOGLE_APP_ID
     const tablaModalTitle = document.getElementById("tabla-modal-title");
     const tablaCalendarioContainer = document.getElementById("tabla-calendario-container");
 
+    // Preview Modal Elements
+    const previewModal = document.getElementById("preview-reporte-modal");
+    const previewModalClose = document.getElementById("preview-modal-close");
+    const previewModalCancel = document.getElementById("preview-modal-cancel");
+    const previewReporteContainer = document.getElementById("preview-reporte-container");
+
     const clave = container.dataset.clave;
     const horarioStr = container.dataset.horario;
+    const colaboradorName = container.dataset.colaboradorName || "Colaborador";
 
     let horario: Record<string, any> = {};
     try {
@@ -479,7 +530,7 @@ const GOOGLE_APP_ID = import.meta.env.GOOGLE_APP_ID || process.env.GOOGLE_APP_ID
 
         if (isAllNull) {
           statusText = "Inasistencia";
-          statusClass = "text-red-600 font-bold";
+          statusClass = "text-[#ca1c1c] font-bold";
           requiresObs = true;
           showRow = true;
         } else {
@@ -496,7 +547,7 @@ const GOOGLE_APP_ID = import.meta.env.GOOGLE_APP_ID || process.env.GOOGLE_APP_ID
             isSalComidaNull
           ) {
             statusText = "Registro incompleto";
-            statusClass = "text-red-600 font-bold";
+            statusClass = "text-[#ca1c1c] font-bold";
             showRow = true;
 
             if (isSalidaNull && !isSalComidaNull) {
@@ -504,7 +555,6 @@ const GOOGLE_APP_ID = import.meta.env.GOOGLE_APP_ID || process.env.GOOGLE_APP_ID
               reqObsText = "";
             } else if (isSalidaNull && isSalComidaNull) {
               requiresObs = true;
-              requiresObsComida = true;
             } else if (
               !isEntradaNull &&
               isSalidaNull &&
@@ -532,15 +582,20 @@ const GOOGLE_APP_ID = import.meta.env.GOOGLE_APP_ID || process.env.GOOGLE_APP_ID
 
             if (isReposicion) {
               statusText = "Reposición de tiempo";
-              statusClass = "text-green-600 font-bold";
+              statusClass = "text-[#16a34a] font-bold";
               tiempoTurno = minsExtraReposicion;
               extraText = `${minsExtraReposicion} minutos`;
               requiresObs = true;
               showRow = true;
             } else if (diffEntrada > 5) {
-              const minsRetardo = diffEntrada - 5;
-              statusText = "Retardo";
-              statusClass = "text-red-600 font-bold";
+              const minsRetardo = diffEntrada;
+              if (diffEntrada > 15) {
+                statusText = "Justificar";
+                statusClass = "text-[#ca1c1c] font-bold";
+              } else {
+                statusText = "Retardo";
+                statusClass = "text-[#ea580c] font-bold";
+              }
               tiempoTurno = -minsRetardo;
               extraText = `${minsRetardo} minutos`;
               requiresObs = true;
@@ -564,7 +619,7 @@ const GOOGLE_APP_ID = import.meta.env.GOOGLE_APP_ID || process.env.GOOGLE_APP_ID
 
                 if (totalExtra >= 60) {
                   statusText = "Tiempo extra";
-                  statusClass = "text-green-600 font-bold";
+                  statusClass = "text-[#16a34a] font-bold";
                   tiempoTurno = totalExtra;
                   extraText = `${totalExtra} minutos`;
                   requiresObs = true;
@@ -574,12 +629,12 @@ const GOOGLE_APP_ID = import.meta.env.GOOGLE_APP_ID || process.env.GOOGLE_APP_ID
             }
           }
 
-          if (rEntComida && rSalComida) {
+          if (rEntComida && rSalComida && statusText !== "Registro incompleto") {
             const diffComida = timeDiffMins(rSalComida, rEntComida);
             if (diffComida > 30) {
               if (statusText === "") {
                 statusText = "Horario excedido";
-                statusClass = "text-red-600 font-bold";
+                statusClass = "text-[#ca1c1c] font-bold";
                 showRow = true;
                 // Calcular reposición parcial si la entrada fue anticipada o la salida tardía
                 if (hInicio && rEntrada && hFin && rSalida) {
@@ -593,6 +648,7 @@ const GOOGLE_APP_ID = import.meta.env.GOOGLE_APP_ID || process.env.GOOGLE_APP_ID
                   }
                 }
               }
+              // Only require obs for comida if BOTH entrada and salida comida are present
               requiresObsComida = true;
             }
           }
@@ -615,7 +671,21 @@ const GOOGLE_APP_ID = import.meta.env.GOOGLE_APP_ID || process.env.GOOGLE_APP_ID
             ? savedRecord.observaciones_comida
             : "";
 
-          let toggleChecked = isSaved ? false : !isToday;
+          // Por defecto Enviar si no hay comentarios o no está guardado, de lo contrario respetar el estado omitida
+          let toggleChecked = true;
+          if (isSaved) {
+            toggleChecked = !savedRecord.omitida;
+          }
+
+          // Detectar sábado para Homeoffice
+          const dateObjForDay = new Date(r.fecha);
+          const utcDayOfWeek = dateObjForDay.getUTCDay(); // 6 = sábado
+          const isSaturday = utcDayOfWeek === 6;
+
+          // Estado inicial de los toggles especiales (guardados como texto en observaciones)
+          const savedObsValue = savedRecord ? (savedRecord.observaciones || "") : "";
+          const isHomeofficeChecked = isSaturday && isAllNull && savedObsValue === "Homeoffice";
+          const isVacacionesChecked = isAllNull && savedObsValue === "Vacaciones";
 
           const dayInt = parseInt(dayNum, 10);
           if (dayInt >= 16) {
@@ -644,32 +714,47 @@ const GOOGLE_APP_ID = import.meta.env.GOOGLE_APP_ID || process.env.GOOGLE_APP_ID
 
           if (hInicio && rEntrada) {
             const diffEnt = timeDiffMins(rEntrada, hInicio);
-            if (diffEnt > 5) {
-              entradaClass = "text-destructive font-bold";
+            if (diffEnt > 15) {
+              entradaClass = "text-[#ca1c1c] font-bold";
+            } else if (diffEnt >= 6 && diffEnt <= 15) {
+              entradaClass = "text-[#ea580c] font-bold";
             } else if (diffEnt < 0) {
-              entradaClass = "text-green-600 font-bold";
+              entradaClass = "text-[#16a34a] font-bold";
             }
           }
 
           if (hFin && rSalida) {
             const diffSal = timeDiffMins(rSalida, hFin);
             if (diffSal > 5) {
-              salidaClass = "text-green-600 font-bold";
+              salidaClass = "text-[#16a34a] font-bold";
             }
           }
 
-          if (rEntComida && rSalComida) {
+          if (rEntComida && rSalComida && statusText !== "Registro incompleto") {
             const diffCom = timeDiffMins(rSalComida, rEntComida);
             if (diffCom > 30) {
-              comidaClass = "text-destructive font-bold";
+              comidaClass = "text-[#ca1c1c] font-bold";
             }
           }
 
           html += `
-            <div class="border rounded-md overflow-hidden bg-card mb-4 relative pb-10 sm:pb-0 incidencia-card-row" id="row-${index}" data-day="${parseInt(dayNum, 10)}">
+            <div class="border rounded-md overflow-hidden bg-card mb-4 relative pb-10 sm:pb-0 incidencia-card-row" id="row-${index}" data-day="${parseInt(dayNum, 10)}" data-is-inasistencia="${isAllNull ? '1' : '0'}">
                 <div class="bg-muted-foreground/80 text-white flex justify-between items-center px-4 py-2">
                     <span class="font-bold capitalize">${dayName} ${dayNum}</span>
                     <div class="flex items-center gap-2">
+                        ${isAllNull ? `
+                          ${isSaturday ? `
+                          <span class="text-xs font-semibold select-none" id="label-homeoffice-${index}">Homeoffice</span>
+                          <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="homeoffice-${index}" class="sr-only peer incidencia-homeoffice" ${isHomeofficeChecked ? "checked" : ""} data-index="${index}">
+                            <div class="w-11 h-6 bg-gray-400 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-secondary" id="track-homeoffice-${index}"></div>
+                          </label>` : ''}
+                          <span class="text-xs font-semibold select-none" id="label-vacaciones-${index}">Vacaciones</span>
+                          <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="vacaciones-${index}" class="sr-only peer incidencia-vacaciones" ${isVacacionesChecked ? "checked" : ""} data-index="${index}">
+                            <div class="w-11 h-6 bg-gray-400 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-secondary" id="track-vacaciones-${index}"></div>
+                          </label>
+                        ` : ''}
                         <span class="text-xs font-semibold select-none toggle-label w-12 text-right" id="label-toggle-${index}">${toggleChecked ? "Enviar" : "Omitir"}</span>
                         <label class="relative inline-flex items-center cursor-pointer">
                             <input type="checkbox" id="toggle-${index}" class="sr-only peer incidencia-toggle" ${toggleChecked ? "checked" : ""} data-index="${index}">
@@ -678,10 +763,12 @@ const GOOGLE_APP_ID = import.meta.env.GOOGLE_APP_ID || process.env.GOOGLE_APP_ID
                     </div>
                 </div>
                 <div class="flex flex-col sm:flex-row">
-                    <div class="p-4 border-b sm:border-b-0 sm:border-r flex flex-col justify-center items-center ${statusText === 'Horario excedido' ? '' : statusClass} sm:w-[150px] shrink-0 text-center">
-                        ${statusText !== 'Horario excedido' ? `<span>${statusText}</span>` : ''}
-                        ${statusText !== 'Horario excedido' && extraText ? `<span class="mt-1">${extraText}</span>` : ''}
-                        ${reposicionExtraText ? `<span class="mt-2 text-green-600 font-bold">Reposición de tiempo</span><span class="text-green-600 font-bold">${reposicionExtraText}</span>` : ''}
+                    <div class="p-4 border-b sm:border-b-0 sm:border-r flex flex-col justify-center items-center ${statusText === 'Horario excedido' ? '' : statusClass} sm:w-[150px] shrink-0 text-center" id="status-col-${index}">
+                        ${isAllNull ? `<span id="status-text-${index}">${isHomeofficeChecked ? "Homeoffice" : isVacacionesChecked ? "Vacaciones" : "Inasistencia"}</span>` : `
+                          ${statusText !== 'Horario excedido' ? `<span>${statusText}</span>` : ''}
+                          ${statusText !== 'Horario excedido' && extraText ? `<span class="mt-1">${extraText}</span>` : ''}
+                          ${reposicionExtraText ? `<span class="mt-2 text-green-600 font-bold">Reposición de tiempo</span><span class="text-green-600 font-bold">${reposicionExtraText}</span>` : ''}
+                        `}
                     </div>
                     <div class="p-4 border-b sm:border-b-0 sm:border-r space-y-2 sm:w-[250px] flex-shrink-0 text-sm">
                         <div class="flex justify-between items-center font-bold">
@@ -714,7 +801,7 @@ const GOOGLE_APP_ID = import.meta.env.GOOGLE_APP_ID || process.env.GOOGLE_APP_ID
                         ${
                           requiresObs
                             ? `
-                            <div>
+                            <div id="obs-turno-wrapper-${index}" ${(isHomeofficeChecked || isVacacionesChecked || !toggleChecked) ? 'class="hidden"' : ''}>
                                 <label class="block font-bold text-sm mb-1">Motivo (Turno):</label>
                                 <textarea id="${obsId}" class="w-full text-sm border-border bg-input p-2 rounded-md ${isSaved ? "opacity-60 cursor-not-allowed" : ""}" rows="2" placeholder="${reqObsText}" ${isSaved ? "disabled" : ""}>${savedObs || ""}</textarea>
                             </div>
@@ -724,7 +811,7 @@ const GOOGLE_APP_ID = import.meta.env.GOOGLE_APP_ID || process.env.GOOGLE_APP_ID
                         ${
                           requiresObsComida
                             ? `
-                            <div>
+                            <div id="obs-comida-wrapper-${index}" ${!toggleChecked ? 'class="hidden"' : ''}>
                                 <label class="block font-bold text-sm mb-1">Motivo (Comida):</label>
                                 <textarea id="${obsComidaId}" class="w-full text-sm border-border bg-input p-2 rounded-md ${isSaved ? "opacity-60 cursor-not-allowed" : ""}" rows="2" placeholder="${reqObsComidaText}" ${isSaved ? "disabled" : ""}>${savedObsComida || ""}</textarea>
                             </div>
@@ -774,7 +861,7 @@ const GOOGLE_APP_ID = import.meta.env.GOOGLE_APP_ID || process.env.GOOGLE_APP_ID
           setupFortnightFilters();
         }
 
-        // Attach event listeners for toggles
+        // Attach event listeners for toggles (Enviar/Omitir)
         document.querySelectorAll(".incidencia-toggle").forEach((toggle) => {
           toggle.addEventListener("change", (e) => {
             const t = e.target as HTMLInputElement;
@@ -782,6 +869,94 @@ const GOOGLE_APP_ID = import.meta.env.GOOGLE_APP_ID || process.env.GOOGLE_APP_ID
             const label = document.getElementById(`label-toggle-${idx}`);
             if (label) {
               label.textContent = t.checked ? "Enviar" : "Omitir";
+            }
+
+            // Ocultar/mostrar motivos según el estado del toggle Enviar/Omitir
+            const obsTurnoWrapper = document.getElementById(`obs-turno-wrapper-${idx}`);
+            const obsComidaWrapper = document.getElementById(`obs-comida-wrapper-${idx}`);
+
+            if (t.checked) {
+              // Si es Enviar, mostrar Motivo (Turno) solo si no es Homeoffice/Vacaciones
+              const hoEl = document.getElementById(`homeoffice-${idx}`) as HTMLInputElement;
+              const vacEl = document.getElementById(`vacaciones-${idx}`) as HTMLInputElement;
+              const isSpecial = (hoEl && hoEl.checked) || (vacEl && vacEl.checked);
+
+              if (obsTurnoWrapper && !isSpecial) {
+                obsTurnoWrapper.classList.remove("hidden");
+              }
+              if (obsComidaWrapper) {
+                obsComidaWrapper.classList.remove("hidden");
+              }
+            } else {
+              // Si es Omitir, ocultar ambos
+              if (obsTurnoWrapper) {
+                obsTurnoWrapper.classList.add("hidden");
+              }
+              if (obsComidaWrapper) {
+                obsComidaWrapper.classList.add("hidden");
+              }
+            }
+            // Actualizar preview si está abierto
+            if (previewModal && !previewModal.classList.contains("hidden") && previewReporteContainer) {
+              previewReporteContainer.innerHTML = generateEmailPreviewHtml();
+            }
+          });
+        });
+
+        // Attach event listeners for Homeoffice toggles
+        document.querySelectorAll(".incidencia-homeoffice").forEach((toggle) => {
+          toggle.addEventListener("change", (e) => {
+            const t = e.target as HTMLInputElement;
+            const idx = t.dataset.index;
+            const statusEl = document.getElementById(`status-text-${idx}`);
+            const obsWrapper = document.getElementById(`obs-turno-wrapper-${idx}`);
+            const obsEl = document.getElementById(`obs-${idx}`) as HTMLTextAreaElement;
+            // Si se activa Homeoffice, desactivar Vacaciones
+            if (t.checked) {
+              const vacEl = document.getElementById(`vacaciones-${idx}`) as HTMLInputElement;
+              if (vacEl) vacEl.checked = false;
+              if (statusEl) statusEl.textContent = "Homeoffice";
+              if (obsWrapper) obsWrapper.classList.add("hidden");
+              if (obsEl) obsEl.value = "";
+            } else {
+              if (statusEl) {
+                const vacEl = document.getElementById(`vacaciones-${idx}`) as HTMLInputElement;
+                statusEl.textContent = (vacEl && vacEl.checked) ? "Vacaciones" : "Inasistencia";
+              }
+              if (obsWrapper) obsWrapper.classList.remove("hidden");
+            }
+            // Actualizar preview si está abierto
+            if (previewModal && !previewModal.classList.contains("hidden") && previewReporteContainer) {
+              previewReporteContainer.innerHTML = generateEmailPreviewHtml();
+            }
+          });
+        });
+
+        // Attach event listeners for Vacaciones toggles
+        document.querySelectorAll(".incidencia-vacaciones").forEach((toggle) => {
+          toggle.addEventListener("change", (e) => {
+            const t = e.target as HTMLInputElement;
+            const idx = t.dataset.index;
+            const statusEl = document.getElementById(`status-text-${idx}`);
+            const obsWrapper = document.getElementById(`obs-turno-wrapper-${idx}`);
+            const obsEl = document.getElementById(`obs-${idx}`) as HTMLTextAreaElement;
+            // Si se activa Vacaciones, desactivar Homeoffice
+            if (t.checked) {
+              const hoEl = document.getElementById(`homeoffice-${idx}`) as HTMLInputElement;
+              if (hoEl) hoEl.checked = false;
+              if (statusEl) statusEl.textContent = "Vacaciones";
+              if (obsWrapper) obsWrapper.classList.add("hidden");
+              if (obsEl) obsEl.value = "";
+            } else {
+              if (statusEl) {
+                const hoEl = document.getElementById(`homeoffice-${idx}`) as HTMLInputElement;
+                statusEl.textContent = (hoEl && hoEl.checked) ? "Homeoffice" : "Inasistencia";
+              }
+              if (obsWrapper) obsWrapper.classList.remove("hidden");
+            }
+            // Actualizar preview si está abierto
+            if (previewModal && !previewModal.classList.contains("hidden") && previewReporteContainer) {
+              previewReporteContainer.innerHTML = generateEmailPreviewHtml();
             }
           });
         });
@@ -918,6 +1093,395 @@ const GOOGLE_APP_ID = import.meta.env.GOOGLE_APP_ID || process.env.GOOGLE_APP_ID
     tablaModalClose?.addEventListener("click", closeTablaModal);
     tablaModalCancel?.addEventListener("click", closeTablaModal);
     document.getElementById("tabla-modal-cancel")?.addEventListener("click", closeTablaModal);
+
+    // Cierre al hacer clic fuera de la tabla
+    tablaModal?.addEventListener("click", (e) => {
+      if (e.target === tablaModal) {
+        closeTablaModal();
+      }
+    });
+
+    const closePreviewModal = () => {
+      if (previewModal) {
+        previewModal.classList.add("hidden");
+        previewModal.classList.remove("flex");
+      }
+    };
+
+    previewModalClose?.addEventListener("click", closePreviewModal);
+    previewModalCancel?.addEventListener("click", closePreviewModal);
+
+    previewModal?.addEventListener("click", (e) => {
+      if (e.target === previewModal) {
+        closePreviewModal();
+      }
+    });
+
+    // Cierre de todos los modales al presionar la tecla Esc
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" || e.key === "Esc") {
+        closeTablaModal();
+        closeModal();
+        closePreviewModal();
+      }
+    });
+
+    // Cierre al hacer clic fuera del modal de Enviar Reporte
+    modal?.addEventListener("click", (e) => {
+      if (e.target === modal) {
+        closeModal();
+      }
+    });
+
+    function getWeeksText(dates) {
+      if (dates.length === 0) return "";
+      const weeks = dates.map(d => {
+        const date = new Date(d.getTime());
+        date.setHours(0, 0, 0, 0);
+        date.setDate(date.getDate() + 3 - (date.getDay() + 6) % 7);
+        const week1 = new Date(date.getFullYear(), 0, 4);
+        return 1 + Math.round(((date.getTime() - week1.getTime()) / 86400000 - 3 + (week1.getDay() + 6) % 7) / 7);
+      });
+      const uniqueWeeks = Array.from(new Set(weeks)).sort((a, b) => a - b);
+      if (uniqueWeeks.length === 1) {
+        return `Semana #${uniqueWeeks[0]}`;
+      }
+      return `Semana #${uniqueWeeks[0]} a #${uniqueWeeks[uniqueWeeks.length - 1]}`;
+    }
+
+    function generateEmailPreviewHtml() {
+      const filtered = registrosAPI.filter((r) => {
+        const d = new Date(r.fecha);
+        const dayNum = d.getUTCDate();
+        if (currentFortnightFilter === "1") return dayNum <= 15;
+        if (currentFortnightFilter === "2") return dayNum >= 16;
+        return true;
+      });
+      const sorted = [...filtered].sort((a, b) => new Date(a.fecha).getTime() - new Date(b.fecha).getTime());
+
+      const activeMap = new Map();
+      incidenciasToSave.forEach((inc) => {
+        const toggle = document.getElementById(`toggle-${inc.index}`) as HTMLInputElement;
+        const isOmitida = toggle ? !toggle.checked : false;
+
+        const obsEl = document.getElementById(`obs-${inc.index}`) as HTMLTextAreaElement;
+        const obsComidaEl = document.getElementById(`obs-comida-${inc.index}`) as HTMLTextAreaElement;
+
+        // Verificar toggles especiales Homeoffice / Vacaciones
+        const hoEl = document.getElementById(`homeoffice-${inc.index}`) as HTMLInputElement;
+        const vacEl = document.getElementById(`vacaciones-${inc.index}`) as HTMLInputElement;
+        const isHomeoffice = hoEl ? hoEl.checked : false;
+        const isVacaciones = vacEl ? vacEl.checked : false;
+        const specialLabel = isHomeoffice ? "Homeoffice" : isVacaciones ? "Vacaciones" : null;
+
+        let valTurno = specialLabel || (obsEl ? obsEl.value.trim() : "");
+        let valComida = obsComidaEl ? obsComidaEl.value.trim() : "";
+
+        const dateObj = new Date(inc.fecha);
+        const dayNum = dateObj.getUTCDate();
+        let inPeriod = true;
+        if (currentFortnightFilter === "1" && dayNum > 15) inPeriod = false;
+        if (currentFortnightFilter === "2" && dayNum < 16) inPeriod = false;
+
+        if (inPeriod) {
+          activeMap.set(new Date(inc.fecha).toISOString().split("T")[0], {
+            ...inc,
+            observaciones: valTurno || null,
+            observaciones_comida: valComida || null,
+            omitida: isOmitida,
+            specialLabel
+          });
+        }
+      });
+
+      const CELL_W = "85px";
+      const CELL_H = "90px";
+      const colorMap = {
+        ok: "#d1fae5",
+        tarde: "#fee2e2",
+        orange: "#ffedd5",
+        inasist: "#f3f4f6",
+        especial: "#ede9fe"   // morado claro para Homeoffice / Vacaciones
+      };
+
+      const headerRow = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"]
+        .map(d => `<th style="width:${CELL_W};padding:6px 4px;background-color:#881912;color:#fff;font-family:'Segoe UI',sans-serif;font-size:11px;font-weight:700;text-align:center;border:1px solid #6b1010;">${d}</th>`)
+        .join("");
+
+      if (sorted.length === 0) return "<p class='text-center text-muted-foreground py-8'>No hay registros disponibles.</p>";
+
+      const firstDay = sorted[0].fecha;
+      const firstDayNum = new Date(firstDay).getUTCDay();
+      const emptyCellsCount = firstDayNum === 0 ? 0 : firstDayNum - 1;
+
+      const cells = [];
+      for (let i = 0; i < emptyCellsCount; i++) {
+        cells.push(`<td style="width:${CELL_W};height:${CELL_H};border:1px solid #e5e7eb;background-color:#f9fafb;"></td>`);
+      }
+
+      const formatT = (t) => {
+        if (!t) return "";
+        if (t.length === 4) return `${t.substring(0, 2)}:${t.substring(2, 4)}`;
+        return t;
+      };
+
+      sorted.forEach((inc) => {
+        const date = new Date(inc.fecha);
+        const utcDay = date.getUTCDay();
+        if (utcDay === 0) return;
+
+        const capitalizedName = diasSemana[utcDay].charAt(0).toUpperCase() + diasSemana[utcDay].slice(1);
+        const dayNameNormalized = capitalizedName.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+        const hDia = horario[dayNameNormalized];
+        const dayNum = date.getUTCDate().toString().padStart(2, "0");
+
+        const dateStr = date.toISOString().split("T")[0];
+        const activeInc = activeMap.get(dateStr);
+        const isOmitida = activeInc ? activeInc.omitida : false;
+        const specialLabel = activeInc ? activeInc.specialLabel : null;
+
+        const rEnt = parseTime(inc.entrada_turno);
+        const rSal = parseTime(inc.salida_turno);
+        const hIni = hDia ? parseHorarioTime(hDia.inicio) : null;
+        const hFin = hDia ? parseHorarioTime(hDia.fin) : null;
+
+        const isAllNull = !inc.entrada_turno && !inc.salida_turno && !inc.entrada_comida && !inc.salida_comida;
+
+        let bgColor = colorMap.ok;
+        let statusLines = [];
+
+        if (isOmitida) {
+          bgColor = colorMap.ok;
+          if (inc.entrada_turno) {
+            statusLines.push(`<span style="color:#16a34a;font-weight:700;font-size:10px;">EL ${formatT(inc.entrada_turno)}</span>`);
+          }
+          if (inc.entrada_comida) {
+            statusLines.push(`<span style="color:#6b7280;font-size:9px;">SC ${formatT(inc.entrada_comida)}</span>`);
+          }
+          if (inc.salida_comida) {
+            statusLines.push(`<span style="color:#6b7280;font-size:9px;">RC ${formatT(inc.salida_comida)}</span>`);
+          }
+          if (inc.salida_turno) {
+            statusLines.push(`<span style="color:#16a34a;font-weight:700;font-size:10px;">SL ${formatT(inc.salida_turno)}</span>`);
+          }
+        } else if (specialLabel) {
+          // Homeoffice o Vacaciones: fondo morado
+          bgColor = colorMap.especial;
+          statusLines.push(`<span style="color:#7c3aed;font-size:10px;font-weight:700;">${specialLabel}</span>`);
+        } else if (isAllNull) {
+          bgColor = colorMap.inasist;
+          statusLines.push(`<span style="color:#6b7280;font-size:10px;font-weight:600;">Inasistencia</span>`);
+        } else {
+          if (inc.entrada_turno) {
+            let elColor = "#374151";
+            let elBg = bgColor;
+            if (rEnt && hIni) {
+              const diffEnt = timeDiffMins(rEnt, hIni);
+              if (diffEnt < 0) {
+                elColor = "#16a34a";
+              } else if (diffEnt > 15) {
+                elColor = "#dc2626";
+                elBg = colorMap.tarde;
+              } else if (diffEnt >= 6) {
+                elColor = "#ea580c";
+                elBg = colorMap.orange;
+              }
+              if (elBg !== bgColor) bgColor = elBg;
+            }
+            statusLines.push(`<span style="color:${elColor};font-weight:700;font-size:10px;">EL ${formatT(inc.entrada_turno)}</span>`);
+          } else {
+            statusLines.push(`<span style="color:#dc2626;font-size:9px;font-weight:700;">EL (-:--)</span>`);
+            bgColor = colorMap.tarde;
+          }
+
+          if (inc.entrada_comida) {
+            statusLines.push(`<span style="color:#6b7280;font-size:9px;">SC ${formatT(inc.entrada_comida)}</span>`);
+          }
+          if (inc.salida_comida) {
+            statusLines.push(`<span style="color:#6b7280;font-size:9px;">RC ${formatT(inc.salida_comida)}</span>`);
+          }
+
+          if (inc.salida_turno) {
+            let slColor = "#374151";
+            if (rSal && hFin) {
+              const diffSal = timeDiffMins(rSal, hFin);
+              if (diffSal > 5) slColor = "#16a34a";
+            }
+            statusLines.push(`<span style="color:${slColor};font-weight:700;font-size:10px;">SL ${formatT(inc.salida_turno)}</span>`);
+          } else {
+            statusLines.push(`<span style="color:#dc2626;font-size:9px;font-weight:700;">SL (-:--)</span>`);
+            bgColor = colorMap.tarde;
+          }
+        }
+
+        const watermarkNum = `<span style="position:absolute;top:2px;right:4px;font-size:22px;font-weight:900;color:rgba(0,0,0,0.18);line-height:1;pointer-events:none;">${dayNum}</span>`;
+        const innerContent = statusLines.map(s => `<div style="line-height:1.3;">${s}</div>`).join("");
+
+        cells.push(
+          `<td style="position:relative;width:${CELL_W};height:${CELL_H};background-color:${bgColor};border:1px solid #d1d5db;padding:4px 5px;vertical-align:top;">` +
+          watermarkNum +
+          `<div style="margin-top:2px;">${innerContent}</div>` +
+          `</td>`
+        );
+      });
+
+      const rows = [];
+      for (let i = 0; i < cells.length; i += 6) {
+        const chunk = cells.slice(i, i + 6);
+        while (chunk.length < 6) {
+          chunk.push(`<td style="width:${CELL_W};height:${CELL_H};border:1px solid #e5e7eb;background-color:#f9fafb;"></td>`);
+        }
+        rows.push(`<tr>${chunk.join("")}</tr>`);
+      }
+
+      const calendarTable = `
+        <table style="border-collapse:collapse;width:100%;table-layout:fixed;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;">
+          <thead><tr>${headerRow}</tr></thead>
+          <tbody>${rows.join("")}</tbody>
+        </table>
+      `;
+
+      const legendHtml = `
+        <div style="margin:10px 0 16px;font-family:'Segoe UI',sans-serif;font-size:11px;color:#6b7280;display:flex;flex-wrap:wrap;gap:8px;">
+          <span style="display:inline-flex;align-items:center;gap:4px;"><span style="display:inline-block;width:12px;height:12px;background-color:#d1fae5;border:1px solid #a7f3d0;border-radius:2px;"></span> A tiempo</span>
+          <span style="display:inline-flex;align-items:center;gap:4px;"><span style="display:inline-block;width:12px;height:12px;background-color:#fee2e2;border:1px solid #fca5a5;border-radius:2px;"></span> Justificar</span>
+          <span style="display:inline-flex;align-items:center;gap:4px;"><span style="display:inline-block;width:12px;height:12px;background-color:#ffedd5;border:1px solid #fdba74;border-radius:2px;"></span> Retardo</span>
+          <span style="display:inline-flex;align-items:center;gap:4px;"><span style="display:inline-block;width:12px;height:12px;background-color:#f3f4f6;border:1px solid #d1d5db;border-radius:2px;"></span> Inasistencia</span>
+          <span style="display:inline-flex;align-items:center;gap:4px;"><span style="display:inline-block;width:12px;height:12px;background-color:#ede9fe;border:1px solid #c4b5fd;border-radius:2px;"></span> Homeoffice / Vacaciones</span>
+        </div>
+      `;
+
+      const listLines = [];
+      const sortedActiveIncidencias = Array.from(activeMap.values())
+        .filter(inc => !inc.omitida)
+        .sort((a, b) => new Date(a.fecha).getTime() - new Date(b.fecha).getTime());
+
+      sortedActiveIncidencias.forEach((inc) => {
+        const date = new Date(inc.fecha);
+        const dayName = diasSemana[date.getUTCDay()];
+        const dayNameNorm = dayName.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+        const dayNum = date.getUTCDate().toString().padStart(2, "0");
+        const hDia = horario[dayNameNorm];
+
+        const capitalizedName = dayName.charAt(0).toUpperCase() + dayName.slice(1);
+        const parts = [`<strong>${capitalizedName} ${dayNum}.</strong>`];
+
+        const rEnt = parseTime(inc.entrada_turno);
+        const rSal = parseTime(inc.salida_turno);
+        const hIni = hDia ? parseHorarioTime(hDia.inicio) : null;
+        const hFin = hDia ? parseHorarioTime(hDia.fin) : null;
+
+        const isAllNull = !inc.entrada_turno && !inc.salida_turno && !inc.entrada_comida && !inc.salida_comida;
+
+        if (inc.specialLabel) {
+          // Homeoffice o Vacaciones: solo mostrar la etiqueta especial
+          parts.push(`${inc.specialLabel}.`);
+        } else if (isAllNull) {
+          parts.push("Inasistencia.");
+        } else {
+          if (inc.entrada_turno && hIni) {
+            const diffEnt = timeDiffMins(rEnt, hIni);
+            let elColor = "";
+            if (diffEnt < 0) elColor = "color:#16a34a;";
+            else if (diffEnt > 15) elColor = "color:#dc2626;";
+            else if (diffEnt >= 6) elColor = "color:#ea580c;";
+            const elStyle = `font-weight:bold;${elColor ? ` ${elColor}` : ""}`;
+            const elText = `<span style="${elStyle}">EL (${formatT(inc.entrada_turno)})</span>`;
+
+            if (diffEnt > 5) {
+              parts.push(`${elText} Se registra entrada ${diffEnt} minutos tarde. Entrada laboral normal ${hDia.inicio} horas.`);
+            } else if (diffEnt < 0) {
+              parts.push(`${elText} Se registra entrada ${-diffEnt} minutos antes. Entrada laboral normal ${hDia.inicio} horas.`);
+            } else {
+              parts.push(`${elText} Entrada a tiempo.`);
+            }
+          } else if (!inc.entrada_turno) {
+            parts.push("Falta registro de entrada.");
+          }
+
+          if (inc.salida_turno && hFin) {
+            const diffSal = timeDiffMins(rSal, hFin);
+            let slColor = "";
+            if (diffSal > 5) slColor = "color:#16a34a;";
+            const slStyle = `font-weight:bold;${slColor ? ` ${slColor}` : ""}`;
+            const slText = `<span style="${slStyle}">SL (${formatT(inc.salida_turno)})</span>`;
+
+            if (diffSal > 5) {
+              parts.push(`${slText} Se reponen ${diffSal} minutos del tiempo. Salida laboral normal ${hDia.fin} horas.`);
+            } else if (diffSal < 0) {
+              parts.push(`${slText} Se registra salida ${-diffSal} minutos antes. Salida laboral normal ${hDia.fin} horas.`);
+            } else {
+              parts.push(`${slText} Salida a tiempo.`);
+            }
+          } else if (!inc.salida_turno) {
+            parts.push("Falta registro de salida.");
+          }
+
+          if (inc.entrada_comida && inc.salida_comida) {
+            const rEntC = parseTime(inc.entrada_comida);
+            const rSalC = parseTime(inc.salida_comida);
+            if (rEntC && rSalC) {
+              const diffC = timeDiffMins(rSalC, rEntC);
+              if (diffC > 30) {
+                parts.push(`Comida (${formatT(inc.entrada_comida)} a ${formatT(inc.salida_comida)}) Horario de comida excedido por ${diffC - 30} minutos.`);
+              }
+            }
+          }
+        }
+
+        if (inc.observaciones) parts.push(`<strong>Motivo:</strong> ${inc.observaciones}.`);
+        if (inc.observaciones_comida) parts.push(`<strong>Motivo (Comida):</strong> ${inc.observaciones_comida}.`);
+
+        listLines.push(`<div style="margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid #e5e7eb;">${parts.join(" ")}</div>`);
+      });
+
+      const htmlList = listLines.length > 0 ? `
+        <div style="background-color:#f9fafb;border-left:4px solid #caab55;padding:15px;margin:15px 0;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;font-size:14px;line-height:1.6;color:#374151;">
+          ${listLines.join("")}
+        </div>
+      ` : "";
+
+      const mesesNombres = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+      const activeMes = (document.getElementById("mes") as HTMLSelectElement).value;
+      const activeAnio = (document.getElementById("anio") as HTMLSelectElement).value;
+      const activeMesName = mesesNombres[parseInt(activeMes, 10) - 1];
+
+      let emailSubject = "";
+      if (currentFortnightFilter === "1") {
+        emailSubject = `[SiGeT] Reporte de incidencias - ${colaboradorName} - Quincena 1 ${activeMesName} ${activeAnio}`;
+      } else if (currentFortnightFilter === "2") {
+        emailSubject = `[SiGeT] Reporte de incidencias - ${colaboradorName} - Quincena 2 ${activeMesName} ${activeAnio}`;
+      } else {
+        emailSubject = `[SiGeT] Reporte de incidencias - ${colaboradorName} - ${activeMesName} ${activeAnio}`;
+      }
+
+      return `
+        <div style="border:1px solid #e5e7eb; padding: 20px; border-radius: 8px; font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif; text-align: left;">
+          <div style="margin-bottom: 20px; border-bottom: 2px solid #881912; padding-bottom: 10px;">
+            <div style="color: #6b7280; font-size: 12px; font-weight: bold; margin-bottom: 4px;">ASUNTO:</div>
+            <div style="color: #111827; font-size: 15px; font-weight: bold;">${emailSubject}</div>
+          </div>
+          <p style="margin:0 0 16px;color:#374151;">Buen día Ing. Director CSH,</p>
+          <p style="margin:0 0 16px;color:#374151;"><strong>Colaborador:</strong> ${colaboradorName}</p>
+          <p style="margin:0 0 16px;color:#374151;">Se envía el presente correo correspondiente con los registros de las incidencias y sus justificaciones:</p>
+          <div style="margin:20px 0;">
+            ${calendarTable}
+            ${legendHtml}
+          </div>
+          ${htmlList}
+        </div>
+      `;
+    }
+
+    btnsPreviewReporte.forEach(btn => {
+      btn.addEventListener("click", () => {
+        if (!previewModal || !previewReporteContainer) return;
+        const html = generateEmailPreviewHtml();
+        previewReporteContainer.innerHTML = html;
+        previewModal.classList.remove("hidden");
+        previewModal.classList.add("flex");
+      });
+    });
 
     btnsVerTabla.forEach(btn => {
       btn.addEventListener("click", () => {
@@ -1087,12 +1651,8 @@ const GOOGLE_APP_ID = import.meta.env.GOOGLE_APP_ID || process.env.GOOGLE_APP_ID
       const activeMes = (document.getElementById("mes") as HTMLSelectElement).value;
       const activeAnio = (document.getElementById("anio") as HTMLSelectElement).value;
 
-      // 1. Filtrar incidencias activas en el periodo seleccionado y validadas
-      const activeIncidencias = incidenciasToSave.filter((inc) => {
-        const toggle = document.getElementById(`toggle-${inc.index}`) as HTMLInputElement;
-        const isToggled = toggle ? toggle.checked : false;
-        if (!isToggled) return false;
-
+      // 1. Filtrar incidencias en el periodo seleccionado (tanto Enviar como Omitir)
+      const periodIncidencias = incidenciasToSave.filter((inc) => {
         const dateObj = new Date(inc.fecha);
         const dayNum = dateObj.getUTCDate();
 
@@ -1101,38 +1661,55 @@ const GOOGLE_APP_ID = import.meta.env.GOOGLE_APP_ID || process.env.GOOGLE_APP_ID
         return true;
       });
 
-      if (activeIncidencias.length === 0) {
-        toast.error("No hay incidencias seleccionadas para enviar en esta quincena/periodo.");
+      if (periodIncidencias.length === 0) {
+        toast.error("No hay incidencias para enviar en esta quincena/periodo.");
         return;
       }
 
-      // Validar justificaciones en el cliente
+      // Validar justificaciones en el cliente (solo para los que no están omitidos)
       let valid = true;
       const payload: any[] = [];
 
-      activeIncidencias.forEach((inc) => {
+      periodIncidencias.forEach((inc) => {
+        const toggle = document.getElementById(`toggle-${inc.index}`) as HTMLInputElement;
+        const isOmitida = toggle ? !toggle.checked : false;
+
         const obsEl = document.getElementById(`obs-${inc.index}`) as HTMLTextAreaElement;
         const obsComidaEl = document.getElementById(`obs-comida-${inc.index}`) as HTMLTextAreaElement;
 
-        let valTurno = obsEl ? obsEl.value.trim() : "";
+        // Verificar toggles especiales Homeoffice / Vacaciones
+        const hoEl = document.getElementById(`homeoffice-${inc.index}`) as HTMLInputElement;
+        const vacEl = document.getElementById(`vacaciones-${inc.index}`) as HTMLInputElement;
+        const isHomeoffice = hoEl ? hoEl.checked : false;
+        const isVacaciones = vacEl ? vacEl.checked : false;
+        const specialLabel = isHomeoffice ? "Homeoffice" : isVacaciones ? "Vacaciones" : null;
+
+        let valTurno = specialLabel || (obsEl ? obsEl.value.trim() : "");
         let valComida = obsComidaEl ? obsComidaEl.value.trim() : "";
 
-        if (inc.requiresObs) {
-          if (valTurno.length < 5) {
-            if (obsEl) obsEl.classList.add("border-red-500");
-            valid = false;
-          } else {
-            if (obsEl) obsEl.classList.remove("border-red-500");
+        if (!isOmitida) {
+          if (inc.requiresObs && !specialLabel) {
+            if (valTurno.length < 5) {
+              if (obsEl) obsEl.classList.add("border-red-500");
+              valid = false;
+            } else {
+              if (obsEl) obsEl.classList.remove("border-red-500");
+            }
+          } else if (obsEl) {
+            obsEl.classList.remove("border-red-500");
           }
-        }
 
-        if (inc.requiresObsComida) {
-          if (valComida.length < 5) {
-            if (obsComidaEl) obsComidaEl.classList.add("border-red-500");
-            valid = false;
-          } else {
-            if (obsComidaEl) obsComidaEl.classList.remove("border-red-500");
+          if (inc.requiresObsComida) {
+            if (valComida.length < 5) {
+              if (obsComidaEl) obsComidaEl.classList.add("border-red-500");
+              valid = false;
+            } else {
+              if (obsComidaEl) obsComidaEl.classList.remove("border-red-500");
+            }
           }
+        } else {
+          if (obsEl) obsEl.classList.remove("border-red-500");
+          if (obsComidaEl) obsComidaEl.classList.remove("border-red-500");
         }
 
         payload.push({
@@ -1146,6 +1723,7 @@ const GOOGLE_APP_ID = import.meta.env.GOOGLE_APP_ID || process.env.GOOGLE_APP_ID
           entrada_comida: inc.entrada_comida,
           salida_comida: inc.salida_comida,
           observaciones_comida: valComida || null,
+          omitida: isOmitida,
         });
       });
 
@@ -1171,6 +1749,7 @@ const GOOGLE_APP_ID = import.meta.env.GOOGLE_APP_ID || process.env.GOOGLE_APP_ID
             anio: parseInt(activeAnio, 10),
             quincena: quincenaVal,
             incidencias: payload,
+            todosLosRegistros: registrosAPI,
           }),
         });
 
@@ -1198,57 +1777,71 @@ const GOOGLE_APP_ID = import.meta.env.GOOGLE_APP_ID || process.env.GOOGLE_APP_ID
         let valid = true;
         const payload: any[] = [];
 
-        incidenciasToSave.forEach((inc) => {
-          const toggle = document.getElementById(
-            `toggle-${inc.index}`,
-          ) as HTMLInputElement;
-          // Only send if toggle is checked
-          if (!toggle || !toggle.checked) {
-            return;
-          }
+        // Filtrar incidencias en el periodo seleccionado (tanto Enviar como Omitir)
+        const periodIncidencias = incidenciasToSave.filter((inc) => {
+          const dateObj = new Date(inc.fecha);
+          const dayNum = dateObj.getUTCDate();
 
-          const obsEl = document.getElementById(
-            `obs-${inc.index}`,
-          ) as HTMLTextAreaElement;
-          const obsComidaEl = document.getElementById(
-            `obs-comida-${inc.index}`,
-          ) as HTMLTextAreaElement;
+          if (currentFortnightFilter === "1") return dayNum <= 15;
+          if (currentFortnightFilter === "2") return dayNum >= 16;
+          return true;
+        });
 
-          let valTurno = obsEl ? obsEl.value.trim() : "";
+        periodIncidencias.forEach((inc) => {
+          const toggle = document.getElementById(`toggle-${inc.index}`) as HTMLInputElement;
+          const isOmitida = toggle ? !toggle.checked : false;
+
+          const obsEl = document.getElementById(`obs-${inc.index}`) as HTMLTextAreaElement;
+          const obsComidaEl = document.getElementById(`obs-comida-${inc.index}`) as HTMLTextAreaElement;
+
+          // Verificar toggles especiales Homeoffice / Vacaciones
+          const hoEl = document.getElementById(`homeoffice-${inc.index}`) as HTMLInputElement;
+          const vacEl = document.getElementById(`vacaciones-${inc.index}`) as HTMLInputElement;
+          const isHomeoffice = hoEl ? hoEl.checked : false;
+          const isVacaciones = vacEl ? vacEl.checked : false;
+          const specialLabel = isHomeoffice ? "Homeoffice" : isVacaciones ? "Vacaciones" : null;
+
+          let valTurno = specialLabel || (obsEl ? obsEl.value.trim() : "");
           let valComida = obsComidaEl ? obsComidaEl.value.trim() : "";
 
-          if (inc.requiresObs) {
-            if (valTurno.length < 5) {
-              if (obsEl) obsEl.classList.add("border-red-500");
-              valid = false;
-            } else {
-              if (obsEl) obsEl.classList.remove("border-red-500");
+          if (!isOmitida) {
+            if (inc.requiresObs && !specialLabel) {
+              if (valTurno.length < 5) {
+                if (obsEl) obsEl.classList.add("border-red-500");
+                valid = false;
+              } else {
+                if (obsEl) obsEl.classList.remove("border-red-500");
+              }
+            } else if (obsEl) {
+              obsEl.classList.remove("border-red-500");
             }
+
+            if (inc.requiresObsComida) {
+              if (valComida.length < 5) {
+                if (obsComidaEl) obsComidaEl.classList.add("border-red-500");
+                valid = false;
+              } else {
+                if (obsComidaEl) obsComidaEl.classList.remove("border-red-500");
+              }
+            }
+          } else {
+            if (obsEl) obsEl.classList.remove("border-red-500");
+            if (obsComidaEl) obsComidaEl.classList.remove("border-red-500");
           }
 
-          if (inc.requiresObsComida) {
-            if (valComida.length < 5) {
-              if (obsComidaEl) obsComidaEl.classList.add("border-red-500");
-              valid = false;
-            } else {
-              if (obsComidaEl) obsComidaEl.classList.remove("border-red-500");
-            }
-          }
-
-          if (valid) {
-            payload.push({
-              mes: inc.mes,
-              quincena: inc.quincena,
-              fecha: inc.fecha,
-              entrada_turno: inc.entrada_turno,
-              salida_turno: inc.salida_turno,
-              tiempo_turno: inc.tiempo_turno,
-              observaciones: valTurno || null,
-              entrada_comida: inc.entrada_comida,
-              salida_comida: inc.salida_comida,
-              observaciones_comida: valComida || null,
-            });
-          }
+          payload.push({
+            mes: inc.mes,
+            quincena: inc.quincena,
+            fecha: inc.fecha,
+            entrada_turno: inc.entrada_turno,
+            salida_turno: inc.salida_turno,
+            tiempo_turno: inc.tiempo_turno,
+            observaciones: valTurno || null,
+            entrada_comida: inc.entrada_comida,
+            salida_comida: inc.salida_comida,
+            observaciones_comida: valComida || null,
+            omitida: isOmitida,
+          });
         });
 
         if (!valid) {
@@ -1259,7 +1852,7 @@ const GOOGLE_APP_ID = import.meta.env.GOOGLE_APP_ID || process.env.GOOGLE_APP_ID
         }
 
         if (payload.length === 0) {
-          toast.error("No hay incidencias seleccionadas para enviar.");
+          toast.error("No hay incidencias seleccionadas.");
           return;
         }
 

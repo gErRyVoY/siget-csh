@@ -8,6 +8,46 @@ Todos los cambios notables en este proyecto serán documentados en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Versionado Semántico](https://semver.org/lang/es/).
 
+## 2026-07-16 (Toggles Homeoffice/Vacaciones, Correcciones de UI y Pulido Final en Incidencias)
+
+### Feature: Estados Especiales para Inasistencias y Correcciones de UI
+*   **Vista de Incidencias (`src/pages/user/perfil/incidencias.astro`):**
+    *   Añadidos toggles **Homeoffice** (visible solo en sábados) y **Vacaciones** (visible cualquier día) en la cabecera de las tarjetas de inasistencia total. Los toggles son mutuamente excluyentes y ocultan el textarea de "Motivo (Turno)".
+    *   **Ocultación por Omisión:** Si se selecciona el toggle "Omitir" en un día, se ocultan automáticamente los campos de texto de "Motivo (Turno)" y "Motivo (Comida)".
+    *   **Corrección de Horario Excedido:** Se corrigió la lógica para que la leyenda de advertencia de almuerzo "Horario excedido" (y su correspondiente textarea de justificación) solo aparezca cuando existen *ambas* marcas (entrada comida y salida comida) y la diferencia es mayor a 30 minutos.
+    *   **Visualización de Comida Incompleta:** La tabla del preview ahora renderiza marcas individuales parciales/incompletas de comida (`SC` o `RC` según existan en la base de datos) en lugar de ocultarlas si falta una de ellas, posicionando el `SL (-:--)` al final de la celda.
+    *   **Simplificación de la Leyenda:** Actualizada la leyenda del reporte/preview a "A tiempo" (removiendo el texto de "Reposición").
+    *   **Asunto de Correo Quincenal:** Se removió el sufijo de semanas (ej: `- Semana #27 a #29`) del asunto del correo cuando el reporte se envía de manera quincenal.
+*   **Backend (`src/pages/api/user/incidencias/send-report.ts`):**
+    *   Implementada la misma lógica de marcas individuales parciales (`SC` y `RC`) para la tabla de calendario del correo real enviado.
+    *   Leyenda del correo real actualizada a "A tiempo" y añadido el bloque morado para "Homeoffice / Vacaciones" a la leyenda de colores.
+    *   Se eliminó la información de semanas del asunto en el envío real de correos de la Quincena 1 y 2.
+
+
+## 2026-07-16 (Actualización de Vista y Reporte de Incidencias)
+
+### Feature: Optimización de Vista y Reporte de Incidencias
+*   **Base de datos (`prisma/schema.prisma`):**
+    *   Añadido campo `omitida` (boolean con valor por defecto false) al modelo `Incidencia` para persistir la exclusión.
+*   **API (`src/pages/api/user/incidencias.ts` & `src/pages/api/user/incidencias/send-report.ts`):**
+    *   Persistencia del estado `omitida` en base de datos.
+    *   En `send-report.ts`, se utiliza el nuevo parámetro `todosLosRegistros` enviado desde el cliente para armar correctamente las celdas vacías y la estructura de días (Lun-Sáb) de la tabla de calendario del correo.
+    *   Exclusión de visualización y detalles en el correo para incidencias con `omitida === true`.
+    *   Cálculo del rango de semanas del año de forma dinámica e inclusión en el asunto del correo para Quincena 1 y Quincena 2.
+    *   Actualización de textos en la leyenda de colores (A tiempo, Justificar, Retardo, Inasistencia).
+*   **Vista (`src/pages/user/perfil/incidencias.astro`):**
+    *   Lógica por defecto del toggle a "Enviar" si no existen comentarios.
+    *   Se evita mostrar la leyenda "Horario excedido" en los registros marcados como incompletos.
+    *   Sincronización de los colores de las tarjetas de incidencia con la tabla calendario (`#ca1c1c` para rojo, `#ea580c` para naranja, `#16a34a` para verde).
+    *   Implementación de cierre de los modales "Ver tabla", "Enviar reporte" y "Previsualización del correo" al presionar la tecla `Escape` o hacer clic fuera del modal.
+    *   Sustitución de los botones de texto por botones compactos con iconos y tooltips (`title`):
+        - **Ojo**: Previsualización en vivo del correo del reporte.
+        - **Calendario**: Ver tabla mensual/quincenal.
+        - **Sobre de carta**: Enviar reporte final.
+        - **Disco 3½**: Guardar justificaciones/incidencias.
+    *   Añadido modal `#preview-reporte-modal` y generador de previsualización en vivo en JS, simulando el HTML/CSS exacto de AWS SES.
+
+
 ## 2026-07-15 (Lógica Avanzada de Asignación v2, Redirección Post-Ticket y Mejoras de Notificaciones)
 
 ### Feature: Lógica de Asignación Automática Mejorada

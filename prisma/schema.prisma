@@ -501,6 +501,7 @@ model Incidencia {
   salida_comida        String?  @db.VarChar(10)
   observaciones_comida String?
   imagen_reporte       String?
+  omitida              Boolean  @default(false)
   usuario              Usuario  @relation(fields: [usuarioId], references: [id])
 
   @@index([usuarioId])
