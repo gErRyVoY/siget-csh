@@ -39,7 +39,7 @@ export function initTicketWizard(treeData: CategoriesTreeData) {
     const lblClave = document.getElementById('lbl-clave');
 
     const submitButton = document.getElementById('submit-ticket') as HTMLButtonElement;
-    const ticketForm = document.getElementById('ticket-form');
+    const ticketForm = document.getElementById('ticket-form') as HTMLElement | null;
     
     // File Upload Elements
     const dropZone = document.getElementById('drop-zone');
@@ -548,7 +548,7 @@ export function initTicketWizard(treeData: CategoriesTreeData) {
             toast.success('¡Ticket Enviado!', { duration: 3000 });
 
             setTimeout(() => {
-                const redirectUrl = ticketForm.dataset.redirectUrl || '/tickets/soporte';
+                const redirectUrl = ticketForm!.dataset.redirectUrl || '/tickets/soporte';
                 window.location.href = redirectUrl;
             }, 1500);
 

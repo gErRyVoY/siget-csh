@@ -56,8 +56,8 @@ const rolNombre = user?.rol?.rol ?? "";
 const rolDisplay =
     rolNombre.charAt(0).toUpperCase() + rolNombre.slice(1).toLowerCase();
 
-// Vacation status
-const enVacaciones = user?.vacaciones ?? false;
+// Assign-tickets toggle status
+const aceptaTickets = (user as any)?.acepta_tickets ?? true;
 ---
 
 <div id="user-profile-wrapper" class="relative">
@@ -123,18 +123,18 @@ const enVacaciones = user?.vacaciones ?? false;
                         <span>Reporte de incidencias</span>
                     </a>
 
-                    {/* Toggle de Vacaciones */}
+                    {/* Toggle de Asignación de Tickets */}
                     <div class="flex items-center justify-between px-2 py-2 rounded-sm hover:bg-accent transition-colors">
-                        <span class="text-sm">Vacaciones</span>
+                        <span class="text-sm" id="vacaciones-status-text">{aceptaTickets ? "Asignar tickets" : "No asignar tickets"}</span>
                         <label
                             class="relative inline-flex h-5 w-9 cursor-pointer items-center justify-center rounded-full"
-                            title="Cambiar estatus de vacaciones"
+                            title="Activar/Desactivar asignación de tickets"
                         >
                             <input
                                 type="checkbox"
                                 id="vacation-toggle-menu"
                                 class="sr-only peer"
-                                checked={enVacaciones}
+                                checked={aceptaTickets}
                             />
                             <div class="h-5 w-9 absolute rounded-full transition-all opacity-80 peer-checked:opacity-100 bg-muted-foreground peer-checked:bg-secondary" />
                             <div class="absolute top-[2px] left-[2px] bg-white border border-gray-300 rounded-full h-4 w-4 transition-transform peer-checked:translate-x-[16px] peer-checked:border-white z-10" />
@@ -275,28 +275,33 @@ const enVacaciones = user?.vacaciones ?? false;
                 const res = await fetch("/api/user/profile", {
                     method: "PATCH",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ vacaciones: newVal }),
+                    body: JSON.stringify({ acepta_tickets: newVal }),
                 });
                 if (!res.ok) throw new Error((await res.json()).message);
+
+                // Actualizar label dinámico en el menú
+                const menuLabel = document.getElementById("vacaciones-status-text");
+                if (menuLabel) menuLabel.textContent = newVal ? "Asignar tickets" : "No asignar tickets";
+
                 toast.success(
                     newVal
-                        ? "Estatus de vacaciones activado"
-                        : "Estatus de vacaciones desactivado",
+                        ? "Asignación de tickets activada"
+                        : "Asignación de tickets desactivada",
                 );
 
                 // Sync profile page toggle if we are on the profile page
                 if (window.location.pathname === "/user/perfil") {
                     const profileToggle = document.getElementById(
-                        "vacaciones",
+                        "acepta-tickets-toggle",
                     ) as HTMLInputElement | null;
                     const profileText = document.getElementById(
-                        "vacaciones-status-text",
+                        "acepta-tickets-status-text",
                     );
                     if (profileToggle) profileToggle.checked = newVal;
                     if (profileText)
                         profileText.textContent = newVal
-                            ? "De vacaciones"
-                            : "En oficina";
+                            ? "Asignar tickets"
+                            : "No asignar tickets";
                 }
             } catch (err: any) {
                 vacationToggle.checked = !newVal;

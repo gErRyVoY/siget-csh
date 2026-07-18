@@ -62,19 +62,19 @@ const horarioString = JSON.stringify(dbUser.horario_disponibilidad ?? {});
 
           <div class="space-y-2 flex flex-col justify-center">
             <label class="block text-sm font-medium mb-1"
-              >Estatus de vacaciones</label
+              >Asignación de tickets</label
             >
             <div class="flex items-center gap-3">
               <label
                 class="relative inline-flex h-6 w-11 cursor-pointer items-center justify-center rounded-full group"
-                title="Activar/Desactivar Vacaciones"
+                title="Activar/Desactivar asignación automática de tickets"
               >
                 <input
                   type="checkbox"
-                  id="vacaciones"
-                  name="vacaciones"
+                  id="acepta-tickets-toggle"
+                  name="acepta_tickets"
                   class="sr-only peer"
-                  checked={dbUser.vacaciones}
+                  checked={dbUser.acepta_tickets}
                 />
                 <div
                   class="h-6 w-11 absolute rounded-full transition-all peer-focus:outline-none opacity-80 peer-checked:opacity-100 bg-muted-foreground peer-checked:bg-secondary"
@@ -85,13 +85,13 @@ const horarioString = JSON.stringify(dbUser.horario_disponibilidad ?? {});
                 >
                 </div>
               </label>
-              <span class="text-sm font-medium" id="vacaciones-status-text">
-                {dbUser.vacaciones ? "De vacaciones" : "En oficina"}
+              <span class="text-sm font-medium" id="acepta-tickets-status-text">
+                {dbUser.acepta_tickets ? "Asignar tickets" : "No asignar tickets"}
               </span>
             </div>
             <p class="text-xs text-muted-foreground mt-1">
-              Si estás de vacaciones, no se te asignarán nuevos tickets
-              automáticamente.
+              Cuando está activo, se te asignarán nuevos tickets
+              automáticamente según tu horario.
             </p>
           </div>
         </div>
@@ -233,37 +233,39 @@ const horarioString = JSON.stringify(dbUser.horario_disponibilidad ?? {});
     }
 
     // Toggle text updater and auto-save
-    const vacToggle = document.getElementById("vacaciones") as HTMLInputElement;
-    const vacText = document.getElementById("vacaciones-status-text");
+    const vacToggle = document.getElementById("acepta-tickets-toggle") as HTMLInputElement;
+    const vacText = document.getElementById("acepta-tickets-status-text");
     vacToggle?.addEventListener("change", async () => {
       const newVal = vacToggle.checked;
       if (vacText) {
-        vacText.textContent = newVal ? "De vacaciones" : "En oficina";
+        vacText.textContent = newVal ? "Asignar tickets" : "No asignar tickets";
       }
 
       try {
         const res = await fetch("/api/user/profile", {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ vacaciones: newVal }),
+          body: JSON.stringify({ acepta_tickets: newVal }),
         });
 
         if (!res.ok) {
           throw new Error((await res.json()).message || "Error al actualizar estatus");
         }
 
-        toast.success(newVal ? "Estatus de vacaciones activado" : "Estatus de vacaciones desactivado");
+        toast.success(newVal ? "Asignación de tickets activada" : "Asignación de tickets desactivada");
 
-        // Sync sidebar toggle
-        const sidebarToggle = document.getElementById("vacation-toggle-menu") as HTMLInputElement | null;
-        if (sidebarToggle) {
-          sidebarToggle.checked = newVal;
+        // Sync menu toggle
+        const menuToggle = document.getElementById("vacation-toggle-menu") as HTMLInputElement | null;
+        if (menuToggle) {
+          menuToggle.checked = newVal;
+          const menuLabel = document.getElementById("vacaciones-status-text");
+          if (menuLabel) menuLabel.textContent = newVal ? "Asignar tickets" : "No asignar tickets";
         }
       } catch (err: any) {
         // Revert on error
         vacToggle.checked = !newVal;
         if (vacText) {
-          vacText.textContent = vacToggle.checked ? "De vacaciones" : "En oficina";
+          vacText.textContent = vacToggle.checked ? "Asignar tickets" : "No asignar tickets";
         }
         toast.error(err.message || "Error al actualizar estatus");
       }
@@ -291,7 +293,7 @@ const horarioString = JSON.stringify(dbUser.horario_disponibilidad ?? {});
 
       const data = {
         alias: formData.get("alias"),
-        vacaciones: vacToggle.checked,
+        acepta_tickets: vacToggle.checked,
         horario_disponibilidad:
           Object.keys(horarioData).length > 0 ? horarioData : null,
       };

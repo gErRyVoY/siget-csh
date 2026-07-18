@@ -136,7 +136,7 @@ export function initializeUserEditForm() {
                 rolId: parseInt(formData.get('rolId') as string),
                 clave: formData.get('clave') as string,
                 activo: (form.elements.namedItem('activo') as HTMLInputElement).checked,
-                vacaciones: (form.elements.namedItem('vacaciones') as HTMLInputElement).checked,
+                acepta_tickets: (form.elements.namedItem('acepta_tickets') as HTMLInputElement).checked,
                 auditor_docs: (form.elements.namedItem('auditor_docs') as HTMLInputElement).checked,
                 auditor_req: (form.elements.namedItem('auditor_req') as HTMLInputElement).checked,
                 horario_disponibilidad: Object.keys(horarioData).length > 0 ? horarioData : null,

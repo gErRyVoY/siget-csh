@@ -40,7 +40,7 @@ if (["Magno", "Ejecutivo"].includes(empresa.tipo)) {
         </div>
         <div class="flex items-center">
           <label class="relative inline-flex items-center cursor-pointer">
-            <input type="checkbox" id="toggle-tckt-virtual" class="sr-only peer" {empresa.tckt_virtual ? 'checked' : ''}>
+            <input type="checkbox" id="toggle-tckt-virtual" class="sr-only peer" checked={empresa.tckt_virtual}>
             <div class="w-11 h-6 bg-muted peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
             <span id="tckt-virtual-label" class="ml-2 text-sm font-semibold text-foreground">{empresa.tckt_virtual ? 'Activado' : 'Desactivado'}</span>
           </label>
@@ -71,7 +71,7 @@ if (["Magno", "Ejecutivo"].includes(empresa.tipo)) {
         </div>
         <div>
           <label for="vacation-select" class="mr-2 text-sm font-medium"
-            >Vacaciones:</label
+            >Asig. Tickets:</label
           >
           <select
             id="vacation-select"
@@ -107,7 +107,7 @@ if (["Magno", "Ejecutivo"].includes(empresa.tipo)) {
             <tr>
               <th class="p-4">Nombre</th>
               <th class="p-4">Estado</th>
-              <th class="p-4">Vacaciones</th>
+              <th class="p-4">Asig. Tickets</th>
             </tr>
           </thead>
           <tbody id="users-table-body"></tbody>
@@ -167,7 +167,7 @@ if (["Magno", "Ejecutivo"].includes(empresa.tipo)) {
       });
     }
 
-    const tableBody = document.getElementById("users-table-body");
+    const tableBody = document.getElementById("users-table-body") as HTMLTableSectionElement | null;
     const noUsersMessage = document.getElementById("no-users-message");
     const paginationInfo = document.getElementById("pagination-info");
     const paginationControls = document.getElementById("pagination-controls");
@@ -184,8 +184,8 @@ if (["Magno", "Ejecutivo"].includes(empresa.tipo)) {
 
     async function fetchAndRenderUsers() {
       if (noUsersMessage) noUsersMessage.classList.add("hidden");
-      tableBody.classList.remove("hidden");
-      tableBody.innerHTML = `
+      tableBody!.classList.remove("hidden");
+      tableBody!.innerHTML = `
         <tr>
           <td colspan="3" class="p-8 text-center text-muted-foreground">
             <div class="flex items-center justify-center gap-2">
@@ -206,13 +206,13 @@ if (["Magno", "Ejecutivo"].includes(empresa.tipo)) {
           throw new Error(`HTTP error! status: ${response.status}`);
         const { users, pagination } = await response.json();
 
-        tableBody.innerHTML = "";
+        tableBody!.innerHTML = "";
         if (users.length === 0) {
           if (noUsersMessage) noUsersMessage.classList.remove("hidden");
-          tableBody.classList.add("hidden");
+          tableBody!.classList.add("hidden");
         } else {
           if (noUsersMessage) noUsersMessage.classList.add("hidden");
-          tableBody.classList.remove("hidden");
+          tableBody!.classList.remove("hidden");
           users.forEach((user: any) => {
             const row = document.createElement("tr");
             row.className =
@@ -230,14 +230,14 @@ if (["Magno", "Ejecutivo"].includes(empresa.tipo)) {
               </div>
             `;
 
-            // Render vacation toggle
-            const isVacaciones = user.vacaciones;
+            // Render assign-tickets toggle
+            const aceptaTickets = user.acepta_tickets;
             const vacacionesToggleHtml = `
               <div class="flex items-center" onclick="event.stopPropagation()">
                 <label class="relative inline-flex items-center cursor-pointer">
-                  <input type="checkbox" class="sr-only peer toggle-vacaciones" data-user-id="${user.id}" ${isVacaciones ? 'checked' : ''}>
+                  <input type="checkbox" class="sr-only peer toggle-vacaciones" data-user-id="${user.id}" ${aceptaTickets ? 'checked' : ''}>
                   <div class="w-9 h-5 bg-muted-foreground peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-secondary"></div>
-                  <span class="ml-2 text-xs font-semibold vacaciones-label ${isVacaciones ? 'text-secondary' : 'text-black'}">${isVacaciones ? 'Sí' : 'No'}</span>
+                  <span class="ml-2 text-xs font-semibold vacaciones-label ${aceptaTickets ? 'text-secondary' : 'text-black'}">${aceptaTickets ? 'Sí' : 'No'}</span>
                 </label>
               </div>
             `;
@@ -253,7 +253,7 @@ if (["Magno", "Ejecutivo"].includes(empresa.tipo)) {
                         <td class="p-4">${activoToggleHtml}</td>
                         <td class="p-4">${vacacionesToggleHtml}</td>
                     `;
-            tableBody.appendChild(row);
+            tableBody!.appendChild(row);
           });
 
           // Attach event listeners to the new toggles
@@ -262,7 +262,9 @@ if (["Magno", "Ejecutivo"].includes(empresa.tipo)) {
         renderPagination(pagination);
       } catch (error) {
         console.error("Fetch Error:", error);
-        tableBody.innerHTML = `<tr><td colspan="4" class="p-8 text-center text-destructive">Error al cargar los usuarios.</td></tr>`;
+        if (tableBody) {
+          tableBody.innerHTML = `<tr><td colspan="4" class="p-8 text-center text-destructive">Error al cargar los usuarios.</td></tr>`;
+        }
       }
     }
 
@@ -274,7 +276,7 @@ if (["Magno", "Ejecutivo"].includes(empresa.tipo)) {
           const userId = checkbox.dataset.userId;
           if (!userId) return;
           const newValue = checkbox.checked;
-          const label = checkbox.nextElementSibling?.nextElementSibling as HTMLElement;
+          const label = (checkbox.nextElementSibling?.nextElementSibling ?? null) as HTMLElement | null;
 
           // Optimistic UI update
           if (label) {
@@ -319,7 +321,7 @@ if (["Magno", "Ejecutivo"].includes(empresa.tipo)) {
           const userId = checkbox.dataset.userId;
           if (!userId) return;
           const newValue = checkbox.checked;
-          const label = checkbox.nextElementSibling?.nextElementSibling as HTMLElement;
+          const label = (checkbox.nextElementSibling?.nextElementSibling ?? null) as HTMLElement | null;
 
           // Optimistic UI update
           if (label) {
@@ -333,7 +335,7 @@ if (["Magno", "Ejecutivo"].includes(empresa.tipo)) {
             const response = await fetch('/api/admin/usuarios', {
               method: 'PATCH',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ id: parseInt(userId, 10), vacaciones: newValue })
+              body: JSON.stringify({ id: parseInt(userId, 10), acepta_tickets: newValue })
             });
 
             if (!response.ok) {
@@ -341,7 +343,7 @@ if (["Magno", "Ejecutivo"].includes(empresa.tipo)) {
               throw new Error(errorData.message || 'Error al actualizar');
             }
 
-            toast.success(`Estado de vacaciones actualizado.`);
+            toast.success(`Estado de asignación actualizado.`);
           } catch (error: any) {
             console.error('Error updating user vacation status:', error);
             // Revert UI
@@ -352,7 +354,7 @@ if (["Magno", "Ejecutivo"].includes(empresa.tipo)) {
                 ? 'ml-2 text-xs font-semibold vacaciones-label text-secondary'
                 : 'ml-2 text-xs font-semibold vacaciones-label text-black';
             }
-            toast.error(error.message || 'Error al actualizar vacaciones.');
+            toast.error(error.message || 'Error al actualizar asignación.');
           }
         });
       });
@@ -361,7 +363,7 @@ if (["Magno", "Ejecutivo"].includes(empresa.tipo)) {
     function renderPagination(pagination: any) {
       if (!paginationInfo || !paginationControls) return;
       const { page, totalUsers, totalPages } = pagination;
-      paginationInfo.textContent = `Mostrando ${tableBody.rows.length} de ${totalUsers} usuarios`;
+      paginationInfo.textContent = `Mostrando ${tableBody!.rows.length} de ${totalUsers} usuarios`;
       paginationControls.innerHTML = "";
       if (totalPages <= 1) return;
 

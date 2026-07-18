@@ -145,7 +145,7 @@ const empresas = await prisma.empresa.findMany({
     function applyFilters() {
       const tipoVal = tipoSelect.value;
       const virtualVal = virtualSelect.value;
-      const rows = tableBody.querySelectorAll(".company-row");
+      const rows = tableBody!.querySelectorAll(".company-row");
       let visibleCount = 0;
 
       rows.forEach((row: any) => {
@@ -163,7 +163,7 @@ const empresas = await prisma.empresa.findMany({
         }
       });
 
-      countSpan.textContent = visibleCount.toString();
+      countSpan!.textContent = visibleCount.toString();
       if (visibleCount === 0) {
         noCompaniesMessage?.classList.remove("hidden");
       } else {
@@ -175,7 +175,7 @@ const empresas = await prisma.empresa.findMany({
     virtualSelect.addEventListener("change", applyFilters);
 
     // Event Listeners para los toggles de tckt_virtual
-    const toggles = tableBody.querySelectorAll(".toggle-tckt-virtual");
+    const toggles = tableBody!.querySelectorAll(".toggle-tckt-virtual");
     toggles.forEach((toggle: any) => {
       toggle.addEventListener("change", async (e: any) => {
         const checkbox = e.target as HTMLInputElement;

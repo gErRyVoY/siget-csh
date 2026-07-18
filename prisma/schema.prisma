@@ -68,7 +68,7 @@ model Usuario {
   empresaId               Int
   rolId                   Int
   activo                  Boolean                  @default(true)
-  vacaciones              Boolean                  @default(false)
+  acepta_tickets          Boolean                  @default(true)
   ultimo_login            DateTime                 @default(now()) @db.Timestamp(6)
   horario_disponibilidad  Json?
   carga_actual            Int                      @default(0)
@@ -94,7 +94,7 @@ model Usuario {
 
   @@index([rolId, activo])
   @@index([empresaId])
-  @@index([activo, vacaciones])
+  @@index([activo, acepta_tickets])
   @@map("usuario")
 }
 

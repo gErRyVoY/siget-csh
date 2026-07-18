@@ -20,6 +20,7 @@ async function main() {
   await prisma.permisoRolSeccion.deleteMany({});
   await prisma.seccion.deleteMany({});
   await prisma.logs.deleteMany({});
+  await prisma.incidencia.deleteMany({});
   await prisma.usuario.deleteMany({});
   await prisma.permiso.deleteMany({}); // Limpiar permisos
   await prisma.rol.deleteMany({});      // Limpiar roles

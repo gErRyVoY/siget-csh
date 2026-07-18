@@ -76,8 +76,8 @@ export default defineConfig({
         let horarioDisponibilidad: Record<string, { inicio: string; fin: string }> | undefined = undefined;
 
         try {
-          // Usamos la URL base configurada o localhost
-          const baseUrl = process.env.API_RH_URL || 'http://127.0.0.1:8000';
+          // Usamos la URL base configurada o la de producción por defecto
+          const baseUrl = process.env.API_RH_URL || 'https://pz3bmmqsty.us-east-1.awsapprunner.com';
           const rhResponse = await fetch(`${baseUrl}/api/rh/consultar-trabajador?email=${profile.email}`, {
             headers: {
               'accept': 'application/json',
@@ -162,7 +162,7 @@ export default defineConfig({
               empresaId: empresa.id,
               rolId: defaultRoleId,
               activo: true,
-              vacaciones: false,
+              acepta_tickets: true,
               ...(claveTrabajador && { clave: claveTrabajador }),
               ...(horarioDisponibilidad && { horario_disponibilidad: horarioDisponibilidad }),
             }
@@ -176,7 +176,7 @@ export default defineConfig({
               apellidos: profile.family_name ?? dbUser.apellidos,
               image: userData.thumbnailPhotoUrl ?? dbUser.image,
               ultimo_login: new Date(),
-              ...(claveTrabajador && { clave: claveTrabajador }),
+              ...(!dbUser.clave && claveTrabajador && { clave: claveTrabajador }),
               ...(horarioDisponibilidad && { horario_disponibilidad: horarioDisponibilidad }),
             }
           });
@@ -225,7 +225,7 @@ export default defineConfig({
           token.userId = fullUser.id;
           token.image = fullUser.image;
           token.alias = fullUser.alias ?? undefined;
-          token.vacaciones = fullUser.vacaciones;
+          token.acepta_tickets = fullUser.acepta_tickets;
           
           token.rolId = fullUser.rolId;
           token.rol = fullUser.rol;
@@ -264,7 +264,7 @@ export default defineConfig({
         session.user.empresa = token.empresa as Empresa;
         session.user.image = token.image as string | null;
         session.user.alias = token.alias as string | undefined;
-        session.user.vacaciones = (token.vacaciones as boolean | undefined) ?? false;
+        session.user.acepta_tickets = (token.acepta_tickets as boolean | undefined) ?? true;
         // Propagate flags from rol (stored in token)
         if (session.user.rol) {
           (session.user.rol as any).atiendeTicketsCsh = (token as any).atiendeTicketsCsh ?? false;
@@ -292,7 +292,7 @@ declare module "@auth/core/types" {
       empresa?: Empresa;
       image?: string | null;
       alias?: string;
-      vacaciones?: boolean;
+      acepta_tickets?: boolean;
       permisos?: string[]; // Añadir permisos a la sesión
       secciones?: string[]; // Secciones permitidas
     };
@@ -307,7 +307,7 @@ declare module "@auth/core/jwt" {
     empresa?: Empresa;
     image?: string | null;
     alias?: string;
-    vacaciones?: boolean;
+    acepta_tickets?: boolean;
     permisos?: string[]; // Añadir permisos al token
     secciones?: string[]; // Secciones permitidas
   }

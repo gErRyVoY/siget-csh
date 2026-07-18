@@ -12,7 +12,7 @@ export const PATCH: APIRoute = async ({ request }) => {
 
   try {
     const body = await request.json();
-    const { alias, horario_disponibilidad, vacaciones } = body;
+    const { alias, horario_disponibilidad, acepta_tickets } = body;
 
     const updateData: Record<string, unknown> = {};
 
@@ -27,9 +27,9 @@ export const PATCH: APIRoute = async ({ request }) => {
       updateData.horario_disponibilidad = horario_disponibilidad ?? null;
     }
 
-    // Vacaciones toggle
-    if ("vacaciones" in body && typeof vacaciones === "boolean") {
-      updateData.vacaciones = vacaciones;
+    // Toggle acepta_tickets (asignación de tickets)
+    if ("acepta_tickets" in body && typeof acepta_tickets === "boolean") {
+      updateData.acepta_tickets = acepta_tickets;
     }
 
     if (Object.keys(updateData).length === 0) {

@@ -62,8 +62,8 @@ export const GET: APIRoute = async ({ request }) => {
     else if (status === 'inactive') where.activo = false;
 
     const vacation = params.get('vacation');
-    if (vacation === 'on') where.vacaciones = true;
-    else if (vacation === 'off') where.vacaciones = false;
+    if (vacation === 'on') where.acepta_tickets = true;
+    else if (vacation === 'off') where.acepta_tickets = false;
 
     const page = parseInt(params.get('page') || '1', 10);
     const limitParam = params.get('limit');
@@ -133,8 +133,8 @@ export const PATCH: APIRoute = async ({ request }) => {
     if (typeof updateDataInput.activo === 'boolean') {
       updateData.activo = updateDataInput.activo;
     }
-    if (typeof updateDataInput.vacaciones === 'boolean') {
-      updateData.vacaciones = updateDataInput.vacaciones;
+    if (typeof updateDataInput.acepta_tickets === 'boolean') {
+      updateData.acepta_tickets = updateDataInput.acepta_tickets;
     }
     if (typeof updateDataInput.auditor_docs === 'boolean') {
       updateData.auditor_docs = updateDataInput.auditor_docs;

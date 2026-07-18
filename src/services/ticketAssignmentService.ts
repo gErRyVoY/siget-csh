@@ -23,7 +23,7 @@ interface AssignmentResult {
  *
  * Flujo de decisión:
  * 1. Contar TODOS los candidatos para la categoría/subcategoría (sin filtrar disponibilidad).
- * 2. Si hay exactamente 1 candidato → ASIGNACIÓN FORZADA (asigna aunque esté fuera de horario o de vacaciones).
+ * 2. Si hay exactamente 1 candidato → ASIGNACIÓN FORZADA (asigna aunque esté fuera de horario o con asignación desactivada).
  * 3. Si hay 2+ candidatos → buscar disponibles:
  *    a. Por asignación específica de usuario (AsignacionesCategorias)
  *    b. Por permisos de rol (PermisoCategoria)
@@ -31,7 +31,7 @@ interface AssignmentResult {
  *
  * Reglas de disponibilidad (aplican en pasos 3a y 3b):
  * - activo: true
- * - vacaciones: false
+ * - acepta_tickets: true
  * - rol.atiendeTicketsCsh / rol.atiendeTicketsMkt según la categoría
  * - horario_disponibilidad: DEBE estar definido y el agente debe estar dentro del rango actual.
  *   Un agente SIN horario definido se considera NO disponible.
@@ -89,7 +89,7 @@ export async function findBestAgentHybrid(
         assignmentType: 'none',
         reason: candidatesExcludingSelf.length === 0
             ? 'No hay ingenieros configurados para esta categoría'
-            : 'Ningún ingeniero disponible en este momento (fuera de horario o de vacaciones)'
+            : 'Ningún ingeniero disponible en este momento (fuera de horario o con asignación desactivada)'
     };
 }
 
@@ -107,7 +107,7 @@ async function findAllCandidates(
     subId: number | null | undefined,
     isMarketing: boolean
 ): Promise<AgentWithRelations[]> {
-    // Candidatos por asignación específica (activos, sin filtrar horario/vacaciones)
+    // Candidatos por asignación específica (activos, sin filtrar horario/acepta_tickets)
     const specificAssignments = await prisma.asignacionesCategorias.findMany({
         where: {
             categoriaId: catId,
@@ -183,7 +183,7 @@ async function findAgentsBySpecificAssignment(
         .map(a => a.atiende)
         .filter(u =>
             u.activo &&
-            !u.vacaciones &&
+            u.acepta_tickets &&
             hasCorrectRoleFlag(u as AgentWithRelations, isMarketing)
         ) as AgentWithRelations[];
 }
@@ -213,7 +213,7 @@ async function findAgentsByRolePermissions(
         where: {
             rolId: { in: roleIds },
             activo: true,
-            vacaciones: false,
+            acepta_tickets: true,
             rol: isMarketing
                 ? { atiendeTicketsMkt: true }
                 : { atiendeTicketsCsh: true }

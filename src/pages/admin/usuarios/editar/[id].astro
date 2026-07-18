@@ -303,16 +303,16 @@ secciones.forEach((sec) => {
                 <div class="toggle-knob absolute top-[2px] left-[2px] bg-white border border-gray-300 rounded-full h-4 w-4 transition-transform peer-checked:translate-x-[16px] peer-checked:border-white z-10" />
               </label>
             </div>
-            <!-- Toggle: De vacaciones -->
+            <!-- Toggle: Asignar tickets -->
             <div class="flex items-center justify-between gap-2 border border-border/60 bg-muted/10 px-3 py-2 rounded-md">
-              <label for="vacaciones" class="text-sm font-medium select-none truncate">De vacaciones</label>
+              <label for="acepta_tickets" class="text-sm font-medium select-none truncate">Asignar tickets</label>
               <label class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full toggle-wrapper group">
                 <input
                   type="checkbox"
-                  id="vacaciones"
-                  name="vacaciones"
+                  id="acepta_tickets"
+                  name="acepta_tickets"
                   class="sr-only peer"
-                  checked={user.vacaciones}
+                  checked={user.acepta_tickets}
                   disabled={!canEdit}
                 />
                 <div class="toggle-bg h-5 w-9 absolute rounded-full transition-all peer-focus:outline-none opacity-50 peer-checked:opacity-100 disabled:opacity-30 peer-disabled:cursor-not-allowed bg-muted-foreground peer-checked:bg-primary" />
