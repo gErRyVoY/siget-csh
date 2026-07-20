@@ -139,12 +139,20 @@ export const DELETE: APIRoute = async ({ request }) => {
         const descendantIds = await getDescendants(subIds);
         const allAssociatedSubIds = Array.from(new Set([...subIds, ...descendantIds]));
 
-        // 2. Check if category itself has tickets
+        // 2. Si la categoría tiene subcategorías relacionadas, no permitir la eliminación directa
+        if (subIds.length > 0) {
+            return new Response(
+                JSON.stringify({ error: "No se puede eliminar la categoría porque tiene subcategorías relacionadas. Elimínalas primero." }),
+                { status: 400 }
+            );
+        }
+
+        // 3. Check if category itself has tickets
         const catTickets = await prisma.ticket.count({
             where: { categoriaId: catId }
         });
 
-        // 3. Check if any associated subcategory has tickets
+        // 4. Check if any associated subcategory has tickets
         let subTickets = 0;
         if (allAssociatedSubIds.length > 0) {
             subTickets = await prisma.ticket.count({

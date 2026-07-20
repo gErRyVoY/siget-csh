@@ -540,8 +540,8 @@ const getTicketDateColor = (date: Date, status: string) => {
 <script>
     import { navigate } from "astro:transitions/client";
 
-    // Filas de tabla clickeables → usa navigate() de Astro para disparar el overlay de carga
-    document.addEventListener("astro:page-load", () => {
+    function setupTicketListHandlers() {
+        // Filas de tabla clickeables → usa navigate() de Astro para disparar el overlay de carga
         document.querySelectorAll("tr[data-href]").forEach((row) => {
             row.addEventListener("click", (e) => {
                 // Si el clic fue en un elemento interactivo interno, no navegar
@@ -552,68 +552,71 @@ const getTicketDateColor = (date: Date, status: string) => {
                 if (href) navigate(href);
             });
         });
-    });
-    // Botón limpiar filtros
-    const resetBtn = document.getElementById("reset-filters");
-    if (resetBtn) resetBtn.addEventListener("click", () => navigate(window.location.pathname));
 
-    // Manejo de filtros
-    const selects = document.querySelectorAll("select");
-    selects.forEach((select) => {
-        select.addEventListener("change", () => {
-            const url = new URL(window.location.href);
-            const paramName = select.id.replace("-select", "");
-            const value = select.value;
+        // Botón limpiar filtros
+        const resetBtn = document.getElementById("reset-filters");
+        if (resetBtn) resetBtn.addEventListener("click", () => navigate(window.location.pathname));
 
-            if (value === "all") {
-                url.searchParams.delete(
-                    paramName === "estatus"
-                        ? "status"
-                        : paramName === "categoria"
-                          ? "category"
-                          : paramName === "empresa"
-                            ? "company"
-                            : "assignee",
-                );
-            } else {
-                url.searchParams.set(
-                    paramName === "estatus"
-                        ? "status"
-                        : paramName === "categoria"
-                          ? "category"
-                          : paramName === "empresa"
-                            ? "company"
-                            : "assignee",
-                    value,
-                );
-            }
-            // Resetear a página 1 al filtrar
-            url.searchParams.set("page", "1");
-            navigate(url.toString());
-        });
-    });
+        // Manejo de filtros
+        const selects = document.querySelectorAll("select");
+        selects.forEach((select) => {
+            select.addEventListener("change", () => {
+                const url = new URL(window.location.href);
+                const paramName = select.id.replace("-select", "");
+                const value = select.value;
 
-    // Manejo de paginación
-    const prevBtn = document.getElementById("prev-page");
-    const nextBtn = document.getElementById("next-page");
-
-    if (prevBtn) {
-        prevBtn.addEventListener("click", () => {
-            const url = new URL(window.location.href);
-            const currentPage = parseInt(url.searchParams.get("page") || "1");
-            if (currentPage > 1) {
-                url.searchParams.set("page", (currentPage - 1).toString());
+                if (value === "all") {
+                    url.searchParams.delete(
+                        paramName === "estatus"
+                            ? "status"
+                            : paramName === "categoria"
+                              ? "category"
+                              : paramName === "empresa"
+                                ? "company"
+                                : "assignee",
+                    );
+                } else {
+                    url.searchParams.set(
+                        paramName === "estatus"
+                            ? "status"
+                            : paramName === "categoria"
+                              ? "category"
+                              : paramName === "empresa"
+                                ? "company"
+                                : "assignee",
+                        value,
+                    );
+                }
+                // Resetear a página 1 al filtrar
+                url.searchParams.set("page", "1");
                 navigate(url.toString());
-            }
+            });
         });
+
+        // Manejo de paginación
+        const prevBtn = document.getElementById("prev-page");
+        const nextBtn = document.getElementById("next-page");
+
+        if (prevBtn) {
+            prevBtn.addEventListener("click", () => {
+                const url = new URL(window.location.href);
+                const currentPage = parseInt(url.searchParams.get("page") || "1");
+                if (currentPage > 1) {
+                    url.searchParams.set("page", (currentPage - 1).toString());
+                    navigate(url.toString());
+                }
+            });
+        }
+
+        if (nextBtn) {
+            nextBtn.addEventListener("click", () => {
+                const url = new URL(window.location.href);
+                const currentPage = parseInt(url.searchParams.get("page") || "1");
+                url.searchParams.set("page", (currentPage + 1).toString());
+                navigate(url.toString());
+            });
+        }
     }
 
-    if (nextBtn) {
-        nextBtn.addEventListener("click", () => {
-            const url = new URL(window.location.href);
-            const currentPage = parseInt(url.searchParams.get("page") || "1");
-            url.searchParams.set("page", (currentPage + 1).toString());
-            navigate(url.toString());
-        });
-    }
+    document.addEventListener("astro:page-load", setupTicketListHandlers);
 </script>

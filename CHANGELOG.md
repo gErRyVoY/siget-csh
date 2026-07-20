@@ -8,6 +8,26 @@ Todos los cambios notables en este proyecto serán documentados en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Versionado Semántico](https://semver.org/lang/es/).
 
+## 2026-07-20 (Corrección de Filtros y Mejoras UX en Administración)
+
+### Feature: Refinamientos UX en la Administración de Categorías
+*   **Vistas (`src/pages/admin/categorias/`):**
+    *   **Ocultar Eliminar con Hijos**: Ocultado el ícono de cesto de basura en categorías y subcategorías si estas tienen nodos hijos relacionados.
+    *   **Flechas de Acordeón**: Corregida la dirección y rotación de las flechas indicadoras (cerrado = derecha `→`, abierto = abajo `↓`).
+    *   **Estilo Seleccionado y Hover**: El elemento activo/seleccionado y los hovers en summaries ahora tienen fondo guinda (`#800020`) con texto en blanco para mejor legibilidad y contraste.
+    *   **Tecla ESC y Confirmaciones**: Al presionar la tecla `Escape` se finaliza la edición o creación activa. Si existen cambios sin guardar o texto ingresado, se solicita confirmación al usuario mediante el modal personalizado antes de descartar. Si no hay cambios, se cierra inmediatamente. También aplica si no hay formularios abiertos para colapsar el acordeón activo.
+    *   **Toast en Visibilidad**: Se muestra un toast confirmando la acción al alternar la visibilidad de una categoría o subcategoría con el botón del ojo.
+
+### Fix: Persistencia de Filtros con View Transitions en Listados de Tickets
+*   **Vistas (`src/pages/tickets/`):**
+    *   Corregido el bug donde cambiar de estatus/filtro más de una vez dejaba de funcionar sin recargar la página.
+    *   Se envolvieron todos los event listeners de los filtros `<select>`, paginación y filas de tablas en un único manejador del evento `astro:page-load`. Esto garantiza que los listeners se re-registren correctamente tras cada navegación suave iniciada por `navigate()` de Astro.
+    *   Afecta a:
+        - `src/pages/tickets/soporte/index.astro` (Vista CSH/Coordinador)
+        - `src/pages/tickets/soporte/usuario/index.astro` (Vista Usuario)
+        - `src/pages/tickets/marketing/index.astro` (Vista Marketing/Coordinador)
+        - `src/pages/tickets/marketing/usuario/index.astro` (Vista Usuario Marketing)
+
 ## 2026-07-20 (Módulo de Categorías y Sincronización de Secuencias)
 
 ### Feature: Rediseño del Módulo de Categorías y Subcategorías

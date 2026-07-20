@@ -155,27 +155,29 @@ const categoriesTree = categories.map(cat => {
                     data-type="categoria"
                     data-name={cat.nombre}
                 >
-                    <summary class="flex items-center justify-between gap-4 p-3 cursor-pointer list-none select-none outline-none hover:bg-muted/50 transition-colors rounded-lg group-open/cat:rounded-b-none border-b border-transparent group-open/cat:border-border group-open/cat:bg-muted/10">
+                    <summary class="cat-summary flex items-center justify-between gap-4 p-3 cursor-pointer list-none select-none outline-none transition-colors rounded-lg group-open/cat:rounded-b-none border-b border-transparent group-open/cat:border-border">
                         <div class="flex items-center gap-2 flex-1 overflow-hidden">
-                            <div class="transform transition-transform duration-200 group-open/cat:rotate-180 shrink-0 text-muted-foreground mr-1">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-current"><path d="m6 9 6 6 6-6"/></svg>
+                            <div class="transform transition-transform duration-200 group-open/cat:rotate-90 shrink-0 mr-1 chevron-icon">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-current"><path d="m9 6 6 6-6 6"/></svg>
                             </div>
                             <span class="text-sm font-bold uppercase truncate text-primary name-text" data-id={cat.id} data-type="categoria">{cat.nombre}</span>
                             
-                            <div class="edit-container hidden flex items-center gap-2 flex-1 max-w-md" onclick="event.stopPropagation();">
-                                <input 
-                                    type="text" 
-                                    class="edit-input border border-border rounded px-2 py-1 text-sm font-bold uppercase flex-1 bg-background focus:outline-primary" 
-                                    value={cat.nombre} 
-                                    data-original={cat.nombre}
-                                />
-                                <button class="save-edit-btn p-1 hover:bg-muted rounded" title="Guardar">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-green-600"><path d="M20 6 9 17l-5-5"/></svg>
-                                </button>
-                                <button class="delete-btn p-1 hover:bg-muted rounded" title="Eliminar">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-red-600"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
-                                </button>
-                            </div>
+                                <div class="edit-container hidden flex items-center gap-2 flex-1 max-w-md" onclick="event.stopPropagation();">
+                                    <input 
+                                        type="text" 
+                                        class="edit-input border border-border rounded px-2 py-1 text-sm font-bold uppercase flex-1 bg-background focus:outline-primary" 
+                                        value={cat.nombre} 
+                                        data-original={cat.nombre}
+                                    />
+                                    <button class="save-edit-btn p-1 hover:bg-muted rounded" title="Guardar">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-green-600"><path d="M20 6 9 17l-5-5"/></svg>
+                                    </button>
+                                    {cat.subcategorias.length === 0 ? (
+                                        <button class="delete-btn p-1 hover:bg-muted rounded" title="Eliminar">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-red-600"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                                        </button>
+                                    ) : null}
+                                </div>
                         </div>
                         
                         <div class="flex items-center gap-3 shrink-0" onclick="event.stopPropagation();">
@@ -247,22 +249,107 @@ const categoriesTree = categories.map(cat => {
             ))}
         </div>
     </div>
+
+    <!-- Modal de Confirmación de Eliminación -->
+    <div
+        id="delete-confirm-modal"
+        class="fixed inset-0 z-50 hidden items-center justify-center"
+        role="dialog"
+        aria-modal="true"
+    >
+        <!-- Overlay -->
+        <div id="delete-confirm-overlay" class="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
+        <!-- Panel -->
+        <div class="relative bg-card border border-border rounded-xl shadow-xl p-6 w-full max-w-sm mx-4 flex flex-col gap-4">
+            <!-- Icon + Title -->
+            <div class="flex items-start gap-3">
+                <div class="flex-shrink-0 flex items-center justify-center w-10 h-10 rounded-full bg-destructive/10">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-destructive"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                </div>
+                <div>
+                    <h3 class="text-base font-semibold text-foreground">Confirmar eliminación</h3>
+                    <p id="delete-confirm-message" class="text-sm text-muted-foreground mt-1"></p>
+                </div>
+            </div>
+            <!-- Actions -->
+            <div class="flex gap-3 justify-end">
+                <button
+                    id="delete-confirm-cancel"
+                    type="button"
+                    class="bg-muted text-muted-foreground hover:bg-muted/80 px-4 py-2 rounded-md text-sm font-semibold transition-colors cursor-pointer"
+                >
+                    Cancelar
+                </button>
+                <button
+                    id="delete-confirm-ok"
+                    type="button"
+                    class="bg-destructive text-destructive-foreground hover:bg-destructive/90 px-4 py-2 rounded-md text-sm font-semibold transition-colors cursor-pointer"
+                >
+                    Eliminar
+                </button>
+            </div>
+        </div>
+    </div>
 </MainLayout>
 
 <style is:global>
 @keyframes highlight-fade {
   0% {
-    background-color: #800020; /* maroon/guinda color */
-    color: white !important;
+    background-color: #800020;
+    color: #ffffff !important;
+  }
+  50% {
+    background-color: #800020;
+    color: #ffffff !important;
   }
   100% {
     background-color: transparent;
-    color: inherit;
+    color: inherit !important;
   }
 }
 
 .highlight-new > summary {
   animation: highlight-fade 3s ease-in-out forwards;
+}
+
+/* Hover: guinda + texto blanco */
+.cat-summary:hover,
+.sub-summary:hover {
+  background-color: #800020 !important;
+  color: #ffffff !important;
+}
+.cat-summary:hover .name-text,
+.sub-summary:hover .name-text {
+  color: #ffffff !important;
+}
+.cat-summary:hover .chevron-icon,
+.sub-summary:hover .chevron-icon {
+  color: #ffffff !important;
+}
+.cat-summary:hover .text-muted-foreground,
+.sub-summary:hover .text-muted-foreground {
+  color: #ffffff !important;
+  opacity: 1 !important;
+}
+
+/* Active/selected: guinda + texto blanco */
+.cat-summary.is-active,
+.sub-summary.is-active {
+  background-color: #800020 !important;
+  color: #ffffff !important;
+}
+.cat-summary.is-active .name-text,
+.sub-summary.is-active .name-text {
+  color: #ffffff !important;
+}
+.cat-summary.is-active .chevron-icon,
+.sub-summary.is-active .chevron-icon {
+  color: #ffffff !important;
+}
+.cat-summary.is-active .text-muted-foreground,
+.sub-summary.is-active .text-muted-foreground {
+  color: #ffffff !important;
+  opacity: 1 !important;
 }
 
 summary::-webkit-details-marker {
@@ -274,12 +361,10 @@ summary::-webkit-details-marker {
     import { toast } from "@/lib/toast";
 
     function setupCategoriasManager() {
-        // Enforce letters, accents, dieresis and numbers on inputs
+        // ── Sanitize input characters ────────────────────────────────────
         function sanitizeInput(input: HTMLInputElement) {
             input.value = input.value.replace(/[^A-Za-z0-9áéíóúÁÉÍÓÚüÜñÑ\s]/g, '');
         }
-
-        // Apply input restrictions to dynamically created or loaded inputs
         document.addEventListener('input', (e) => {
             const target = e.target as HTMLInputElement;
             if (target && (target.classList.contains('edit-input') || target.classList.contains('new-sub-input') || target.id === 'new-cat-input')) {
@@ -287,10 +372,44 @@ summary::-webkit-details-marker {
             }
         });
 
-        // 1. Single-open accordion behavior
+        // ── Custom confirm modal (shared for delete AND unsaved changes) ──
+        const confirmModal    = document.getElementById('delete-confirm-modal') as HTMLElement;
+        const confirmOverlay  = document.getElementById('delete-confirm-overlay') as HTMLElement;
+        const confirmMessage  = document.getElementById('delete-confirm-message') as HTMLElement;
+        const confirmOkBtn    = document.getElementById('delete-confirm-ok') as HTMLButtonElement;
+        const confirmCancelBtn= document.getElementById('delete-confirm-cancel') as HTMLButtonElement;
+        let _resolveConfirm: ((v: boolean) => void) | null = null;
+
+        const openConfirmModal = (message: string, okLabel = 'Confirmar', cancelLabel = 'Cancelar'): Promise<boolean> => {
+            confirmMessage.textContent = message;
+            confirmOkBtn.textContent   = okLabel;
+            confirmCancelBtn.textContent = cancelLabel;
+            confirmModal.classList.remove('hidden');
+            confirmModal.classList.add('flex');
+            return new Promise(resolve => { _resolveConfirm = resolve; });
+        };
+        const closeConfirmModal = (result: boolean) => {
+            confirmModal.classList.add('hidden');
+            confirmModal.classList.remove('flex');
+            if (_resolveConfirm) { _resolveConfirm(result); _resolveConfirm = null; }
+        };
+        confirmCancelBtn.addEventListener('click', () => closeConfirmModal(false));
+        confirmOkBtn.addEventListener('click',     () => closeConfirmModal(true));
+        confirmOverlay.addEventListener('click',   () => closeConfirmModal(false));
+
+        // ── Selected (active) state tracking ─────────────────────────────
+        function setActiveSummary(summary: HTMLElement | null) {
+            document.querySelectorAll('.cat-summary.is-active, .sub-summary.is-active').forEach(s => s.classList.remove('is-active'));
+            if (summary) summary.classList.add('is-active');
+        }
+        document.querySelectorAll('.cat-summary, .sub-summary').forEach(s => {
+            s.addEventListener('click', () => setActiveSummary(s as HTMLElement));
+        });
+
+        // ── Single-open accordion behavior ────────────────────────────────
         const mainAccordions = document.querySelectorAll('.main-accordion');
         mainAccordions.forEach(acc => {
-            acc.addEventListener('toggle', (e) => {
+            acc.addEventListener('toggle', () => {
                 const target = acc as HTMLDetailsElement;
                 if (target.open) {
                     mainAccordions.forEach(other => {
@@ -301,8 +420,6 @@ summary::-webkit-details-marker {
                 }
             });
         });
-
-        // Subcategory level single-open behavior
         document.querySelectorAll('.sub-accordion').forEach(subAcc => {
             subAcc.addEventListener('toggle', (e) => {
                 const target = subAcc as HTMLDetailsElement;
@@ -318,15 +435,179 @@ summary::-webkit-details-marker {
             });
         });
 
-        // 2. Eye Toggle Active/Inactive
+        // ── Helper: check for active editing / creation states ───────────
+        function getActiveEditContainer(): HTMLElement | null {
+            return document.querySelector('.edit-container:not(.hidden)') as HTMLElement | null;
+        }
+        function getActiveNewSubContainer(): HTMLElement | null {
+            return document.querySelector('.new-sub-form-container:not(.hidden)') as HTMLElement | null;
+        }
+        function isNewCatFormOpen(): boolean {
+            return !(document.getElementById('new-cat-form-container')?.classList.contains('hidden') ?? true);
+        }
+
+        // ── Guard: ask user about unsaved edit ───────────────────────────
+        async function guardPendingEdit(allowSave = true): Promise<'save' | 'discard' | 'cancel'> {
+            const editContainer = getActiveEditContainer();
+            if (!editContainer) return 'discard';
+            const input = editContainer.querySelector('.edit-input') as HTMLInputElement;
+            const original = input.dataset.original || '';
+            const current  = input.value.trim();
+            if (current === original || current === '') return 'discard'; // no real change
+            if (!allowSave) {
+                closeEditInline(editContainer);
+                return 'discard';
+            }
+            const save = await openConfirmModal(
+                `Hay cambios sin guardar en "${original}". ¿Deseas guardarlos antes de continuar?`,
+                'Guardar', 'Descartar'
+            );
+            if (save) {
+                // Trigger save
+                const saveBtn = editContainer.querySelector('.save-edit-btn') as HTMLButtonElement;
+                saveBtn?.click();
+                return 'save';
+            }
+            closeEditInline(editContainer);
+            return 'discard';
+        }
+
+        async function guardPendingNewSub(): Promise<'save' | 'discard' | 'cancel'> {
+            const container = getActiveNewSubContainer();
+            if (!container) return 'discard';
+            const input = container.querySelector('.new-sub-input') as HTMLInputElement;
+            if (!input.value.trim()) {
+                closeNewSubForm(container);
+                return 'discard';
+            }
+            const save = await openConfirmModal(
+                `Hay texto escrito en el campo de nueva subcategoría. ¿Deseas guardarlo antes de continuar?`,
+                'Guardar', 'Descartar'
+            );
+            if (save) {
+                const saveBtn = container.querySelector('.save-new-sub-btn') as HTMLButtonElement;
+                saveBtn?.click();
+                return 'save';
+            }
+            closeNewSubForm(container);
+            return 'discard';
+        }
+
+        async function guardPendingNewCat(): Promise<'save' | 'discard' | 'cancel'> {
+            if (!isNewCatFormOpen()) return 'discard';
+            const input = document.getElementById('new-cat-input') as HTMLInputElement;
+            if (!input?.value.trim()) {
+                closeNewCatForm();
+                return 'discard';
+            }
+            const save = await openConfirmModal(
+                `Hay texto escrito en el campo de nueva categoría. ¿Deseas guardarlo antes de continuar?`,
+                'Guardar', 'Descartar'
+            );
+            if (save) {
+                document.getElementById('save-new-cat-btn')?.dispatchEvent(new Event('click'));
+                return 'save';
+            }
+            closeNewCatForm();
+            return 'discard';
+        }
+
+        // ── Close helpers ─────────────────────────────────────────────────
+        function closeEditInline(container: HTMLElement) {
+            const summary = container.closest('summary');
+            if (!summary) return;
+            const nameText  = summary.querySelector('.name-text') as HTMLElement;
+            const input     = container.querySelector('.edit-input') as HTMLInputElement;
+            input.value = input.dataset.original || '';
+            container.classList.add('hidden');
+            nameText.classList.remove('hidden');
+        }
+        function closeNewSubForm(container: HTMLElement) {
+            container.classList.add('hidden');
+            const input = container.querySelector('.new-sub-input') as HTMLInputElement;
+            if (input) input.value = '';
+        }
+        function closeNewCatForm() {
+            const formContainer = document.getElementById('new-cat-form-container');
+            formContainer?.classList.add('hidden');
+            const input = document.getElementById('new-cat-input') as HTMLInputElement;
+            if (input) input.value = '';
+        }
+
+        // ── ESC key: closes accordion, edit, or new forms ────────────────
+        document.addEventListener('keydown', async (e) => {
+            // If confirm modal is open, close it
+            if (e.key === 'Escape' && !confirmModal.classList.contains('hidden')) {
+                closeConfirmModal(false);
+                return;
+            }
+
+            if (e.key === 'Escape') {
+                // 1. Active inline edit?
+                const editContainer = getActiveEditContainer();
+                if (editContainer) {
+                    const input    = editContainer.querySelector('.edit-input') as HTMLInputElement;
+                    const original = input.dataset.original || '';
+                    if (input.value.trim() !== original && input.value.trim() !== '') {
+                        const save = await openConfirmModal(
+                            `Hay cambios sin guardar en "${original}". ¿Deseas guardarlos?`,
+                            'Guardar', 'Descartar'
+                        );
+                        if (save) { editContainer.querySelector<HTMLButtonElement>('.save-edit-btn')?.click(); return; }
+                    }
+                    closeEditInline(editContainer);
+                    return;
+                }
+
+                // 2. Active new-sub form?
+                const newSubContainer = getActiveNewSubContainer();
+                if (newSubContainer) {
+                    const input = newSubContainer.querySelector('.new-sub-input') as HTMLInputElement;
+                    if (input.value.trim()) {
+                        const save = await openConfirmModal(
+                            'Hay texto escrito. ¿Deseas guardar la nueva subcategoría antes de cerrar?',
+                            'Guardar', 'Descartar'
+                        );
+                        if (save) { newSubContainer.querySelector<HTMLButtonElement>('.save-new-sub-btn')?.click(); return; }
+                    }
+                    closeNewSubForm(newSubContainer);
+                    return;
+                }
+
+                // 3. New category form open?
+                if (isNewCatFormOpen()) {
+                    const input = document.getElementById('new-cat-input') as HTMLInputElement;
+                    if (input?.value.trim()) {
+                        const save = await openConfirmModal(
+                            'Hay texto escrito. ¿Deseas guardar la nueva categoría antes de cerrar?',
+                            'Guardar', 'Descartar'
+                        );
+                        if (save) { document.getElementById('save-new-cat-btn')?.dispatchEvent(new Event('click')); return; }
+                    }
+                    closeNewCatForm();
+                    return;
+                }
+
+                // 4. Close the currently open accordion
+                const openMain = document.querySelector('details.main-accordion[open]') as HTMLDetailsElement | null;
+                if (openMain) { openMain.open = false; return; }
+            }
+        });
+
+        // ── Eye Toggle Active/Inactive ────────────────────────────────────
         document.querySelectorAll('.toggle-active-btn').forEach(btn => {
             btn.addEventListener('click', async (e) => {
-                const button = btn as HTMLButtonElement;
-                const id = button.dataset.id;
-                const type = button.dataset.type;
-                const active = button.dataset.active === "true";
+                // Guard pending edits first
+                await guardPendingEdit(false);
+                await guardPendingNewSub();
+                await guardPendingNewCat();
 
-                const url = type === "categoria" ? "/api/admin/categorias" : "/api/admin/subcategories";
+                const button = btn as HTMLButtonElement;
+                const id     = button.dataset.id;
+                const type   = button.dataset.type;
+                const active = button.dataset.active === "true";
+                const label  = type === 'categoria' ? 'categoría' : 'subcategoría';
+                const url    = type === "categoria" ? "/api/admin/categorias" : "/api/admin/subcategories";
 
                 try {
                     button.disabled = true;
@@ -335,12 +616,9 @@ summary::-webkit-details-marker {
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({ id, activo: !active })
                     });
-
-                    if (!res.ok) {
-                        throw new Error((await res.json()).error || "Error al actualizar");
-                    }
-
-                    // Save state to sessionStorage to reload open accordions
+                    if (!res.ok) throw new Error((await res.json()).error || "Error al actualizar");
+                    const action = !active ? 'habilitada' : 'ocultada';
+                    toast.success(`La ${label} ha sido ${action} para los usuarios al levantar un ticket.`);
                     saveOpenState();
                     window.location.reload();
                 } catch (error: any) {
@@ -350,16 +628,21 @@ summary::-webkit-details-marker {
             });
         });
 
-        // 3. Edit (Pencil) Click
+        // ── Edit (Pencil) Click ───────────────────────────────────────────
         document.querySelectorAll('.edit-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
+            btn.addEventListener('click', async () => {
+                // Guard pending edits before opening a new one
+                await guardPendingEdit(true);
+                await guardPendingNewSub();
+                await guardPendingNewCat();
+
                 const button = btn as HTMLButtonElement;
                 const summary = button.closest('summary');
                 if (!summary) return;
 
-                const nameText = summary.querySelector('.name-text') as HTMLElement;
-                const editContainer = summary.querySelector('.edit-container') as HTMLElement;
-                const editInput = editContainer.querySelector('.edit-input') as HTMLInputElement;
+                const nameText     = summary.querySelector('.name-text') as HTMLElement;
+                const editContainer= summary.querySelector('.edit-container') as HTMLElement;
+                const editInput    = editContainer.querySelector('.edit-input') as HTMLInputElement;
 
                 nameText.classList.add('hidden');
                 editContainer.classList.remove('hidden');
@@ -368,42 +651,22 @@ summary::-webkit-details-marker {
             });
         });
 
-        // Cancel editing if clicking outside or pressing Escape
-        document.addEventListener('keydown', (e) => {
-            if (e.key === "Escape") {
-                document.querySelectorAll('.edit-container:not(.hidden)').forEach(container => {
-                    const summary = container.closest('summary');
-                    if (summary) {
-                        const nameText = summary.querySelector('.name-text') as HTMLElement;
-                        const editInput = container.querySelector('.edit-input') as HTMLInputElement;
-                        editInput.value = editInput.dataset.original || "";
-                        container.classList.add('hidden');
-                        nameText.classList.remove('hidden');
-                    }
-                });
-            }
-        });
-
-        // Save Edit
+        // ── Save Edit ────────────────────────────────────────────────────
         document.querySelectorAll('.save-edit-btn').forEach(btn => {
             btn.addEventListener('click', async (e) => {
-                const button = btn as HTMLButtonElement;
-                const summary = button.closest('summary');
+                const button   = btn as HTMLButtonElement;
+                const summary  = button.closest('summary');
                 if (!summary) return;
 
                 const editInput = summary.querySelector('.edit-input') as HTMLInputElement;
-                const nameText = summary.querySelector('.name-text') as HTMLElement;
-                const id = nameText.dataset.id;
+                const nameText  = summary.querySelector('.name-text') as HTMLElement;
+                const id   = nameText.dataset.id;
                 const type = nameText.dataset.type;
-                const val = editInput.value.trim();
+                const val  = editInput.value.trim();
 
-                if (!val) {
-                    toast.error("El nombre no puede estar vacío");
-                    return;
-                }
+                if (!val) { toast.error("El nombre no puede estar vacío"); return; }
 
                 const url = type === "categoria" ? "/api/admin/categorias" : "/api/admin/subcategories";
-
                 try {
                     button.disabled = true;
                     const res = await fetch(url, {
@@ -411,12 +674,7 @@ summary::-webkit-details-marker {
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({ id, nombre: val })
                     });
-
-                    if (!res.ok) {
-                        throw new Error((await res.json()).error || "Error al guardar");
-                    }
-
-                    // Save state
+                    if (!res.ok) throw new Error((await res.json()).error || "Error al guardar");
                     saveOpenState();
                     sessionStorage.setItem('highlight_item', `${type}-${id}`);
                     window.location.reload();
@@ -427,34 +685,33 @@ summary::-webkit-details-marker {
             });
         });
 
-        // Delete (X) Click
+        // ── Delete (Trash) Click ──────────────────────────────────────────
         document.querySelectorAll('.delete-btn').forEach(btn => {
             btn.addEventListener('click', async () => {
-                const button = btn as HTMLButtonElement;
+                const button  = btn as HTMLButtonElement;
                 const summary = button.closest('summary');
                 if (!summary) return;
 
                 const nameText = summary.querySelector('.name-text') as HTMLElement;
-                const id = nameText.dataset.id;
-                const type = nameText.dataset.type;
+                const id     = nameText.dataset.id;
+                const type   = nameText.dataset.type;
                 const nombre = nameText.textContent;
 
-                if (!confirm(`¿Estás seguro de que deseas eliminar la ${type} "${nombre}" permanentemente?`)) {
-                    return;
-                }
+                const label     = type === 'categoria' ? 'categoría' : 'subcategoría';
+                const confirmed = await openConfirmModal(
+                    `¿Estás seguro de que deseas eliminar la ${label} "${nombre}" permanentemente? Esta acción no se puede deshacer.`,
+                    'Eliminar', 'Cancelar'
+                );
+                if (!confirmed) return;
 
-                const url = type === "categoria" ? `/api/admin/categorias?id=${id}` : `/api/admin/subcategories?id=${id}`;
-
+                const url = type === "categoria"
+                    ? `/api/admin/categorias?id=${id}`
+                    : `/api/admin/subcategories?id=${id}`;
                 try {
                     button.disabled = true;
                     const res = await fetch(url, { method: "DELETE" });
-
-                    if (!res.ok) {
-                        throw new Error((await res.json()).error || "Error al eliminar");
-                    }
-
+                    if (!res.ok) throw new Error((await res.json()).error || "Error al eliminar");
                     toast.success("Eliminado correctamente");
-                    // Save state
                     saveOpenState();
                     window.location.reload();
                 } catch (error: any) {
@@ -464,14 +721,15 @@ summary::-webkit-details-marker {
             });
         });
 
-        // 4. Plus (+) Click to Add Subcategory
+        // ── Plus (+) Click to Add Subcategory ────────────────────────────
         document.querySelectorAll('.add-sub-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const button = btn as HTMLButtonElement;
-                const id = button.dataset.id;
-                const type = button.dataset.type;
+            btn.addEventListener('click', async (e) => {
+                // Guard any pending operation
+                await guardPendingEdit(true);
+                await guardPendingNewSub();
+                await guardPendingNewCat();
 
-                // Find the details parent and open it
+                const button  = btn as HTMLButtonElement;
                 const details = button.closest('details');
                 if (details) {
                     details.open = true;
@@ -480,45 +738,31 @@ summary::-webkit-details-marker {
                         newSubContainer.classList.remove('hidden');
                         const input = newSubContainer.querySelector('.new-sub-input') as HTMLInputElement;
                         input.focus();
-                        // Scroll to the input container
                         newSubContainer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
                     }
                 }
             });
         });
 
-        // Save New Subcategory
+        // ── Save New Subcategory ──────────────────────────────────────────
         document.querySelectorAll('.save-new-sub-btn').forEach(btn => {
-            btn.addEventListener('click', async (e) => {
-                const button = btn as HTMLButtonElement;
+            btn.addEventListener('click', async () => {
+                const button          = btn as HTMLButtonElement;
                 const parentContainer = button.closest('.new-sub-form-container') as HTMLElement;
-                const input = parentContainer.querySelector('.new-sub-input') as HTMLInputElement;
-                const val = input.value.trim();
+                const input           = parentContainer.querySelector('.new-sub-input') as HTMLInputElement;
+                const val             = input.value.trim();
+                const catId           = button.dataset.catId;
+                const parentSubId     = button.dataset.parentId;
 
-                const catId = button.dataset.catId;
-                const parentSubId = button.dataset.parentId;
-
-                if (!val) {
-                    toast.error("El nombre no puede estar vacío");
-                    return;
-                }
-
+                if (!val) { toast.error("El nombre no puede estar vacío"); return; }
                 try {
                     button.disabled = true;
                     const res = await fetch("/api/admin/subcategories", {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({
-                            nombre: val,
-                            categoriaId: catId || null,
-                            parentSubcategoriaId: parentSubId || null
-                        })
+                        body: JSON.stringify({ nombre: val, categoriaId: catId || null, parentSubcategoriaId: parentSubId || null })
                     });
-
-                    if (!res.ok) {
-                        throw new Error((await res.json()).error || "Error al crear");
-                    }
-
+                    if (!res.ok) throw new Error((await res.json()).error || "Error al crear");
                     const newSub = await res.json();
                     saveOpenState();
                     sessionStorage.setItem('highlight_item', `subcategoria-${newSub.id}`);
@@ -530,69 +774,54 @@ summary::-webkit-details-marker {
             });
         });
 
-        // 5. Reset button (colapsar todos)
+        // ── Reset button ──────────────────────────────────────────────────
         const resetButton = document.getElementById("reset-accordions-button");
         if (resetButton) {
             resetButton.addEventListener("click", () => {
-                document.querySelectorAll('details').forEach(d => {
-                    d.open = false;
-                });
+                document.querySelectorAll('details').forEach(d => { d.open = false; });
                 document.querySelectorAll('.new-sub-form-container').forEach(form => {
                     form.classList.add('hidden');
                     const input = form.querySelector('input');
                     if (input) input.value = "";
                 });
-                const newCatForm = document.getElementById("new-cat-form-container");
-                if (newCatForm) {
-                    newCatForm.classList.add('hidden');
-                    const input = document.getElementById("new-cat-input") as HTMLInputElement;
-                    if (input) input.value = "";
-                }
+                closeNewCatForm();
+                setActiveSummary(null);
                 toast.success("Acordeones restablecidos");
             });
         }
 
-        // 6. Nueva categoría button
-        const newCatBtn = document.getElementById("new-category-btn");
+        // ── Nueva categoría button ────────────────────────────────────────
+        const newCatBtn           = document.getElementById("new-category-btn");
         const newCatFormContainer = document.getElementById("new-cat-form-container");
-        const newCatInput = document.getElementById("new-cat-input") as HTMLInputElement;
-        const saveNewCatBtn = document.getElementById("save-new-cat-btn");
-        const cancelNewCatBtn = document.getElementById("cancel-new-cat-btn");
+        const newCatInput         = document.getElementById("new-cat-input") as HTMLInputElement;
+        const saveNewCatBtn       = document.getElementById("save-new-cat-btn");
+        const cancelNewCatBtn     = document.getElementById("cancel-new-cat-btn");
 
         if (newCatBtn && newCatFormContainer && newCatInput) {
-            newCatBtn.addEventListener("click", () => {
+            newCatBtn.addEventListener("click", async () => {
+                await guardPendingEdit(true);
+                await guardPendingNewSub();
                 newCatFormContainer.classList.remove("hidden");
                 newCatInput.focus();
                 newCatFormContainer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
             });
         }
-
         if (cancelNewCatBtn && newCatFormContainer && newCatInput) {
             cancelNewCatBtn.addEventListener("click", () => {
-                newCatFormContainer.classList.add("hidden");
-                newCatInput.value = "";
+                closeNewCatForm();
             });
         }
-
         if (saveNewCatBtn && newCatInput) {
             saveNewCatBtn.addEventListener("click", async () => {
                 const val = newCatInput.value.trim();
-                if (!val) {
-                    toast.error("El nombre no puede estar vacío");
-                    return;
-                }
-
+                if (!val) { toast.error("El nombre no puede estar vacío"); return; }
                 try {
                     const res = await fetch("/api/admin/categorias", {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({ nombre: val })
                     });
-
-                    if (!res.ok) {
-                        throw new Error((await res.json()).error || "Error al crear la categoría");
-                    }
-
+                    if (!res.ok) throw new Error((await res.json()).error || "Error al crear la categoría");
                     const newCat = await res.json();
                     saveOpenState();
                     sessionStorage.setItem('highlight_item', `categoria-${newCat.id}`);
@@ -603,15 +832,13 @@ summary::-webkit-details-marker {
             });
         }
 
-        // State Helpers: Save which detail IDs are open
+        // ── State Helpers ─────────────────────────────────────────────────
         function saveOpenState() {
             const openIds: string[] = [];
-            // Catch all open categories
             document.querySelectorAll('details.main-accordion[open]').forEach(el => {
                 const id = el.getAttribute('data-id');
                 if (id) openIds.push(`categoria-${id}`);
             });
-            // Catch all open subcategories
             document.querySelectorAll('details.sub-accordion[open]').forEach(el => {
                 const id = el.getAttribute('data-id');
                 if (id) openIds.push(`subcategoria-${id}`);
@@ -619,7 +846,6 @@ summary::-webkit-details-marker {
             sessionStorage.setItem('open_items', JSON.stringify(openIds));
         }
 
-        // Restore State on load
         function restoreOpenState() {
             const openItemsStr = sessionStorage.getItem('open_items');
             if (openItemsStr) {
@@ -637,38 +863,21 @@ summary::-webkit-details-marker {
                 sessionStorage.removeItem('open_items');
             }
 
-            // Apply Highlight & Scroll
             const highlightKey = sessionStorage.getItem('highlight_item');
             if (highlightKey) {
                 const [type, id] = highlightKey.split('-');
                 let element: HTMLElement | null = null;
-
                 if (type === "categoria") {
                     element = document.querySelector(`details.main-accordion[data-id="${id}"]`) as HTMLElement;
                 } else if (type === "subcategoria") {
                     element = document.querySelector(`details.sub-accordion[data-id="${id}"]`) as HTMLElement;
                 }
-
                 if (element) {
-                    // Open all parents recursively so highlight is visible
                     let parent = element.parentElement?.closest('details') as HTMLDetailsElement;
-                    while (parent) {
-                        parent.open = true;
-                        parent = parent.parentElement?.closest('details') as HTMLDetailsElement;
-                    }
-
-                    // Open the element itself if it's a category/subaccordion to show inside
-                    if (element instanceof HTMLDetailsElement) {
-                        element.open = true;
-                    }
-
-                    // Apply visual highlight transition
+                    while (parent) { parent.open = true; parent = parent.parentElement?.closest('details') as HTMLDetailsElement; }
+                    if (element instanceof HTMLDetailsElement) element.open = true;
                     element.classList.add('highlight-new');
-                    
-                    // Smooth scroll to the highlighted element
-                    setTimeout(() => {
-                        element?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    }, 300);
+                    setTimeout(() => { element?.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 300);
                 }
                 sessionStorage.removeItem('highlight_item');
             }

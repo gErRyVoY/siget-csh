@@ -470,61 +470,65 @@ const getTicketDateColor = (date: Date, status: string) => {
 <script>
     import { navigate } from 'astro:transitions/client';
 
-    // Filas de tabla clickeables → usa navigate() de Astro para disparar el overlay de carga
-    document.addEventListener('astro:page-load', () => {
+    function setupMarketingUserTicketHandlers() {
+        // Filas de tabla clickeables → usa navigate() de Astro para disparar el overlay de carga
         document.querySelectorAll('tr[data-href]').forEach((row) => {
             row.addEventListener('click', (e) => {
                 // Si el clic fue en un elemento interactivo interno, no navegar
-                const target = e.target;
+                const target = e.target as HTMLElement;
                 if (target.closest('a, button, select, input')) return;
-                navigate(row.dataset.href);
+                const href = (row as HTMLElement).dataset.href;
+                if (href) navigate(href);
             });
         });
-    });
-    // Botón limpiar filtros
-    const resetBtn = document.getElementById("reset-filters");
-    if (resetBtn) resetBtn.addEventListener("click", () => navigate(window.location.pathname));
 
-    const selects = document.querySelectorAll("select");
-    selects.forEach((select) => {
-        select.addEventListener("change", () => {
-            const url = new URL(window.location.href);
-            // Mapeo de ID a param
-            let paramName = "";
-            if (select.id === "estatus-select") paramName = "status";
-            else if (select.id === "subcategory-select")
-                paramName = "subcategory";
-            else if (select.id === "empresa-select") paramName = "company";
-            else if (select.id === "assignee-select") paramName = "assignee";
+        // Botón limpiar filtros
+        const resetBtn = document.getElementById("reset-filters");
+        if (resetBtn) resetBtn.addEventListener("click", () => navigate(window.location.pathname));
 
-            const value = select.value;
-            if (value === "all") {
-                url.searchParams.delete(paramName);
-            } else {
-                url.searchParams.set(paramName, value);
-            }
-            url.searchParams.set("page", "1");
-            navigate(url.toString());
-        });
-    });
+        const selects = document.querySelectorAll("select");
+        selects.forEach((select) => {
+            select.addEventListener("change", () => {
+                const url = new URL(window.location.href);
+                // Mapeo de ID a param
+                let paramName = "";
+                if (select.id === "estatus-select") paramName = "status";
+                else if (select.id === "subcategory-select")
+                    paramName = "subcategory";
+                else if (select.id === "empresa-select") paramName = "company";
+                else if (select.id === "assignee-select") paramName = "assignee";
 
-    // Paginación
-    const prevBtn = document.getElementById("prev-page");
-    const nextBtn = document.getElementById("next-page");
-    if (prevBtn)
-        prevBtn.addEventListener("click", () => {
-            const url = new URL(window.location.href);
-            const p = parseInt(url.searchParams.get("page") || "1");
-            if (p > 1) {
-                url.searchParams.set("page", (p - 1).toString());
+                const value = select.value;
+                if (value === "all") {
+                    url.searchParams.delete(paramName);
+                } else {
+                    url.searchParams.set(paramName, value);
+                }
+                url.searchParams.set("page", "1");
                 navigate(url.toString());
-            }
+            });
         });
-    if (nextBtn)
-        nextBtn.addEventListener("click", () => {
-            const url = new URL(window.location.href);
-            const p = parseInt(url.searchParams.get("page") || "1");
-            url.searchParams.set("page", (p + 1).toString());
-            navigate(url.toString());
-        });
+
+        // Paginación
+        const prevBtn = document.getElementById("prev-page");
+        const nextBtn = document.getElementById("next-page");
+        if (prevBtn)
+            prevBtn.addEventListener("click", () => {
+                const url = new URL(window.location.href);
+                const p = parseInt(url.searchParams.get("page") || "1");
+                if (p > 1) {
+                    url.searchParams.set("page", (p - 1).toString());
+                    navigate(url.toString());
+                }
+            });
+        if (nextBtn)
+            nextBtn.addEventListener("click", () => {
+                const url = new URL(window.location.href);
+                const p = parseInt(url.searchParams.get("page") || "1");
+                url.searchParams.set("page", (p + 1).toString());
+                navigate(url.toString());
+            });
+    }
+
+    document.addEventListener('astro:page-load', setupMarketingUserTicketHandlers);
 </script>

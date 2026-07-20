@@ -163,6 +163,17 @@ export const DELETE: APIRoute = async ({ request }) => {
         const descendantIds = await getDescendants([subId]);
         const allAssociatedSubIds = Array.from(new Set([subId, ...descendantIds]));
 
+        // Check if this subcategory has direct children (no se puede eliminar si tiene subcategorías hijas)
+        const directChildrenCount = await prisma.subcategoria.count({
+            where: { parent_subcategoriaId: subId }
+        });
+        if (directChildrenCount > 0) {
+            return new Response(
+                JSON.stringify({ error: "No se puede eliminar la subcategoría porque tiene subcategorías relacionadas. Elimínalas primero." }),
+                { status: 400 }
+            );
+        }
+
         // Check if any of these subcategories has tickets
         const subTickets = await prisma.ticket.count({
             where: { subcategoriaId: { in: allAssociatedSubIds } }

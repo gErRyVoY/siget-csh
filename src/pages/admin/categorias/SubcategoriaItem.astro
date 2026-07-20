@@ -25,11 +25,11 @@ const { node, catId, level } = Astro.props;
   data-type="subcategoria"
   data-name={node.nombre}
 >
-  <summary class="flex items-center justify-between gap-4 p-2 cursor-pointer list-none select-none outline-none hover:bg-muted/40 transition-colors rounded-t group-open/sub:border-b group-open/sub:border-border/30">
+  <summary class="sub-summary flex items-center justify-between gap-4 p-2 cursor-pointer list-none select-none outline-none transition-colors rounded-t group-open/sub:border-b group-open/sub:border-border/30">
     <div class="flex items-center gap-2 flex-1 overflow-hidden">
-      <div class="transform transition-transform duration-200 group-open/sub:rotate-180 shrink-0 text-muted-foreground mr-1">
+      <div class="transform transition-transform duration-200 group-open/sub:rotate-90 shrink-0 mr-1 chevron-icon">
         {node.children.length > 0 ? (
-          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-current"><path d="m6 9 6 6 6-6"/></svg>
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-current"><path d="m9 6 6 6-6 6"/></svg>
         ) : (
           <span class="w-3.5 h-3.5 inline-block"></span>
         )}
@@ -47,9 +47,11 @@ const { node, catId, level } = Astro.props;
         <button class="save-edit-btn p-1 hover:bg-muted rounded" title="Guardar">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-green-600"><path d="M20 6 9 17l-5-5"/></svg>
         </button>
-        <button class="delete-btn p-1 hover:bg-muted rounded" title="Eliminar">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-red-600"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
-        </button>
+        {node.children.length === 0 ? (
+          <button class="delete-btn p-1 hover:bg-muted rounded" title="Eliminar">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-red-600"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+          </button>
+        ) : null}
       </div>
     </div>
     
