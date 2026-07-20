@@ -1,0 +1,115 @@
+---
+import SubcategoriaItem from "./SubcategoriaItem.astro";
+
+interface TreeNode {
+    id: number;
+    nombre: string;
+    activo: boolean;
+    parent_subcategoriaId: number | null;
+    ticketsCount: number;
+    children: TreeNode[];
+}
+
+interface Props {
+    node: TreeNode;
+    catId: number;
+    level: number;
+}
+
+const { node, catId, level } = Astro.props;
+---
+
+<details 
+  class="group/sub border border-border/40 rounded bg-muted/5 mt-2 ml-4 sub-accordion" 
+  data-id={node.id} 
+  data-type="subcategoria"
+  data-name={node.nombre}
+>
+  <summary class="flex items-center justify-between gap-4 p-2 cursor-pointer list-none select-none outline-none hover:bg-muted/40 transition-colors rounded-t group-open/sub:border-b group-open/sub:border-border/30">
+    <div class="flex items-center gap-2 flex-1 overflow-hidden">
+      <div class="transform transition-transform duration-200 group-open/sub:rotate-180 shrink-0 text-muted-foreground mr-1">
+        {node.children.length > 0 ? (
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-current"><path d="m6 9 6 6 6-6"/></svg>
+        ) : (
+          <span class="w-3.5 h-3.5 inline-block"></span>
+        )}
+      </div>
+      
+      <span class="text-sm text-foreground name-text truncate" data-id={node.id} data-type="subcategoria">{node.nombre}</span>
+      
+      <div class="edit-container hidden flex items-center gap-2 flex-1 max-w-md" onclick="event.stopPropagation();">
+        <input 
+          type="text" 
+          class="edit-input border border-border rounded px-2 py-0.5 text-sm flex-1 bg-background focus:outline-primary" 
+          value={node.nombre} 
+          data-original={node.nombre}
+        />
+        <button class="save-edit-btn p-1 hover:bg-muted rounded" title="Guardar">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-green-600"><path d="M20 6 9 17l-5-5"/></svg>
+        </button>
+        <button class="delete-btn p-1 hover:bg-muted rounded" title="Eliminar">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-red-600"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+        </button>
+      </div>
+    </div>
+    
+    <div class="flex items-center gap-3 shrink-0" onclick="event.stopPropagation();">
+      <!-- Active Toggle Button -->
+      <button 
+        class="toggle-active-btn p-1 hover:bg-muted rounded transition-colors" 
+        data-id={node.id} 
+        data-type="subcategoria" 
+        data-active={node.activo ? "true" : "false"}
+        title={node.activo ? "Desactivar subcategoría" : "Activar subcategoría"}
+      >
+        {node.activo ? (
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-primary"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0z"/><circle cx="12" cy="12" r="3"/></svg>
+        ) : (
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-muted-foreground opacity-50"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.52 13.52 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" y1="2" x2="22" y2="22"/></svg>
+        )}
+      </button>
+
+      <!-- Edit Button (only if ticketsCount === 0) -->
+      {node.ticketsCount === 0 ? (
+        <button 
+          class="edit-btn p-1 hover:bg-muted rounded transition-colors" 
+          data-id={node.id} 
+          data-type="subcategoria"
+          title="Editar/Eliminar"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-blue-600"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
+        </button>
+      ) : (
+        <span class="w-7 h-7 inline-block"></span>
+      )}
+
+      <!-- Add Subcategory Button -->
+      <button 
+        class="add-sub-btn p-1 hover:bg-muted rounded transition-colors" 
+        data-id={node.id} 
+        data-type="subcategoria"
+        title="Añadir subcategoría"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-green-600"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      </button>
+    </div>
+  </summary>
+  
+  <div class="sub-list p-2 border-t border-border/20 bg-card pl-4">
+    <!-- Form placeholder for inline new subcategory -->
+    <div class="new-sub-form-container hidden p-2 border border-dashed rounded mb-2 flex items-center justify-between gap-4">
+       <input 
+         type="text" 
+         class="new-sub-input border border-border rounded px-2 py-1 text-sm flex-1 bg-background focus:outline-primary" 
+         placeholder="Escribe el nombre de la subcategoría..." 
+       />
+       <button class="save-new-sub-btn bg-primary text-primary-foreground px-3 py-1 rounded text-xs hover:bg-primary/95" data-parent-id={node.id}>
+          Guardar
+       </button>
+    </div>
+
+    {node.children.map(child => (
+       <SubcategoriaItem node={child} catId={catId} level={level + 1} />
+    ))}
+  </div>
+</details>

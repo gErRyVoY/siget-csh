@@ -8,66 +8,34 @@ async function checkAuth(request: Request) {
     return session && session.user;
 }
 
-// POST: Crear nueva subcategoría
+// POST: Crear nueva categoría
 export const POST: APIRoute = async ({ request }) => {
     if (!await checkAuth(request)) {
         return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
     }
 
     try {
-        const { nombre, categoriaId, parentSubcategoriaId } = await request.json();
+        const { nombre } = await request.json();
         if (!nombre || !nombre.trim()) {
             return new Response(JSON.stringify({ error: "El nombre es requerido" }), { status: 400 });
         }
 
-        // Validate character format: letters, accents, dieresis, numbers and spaces
+        // Validate characters: letters, accents, dieresis, numbers and spaces
         const nameRegex = /^[A-Za-z0-9áéíóúÁÉÍÓÚüÜñÑ\s]+$/;
         if (!nameRegex.test(nombre)) {
             return new Response(JSON.stringify({ error: "El nombre solo puede contener letras, números y espacios" }), { status: 400 });
         }
 
-        // Resolve which category this subcategory belongs to
-        let resolvedCategoriaId = categoriaId ? parseInt(categoriaId, 10) : null;
-        const parsedParentId = parentSubcategoriaId ? parseInt(parentSubcategoriaId, 10) : null;
-
-        if (parsedParentId) {
-            // Find parent's category from SubcategoriaCategorias
-            const parentRel = await prisma.subcategoriaCategorias.findFirst({
-                where: { subcategoriaId: parsedParentId }
-            });
-            if (parentRel) {
-                resolvedCategoriaId = parentRel.categoriaId;
+        const newCat = await prisma.categoria.create({
+            data: {
+                nombre: nombre.trim(),
+                activo: true
             }
-        }
-
-        if (!resolvedCategoriaId) {
-            return new Response(JSON.stringify({ error: "No se pudo determinar la categoría principal" }), { status: 400 });
-        }
-
-        // Create Subcategoria and its mapping inside a transaction
-        const newSub = await prisma.$transaction(async (tx) => {
-            const sub = await tx.subcategoria.create({
-                data: {
-                    nombre: nombre.trim(),
-                    parent_subcategoriaId: parsedParentId,
-                    activo: true
-                }
-            });
-
-            await tx.subcategoriaCategorias.create({
-                data: {
-                    categoriaId: resolvedCategoriaId!,
-                    subcategoriaId: sub.id,
-                    activo: true
-                }
-            });
-
-            return sub;
         });
 
-        return new Response(JSON.stringify(newSub), { status: 201 });
+        return new Response(JSON.stringify(newCat), { status: 201 });
     } catch (error: any) {
-        console.error("Error creating subcategory:", error);
+        console.error("Error creating category:", error);
         return new Response(JSON.stringify({ error: error.message || "Error interno del servidor" }), { status: 500 });
     }
 };
@@ -81,16 +49,16 @@ export const PATCH: APIRoute = async ({ request }) => {
     try {
         const { id, nombre, activo } = await request.json();
         if (!id) {
-            return new Response(JSON.stringify({ error: "ID de subcategoría requerido" }), { status: 400 });
+            return new Response(JSON.stringify({ error: "ID de categoría requerido" }), { status: 400 });
         }
 
-        const subId = parseInt(id, 10);
-        const existingSub = await prisma.subcategoria.findUnique({
-            where: { id: subId }
+        const catId = parseInt(id, 10);
+        const existingCat = await prisma.categoria.findUnique({
+            where: { id: catId }
         });
 
-        if (!existingSub) {
-            return new Response(JSON.stringify({ error: "Subcategoría no encontrada" }), { status: 404 });
+        if (!existingCat) {
+            return new Response(JSON.stringify({ error: "Categoría no encontrada" }), { status: 404 });
         }
 
         const updateData: any = {};
@@ -110,28 +78,28 @@ export const PATCH: APIRoute = async ({ request }) => {
 
             // Check if there are tickets before changing name
             const ticketsCount = await prisma.ticket.count({
-                where: { subcategoriaId: subId }
+                where: { categoriaId: catId }
             });
-            if (ticketsCount > 0 && nombre.trim() !== existingSub.nombre) {
-                return new Response(JSON.stringify({ error: "No se puede editar el nombre de la subcategoría porque tiene tickets registrados" }), { status: 400 });
+            if (ticketsCount > 0 && nombre.trim() !== existingCat.nombre) {
+                return new Response(JSON.stringify({ error: "No se puede editar el nombre de la categoría porque tiene tickets registrados" }), { status: 400 });
             }
 
             updateData.nombre = nombre.trim();
         }
 
-        const updatedSub = await prisma.subcategoria.update({
-            where: { id: subId },
+        const updatedCat = await prisma.categoria.update({
+            where: { id: catId },
             data: updateData
         });
 
-        return new Response(JSON.stringify(updatedSub), { status: 200 });
+        return new Response(JSON.stringify(updatedCat), { status: 200 });
     } catch (error: any) {
-        console.error("Error updating subcategory:", error);
+        console.error("Error updating category:", error);
         return new Response(JSON.stringify({ error: error.message || "Error interno del servidor" }), { status: 500 });
     }
 };
 
-// DELETE: Eliminar subcategoría (solo si no tiene tickets asociados)
+// DELETE: Eliminar categoría (solo si no tiene tickets asociados)
 export const DELETE: APIRoute = async ({ request }) => {
     if (!await checkAuth(request)) {
         return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
@@ -141,15 +109,23 @@ export const DELETE: APIRoute = async ({ request }) => {
         const url = new URL(request.url);
         const idParam = url.searchParams.get("id");
         if (!idParam) {
-            return new Response(JSON.stringify({ error: "ID de subcategoría requerido" }), { status: 400 });
+            return new Response(JSON.stringify({ error: "ID de categoría requerido" }), { status: 400 });
         }
 
-        const subId = parseInt(idParam, 10);
-        if (isNaN(subId)) {
-            return new Response(JSON.stringify({ error: "ID de subcategoría inválido" }), { status: 400 });
+        const catId = parseInt(idParam, 10);
+        if (isNaN(catId)) {
+            return new Response(JSON.stringify({ error: "ID de categoría inválido" }), { status: 400 });
         }
 
-        // Recursive function to gather all descendant IDs
+        // 1. Get all subcategories linked to this category
+        const subRelations = await prisma.subcategoriaCategorias.findMany({
+            where: { categoriaId: catId },
+            include: { subcategoria: true }
+        });
+
+        const subIds = subRelations.map(r => r.subcategoriaId);
+
+        // Recursive function to gather all nested subcategory IDs
         async function getDescendants(ids: number[]): Promise<number[]> {
             if (ids.length === 0) return [];
             const children = await prisma.subcategoria.findMany({
@@ -160,40 +136,61 @@ export const DELETE: APIRoute = async ({ request }) => {
             return [...childIds, ...nestedIds];
         }
 
-        const descendantIds = await getDescendants([subId]);
-        const allAssociatedSubIds = Array.from(new Set([subId, ...descendantIds]));
+        const descendantIds = await getDescendants(subIds);
+        const allAssociatedSubIds = Array.from(new Set([...subIds, ...descendantIds]));
 
-        // Check if any of these subcategories has tickets
-        const subTickets = await prisma.ticket.count({
-            where: { subcategoriaId: { in: allAssociatedSubIds } }
+        // 2. Check if category itself has tickets
+        const catTickets = await prisma.ticket.count({
+            where: { categoriaId: catId }
         });
 
-        if (subTickets > 0) {
+        // 3. Check if any associated subcategory has tickets
+        let subTickets = 0;
+        if (allAssociatedSubIds.length > 0) {
+            subTickets = await prisma.ticket.count({
+                where: { subcategoriaId: { in: allAssociatedSubIds } }
+            });
+        }
+
+        if (catTickets > 0 || subTickets > 0) {
             return new Response(
-                JSON.stringify({ error: "No se puede eliminar la subcategoría porque tiene tickets registrados" }),
+                JSON.stringify({ error: "No se puede eliminar la categoría porque tiene tickets registrados" }),
                 { status: 400 }
             );
         }
 
-        // Perform deletion inside a transaction
+        // 4. Perform deletion of relations and category/subcategories inside a transaction
         await prisma.$transaction(async (tx) => {
-            // Delete permissions and assignments
+            // Delete permissions and assignments for the category and its subcategories
             await tx.permisoCategoria.deleteMany({
-                where: { subcategoriaId: { in: allAssociatedSubIds } }
+                where: {
+                    OR: [
+                        { categoriaId: catId },
+                        { subcategoriaId: { in: allAssociatedSubIds } }
+                    ]
+                }
             });
 
             await tx.asignacionesCategorias.deleteMany({
-                where: { subcategoriaId: { in: allAssociatedSubIds } }
+                where: {
+                    OR: [
+                        { categoriaId: catId },
+                        { subcategoriaId: { in: allAssociatedSubIds } }
+                    ]
+                }
             });
 
             // Delete relation links
             await tx.subcategoriaCategorias.deleteMany({
-                where: { subcategoriaId: { in: allAssociatedSubIds } }
+                where: { categoriaId: catId }
             });
 
-            // Delete subcategories (leaf to root order to prevent key constraint errors)
+            // Delete subcategories (delete children first to satisfy self-referencing foreign keys)
+            // Sort descendant subcategories or delete them in reverse hierarchical order
+            // We can delete level by level
             let levelIds = [...allAssociatedSubIds];
             while (levelIds.length > 0) {
+                // Find leaf subcategories (those which are not parents of any other subcategory in levelIds)
                 const parents = await tx.subcategoria.findMany({
                     where: {
                         id: { in: levelIds },
@@ -205,6 +202,7 @@ export const DELETE: APIRoute = async ({ request }) => {
                 const leaves = levelIds.filter(id => !parentIdSet.has(id));
 
                 if (leaves.length === 0) {
+                    // Fallback to avoid infinite loop (should not happen in normal tree)
                     await tx.subcategoria.deleteMany({ where: { id: { in: levelIds } } });
                     break;
                 }
@@ -215,11 +213,16 @@ export const DELETE: APIRoute = async ({ request }) => {
 
                 levelIds = levelIds.filter(id => parentIdSet.has(id));
             }
+
+            // Finally, delete the category itself
+            await tx.categoria.delete({
+                where: { id: catId }
+            });
         });
 
         return new Response(JSON.stringify({ success: true }), { status: 200 });
     } catch (error: any) {
-        console.error("Error deleting subcategory:", error);
+        console.error("Error deleting category:", error);
         return new Response(JSON.stringify({ error: error.message || "Error interno del servidor" }), { status: 500 });
     }
 };

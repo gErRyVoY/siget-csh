@@ -1,6 +1,6 @@
 ---
 import MainLayout from "@/layouts/MainLayout.astro";
-import categoriesData from "@/data/categories.json";
+import { prisma } from "@/lib/db";
 import { getSession } from "auth-astro/server";
 
 const session = await getSession(Astro.request);
@@ -10,8 +10,61 @@ if (!user) {
     return Astro.redirect("/login");
 }
 
-// Filtrar solo la categoría Marketing (ID 12)
-const marketingCategory = categoriesData.find((c) => c.id === 12);
+// Fetch the Marketing category (ID 12) and its active subcategories
+const catId = 12;
+const [dbCategory, dbSubcategories, dbSubcatRelations] = await Promise.all([
+    prisma.categoria.findUnique({
+        where: { id: catId, activo: true }
+    }),
+    prisma.subcategoria.findMany({
+        where: { activo: true },
+        orderBy: { nombre: "asc" }
+    }),
+    prisma.subcategoriaCategorias.findMany({
+        where: { categoriaId: catId, activo: true }
+    })
+]);
+
+// Build subcategory tree nodes recursively
+function buildSubcategoryTree(
+    parentSubId: number | null, 
+    catId: number, 
+    allSubs: typeof dbSubcategories, 
+    relations: typeof dbSubcatRelations
+): any[] {
+    const levelSubs = allSubs.filter(sub => {
+        if (parentSubId === null) {
+            const isLinked = relations.some(r => r.categoriaId === catId && r.subcategoriaId === sub.id);
+            return isLinked && sub.parent_subcategoriaId === null;
+        } else {
+            return sub.parent_subcategoriaId === parentSubId;
+        }
+    });
+
+    return levelSubs.map(sub => {
+        const children = buildSubcategoryTree(sub.id, catId, allSubs, relations);
+        return {
+            id: sub.id,
+            nombre: sub.nombre,
+            parent_subcategoriaId: sub.parent_subcategoriaId,
+            nivel_soporte_requerido: sub.nivel_soporte_requerido,
+            activo: sub.activo,
+            children: children.sort((a, b) => a.nombre.localeCompare(b.nombre))
+        };
+    }).sort((a, b) => a.nombre.localeCompare(b.nombre));
+}
+
+let marketingCategory = null;
+if (dbCategory) {
+    const subTree = buildSubcategoryTree(null, catId, dbSubcategories, dbSubcatRelations);
+    marketingCategory = {
+        id: dbCategory.id,
+        nombre: dbCategory.nombre,
+        nivel_soporte_requerido: dbCategory.nivel_soporte_requerido,
+        activo: dbCategory.activo,
+        subcategorias: subTree
+    };
+}
 
 const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY || '';
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';

@@ -975,6 +975,36 @@ async function main() {
   }
   console.log(`  ✓ ${plantillas.length} plantillas de correo sincronizadas.`);
 
+  // --- Sincronizar secuencias de PostgreSQL (para evitar errores de duplicado en ids autoincrementales) ---
+  console.log('Sincronizando secuencias de PostgreSQL...');
+  try {
+    const sequences = await prisma.$queryRaw<Array<{ seq_name: string | null; table_name: string; column_name: string }>>`
+      SELECT 
+        pg_get_serial_sequence('"' || table_name || '"', column_name) as seq_name,
+        table_name,
+        column_name
+      FROM information_schema.columns
+      WHERE column_default LIKE 'nextval%'
+        AND table_schema = 'public';
+    `;
+
+    for (const seq of sequences) {
+      if (seq.seq_name) {
+        const resetQuery = `
+          SELECT setval(
+            '${seq.seq_name}', 
+            COALESCE((SELECT MAX("${seq.column_name}") FROM "${seq.table_name}"), 0) + 1, 
+            false
+          );
+        `;
+        await prisma.$executeRawUnsafe(resetQuery);
+      }
+    }
+    console.log('  ✓ Secuencias de PostgreSQL sincronizadas correctamente.');
+  } catch (err: any) {
+    console.error('  ✗ Error al sincronizar secuencias de PostgreSQL:', err.message);
+  }
+
   console.log(`Seeding finished.`);
 }
 

@@ -8,6 +8,33 @@ Todos los cambios notables en este proyecto serán documentados en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Versionado Semántico](https://semver.org/lang/es/).
 
+## 2026-07-20 (Módulo de Categorías y Sincronización de Secuencias)
+
+### Feature: Rediseño del Módulo de Categorías y Subcategorías
+*   **Vistas (`src/pages/admin/categorias/`):**
+    *   Reestructurada la administración en un árbol jerárquico recursivo tipo acordeón (details/summary) con padding en cascada según el nivel de profundidad.
+    *   **Ojo (Activo/Inactivo)**: Iconos para alternar visibilidad activa de categorías y subcategorías (ojo abierto = activo, ojo cerrado/desvanecido = inactivo).
+    *   **Lápiz (Editar/Eliminar)**: Visible únicamente si el nodo no tiene tickets asociados en la base de datos (seguridad referencial). Permite cambiar el nombre o eliminarlo (X).
+    *   **Más (+)**: Fila inline que aparece al inicio del listado de subcategorías para registrar de forma inmediata un nuevo nodo hijo.
+    *   **Restablecer**: Botón que colapsa todos los acordeones del árbol y limpia formularios activos.
+    *   **Nueva categoría**: Botón que inserta una fila de entrada en la parte superior para añadir categorías raíz.
+    *   **Validación de entrada**: Expresión regular para admitir únicamente letras (con acentos y diéresis), números y espacios.
+    *   **Persistencia de Estado**: Se almacena la ruta de acordeones abiertos en `sessionStorage` para restaurar la vista tras recargar por guardar, editar o alternar visibilidad.
+    *   **Animación y Scroll**: Scroll automático hacia el elemento nuevo o editado con un efecto de transición de color de fondo desde guinda (`#800020`) a transparente/blanco.
+
+*   **API del Backend (`src/pages/api/admin/`):**
+    *   `/api/admin/categorias/index.ts` — POST, PATCH y DELETE con control de integridad transaccional (recursivo para subcategorías descendientes sin tickets).
+    *   `/api/admin/subcategories.ts` — POST, PATCH y DELETE con resolución de la categoría del padre.
+
+*   **Wizards de Creación de Tickets (`src/pages/tickets/`):**
+    *   `nuevo-ticket-csh.astro` y `nuevo-ticket-marketing.astro` actualizados para consultar el árbol de categorías/subcategorías activas dinámicamente desde la base de datos, en lugar del archivo JSON estático `categories.json`.
+
+### Fix: Desfase de Secuencias de Base de Datos (PostgreSQL)
+*   **Problema**: Al haber poblado las tablas en el seed utilizando IDs explícitos, las secuencias internas de PostgreSQL no avanzaron, provocando fallos por clave duplicada (`Unique constraint failed on the fields: (id)`) al insertar nuevos registros de categorías y subcategorías.
+*   **Solución**:
+    *   Se creó el script de mantenimiento `scripts/sync-sequences.ts` para buscar de forma automática las secuencias de base de datos y restablecerlas con el ID máximo (`MAX(id)`).
+    *   Se integró esta lógica de sincronización al final de `prisma/seed.ts` para que siempre se alineen las secuencias de forma automática tras poblar la base de datos.
+
 ## 2026-07-20 (Restauración de BD y Protección del Seed)
 
 ### Fix: Recuperación de Datos y Hardening del Script de Seed
