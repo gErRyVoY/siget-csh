@@ -8,7 +8,24 @@ Todos los cambios notables en este proyecto serán documentados en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Versionado Semántico](https://semver.org/lang/es/).
 
+## 2026-07-20 (Restauración de BD y Protección del Seed)
+
+### Fix: Recuperación de Datos y Hardening del Script de Seed
+*   **Incidente:** El script `seed.ts` ejecutaba `deleteMany()` sin condición, borrando todos los datos transaccionales (tickets, traslados, incidencias, usuarios).
+*   **Restauración:** Se restauró la base de datos desde un snapshot de AWS RDS del **17 de julio a las 03:00 AM** en una nueva instancia (`siget-db-dev-restored-v2`). Se recuperaron **100 usuarios, 21 tickets, 9 traslados y 123 incidencias**.
+*   **Corrección de schema:** El snapshot del 17-jul tenía la columna `vacaciones` (nombre anterior). Se aplicó `ALTER TABLE "usuario" RENAME COLUMN "vacaciones" TO "acepta_tickets"` vía SQL directo para sincronizar con el schema actual de Prisma.
+*   **Protección del seed (`prisma/seed.ts`):**
+    *   Todos los bloques `deleteMany()` ahora están envueltos en `if (forceClean)` — solo se ejecutan si se pasa la variable de entorno `FORCE_CLEAN=true`.
+    *   **Todos** los `createMany()` del archivo tienen `skipDuplicates: true`, garantizando que el seed sea completamente idempotente y re-ejecutable sin riesgo.
+    *   El seed puede correrse en cualquier momento para sincronizar catálogos sin afectar datos históricos.
+*   **Scripts de mantenimiento añadidos (`scripts/`):**
+    *   `validate-db.ts` — Valida conteo de todas las tablas del sistema.
+    *   `inspect-columns.ts` — Inspecciona columnas existentes en BD para detectar desfases de schema.
+    *   `fix-missing-columns.sql` — SQL aplicado para renombrar `vacaciones` → `acepta_tickets`.
+*   **Actualización de secreto AWS:** El secreto `DATABASE_URL` en AWS Secrets Manager fue actualizado por el usuario para apuntar a `siget-db-dev-restored-v2`. El `.env` local fue actualizado de forma correspondiente.
+
 ## 2026-07-16 (Toggles Homeoffice/Vacaciones, Correcciones de UI y Pulido Final en Incidencias)
+
 
 ### Feature: Estados Especiales para Inasistencias y Correcciones de UI
 *   **Vista de Incidencias (`src/pages/user/perfil/incidencias.astro`):**

@@ -6,32 +6,38 @@ async function main() {
   console.log(`Start seeding ...`);
 
   // --- Limpiar datos existentes (en orden de dependencia) ---
-  console.log('Cleaning existing data...');
-  await prisma.notificacionesCorreo.deleteMany({});
-  await prisma.plantillaCorreo.deleteMany({});
-  await prisma.historialSolicitud.deleteMany({});
-  await prisma.traslado.deleteMany({});
-  await prisma.ticket.deleteMany({});
-  await prisma.asignacionesCategorias.deleteMany({});
-  await prisma.subcategoriaCategorias.deleteMany({});
-  await prisma.subcategoria.deleteMany({});
-  await prisma.categoria.deleteMany({});
-  await prisma.permisoUsuarioSeccion.deleteMany({});
-  await prisma.permisoRolSeccion.deleteMany({});
-  await prisma.seccion.deleteMany({});
-  await prisma.logs.deleteMany({});
-  await prisma.incidencia.deleteMany({});
-  await prisma.usuario.deleteMany({});
-  await prisma.permiso.deleteMany({}); // Limpiar permisos
-  await prisma.rol.deleteMany({});      // Limpiar roles
-  await prisma.bloque.deleteMany({});
-  await prisma.ciclo.deleteMany({});
-  await prisma.carrera.deleteMany({});
-  await prisma.oferta.deleteMany({});
-  await prisma.descuento.deleteMany({});
-  await prisma.planPago.deleteMany({});
-  await prisma.empresa.deleteMany({});
-  await prisma.estatus.deleteMany({});
+  const forceClean = process.env.FORCE_CLEAN === 'true';
+
+  if (forceClean) {
+    console.log('Cleaning existing data (FORCE_CLEAN=true)...');
+    await prisma.notificacionesCorreo.deleteMany({});
+    await prisma.plantillaCorreo.deleteMany({});
+    await prisma.historialSolicitud.deleteMany({});
+    await prisma.traslado.deleteMany({});
+    await prisma.ticket.deleteMany({});
+    await prisma.asignacionesCategorias.deleteMany({});
+    await prisma.subcategoriaCategorias.deleteMany({});
+    await prisma.subcategoria.deleteMany({});
+    await prisma.categoria.deleteMany({});
+    await prisma.permisoUsuarioSeccion.deleteMany({});
+    await prisma.permisoRolSeccion.deleteMany({});
+    await prisma.seccion.deleteMany({});
+    await prisma.logs.deleteMany({});
+    await prisma.incidencia.deleteMany({});
+    await prisma.usuario.deleteMany({});
+    await prisma.permiso.deleteMany({}); // Limpiar permisos
+    await prisma.rol.deleteMany({});      // Limpiar roles
+    await prisma.bloque.deleteMany({});
+    await prisma.ciclo.deleteMany({});
+    await prisma.carrera.deleteMany({});
+    await prisma.oferta.deleteMany({});
+    await prisma.descuento.deleteMany({});
+    await prisma.planPago.deleteMany({});
+    await prisma.empresa.deleteMany({});
+    await prisma.estatus.deleteMany({});
+  } else {
+    console.log('Skipping data cleaning (FORCE_CLEAN is not true). Seed will run in safe mode.');
+  }
 
   // --- Insertar Empresas ---
   console.log('Seeding empresa...');
@@ -53,6 +59,7 @@ async function main() {
       { id: 14, nombre: 'Corporativo', slug: 'corporativo', tipo: 'Oficina', activa: true },
       { id: 15, nombre: 'CSH', slug: 'csh', tipo: 'Oficina', activa: true },
     ],
+    skipDuplicates: true,
   });
 
   // --- Insertar Ciclos ---
@@ -64,6 +71,7 @@ async function main() {
       { id: 3, ciclo: '2027-1', fecha_inicio: new Date('2026-07-01'), fecha_fin: new Date('2026-09-24'), activo: false },
       { id: 4, ciclo: '2027-2', fecha_inicio: new Date('2026-09-24'), fecha_fin: new Date('2027-01-06'), activo: false },
     ],
+    skipDuplicates: true,
   });
 
 
@@ -77,13 +85,14 @@ async function main() {
       { id: 3, nombre: 'editar_usuarios', descripcion: 'Permite editar usuarios desde la sección de admin' },
       { id: 4, nombre: 'ver_todos_tickets', descripcion: 'Permite ver la sección de "Todos los tickets"' },
     ],
+    skipDuplicates: true,
   });
 
   // --- Insertar Roles ---
   console.log('Seeding rol...');
   await prisma.rol.createMany({
     data: [
-      // â”€â”€â”€ Roles de Soporte CSH (atiendeTicketsCsh = true) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+      // ─── Roles de Soporte CSH (atiendeTicketsCsh = true) ───────────────────
       { id: 1, rol: 'Director CSH', descripcion: 'Director del Centro de Soporte', nivel_soporte: 'S_3', atiendeTicketsCsh: true, atiendeTicketsMkt: false },
       { id: 2, rol: 'Ingeniero soporte 1', descripcion: 'Ingeniero de soporte nivel 1', nivel_soporte: 'S_1', atiendeTicketsCsh: true, atiendeTicketsMkt: false },
       { id: 3, rol: 'Ingeniero soporte 2', descripcion: 'Ingeniero de soporte nivel 2', nivel_soporte: 'S_2', atiendeTicketsCsh: true, atiendeTicketsMkt: false },
@@ -93,12 +102,12 @@ async function main() {
       { id: 15, rol: 'Visitante administrador', descripcion: 'Visitante administrador', nivel_soporte: 'S_1', atiendeTicketsCsh: true, atiendeTicketsMkt: false },
       { id: 16, rol: 'Ingeniero Hubspot', descripcion: 'Ingeniero especializado en Hubspot', nivel_soporte: 'S_2', atiendeTicketsCsh: true, atiendeTicketsMkt: false },
       { id: 28, rol: 'Soporte técnico', descripcion: 'Soporte técnico', nivel_soporte: 'S_1', atiendeTicketsCsh: true, atiendeTicketsMkt: false },
-      // â”€â”€â”€ Roles de Marketing (atiendeTicketsMkt = true) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+      // ─── Roles de Marketing (atiendeTicketsMkt = true) ─────────────────────
       { id: 11, rol: 'Director Marketing', descripcion: 'Director de Marketing', nivel_soporte: 'Director', atiendeTicketsCsh: false, atiendeTicketsMkt: true },
       { id: 12, rol: 'Diseñador', descripcion: 'Diseñador gráfico (Marketing)', nivel_soporte: 'Marketing', atiendeTicketsCsh: false, atiendeTicketsMkt: true },
       { id: 13, rol: 'Community manager', descripcion: 'Ejecutivo de atención en redes sociales', nivel_soporte: 'Marketing', atiendeTicketsCsh: false, atiendeTicketsMkt: true },
       { id: 17, rol: 'Editor', descripcion: 'Editor de contenido multimedia', nivel_soporte: 'Marketing', atiendeTicketsCsh: false, atiendeTicketsMkt: true },
-      // â”€â”€â”€ Roles sin atención de tickets â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+      // ─── Roles sin atención de tickets ────────────────────────────────────
       { id: 7, rol: 'Director campus', descripcion: 'Director de campus', nivel_soporte: 'Director', atiendeTicketsCsh: false, atiendeTicketsMkt: false },
       { id: 8, rol: 'Coordinador RR.PP.', descripcion: 'Coordinador de relaciones públicas', nivel_soporte: 'Coordinador', atiendeTicketsCsh: false, atiendeTicketsMkt: false },
       { id: 9, rol: 'Ejecutivo RR.PP.', descripcion: 'Ejecutivo de relaciones públicas', nivel_soporte: 'Usuario', atiendeTicketsCsh: false, atiendeTicketsMkt: false },
@@ -116,6 +125,7 @@ async function main() {
       { id: 27, rol: 'Coordinador control escolar', descripcion: 'Coordinador de control escolar', nivel_soporte: 'Coordinador', atiendeTicketsCsh: false, atiendeTicketsMkt: false },
       { id: 29, rol: 'Enlace académico', descripcion: 'Enlace académico', nivel_soporte: 'Usuario', atiendeTicketsCsh: false, atiendeTicketsMkt: false },
     ],
+    skipDuplicates: true,
   });
 
   // --- Conectar Permisos y Secciones a Roles ---
@@ -152,6 +162,7 @@ async function main() {
       { id: 20, nombre: 'Usuarios', identificador: 'admin_siget_usuarios', grupo: 'Administrador', subgrupo: 'SiGeT' },
       { id: 21, nombre: 'Roles', identificador: 'admin_siget_roles', grupo: 'Administrador', subgrupo: 'SiGeT' },
     ],
+    skipDuplicates: true,
   });
 
   const allRoles = await prisma.rol.findMany();
@@ -201,10 +212,18 @@ async function main() {
 
     // Conectar secciones
     for (const sid of seccionIds) {
-      await prisma.permisoRolSeccion.create({
-        data: {
+      await prisma.permisoRolSeccion.upsert({
+        where: {
+          rolId_seccionId: {
+            rolId: rolId,
+            seccionId: sid
+          }
+        },
+        update: { activo: true },
+        create: {
           rolId: rolId,
-          seccionId: sid
+          seccionId: sid,
+          activo: true
         }
       });
     }
@@ -214,10 +233,18 @@ async function main() {
   for (const rol of allRoles) {
     if (!rolesConPermisos.some(r => r.rolId === rol.id)) {
       for (const sid of secEstandar) {
-        await prisma.permisoRolSeccion.create({
-          data: {
+        await prisma.permisoRolSeccion.upsert({
+          where: {
+            rolId_seccionId: {
+              rolId: rol.id,
+              seccionId: sid
+            }
+          },
+          update: { activo: true },
+          create: {
             rolId: rol.id,
-            seccionId: sid
+            seccionId: sid,
+            activo: true
           }
         });
       }
@@ -233,6 +260,7 @@ async function main() {
       { id: 3, mail: 'victor@humanitas.edu.mx', nombres: 'Victor', apellidos: 'Barrera', clave: 'BRV005', empresaId: 15, rolId: 1, trl_mail: true, trl_coord: false, horario_disponibilidad: Prisma.JsonNull, image: "https://lh3.googleusercontent.com/a-/ALV-UjXzczZnIALPW_gM9F2H4wKz1syIeeJNR4orX2M3ga9Q0Eoj8Ch5Nlef6fgd40A4Iuw1G4gE-q8b981BUu3S0Wyt_8IBte-b8mqlWsoAn89iLdPFIb2Bi8ficGNiUxGKz9qZOkXTaU_Qxp17TsDh8uuwPd3byYfF5BhWm8LIaNXXfl77NOxtjSjsFLuzvsP8VHdItGQDuGwyp5nsm2N5uPdenc3MJRm-Rh85aFUPf6FWoH_TXyXXxM0H03VBw3cIVebkPC_Bv9soG8dAOeun8kcSfB_jHJGbrYJbN4uTU3tpSgdKyU4uzJt6YJMSav6Uo7kROIOLpiKB5NC1ysBLv6Okm7HDndBNr-Ai2-c50XfqV_wLmp76fYtInKcWtYJ27xmpppVkb3f6_I8dEbZt4CrpoSlPmiC9sjf4WZ2G5W3nWIsy9Ss5BotYapihRnhzp7gSZggL0uObIzs9GjXQ8fFZdx1_rk1eBo4HGPrw_NkDeftxap3Qx40uA6zrWT5REGWHflpJFkgwVnyxis9B_dlS3-OAi2xJFElP0clD6WXXh8EOKnpN5ns7-nExpKiWcc6zi4ydrNSCVVO7hAi-oanYUH0xHgjZ9JEDl5RPyVjlReED1wobfvXtfYAX7pxRg8gp6MNE_JamSylydAiHdxLc6owtk9LkmAv0Gx_g1-WtuYEQjsM-1iJqtZDEq51GHJ-5lA4V8L3AzNxdjwBl42MfYKSipKOiEZCicgoH1R7fj6qdPq0li5hcF7_7GsHoXc0WmcymxzdjyhCQ5Qd3-wKVN9V5NkW8aRZ6WqtH_XLPxxsDzw77eNyohX3ZAk0lzL_RCt4oGcSx09nQ79NLXBpuWeWY63dqG6wpHMQF4IrHGE94qWPEc7yyHE81NsdpZttwFMonfVtDXc2JnQ7Tr_VRFZuztRy6DbBW1Kj_Kazwilcaamr3iAPxETu-5WUOYMGk212lzku0d2TLZa0PwtqcQFPkFrEj0Pzx02VwCN7g_9NwUyUPKAC5yLYWNwPjlmLnNG8ZMqY5qhb2NF__s4QbhUvLPTUmxyGNoBkWncm34YOG_w6OZkw=s240-p-k-rw-no" },
       { id: 4, mail: 'soporte@humanitas.edu.mx', nombres: 'Centro de Soporte', apellidos: 'Humanitas', clave: 'HCL1493', empresaId: 15, rolId: 15, trl_mail: true, trl_coord: false, horario_disponibilidad: Prisma.JsonNull, image: "https://www.gstatic.com/images/branding/product/2x/avatar_square_grey_48dp.png" }
     ],
+    skipDuplicates: true,
   });
 
   // --- Insertar Oferta, Descuento, Estatus, etc. (sin cambios) ---
@@ -249,6 +277,7 @@ async function main() {
       { id: 5, descripcion: 'Diplomado' },
       { id: 6, descripcion: 'Idioma' },
     ],
+    skipDuplicates: true,
   });
 
   // --- Insertar Descuento ---
@@ -267,7 +296,7 @@ async function main() {
     { id: 20, descripcion: 'Convenio', monto: 10, activo: true },
     { id: 21, descripcion: 'Especial', monto: 0, activo: true },
   ];
-  await prisma.descuento.createMany({ data: descuentosData });
+  await prisma.descuento.createMany({ data: descuentosData, skipDuplicates: true });
 
   // --- Insertar PlanPago ---
   console.log('Seeding plan_pago...');
@@ -289,6 +318,7 @@ async function main() {
   ];
   await prisma.planPago.createMany({
     data: planesPago.map((p, i) => ({ ...p, id: i + 1, activo: true })),
+    skipDuplicates: true,
   });
 
   // --- Insertar Estatus ---
@@ -307,6 +337,7 @@ async function main() {
       { id: 10, nombre: 'Información campus destino', descripcion: 'Traslado en espera de información de campus destino' },
       { id: 11, nombre: 'Confirmación alumno', descripcion: 'Traslado en espera de confirmación del alumno' },
     ],
+    skipDuplicates: true,
   });
 
   // --- Insertar Categoria ---
@@ -326,6 +357,7 @@ async function main() {
       { id: 11, nombre: 'Otro', nivel_soporte_requerido: 'S_1', activo: true },
       { id: 12, nombre: 'Marketing', nivel_soporte_requerido: 'Marketing', activo: true },
     ],
+    skipDuplicates: true,
   });
 
   // --- Insertar Carrera ---
@@ -367,6 +399,7 @@ async function main() {
       { id: 33, clave: 'DIP06', descripcion: 'Seminario de Reflexiones Psicoanalíticas sobre el Cuerpo, la Anorexia y la Obesidad', ofertaId: 5, activo: true },
       { id: 34, clave: 'ISEMI', descripcion: 'English Kingdom', ofertaId: 6, activo: true },
     ],
+    skipDuplicates: true,
   });
 
   // --- Insertar Subcategorias ---
@@ -516,6 +549,7 @@ async function main() {
       { id: 141, nombre: 'Video', parent_subcategoriaId: null },
       { id: 142, nombre: 'Video institucional', parent_subcategoriaId: 141 },
     ],
+    skipDuplicates: true,
   });
 
   // --- Insertar SubcategoriaCategorias ---
@@ -727,6 +761,7 @@ async function main() {
       { categoriaId: 12, subcategoriaId: 141 },
       { categoriaId: 12, subcategoriaId: 142 },
     ],
+    skipDuplicates: true,
   });
 
   // --- Insertar Asignaciones de Categorias ---
@@ -738,6 +773,7 @@ async function main() {
       // Asignar categoria Página web (10) a usuario Gerardo Omaña (1)
       { atiendeId: 1, categoriaId: 10, activo: true },
     ],
+    skipDuplicates: true,
   });
 
   // --- Insertar Permisos de Categoría por Rol ---
