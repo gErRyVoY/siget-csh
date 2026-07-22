@@ -5,15 +5,16 @@
 >
 > **⚠️ REGLA CRÍTICA PARA EL ASISTENTE:** El asistente **NO debe ejecutar `git push`** en ninguna circunstancia a menos que el usuario lo solicite **de forma explícita**. Se permiten `git add` y `git commit` para preparar los cambios, pero el push queda **reservado exclusivamente para cuando el usuario lo indique**.
 
-**Tarea Actual:** Completada — Refactor de Lógica de Asignación Avanzada (2026-07-22) ✅
+**Tarea Actual:** Completada — Refactor y Seguridad Integral en Middleware (2026-07-22) ✅
 
-**Estado:** Completado. Se refactorizó `src/services/ticketAssignmentService.ts` para verificar permisos híbridos (`atiende_csh`/`atiende_mkt` en Usuario o Rol), comprobar la disponibilidad con `acepta_tickets` y formateo de hora 24h de alta precisión en `America/Mexico_City`, y desempate por menor `carga_actual` e ID. Se validó en `update.ts` que los usuarios asignados manualmente estén activos.
+**Estado:** Completado. Se refactorizó `src/middleware.ts` para proteger peticiones `/api/*` respondiendo `401` JSON cuando no hay sesión activa, cotejar prefijos específicos de rutas contra `sectionRouteMap` basándose en las secciones JWT del usuario, persistir la cookie flash de desautorización `siget_flash_unauthorized` y aplicar cabeceras HTTP de seguridad (`COOP`, `CEOP`, `Referrer-Policy`, `X-Frame-Options`, `X-Content-Type-Options`).
 
 **Pasos Siguientes:**
-1. Validar flujos de tickets y asignación automática en staging/producción.
-2. Refactorizar y reforzar `src/middleware.ts` para seguridad de rutas.
+1. Validar flujos de tickets, traslados y navegación con sesión en staging/producción.
+2. Monitoreo general de la aplicación.
 
 **Pasos Completados:**
+- ✅ **Refactor y Seguridad Integral en Middleware (2026-07-22):** Refactorizado `src/middleware.ts` para responder status `401` JSON en endpoints `/api/*` sin sesión activa, validar secciones en rutas con ordenamiento por longitud descendente de `sectionRouteMap`, y añadir cabeceras HTTP de seguridad (`X-Frame-Options`, `X-Content-Type-Options`, `COOP`, `CEOP`, `Referrer-Policy`). Se validó compilación 100% limpia con 0 errores en `npx astro check`.
 - ✅ **Refactor de Lógica de Asignación Avanzada (2026-07-22):** Refactorizado `src/services/ticketAssignmentService.ts` para validar permisos híbridos (`atiende_csh`/`atiende_mkt` en Usuario o Rol), verificar disponibilidad con `acepta_tickets`, y formatear horarios 24h en la zona horaria `America/Mexico_City`. Se incluyó desempate determinista por carga e ID, y validación de usuarios activos al asignar manualmente en `api/tickets/update.ts`. Se corrigieron errores de TypeScript en la app alcanzando 0 errores en `npx astro check`.
 - ✅ **Restauración de BD y Hardening del Seed v2 (2026-07-22):** El seed borró datos transaccionales al ejecutarse con `FORCE_CLEAN=true`. Se creó el script `scripts/restore-backup.ts` que restaura datos desde el backup JSON más reciente, mapeando el esquema anterior al actual (rolId viejo → 1/2/3, columnas renombradas, defaults para campos nuevos). Se restauraron 100 usuarios, 20 tickets, 9 traslados, 41 historiales y 123 incidencias. El `seed.ts` fue refactorizado con doble protección: `FORCE_CLEAN=true` solo limpia catálogos estáticos; para borrar datos transaccionales se requiere además `FORCE_CLEAN_TRANSACTIONAL=true`.
 - ✅ **OU Early Adopters en Login (2026-07-22):** Se añadió la Unidad Organizativa `Early Adopters` como válida en el callback `signIn` de `auth.config.ts`, además de `Colaboradores`. Se corrigió simultáneamente un `ReferenceError: userData is not defined` causado por el reordenamiento accidental de las líneas de asignación.

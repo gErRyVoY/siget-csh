@@ -1,18 +1,16 @@
 import { defineMiddleware } from "astro:middleware";
 import { getSession } from "auth-astro/server";
 
-// Rutas que no requieren autenticación. Todas las demás estarán protegidas.
+// Rutas públicas que no requieren autenticación.
 const publicRoutes = [
   "/login",
   "/health",
-  // Añade aquí otras rutas públicas si las hubiera, ej: /landing, /about
 ];
 
 export const onRequest = defineMiddleware(async (context, next) => {
-
   const { pathname } = context.url;
 
-  // Ignorar archivos estáticos y assets internos de Astro para evitar saturar la base de datos
+  // Ignorar archivos estáticos y assets internos de Astro para evitar sobrecargar la BD
   if (
     pathname.startsWith("/_astro/") ||
     pathname.startsWith("/_image") ||
@@ -32,36 +30,39 @@ export const onRequest = defineMiddleware(async (context, next) => {
   // Hacemos que la sesión esté disponible en todas las páginas y componentes.
   context.locals.session = session;
 
-  // Verificamos si la ruta actual es pública.
   const isPublicRoute = publicRoutes.includes(pathname);
 
-  // Si el usuario está autenticado y trata de acceder a una ruta pública (como /login),
-  // lo redirigimos a la página de inicio.
+  // Si el usuario está autenticado y trata de acceder a una ruta pública (como /login), redirigir a inicio
   if (session && isPublicRoute) {
     return context.redirect("/");
   }
 
-  // Si la ruta es pública, permitimos el acceso sin importar la sesión.
+  // Si la ruta es pública y no hay sesión, permitir acceso libre
   if (isPublicRoute) {
     return next();
   }
 
-  // Si la ruta NO es pública y NO hay sesión, redirigimos al login.
+  // Si la ruta NO es pública y NO hay sesión:
   if (!session) {
+    // Para endpoints de API, devolver 401 JSON en lugar de redireccionar HTML a /login
+    if (pathname.startsWith("/api/")) {
+      return new Response(JSON.stringify({ message: "No autorizado" }), {
+        status: 401,
+        headers: { "Content-Type": "application/json" }
+      });
+    }
     return context.redirect("/login");
   }
 
-  // --- Lógica de Control de Acceso (RBAC) ---
+  // --- Lógica de Control de Acceso por Secciones (RBAC Híbrido) ---
   const userSecciones = session.user?.secciones || [];
   
-  // Mapa de rutas a seciones necesarias.
-  // El orden no importa tanto, pero verificaremos buscando la ruta más específica.
   const sectionRouteMap: Record<string, string> = {
     "/tickets/soporte/nuevo-ticket-csh": "crear_ticket_csh",
     "/tickets/soporte/traslado": "proceso_traslados",
     "/tickets/marketing/nuevo-ticket-marketing": "crear_ticket_marketing",
     "/tickets/soporte/usuario": "soporte_mis_tickets",
-    "/tickets/soporte": "soporte_dashboard", // Podría ser soporte_todos o soporte_dashboard dependiendo de qué es /tickets/soporte index, pero asumimos que requiere soporte_dashboard
+    "/tickets/soporte": "soporte_dashboard",
     "/tickets/marketing/usuario": "marketing_mis_tickets",
     "/tickets/marketing/dashboard": "marketing_dashboard",
     "/tickets/marketing": "marketing_todos",
@@ -78,19 +79,16 @@ export const onRequest = defineMiddleware(async (context, next) => {
     "/horario-de-atencion": "horario_atencion",
   };
 
-  // Convert map to array sorted by path length descending to match most specific path first.
+  // Ordenar rutas por longitud descendente para buscar primero la coincidencia más específica
   const sortedRoutes = Object.keys(sectionRouteMap).sort((a, b) => b.length - a.length);
 
-  // Buscar coincidencia en la ruta
   for (const route of sortedRoutes) {
-    if (pathname.startsWith(route)) {
+    if (pathname === route || pathname.startsWith(route + "/")) {
         const requiredSection = sectionRouteMap[route];
         
-        // Si el usuario no tiene la sección en su JWT, denegar el acceso.
-        // Esto también captura el caso en donde la sección esté apagada globalmente 
-        // porque auth.config.ts ya omite las inhabilitadas globalmente.
+        // Si el usuario no posee la sección requerida en su sesión, denegar el acceso.
         if (!userSecciones.includes(requiredSection)) {
-            // Cookie de flash: sobrevive el redirect del ClientRouter sin depender de query params
+            // Cookie de flash: sobrevive el redirect del ClientRouter
             context.cookies.set('siget_flash_unauthorized', '1', {
                 path: '/',
                 maxAge: 30,
@@ -100,22 +98,20 @@ export const onRequest = defineMiddleware(async (context, next) => {
             });
             return context.redirect("/");
         }
-        break; // Detener la verificación porque logramos el match más específico
+        break; // Coincidencia de más alta especificidad lograda
     }
   }
 
-
-  // Si todo está en orden (ruta protegida y con sesión), continuamos.
-  // Si todo está en orden (ruta protegida y con sesión), continuamos.
-  // Si todo está en orden (ruta protegida y con sesión), continuamos.
   const response = await next();
 
-  // Clone response to ensure it's mutable (fixes immutable errors with redirects)
+  // Clonar la respuesta para permitir modificación de cabeceras HTTP de seguridad
   const newResponse = new Response(response.body, response);
 
   newResponse.headers.set("Cross-Origin-Opener-Policy", "same-origin-allow-popups");
   newResponse.headers.set("Cross-Origin-Embedder-Policy", "unsafe-none");
   newResponse.headers.set("Referrer-Policy", "no-referrer-when-downgrade");
+  newResponse.headers.set("X-Frame-Options", "SAMEORIGIN");
+  newResponse.headers.set("X-Content-Type-Options", "nosniff");
 
   return newResponse;
 });
