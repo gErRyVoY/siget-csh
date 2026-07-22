@@ -14,10 +14,12 @@ const userEmpresa = user?.empresa?.nombre;
 const userName: string | null = (user as any)?.name ?? null;
 const userEmail: string | null = (user as any)?.email ?? null;
 
-// Determinar si el usuario atiende tickets (CSH o Mkt) - ahora basado en flags del usuario
-const atiendeTicketsCsh: boolean = (user as any)?.atiende_csh ?? false;
-const atiendeTicketsMkt: boolean = (user as any)?.atiende_mkt ?? false;
-const atiendeTickets = atiendeTicketsCsh || atiendeTicketsMkt;
+// Determinar si el usuario atiende tickets o es admin/superadmin (pueden ver el menu-profile completo)
+const userRolId = user?.rol?.id ?? 0;
+const isAdminOrSuper = userRolId === 2 || userRolId === 3 || (user?.rol?.administrador ?? false);
+const atiendeTicketsCsh: boolean = ((user as any)?.atiende_csh ?? false) || (user?.rol?.atiende_csh ?? false);
+const atiendeTicketsMkt: boolean = ((user as any)?.atiende_mkt ?? false) || (user?.rol?.atiende_mkt ?? false);
+const atiendeTickets = atiendeTicketsCsh || atiendeTicketsMkt || isAdminOrSuper;
 
 // Alias: si está definido y no está vacío (solo espacios), usarlo
 const rawAlias = user?.alias ?? "";
