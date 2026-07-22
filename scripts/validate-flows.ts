@@ -53,7 +53,7 @@ async function suite1_catalogos() {
     `encontrados: ${roles.length} (${roles.map((r) => r.rol ?? `ID:${r.id}`).join(", ")})`);
 
   const rol1 = roles.find((r) => r.id === 1);
-  log("Roles", "Rol 1 existe", !!rol1, rol1?.nombre);
+  log("Roles", "Rol 1 existe", !!rol1, rol1?.rol);
 
   const categorias = await prisma.categoria.count();
   log("Categorias", "Al menos 12 categorias en BD", categorias >= 12, `total: ${categorias}`);
