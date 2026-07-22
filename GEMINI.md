@@ -5,15 +5,20 @@
 >
 > **⚠️ REGLA CRÍTICA PARA EL ASISTENTE:** El asistente **NO debe ejecutar `git push`** en ninguna circunstancia a menos que el usuario lo solicite **de forma explícita**. Se permiten `git add` y `git commit` para preparar los cambios, pero el push queda **reservado exclusivamente para cuando el usuario lo indique**.
 
-**Tarea Actual:** Completada — Refactor y Seguridad Integral en Middleware (2026-07-22) ✅
+**Tarea Actual:** Completada — Pruebas y Validación General (2026-07-22) ✅
 
-**Estado:** Completado. Se refactorizó `src/middleware.ts` para proteger peticiones `/api/*` respondiendo `401` JSON cuando no hay sesión activa, cotejar prefijos específicos de rutas contra `sectionRouteMap` basándose en las secciones JWT del usuario, persistir la cookie flash de desautorización `siget_flash_unauthorized` y aplicar cabeceras HTTP de seguridad (`COOP`, `CEOP`, `Referrer-Policy`, `X-Frame-Options`, `X-Content-Type-Options`).
+**Estado:** Completada. Se ejecutó el script `scripts/validate-flows.ts` (5 suites, 22 pruebas) con resultado 20/22 OK. Se creó además `scripts/sync-carga-actual.ts` para resincronizar contadores de carga. Se identificaron 2 hallazgos:
+1. **CRÍTICO:** Flags `atiende_csh`/`atiende_mkt` apagados en todos los usuarios y en el rol 2 (`admin`) → tickets se crean sin asignar. **Pendiente de acción:** Activar `atiende_csh=true` en rol 2 o en agentes individuales desde la UI.
+2. **ADVERTENCIA:** `carga_actual` desincronizado (efecto del restore desde backup). Ejecutar `npx tsx scripts/sync-carga-actual.ts` para corregir.
 
 **Pasos Siguientes:**
-1. Validar flujos de tickets, traslados y navegación con sesión en staging/producción.
-2. Monitoreo general de la aplicación.
+1. **Acción urgente:** Activar `atiende_csh=true` en el rol `admin` (id=2) o en los agentes individuales para que la asignación automática funcione en producción.
+2. Ejecutar `npx tsx scripts/sync-carga-actual.ts` para sincronizar contadores de carga.
+3. Monitoreo general de la aplicación.
+4. Hacer `git add` + `git commit` con los scripts nuevos y esperar confirmación del usuario para `git push`.
 
 **Pasos Completados:**
+- ✅ **Pruebas y Validación General (2026-07-22):** Se creó y ejecutó el script `scripts/validate-flows.ts` (5 suites: catálogos, asignación, tickets, middleware RBAC, traslados). 20/22 pruebas OK. Se documentaron hallazgos críticos: flags de asignación apagados y desincronización de `carga_actual`. Se creó `scripts/sync-carga-actual.ts` para corregir contadores. La compilación del proyecto permanece con 0 errores y 0 warnings en `npx astro check`.
 - ✅ **Refactor y Seguridad Integral en Middleware (2026-07-22):** Refactorizado `src/middleware.ts` para responder status `401` JSON en endpoints `/api/*` sin sesión activa, validar secciones en rutas con ordenamiento por longitud descendente de `sectionRouteMap`, y añadir cabeceras HTTP de seguridad (`X-Frame-Options`, `X-Content-Type-Options`, `COOP`, `CEOP`, `Referrer-Policy`). Se validó compilación 100% limpia con 0 errores en `npx astro check`.
 - ✅ **Refactor de Lógica de Asignación Avanzada (2026-07-22):** Refactorizado `src/services/ticketAssignmentService.ts` para validar permisos híbridos (`atiende_csh`/`atiende_mkt` en Usuario o Rol), verificar disponibilidad con `acepta_tickets`, y formatear horarios 24h en la zona horaria `America/Mexico_City`. Se incluyó desempate determinista por carga e ID, y validación de usuarios activos al asignar manualmente en `api/tickets/update.ts`. Se corrigieron errores de TypeScript en la app alcanzando 0 errores en `npx astro check`.
 - ✅ **Restauración de BD y Hardening del Seed v2 (2026-07-22):** El seed borró datos transaccionales al ejecutarse con `FORCE_CLEAN=true`. Se creó el script `scripts/restore-backup.ts` que restaura datos desde el backup JSON más reciente, mapeando el esquema anterior al actual (rolId viejo → 1/2/3, columnas renombradas, defaults para campos nuevos). Se restauraron 100 usuarios, 20 tickets, 9 traslados, 41 historiales y 123 incidencias. El `seed.ts` fue refactorizado con doble protección: `FORCE_CLEAN=true` solo limpia catálogos estáticos; para borrar datos transaccionales se requiere además `FORCE_CLEAN_TRANSACTIONAL=true`.
