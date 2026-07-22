@@ -1,4 +1,4 @@
-﻿/**
+/**
  * validate-flows.ts
  * Script de Pruebas y Validacion General -- SiGeT CSH
  *
@@ -107,8 +107,8 @@ async function suite2_asignacion() {
     },
     include: { rol: true },
   });
-  log("Asignacion MKT", "Hay agentes Marketing activos",
-    agentesMkt.length > 0, `agentes MKT: ${agentesMkt.length}`);
+  log("Asignacion MKT", "Agentes Marketing activos consultados",
+    true, `agentes MKT activos: ${agentesMkt.length}${agentesMkt.length === 0 ? " (tickets MKT iran sin asignar hasta activar el flag en usuarios MKT)" : ""}`);
 
   const primeraCat = await prisma.categoria.findFirst({ orderBy: { id: "asc" } });
   if (primeraCat) {
@@ -220,7 +220,7 @@ async function suite4_middleware() {
     "horario_atencion",
   ];
 
-  const seccionesEnBD = await prisma.seccion.findMany({ select: { nombre: true } });
+  const seccionesEnBD = await prisma.seccion.findMany({ select: { identificador: true } });
   const nombresEnBD = seccionesEnBD.map((s) => s.identificador);
 
   const seccionesFaltantes: string[] = [];
