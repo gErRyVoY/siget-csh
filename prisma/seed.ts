@@ -109,9 +109,9 @@ async function main() {
   console.log('Seeding rol...');
   await prisma.rol.createMany({
     data: [
-      { id: 1, rol: 'user', descripcion: 'Usuario para levantar tickets en el sistema.', ticket_csh: true, ticket_mkt: false, traslados: true, generales: true, atiende_csh: false, atiende_mkt: false, administrador: false },
-      { id: 2, rol: 'admin', descripcion: 'Administrador para atender tickets en el sistema.', ticket_csh: true, ticket_mkt: true, traslados: true, generales: true, atiende_csh: false, atiende_mkt: false, administrador: false },
-      { id: 3, rol: 'superadmin', descripcion: 'Super administrador en el sistema.', ticket_csh: true, ticket_mkt: true, traslados: true, generales: true, atiende_csh: true, atiende_mkt: true, administrador: true },
+      { id: 1, rol: 'user', descripcion: 'Usuario para levantar tickets en el sistema.', nivel_soporte: NivelSoporte.Usuario, ticket_csh: true, ticket_mkt: false, traslados: true, generales: true, atiende_csh: false, atiende_mkt: false, administrador: false },
+      { id: 2, rol: 'admin', descripcion: 'Administrador para atender tickets en el sistema.', nivel_soporte: NivelSoporte.S_1, ticket_csh: true, ticket_mkt: true, traslados: true, generales: true, atiende_csh: true, atiende_mkt: false, administrador: false },
+      { id: 3, rol: 'superadmin', descripcion: 'Super administrador en el sistema.', nivel_soporte: NivelSoporte.S_3, ticket_csh: true, ticket_mkt: true, traslados: true, generales: true, atiende_csh: true, atiende_mkt: true, administrador: true },
     ],
     skipDuplicates: true,
   });
@@ -161,7 +161,7 @@ async function main() {
 
   const rolesSecciones = [
     { rolId: 1, seccionIds: [1, 2, 4, ...allOtros] },
-    { rolId: 2, seccionIds: [1, 2, 3, ...allOtros] },
+    { rolId: 2, seccionIds: [...allAbrirTicket, ...allTicketsSoporte, ...allTicketsMarketing, ...allOtros, ...allAdminSiget] },
     { rolId: 3, seccionIds: [...allAbrirTicket, ...allTicketsSoporte, ...allTicketsMarketing, ...allOtros, ...allAdminSiget] }
   ];
 
