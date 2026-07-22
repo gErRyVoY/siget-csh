@@ -48,12 +48,10 @@ export const GET: APIRoute = async ({ request }) => {
       empresaId: empresa.id,
     };
 
-    // --- RBAC: Marketing Roles Restriction ---
-    // Use role info already in the session token — avoids an extra DB query.
-    const MARKETING_ROLES = ["Director Marketing", "Diseñador", "Community manager", "Editor"];
-    const sessionRole = (session?.user as any)?.rol as string | undefined;
-    if (sessionRole && MARKETING_ROLES.includes(sessionRole)) {
-      where.rol = { rol: { in: MARKETING_ROLES } };
+    // --- RBAC: Marketing Restriction ---
+    const isMktOnly = (session?.user as any)?.atiende_mkt === true && (session?.user as any)?.atiende_csh !== true;
+    if (isMktOnly) {
+      where.atiende_mkt = true;
     }
     // -----------------------------------------
 
@@ -135,6 +133,24 @@ export const PATCH: APIRoute = async ({ request }) => {
     }
     if (typeof updateDataInput.acepta_tickets === 'boolean') {
       updateData.acepta_tickets = updateDataInput.acepta_tickets;
+    }
+    if (typeof updateDataInput.tckt_csh === 'boolean') {
+      updateData.tckt_csh = updateDataInput.tckt_csh;
+    }
+    if (typeof updateDataInput.tckt_mkt === 'boolean') {
+      updateData.tckt_mkt = updateDataInput.tckt_mkt;
+    }
+    if (typeof updateDataInput.atiende_csh === 'boolean') {
+      updateData.atiende_csh = updateDataInput.atiende_csh;
+    }
+    if (typeof updateDataInput.atiende_mkt === 'boolean') {
+      updateData.atiende_mkt = updateDataInput.atiende_mkt;
+    }
+    if (updateDataInput.alias !== undefined) {
+      updateData.alias = (typeof updateDataInput.alias === 'string' ? updateDataInput.alias.trim() : updateDataInput.alias) || null;
+    }
+    if (updateDataInput.puesto !== undefined) {
+      updateData.puesto = (typeof updateDataInput.puesto === 'string' ? updateDataInput.puesto.trim() : updateDataInput.puesto) || null;
     }
     if (typeof updateDataInput.auditor_docs === 'boolean') {
       updateData.auditor_docs = updateDataInput.auditor_docs;

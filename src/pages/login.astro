@@ -30,6 +30,13 @@ if (error) {
                     "Su correo no puede ser usado para usar éste servicio.",
             };
             break;
+        case "ColaboradorNoActivo":
+            errorMessage = {
+                title: "Acceso denegado",
+                message:
+                    "El colaborador no se encuentra registrado o activo en el sistema de Recursos Humanos.",
+            };
+            break;
         case "AccesoNoPermitido":
             isAccessDeniedError = true;
             errorMessage = {

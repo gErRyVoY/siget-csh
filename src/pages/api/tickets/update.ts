@@ -5,7 +5,7 @@ import type { Prisma, Prioridad } from '@prisma/client';
 import { sendNotification } from '../notifications/sse';
 import { sendTicketNotification } from '@/services/emailService';
 
-const PRIVILEGED_ROLES = [1, 2, 3, 4, 5, 6, 15];
+const PRIVILEGED_ROLES = [2, 3]; // admin y superadmin
 
 export const PATCH: APIRoute = async ({ request, locals }) => {
     const session = await getSession(request);

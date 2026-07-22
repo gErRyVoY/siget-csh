@@ -46,6 +46,36 @@ if (["Magno", "Ejecutivo"].includes(empresa.tipo)) {
           </label>
         </div>
       </div>
+
+      <!-- Toggle: CSH Tickets -->
+      <div class="flex items-center justify-between gap-4 flex-wrap mt-4 border-t pt-4 border-border/50">
+        <div>
+          <p class="text-sm font-medium text-foreground">Permitir levantar tickets de CSH</p>
+          <p class="text-xs text-muted-foreground">Los usuarios de esta empresa podrán levantar tickets para el Centro de Soporte Humanitas.</p>
+        </div>
+        <div class="flex items-center">
+          <label class="relative inline-flex items-center cursor-pointer">
+            <input type="checkbox" id="toggle-tckt-csh" class="sr-only peer" checked={(empresa as any).tckt_csh}>
+            <div class="w-11 h-6 bg-muted peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+            <span id="tckt-csh-label" class="ml-2 text-sm font-semibold text-foreground">{(empresa as any).tckt_csh ? 'Activado' : 'Desactivado'}</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Toggle: Marketing Tickets -->
+      <div class="flex items-center justify-between gap-4 flex-wrap mt-4 border-t pt-4 border-border/50">
+        <div>
+          <p class="text-sm font-medium text-foreground">Permitir levantar tickets de Marketing</p>
+          <p class="text-xs text-muted-foreground">Los usuarios de esta empresa podrán levantar tickets de solicitud de diseño o publicidad.</p>
+        </div>
+        <div class="flex items-center">
+          <label class="relative inline-flex items-center cursor-pointer">
+            <input type="checkbox" id="toggle-tckt-mkt" class="sr-only peer" checked={(empresa as any).tckt_mkt}>
+            <div class="w-11 h-6 bg-muted peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+            <span id="tckt-mkt-label" class="ml-2 text-sm font-semibold text-foreground">{(empresa as any).tckt_mkt ? 'Activado' : 'Desactivado'}</span>
+          </label>
+        </div>
+      </div>
     </div>
 
     <div class="flex justify-between items-center mb-4 gap-4 flex-wrap">
@@ -137,35 +167,41 @@ if (["Magno", "Ejecutivo"].includes(empresa.tipo)) {
     if (!container) return;
     const campusSlug = container.dataset.campusSlug;
 
-    // Toggle de Campus Virtual
-    const tcktVirtualToggle = document.getElementById("toggle-tckt-virtual") as HTMLInputElement;
-    const tcktVirtualLabel = document.getElementById("tckt-virtual-label");
-    if (tcktVirtualToggle && tcktVirtualLabel) {
-      tcktVirtualToggle.addEventListener("change", async () => {
-        const newValue = tcktVirtualToggle.checked;
-        tcktVirtualLabel.textContent = newValue ? 'Activado' : 'Desactivado';
-        
-        try {
-          const response = await fetch('/api/admin/empresa', {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ slug: campusSlug, tckt_virtual: newValue })
-          });
+    // Toggles de la Empresa
+    const setupCompanyToggle = (elementId: string, labelId: string, payloadKey: string) => {
+      const toggle = document.getElementById(elementId) as HTMLInputElement | null;
+      const label = document.getElementById(labelId);
+      if (toggle && label) {
+        toggle.addEventListener("change", async () => {
+          const newValue = toggle.checked;
+          label.textContent = newValue ? 'Activado' : 'Desactivado';
           
-          if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.message || 'Error al actualizar');
+          try {
+            const response = await fetch('/api/admin/empresa', {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ slug: campusSlug, [payloadKey]: newValue })
+            });
+            
+            if (!response.ok) {
+              const errorData = await response.json();
+              throw new Error(errorData.message || 'Error al actualizar');
+            }
+            
+            toast.success(`Configuración de campus actualizada.`);
+          } catch (error: any) {
+            console.error(`Error al actualizar campus (${payloadKey}):`, error);
+            toggle.checked = !newValue;
+            label.textContent = !newValue ? 'Activado' : 'Desactivado';
+            toast.error(error.message || 'Error al actualizar configuración.');
           }
-          
-          toast.success(`Configuración de campus actualizada.`);
-        } catch (error: any) {
-          console.error('Error al actualizar campus:', error);
-          tcktVirtualToggle.checked = !newValue;
-          tcktVirtualLabel.textContent = !newValue ? 'Activado' : 'Desactivado';
-          toast.error(error.message || 'Error al actualizar configuración.');
-        }
-      });
-    }
+        });
+      }
+    };
+
+    setupCompanyToggle("toggle-tckt-virtual", "tckt-virtual-label", "tckt-virtual");
+    setupCompanyToggle("toggle-tckt-csh", "tckt-csh-label", "tckt-csh");
+    setupCompanyToggle("toggle-tckt-mkt", "tckt-mkt-label", "tckt-mkt");
 
     const tableBody = document.getElementById("users-table-body") as HTMLTableSectionElement | null;
     const noUsersMessage = document.getElementById("no-users-message");

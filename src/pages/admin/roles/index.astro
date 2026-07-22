@@ -163,8 +163,8 @@ seccionesRaw.forEach((sec) => {
                       type="checkbox"
                       class="sr-only peer role-flag-toggle"
                       data-rol-id={selectedRoleData.id}
-                      data-flag="atiendeTicketsCsh"
-                      checked={(selectedRoleData as any).atiendeTicketsCsh}
+                      data-flag="atiende_csh"
+                      checked={(selectedRoleData as any).atiende_csh}
                     />
                     <div class="h-5 w-9 absolute rounded-full transition-all opacity-80 peer-checked:opacity-100 bg-muted-foreground peer-checked:bg-secondary" />
                     <div class="absolute top-[2px] left-[2px] bg-white border border-gray-300 rounded-full h-4 w-4 transition-transform peer-checked:translate-x-[16px] peer-checked:border-white z-10" />
@@ -180,8 +180,8 @@ seccionesRaw.forEach((sec) => {
                       type="checkbox"
                       class="sr-only peer role-flag-toggle"
                       data-rol-id={selectedRoleData.id}
-                      data-flag="atiendeTicketsMkt"
-                      checked={(selectedRoleData as any).atiendeTicketsMkt}
+                      data-flag="atiende_mkt"
+                      checked={(selectedRoleData as any).atiende_mkt}
                     />
                     <div class="h-5 w-9 absolute rounded-full transition-all opacity-80 peer-checked:opacity-100 bg-muted-foreground peer-checked:bg-secondary" />
                     <div class="absolute top-[2px] left-[2px] bg-white border border-gray-300 rounded-full h-4 w-4 transition-transform peer-checked:translate-x-[16px] peer-checked:border-white z-10" />
@@ -857,7 +857,7 @@ seccionesRaw.forEach((sec) => {
       });
     });
 
-    // Role flags (atiendeTicketsCsh / atiendeTicketsMkt)
+    // Role flags (atiende_csh / atiende_mkt)
     const roleFlagToggles = document.querySelectorAll(".role-flag-toggle");
     roleFlagToggles.forEach((toggle) => {
       toggle.addEventListener("change", async (e) => {

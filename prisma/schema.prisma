@@ -14,6 +14,8 @@ model Empresa {
   tipo              TipoEmpresa
   activa            Boolean     @default(true)
   tckt_virtual      Boolean     @default(false)
+  tckt_csh          Boolean     @default(true)
+  tckt_mkt          Boolean     @default(false)
   bloques           Bloque[]
   tickets           Ticket[]
   traslados_destino Traslado[]  @relation("Destino")
@@ -27,10 +29,15 @@ model Rol {
   id                 Int                 @id @default(autoincrement())
   rol                String              @db.VarChar(50)
   descripcion        String?
-  nivel_soporte      NivelSoporte
+  nivel_soporte      NivelSoporte        @default(Usuario)
   activo             Boolean             @default(true)
-  atiendeTicketsCsh  Boolean             @default(false)
-  atiendeTicketsMkt  Boolean             @default(false)
+  ticket_csh         Boolean             @default(true)
+  ticket_mkt         Boolean             @default(false)
+  traslados          Boolean             @default(false)
+  generales          Boolean             @default(true)
+  atiende_csh        Boolean             @default(false)
+  atiende_mkt        Boolean             @default(false)
+  administrador      Boolean             @default(false)
   permisos_categoria PermisoCategoria[]
   permisos_seccion   PermisoRolSeccion[]
   usuarios           Usuario[]
@@ -79,6 +86,11 @@ model Usuario {
   trl_mail                Boolean                  @default(false)
   alias                   String?                  @db.VarChar(50)
   clave                   String?                  @unique @db.VarChar(8)
+  puesto                  String?                  @db.VarChar(100)
+  tckt_csh                Boolean                  @default(true)
+  tckt_mkt                Boolean                  @default(false)
+  atiende_csh             Boolean                  @default(false)
+  atiende_mkt             Boolean                  @default(false)
   asignaciones_categorias AsignacionesCategorias[]
   historial_solicitudes   HistorialSolicitud[]
   logs                    Logs[]

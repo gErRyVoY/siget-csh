@@ -18,8 +18,8 @@ if (!dbUser) {
   return Astro.redirect("/login");
 }
 
-const atiendeTickets =
-  dbUser.rol.atiendeTicketsCsh || dbUser.rol.atiendeTicketsMkt;
+// El usuario puede editar su perfil si atiende tickets CSH o Marketing (flag a nivel de usuario)
+const atiendeTickets = (dbUser as any).atiende_csh || (dbUser as any).atiende_mkt;
 
 if (!atiendeTickets) {
   return Astro.redirect("/");

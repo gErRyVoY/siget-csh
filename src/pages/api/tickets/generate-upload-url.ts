@@ -4,7 +4,7 @@ import { prisma } from '@/lib/db';
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
-const PRIVILEGED_ROLES = [1, 2, 3, 4, 5, 6, 15];
+const PRIVILEGED_ROLES = [2, 3]; // admin y superadmin
 
 // Ensure environment variables are set
 if (!process.env.S3_BUCKET_NAME || !process.env.S3_REGION || !process.env.S3_ACCESS_KEY_ID || !process.env.S3_SECRET_ACCESS_KEY) {

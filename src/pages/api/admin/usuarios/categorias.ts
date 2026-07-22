@@ -2,7 +2,7 @@ import type { APIRoute } from 'astro';
 import { getSession } from 'auth-astro/server';
 import { prisma } from '@/lib/db';
 
-const PRIVILEGED_ROLES = [1, 2, 3, 4, 5, 6, 15];
+const PRIVILEGED_ROLES = [2, 3]; // admin y superadmin
 
 export const PATCH: APIRoute = async ({ request }) => {
     const session = await getSession(request);

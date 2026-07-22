@@ -3,7 +3,7 @@ import { prisma } from "@/lib/db";
 import { getSession } from "auth-astro/server";
 
 // PATCH /api/admin/roles/toggle-flags
-// Body: { rolId, field: 'atiendeTicketsCsh' | 'atiendeTicketsMkt', value: boolean }
+// Body: { rolId, field: 'atiende_csh' | 'atiende_mkt' | ..., value: boolean }
 export const PATCH: APIRoute = async ({ request }) => {
   const session = await getSession(request);
   if (!session?.user?.secciones?.includes("admin_siget_roles")) {
@@ -18,7 +18,8 @@ export const PATCH: APIRoute = async ({ request }) => {
       return new Response(JSON.stringify({ message: "Parámetros inválidos" }), { status: 400 });
     }
 
-    const allowedFields = ["atiendeTicketsCsh", "atiendeTicketsMkt"];
+    // Body: { rolId, field: 'atiende_csh' | 'atiende_mkt' | 'ticket_csh' | ... , value: boolean }
+    const allowedFields = ["atiende_csh", "atiende_mkt", "ticket_csh", "ticket_mkt", "traslados", "generales", "administrador", "activo"];
     if (!allowedFields.includes(field)) {
       return new Response(JSON.stringify({ message: "Campo no permitido" }), { status: 400 });
     }

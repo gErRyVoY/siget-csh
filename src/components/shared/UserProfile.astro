@@ -14,11 +14,9 @@ const userEmpresa = user?.empresa?.nombre;
 const userName: string | null = (user as any)?.name ?? null;
 const userEmail: string | null = (user as any)?.email ?? null;
 
-// Determinar si el usuario atiende tickets (CSH o Mkt)
-const atiendeTicketsCsh: boolean =
-    (user?.rol as any)?.atiendeTicketsCsh ?? false;
-const atiendeTicketsMkt: boolean =
-    (user?.rol as any)?.atiendeTicketsMkt ?? false;
+// Determinar si el usuario atiende tickets (CSH o Mkt) - ahora basado en flags del usuario
+const atiendeTicketsCsh: boolean = (user as any)?.atiende_csh ?? false;
+const atiendeTicketsMkt: boolean = (user as any)?.atiende_mkt ?? false;
 const atiendeTickets = atiendeTicketsCsh || atiendeTicketsMkt;
 
 // Alias: si está definido y no está vacío (solo espacios), usarlo
@@ -51,10 +49,12 @@ const displayName = alias ?? formattedName;
 // Descomponer el email en usuario y dominio
 const [username, domain] = userEmail?.split("@") ?? ["", ""];
 
-// Nombre del rol (solo primera letra mayúscula)
+// Puesto: del campo usuario.puesto (API de RH)
+const puestoDisplay = (user as any)?.puesto ?? null;
+
+// Nombre del rol (solo primera letra mayúscula) - como fallback
 const rolNombre = user?.rol?.rol ?? "";
-const rolDisplay =
-    rolNombre.charAt(0).toUpperCase() + rolNombre.slice(1).toLowerCase();
+const rolDisplay = puestoDisplay ?? (rolNombre.charAt(0).toUpperCase() + rolNombre.slice(1).toLowerCase());
 
 // Assign-tickets toggle status
 const aceptaTickets = (user as any)?.acepta_tickets ?? true;

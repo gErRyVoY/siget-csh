@@ -305,7 +305,7 @@ const NOTIFICATION_FULL_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="24
                 let currentPage = 1;
                 let count = 0;
                 let isLoadingNotifications = false;
-                const PRIVILEGED_ROLES = [1, 2, 3, 4, 5, 6, 15];
+                const PRIVILEGED_ROLES = [2, 3]; // admin y superadmin
                 const userRoleId = parseInt(userRoleStr, 10);
                 const isResolver = PRIVILEGED_ROLES.includes(userRoleId);
 

@@ -14,7 +14,7 @@ if (!user) {
     return Astro.redirect("/login");
 }
 
-const PRIVILEGED_ROLES = [1, 2, 3, 4, 5, 6, 15];
+const PRIVILEGED_ROLES = [2, 3]; // admin y superadmin
 const isPrivileged = PRIVILEGED_ROLES.includes(user.rol?.id ?? -1);
 
 // Obtener parÃ¡metros de filtro de la URL
@@ -127,7 +127,7 @@ const companies = isPrivileged
 // So strictly filtered by tickets present.
 const agents = await prisma.usuario.findMany({
     where: {
-        rolId: { in: PRIVILEGED_ROLES },
+        atiende_csh: true,
         activo: true,
         tickets_atendidos: {
             some: dropdownScope, // Filter agents who actually have tickets in this view

@@ -1,5 +1,5 @@
 ---
-import SubcategoriaItem from "./SubcategoriaItem.astro";
+import Self from "./SubcategoriaItem.astro";
 
 interface TreeNode {
     id: number;
@@ -111,7 +111,7 @@ const { node, catId, level } = Astro.props;
     </div>
 
     {node.children.map(child => (
-       <SubcategoriaItem node={child} catId={catId} level={level + 1} />
+       <Self node={child} catId={catId} level={level + 1} />
     ))}
   </div>
 </details>

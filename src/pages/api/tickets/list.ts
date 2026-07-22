@@ -3,7 +3,9 @@ import { getSession } from 'auth-astro/server';
 import { prisma } from '@/lib/db';
 import type { Prisma } from '@prisma/client';
 
-const PRIVILEGED_ROLES = [1, 2, 3, 4, 5, 6, 15];
+// En el nuevo modelo, un usuario es privilegiado si tiene atiende_csh o atiende_mkt activo
+// o si es superadmin (rolId=3)
+const PRIVILEGED_ROLES = [2, 3]; // admin y superadmin
 
 export const GET: APIRoute = async ({ request }) => {
   const session = await getSession(request);

@@ -61,6 +61,12 @@ export const PATCH: APIRoute = async ({ request }) => {
     if (typeof tckt_virtual === 'boolean') {
       updateData.tckt_virtual = tckt_virtual;
     }
+    if (typeof tckt_csh === 'boolean') {
+      updateData.tckt_csh = tckt_csh;
+    }
+    if (typeof tckt_mkt === 'boolean') {
+      updateData.tckt_mkt = tckt_mkt;
+    }
 
     const updatedEmpresa = await prisma.$transaction(async (tx) => {
       const empresaAfterUpdate = await tx.empresa.update({

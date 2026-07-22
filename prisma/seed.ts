@@ -92,38 +92,9 @@ async function main() {
   console.log('Seeding rol...');
   await prisma.rol.createMany({
     data: [
-      // ─── Roles de Soporte CSH (atiendeTicketsCsh = true) ───────────────────
-      { id: 1, rol: 'Director CSH', descripcion: 'Director del Centro de Soporte', nivel_soporte: 'S_3', atiendeTicketsCsh: true, atiendeTicketsMkt: false },
-      { id: 2, rol: 'Ingeniero soporte 1', descripcion: 'Ingeniero de soporte nivel 1', nivel_soporte: 'S_1', atiendeTicketsCsh: true, atiendeTicketsMkt: false },
-      { id: 3, rol: 'Ingeniero soporte 2', descripcion: 'Ingeniero de soporte nivel 2', nivel_soporte: 'S_2', atiendeTicketsCsh: true, atiendeTicketsMkt: false },
-      { id: 4, rol: 'Ingeniero soporte 3', descripcion: 'Ingeniero de soporte nivel 3', nivel_soporte: 'S_3', atiendeTicketsCsh: true, atiendeTicketsMkt: false },
-      { id: 5, rol: 'Auditor CSH', descripcion: 'Auditor del centro de soporte', nivel_soporte: 'S_1', atiendeTicketsCsh: true, atiendeTicketsMkt: false },
-      { id: 6, rol: 'Desarrollador', descripcion: 'Desarrollador de aplicaciones', nivel_soporte: 'Desarrollador', atiendeTicketsCsh: true, atiendeTicketsMkt: false },
-      { id: 15, rol: 'Visitante administrador', descripcion: 'Visitante administrador', nivel_soporte: 'S_1', atiendeTicketsCsh: true, atiendeTicketsMkt: false },
-      { id: 16, rol: 'Ingeniero Hubspot', descripcion: 'Ingeniero especializado en Hubspot', nivel_soporte: 'S_2', atiendeTicketsCsh: true, atiendeTicketsMkt: false },
-      { id: 28, rol: 'Soporte técnico', descripcion: 'Soporte técnico', nivel_soporte: 'S_1', atiendeTicketsCsh: true, atiendeTicketsMkt: false },
-      // ─── Roles de Marketing (atiendeTicketsMkt = true) ─────────────────────
-      { id: 11, rol: 'Director Marketing', descripcion: 'Director de Marketing', nivel_soporte: 'Director', atiendeTicketsCsh: false, atiendeTicketsMkt: true },
-      { id: 12, rol: 'Diseñador', descripcion: 'Diseñador gráfico (Marketing)', nivel_soporte: 'Marketing', atiendeTicketsCsh: false, atiendeTicketsMkt: true },
-      { id: 13, rol: 'Community manager', descripcion: 'Ejecutivo de atención en redes sociales', nivel_soporte: 'Marketing', atiendeTicketsCsh: false, atiendeTicketsMkt: true },
-      { id: 17, rol: 'Editor', descripcion: 'Editor de contenido multimedia', nivel_soporte: 'Marketing', atiendeTicketsCsh: false, atiendeTicketsMkt: true },
-      // ─── Roles sin atención de tickets ────────────────────────────────────
-      { id: 7, rol: 'Director campus', descripcion: 'Director de campus', nivel_soporte: 'Director', atiendeTicketsCsh: false, atiendeTicketsMkt: false },
-      { id: 8, rol: 'Coordinador RR.PP.', descripcion: 'Coordinador de relaciones públicas', nivel_soporte: 'Coordinador', atiendeTicketsCsh: false, atiendeTicketsMkt: false },
-      { id: 9, rol: 'Ejecutivo RR.PP.', descripcion: 'Ejecutivo de relaciones públicas', nivel_soporte: 'Usuario', atiendeTicketsCsh: false, atiendeTicketsMkt: false },
-      { id: 10, rol: 'Contador', descripcion: 'Contador', nivel_soporte: 'Contador', atiendeTicketsCsh: false, atiendeTicketsMkt: false },
-      { id: 14, rol: 'Visitante', descripcion: 'Visitante', nivel_soporte: 'Usuario', atiendeTicketsCsh: false, atiendeTicketsMkt: false },
-      { id: 18, rol: 'Ejecutivo académico', descripcion: 'Ejecutivo académico', nivel_soporte: 'Usuario', atiendeTicketsCsh: false, atiendeTicketsMkt: false },
-      { id: 19, rol: 'Coordinador administrativo', descripcion: 'Coordinador administrativo', nivel_soporte: 'Coordinador', atiendeTicketsCsh: false, atiendeTicketsMkt: false },
-      { id: 20, rol: 'Coordinador idiomas', descripcion: 'Coordinador de idiomas', nivel_soporte: 'Coordinador', atiendeTicketsCsh: false, atiendeTicketsMkt: false },
-      { id: 21, rol: 'Ejecutivo control escolar', descripcion: 'Ejecutivo de control escolar', nivel_soporte: 'Usuario', atiendeTicketsCsh: false, atiendeTicketsMkt: false },
-      { id: 22, rol: 'Ejecutivo humanitas vive', descripcion: 'Ejecutivo de humanitas vive', nivel_soporte: 'Usuario', atiendeTicketsCsh: false, atiendeTicketsMkt: false },
-      { id: 23, rol: 'Ejecutivo administrativo', descripcion: 'Ejecutivo administrativo', nivel_soporte: 'Usuario', atiendeTicketsCsh: false, atiendeTicketsMkt: false },
-      { id: 24, rol: 'Coordinador académico', descripcion: 'Coordinador académico', nivel_soporte: 'Coordinador', atiendeTicketsCsh: false, atiendeTicketsMkt: false },
-      { id: 25, rol: 'Líder académico', descripcion: 'Líder académico', nivel_soporte: 'Coordinador', atiendeTicketsCsh: false, atiendeTicketsMkt: false },
-      { id: 26, rol: 'Coordinador vida estudiantil', descripcion: 'Coordinador de vida estudiantil y humanitas vive', nivel_soporte: 'Coordinador', atiendeTicketsCsh: false, atiendeTicketsMkt: false },
-      { id: 27, rol: 'Coordinador control escolar', descripcion: 'Coordinador de control escolar', nivel_soporte: 'Coordinador', atiendeTicketsCsh: false, atiendeTicketsMkt: false },
-      { id: 29, rol: 'Enlace académico', descripcion: 'Enlace académico', nivel_soporte: 'Usuario', atiendeTicketsCsh: false, atiendeTicketsMkt: false },
+      { id: 1, rol: 'user', descripcion: 'Usuario para levantar tickets en el sistema.', ticket_csh: true, ticket_mkt: false, traslados: true, generales: true, atiende_csh: false, atiende_mkt: false, administrador: false },
+      { id: 2, rol: 'admin', descripcion: 'Administrador para atender tickets en el sistema.', ticket_csh: true, ticket_mkt: true, traslados: true, generales: true, atiende_csh: false, atiende_mkt: false, administrador: false },
+      { id: 3, rol: 'superadmin', descripcion: 'Super administrador en el sistema.', ticket_csh: true, ticket_mkt: true, traslados: true, generales: true, atiende_csh: true, atiende_mkt: true, administrador: true },
     ],
     skipDuplicates: true,
   });
@@ -165,51 +136,19 @@ async function main() {
     skipDuplicates: true,
   });
 
-  const allRoles = await prisma.rol.findMany();
-
-  // Definir secciones por rol acorde al nuevo mapeo
-  // Grupos completos
   const allAbrirTicket = [1, 2, 3];
   const allTicketsSoporte = [4, 5, 6];
   const allTicketsMarketing = [7, 8, 9];
   const allOtros = [10, 11, 12, 13];
-  const allAdminCorreos = [14, 15];
-  const allAdminSiget = [16, 17, 18, 19, 20, 21];
+  const allAdminSiget = [14, 15, 16, 17, 18, 19, 20, 21];
 
-  const secDesarrollador = [...allAbrirTicket, ...allTicketsSoporte, ...allTicketsMarketing, ...allOtros, ...allAdminCorreos, ...allAdminSiget];
-  const secSoporte = [1, 2, ...allTicketsSoporte, ...allOtros, ...allAdminCorreos, 16, 17, 19, 20, 21]; // Sin Permiso 'Secciones' -> 18, ni Tickets Mkt
-  const secEstandar = [1, 2, 4, 10, 11, 12, 13]; // Solo abrir y mis tickets, y herramientas básicas
-  const secMarketingStaff = [1, 3, 7, 10, 13]; // Tickets Mkt y herramientas básicas
-  const secMarketingDirector = [1, 3, ...allTicketsMarketing, 10, 13];
-
-  const rolesConPermisos = [
-    // Desarrollador (todos los permisos globales)
-    { rolId: 6, permisoIds: [1, 2, 3, 4], seccionIds: secDesarrollador },
-    // Director CSH (todos los permisos)
-    { rolId: 1, permisoIds: [1, 2, 3, 4], seccionIds: secDesarrollador },
-    // Roles de Soporte
-    { rolId: 2, permisoIds: [2, 3, 4], seccionIds: secSoporte },
-    { rolId: 3, permisoIds: [2, 3, 4], seccionIds: secSoporte },
-    { rolId: 4, permisoIds: [2, 3, 4], seccionIds: secSoporte },
-    { rolId: 5, permisoIds: [2, 4], seccionIds: secSoporte }, // Auditor
-    { rolId: 16, permisoIds: [2, 3, 4], seccionIds: secSoporte }, // Ingeniero Hubspot
-    // Roles de Marketing
-    { rolId: 12, permisoIds: [1], seccionIds: secMarketingStaff }, // Diseñador
-    { rolId: 13, permisoIds: [1], seccionIds: secMarketingStaff }, // Community Manager
-    { rolId: 17, permisoIds: [1], seccionIds: secMarketingStaff }, // Editor
-    { rolId: 11, permisoIds: [1, 4], seccionIds: secMarketingDirector }, // Director de Marketing
+  const rolesSecciones = [
+    { rolId: 1, seccionIds: [1, 2, ...allOtros] },
+    { rolId: 2, seccionIds: [1, 2, 3, ...allOtros] },
+    { rolId: 3, seccionIds: [...allAbrirTicket, ...allTicketsSoporte, ...allTicketsMarketing, ...allOtros, ...allAdminSiget] }
   ];
 
-  for (const { rolId, permisoIds, seccionIds } of rolesConPermisos) {
-    await prisma.rol.update({
-      where: { id: rolId },
-      data: {
-        permisos: {
-          connect: permisoIds.map(id => ({ id })),
-        },
-      },
-    });
-
+  for (const { rolId, seccionIds } of rolesSecciones) {
     // Conectar secciones
     for (const sid of seccionIds) {
       await prisma.permisoRolSeccion.upsert({
@@ -229,36 +168,14 @@ async function main() {
     }
   }
 
-  // A los roles estándar no listados arriba (Director Campus, Ejecutivos, Contador, etc.), darles las secciones estándar
-  for (const rol of allRoles) {
-    if (!rolesConPermisos.some(r => r.rolId === rol.id)) {
-      for (const sid of secEstandar) {
-        await prisma.permisoRolSeccion.upsert({
-          where: {
-            rolId_seccionId: {
-              rolId: rol.id,
-              seccionId: sid
-            }
-          },
-          update: { activo: true },
-          create: {
-            rolId: rol.id,
-            seccionId: sid,
-            activo: true
-          }
-        });
-      }
-    }
-  }
-
   // --- Insertar Usuario ---
   console.log('Seeding usuario...');
   await prisma.usuario.createMany({
     data: [
-      { id: 1, mail: 'gerardo.omana@humanitas.edu.mx', nombres: 'Gerardo', apellidos: 'Omaña Vazquez', clave: 'OVG821', empresaId: 15, rolId: 6, trl_mail: true, trl_coord: false, horario_disponibilidad: { "lunes": { "fin": "18:30", "inicio": "10:00" }, "jueves": { "fin": "17:00", "inicio": "10:00" }, "martes": { "fin": "18:30", "inicio": "10:00" }, "sabado": { "fin": "15:00", "inicio": "09:00" }, "viernes": { "fin": "16:30", "inicio": "10:00" }, "miercoles": { "fin": "15:00", "inicio": "08:30" } }, image: "https://lh3.googleusercontent.com/a-/ALV-UjXmcvhEi7AXSnIHJP2pJTizD0lzlhMwNQeR7HM3kVKj0i85LV4Q=s240-p-k-rw-no" },
-      { id: 2, mail: 'haide.herrera@humanitas.edu.mx', nombres: 'Haide', apellidos: 'Herrera', clave: 'HAH1210', empresaId: 14, rolId: 12, trl_mail: false, trl_coord: false, horario_disponibilidad: Prisma.JsonNull, image: "https://lh3.googleusercontent.com/a-/ALV-UjUPqe4Ka1JQhFH9vqNr4SDHElvdeKhMSrWCLBX16pHRf-o8oxvy=s240-p-k-rw-no" },
-      { id: 3, mail: 'victor@humanitas.edu.mx', nombres: 'Victor', apellidos: 'Barrera', clave: 'BRV005', empresaId: 15, rolId: 1, trl_mail: true, trl_coord: false, horario_disponibilidad: Prisma.JsonNull, image: "https://lh3.googleusercontent.com/a-/ALV-UjXzczZnIALPW_gM9F2H4wKz1syIeeJNR4orX2M3ga9Q0Eoj8Ch5Nlef6fgd40A4Iuw1G4gE-q8b981BUu3S0Wyt_8IBte-b8mqlWsoAn89iLdPFIb2Bi8ficGNiUxGKz9qZOkXTaU_Qxp17TsDh8uuwPd3byYfF5BhWm8LIaNXXfl77NOxtjSjsFLuzvsP8VHdItGQDuGwyp5nsm2N5uPdenc3MJRm-Rh85aFUPf6FWoH_TXyXXxM0H03VBw3cIVebkPC_Bv9soG8dAOeun8kcSfB_jHJGbrYJbN4uTU3tpSgdKyU4uzJt6YJMSav6Uo7kROIOLpiKB5NC1ysBLv6Okm7HDndBNr-Ai2-c50XfqV_wLmp76fYtInKcWtYJ27xmpppVkb3f6_I8dEbZt4CrpoSlPmiC9sjf4WZ2G5W3nWIsy9Ss5BotYapihRnhzp7gSZggL0uObIzs9GjXQ8fFZdx1_rk1eBo4HGPrw_NkDeftxap3Qx40uA6zrWT5REGWHflpJFkgwVnyxis9B_dlS3-OAi2xJFElP0clD6WXXh8EOKnpN5ns7-nExpKiWcc6zi4ydrNSCVVO7hAi-oanYUH0xHgjZ9JEDl5RPyVjlReED1wobfvXtfYAX7pxRg8gp6MNE_JamSylydAiHdxLc6owtk9LkmAv0Gx_g1-WtuYEQjsM-1iJqtZDEq51GHJ-5lA4V8L3AzNxdjwBl42MfYKSipKOiEZCicgoH1R7fj6qdPq0li5hcF7_7GsHoXc0WmcymxzdjyhCQ5Qd3-wKVN9V5NkW8aRZ6WqtH_XLPxxsDzw77eNyohX3ZAk0lzL_RCt4oGcSx09nQ79NLXBpuWeWY63dqG6wpHMQF4IrHGE94qWPEc7yyHE81NsdpZttwFMonfVtDXc2JnQ7Tr_VRFZuztRy6DbBW1Kj_Kazwilcaamr3iAPxETu-5WUOYMGk212lzku0d2TLZa0PwtqcQFPkFrEj0Pzx02VwCN7g_9NwUyUPKAC5yLYWNwPjlmLnNG8ZMqY5qhb2NF__s4QbhUvLPTUmxyGNoBkWncm34YOG_w6OZkw=s240-p-k-rw-no" },
-      { id: 4, mail: 'soporte@humanitas.edu.mx', nombres: 'Centro de Soporte', apellidos: 'Humanitas', clave: 'HCL1493', empresaId: 15, rolId: 15, trl_mail: true, trl_coord: false, horario_disponibilidad: Prisma.JsonNull, image: "https://www.gstatic.com/images/branding/product/2x/avatar_square_grey_48dp.png" }
+      { id: 1, mail: 'gerardo.omana@humanitas.edu.mx', nombres: 'Gerardo', apellidos: 'Omaña Vazquez', clave: 'OVG821', empresaId: 15, rolId: 3, trl_mail: true, trl_coord: false, horario_disponibilidad: { "lunes": { "fin": "18:30", "inicio": "10:00" }, "jueves": { "fin": "17:00", "inicio": "10:00" }, "martes": { "fin": "18:30", "inicio": "10:00" }, "sabado": { "fin": "15:00", "inicio": "09:00" }, "viernes": { "fin": "16:30", "inicio": "10:00" }, "miercoles": { "fin": "15:00", "inicio": "08:30" } }, image: "https://lh3.googleusercontent.com/a-/ALV-UjXmcvhEi7AXSnIHJP2pJTizD0lzlhMwNQeR7HM3kVKj0i85LV4Q=s240-p-k-rw-no", puesto: "Tech Lead / Scrum Master", tckt_csh: true, tckt_mkt: true, atiende_csh: true, atiende_mkt: true },
+      { id: 2, mail: 'haide.herrera@humanitas.edu.mx', nombres: 'Haide', apellidos: 'Herrera', clave: 'HAH1210', empresaId: 14, rolId: 2, trl_mail: false, trl_coord: false, horario_disponibilidad: Prisma.JsonNull, image: "https://lh3.googleusercontent.com/a-/ALV-UjUPqe4Ka1JQhFH9vqNr4SDHElvdeKhMSrWCLBX16pHRf-o8oxvy=s240-p-k-rw-no", puesto: "Coordinador Soporte CSH", tckt_csh: true, tckt_mkt: true, atiende_csh: true, atiende_mkt: false },
+      { id: 3, mail: 'victor@humanitas.edu.mx', nombres: 'Victor', apellidos: 'Barrera', clave: 'BRV005', empresaId: 15, rolId: 3, trl_mail: true, trl_coord: false, horario_disponibilidad: Prisma.JsonNull, image: "https://lh3.googleusercontent.com/a-/ALV-UjXzczZnIALPW_gM9F2H4wKz1syIeeJNR4orX2M3ga9Q0Eoj8Ch5Nlef6fgd40A4Iuw1G4gE-q8b981BUu3S0Wyt_8IBte-b8mqlWsoAn89iLdPFIb2Bi8ficGNiUxGKz9qZOkXTaU_Qxp17TsDh8uuwPd3byYfF5BhWm8LIaNXXfl77NOxtjSjsFLuzvsP8VHdItGQDuGwyp5nsm2N5uPdenc3MJRm-Rh85aFUPf6FWoH_TXyXXxM0H03VBw3cIVebkPC_Bv9soG8dAOeun8kcSfB_jHJGbrYJbN4uTU3tpSgdKyU4uzJt6YJMSav6Uo7kROIOLpiKB5NC1ysBLv6Okm7HDndBNr-Ai2-c50XfqV_wLmp76fYtInKcWtYJ27xmpppVkb3f6_I8dEbZt4CrpoSlPmiC9sjf4WZ2G5W3nWIsy9Ss5BotYapihRnhzp7gSZggL0uObIzs9GjXQ8fFZdx1_rk1eBo4HGPrw_NkDeftxap3Qx40uA6zrWT5REGWHflpJFkgwVnyxis9B_dlS3-OAi2xJFElP0clD6WXXh8EOKnpN5ns7-nExpKiWcc6zi4ydrNSCVVO7hAi-oanYUH0xHgjZ9JEDl5RPyVjlReED1wobfvXtfYAX7pxRg8gp6MNE_JamSylydAiHdxLc6owtk9LkmAv0Gx_g1-WtuYEQjsM-1iJqtZDEq51GHJ-5lA4V8L3AzNxdjwBl42MfYKSipKOiEZCicgoH1R7fj6qdPq0li5hcF7_7GsHoXc0WmcymxzdjyhCQ5Qd3-wKVN9V5NkW8aRZ6WqtH_XLPxxsDzw77eNyohX3ZAk0lzL_RCt4oGcSx09nQ79NLXBpuWeWY63dqG6wpHMQF4IrHGE94qWPEc7yyHE81NsdpZttwFMonfVtDXc2JnQ7Tr_VRFZuztRy6DbBW1Kj_Kazwilcaamr3iAPxETu-5WUOYMGk212lzku0d2TLZa0PwtqcQFPkFrEj0Pzx02VwCN7g_9NwUyUPKAC5yLYWNwPjlmLnNG8ZMqY5qhb2NF__s4QbhUvLPTUmxyGNoBkWncm34YOG_w6OZkw=s240-p-k-rw-no", puesto: "Coordinador de Sistemas", tckt_csh: true, tckt_mkt: true, atiende_csh: true, atiende_mkt: true },
+      { id: 4, mail: 'soporte@humanitas.edu.mx', nombres: 'Centro de Soporte', apellidos: 'Humanitas', clave: 'HCL1493', empresaId: 15, rolId: 2, trl_mail: true, trl_coord: false, horario_disponibilidad: Prisma.JsonNull, image: "https://www.gstatic.com/images/branding/product/2x/avatar_square_grey_48dp.png", puesto: "Agente Soporte CSH", tckt_csh: true, tckt_mkt: true, atiende_csh: true, atiende_mkt: true }
     ],
     skipDuplicates: true,
   });
@@ -779,105 +696,39 @@ async function main() {
   // --- Insertar Permisos de Categoría por Rol ---
   console.log('Seeding permiso_categoria...');
 
+  // En el nuevo modelo de 3 roles:
+  // - user (1): no atiende tickets, no necesita permisos de categoría
+  // - admin (2): atiende tickets CSH por defecto. Categorías configurables por usuario via AsignacionesCategorias
+  //              Se le asigna acceso a todas las categorías CSH como base.
+  // - superadmin (3): acceso total (todas las categorías CSH + Marketing)
+
   const permisosData = [
-    // Ingeniero soporte 1 (ID: 2)
-    { rolId: 2, categoriaId: 1, subcategoriaId: null }, // Alumno (completa)
-    { rolId: 2, categoriaId: 2, subcategoriaId: null }, // Aspirante (completa)
-    { rolId: 2, categoriaId: 3, subcategoriaId: null }, // Colaborador (completa)
-    { rolId: 2, categoriaId: 4, subcategoriaId: null }, // Docente (completa)
-    { rolId: 2, categoriaId: 5, subcategoriaId: null }, // Plataforma Humanitas (completa)
+    // admin (ID: 2) - Acceso a todas las categorías CSH
+    { rolId: 2, categoriaId: 1, subcategoriaId: null },  // Alumno (completa)
+    { rolId: 2, categoriaId: 2, subcategoriaId: null },  // Aspirante (completa)
+    { rolId: 2, categoriaId: 3, subcategoriaId: null },  // Colaborador (completa)
+    { rolId: 2, categoriaId: 4, subcategoriaId: null },  // Docente (completa)
+    { rolId: 2, categoriaId: 5, subcategoriaId: null },  // Plataforma Humanitas (completa)
+    { rolId: 2, categoriaId: 6, subcategoriaId: null },  // App Humanitas (completa)
+    { rolId: 2, categoriaId: 7, subcategoriaId: null },  // Canvas (completa)
+    { rolId: 2, categoriaId: 8, subcategoriaId: null },  // Hubspot (completa)
+    { rolId: 2, categoriaId: 9, subcategoriaId: null },  // Atom (completa)
+    { rolId: 2, categoriaId: 10, subcategoriaId: null }, // Página web (completa)
     { rolId: 2, categoriaId: 11, subcategoriaId: null }, // Otro (completa)
-    { rolId: 2, categoriaId: 1, subcategoriaId: 9 },   // Alumno -> Correo institucional
-    { rolId: 2, categoriaId: 1, subcategoriaId: 58 },  // Alumno -> Traslado
-    { rolId: 2, categoriaId: 3, subcategoriaId: 67 },  // Colaborador -> Altas -> Creación de correo
 
-    // Ingeniero soporte 2 (ID: 3)
-    { rolId: 3, categoriaId: 1, subcategoriaId: null }, // Alumno (completa)
-    { rolId: 3, categoriaId: 2, subcategoriaId: null }, // Aspirante (completa)
-    { rolId: 3, categoriaId: 6, subcategoriaId: null }, // App Humanitas (completa)
-    { rolId: 3, categoriaId: 7, subcategoriaId: null }, // Canvas (completa)
-    { rolId: 3, categoriaId: 3, subcategoriaId: null }, // Colaborador (completa)
-    { rolId: 3, categoriaId: 4, subcategoriaId: null }, // Docente (completa)
-    { rolId: 3, categoriaId: 5, subcategoriaId: null }, // Plataforma Humanitas (completa)
+    // superadmin (ID: 3) - Acceso total (CSH + Marketing)
+    { rolId: 3, categoriaId: 1, subcategoriaId: null },  // Alumno (completa)
+    { rolId: 3, categoriaId: 2, subcategoriaId: null },  // Aspirante (completa)
+    { rolId: 3, categoriaId: 3, subcategoriaId: null },  // Colaborador (completa)
+    { rolId: 3, categoriaId: 4, subcategoriaId: null },  // Docente (completa)
+    { rolId: 3, categoriaId: 5, subcategoriaId: null },  // Plataforma Humanitas (completa)
+    { rolId: 3, categoriaId: 6, subcategoriaId: null },  // App Humanitas (completa)
+    { rolId: 3, categoriaId: 7, subcategoriaId: null },  // Canvas (completa)
+    { rolId: 3, categoriaId: 8, subcategoriaId: null },  // Hubspot (completa)
+    { rolId: 3, categoriaId: 9, subcategoriaId: null },  // Atom (completa)
+    { rolId: 3, categoriaId: 10, subcategoriaId: null }, // Página web (completa)
     { rolId: 3, categoriaId: 11, subcategoriaId: null }, // Otro (completa)
-    { rolId: 3, categoriaId: 1, subcategoriaId: 8 },   // Alumno -> Aplicación móvil
-    { rolId: 3, categoriaId: 1, subcategoriaId: 27 },  // Alumno -> Finanzas -> Cobros -> En campus
-    { rolId: 3, categoriaId: 1, subcategoriaId: 58 },  // Alumno -> Traslado
-    { rolId: 3, categoriaId: 3, subcategoriaId: 70 },  // Colaborador -> Altas -> Replicar permisos
-
-    // Director CSH (ID: 1) e Ingeniero soporte 3 (ID: 4) - MISMOS PERMISOS
-    ...([1, 4].flatMap(rolId => [
-      { rolId, categoriaId: 1, subcategoriaId: 5 },   // Alumno -> Académico -> Calificaciones -> Replicar
-      { rolId, categoriaId: 1, subcategoriaId: 90 },  // Alumno -> Finanzas -> Becas -> Colaboradores
-      { rolId, categoriaId: 1, subcategoriaId: 89 },  // Alumno -> Finanzas -> Becas -> Docentes
-      { rolId, categoriaId: 3, subcategoriaId: 71 },  // Colaborador -> Bajas
-      { rolId, categoriaId: 3, subcategoriaId: 13 },  // Colaborador -> Correo -> Redireccionar
-      { rolId, categoriaId: 4, subcategoriaId: 9 },   // Docente -> Correo institucional
-      { rolId, categoriaId: 4, subcategoriaId: 92 },  // Docente -> Expediente -> Correo personal
-      { rolId, categoriaId: 4, subcategoriaId: 86 },  // Docente -> Lista negra
-      { rolId, categoriaId: 5, subcategoriaId: 40 },  // Plataforma -> Finanzas -> Notas aclaratorias
-    ])),
-
-    // Ingeniero Hubspot (ID: 16 - NUEVO)
-    { rolId: 16, categoriaId: 1, subcategoriaId: null }, // Alumno (completa)
-    { rolId: 16, categoriaId: 2, subcategoriaId: null }, // Aspirante (completa)
-    { rolId: 16, categoriaId: 9, subcategoriaId: null }, // Atom (completa)
-    { rolId: 16, categoriaId: 3, subcategoriaId: null }, // Colaborador (completa)
-    { rolId: 16, categoriaId: 4, subcategoriaId: null }, // Docente (completa)
-    { rolId: 16, categoriaId: 8, subcategoriaId: null }, // Hubspot (completa)
-    { rolId: 16, categoriaId: 5, subcategoriaId: null }, // Plataforma Humanitas (completa)
-    { rolId: 16, categoriaId: 11, subcategoriaId: null }, // Otro (completa)
-    { rolId: 16, categoriaId: 1, subcategoriaId: 58 },  // Alumno -> Traslado
-
-    // Desarrollador (ID: 6)
-    { rolId: 6, categoriaId: 10, subcategoriaId: null }, // Página web (completa)
-    { rolId: 6, categoriaId: 1, subcategoriaId: 58 },   // Alumno -> Traslado
-
-    // Contador (ID: 10)
-    { rolId: 10, categoriaId: 1, subcategoriaId: 39 },  // Alumno -> Finanzas -> Facturas
-    { rolId: 10, categoriaId: 1, subcategoriaId: 42 },  // Alumno -> Finanzas -> Registro de Pagos
-
-    // Diseñador (ID: 12)
-    { rolId: 12, categoriaId: 12, subcategoriaId: 133 }, // Marketing -> Archivos para impresión
-    { rolId: 12, categoriaId: 12, subcategoriaId: 137 }, // Marketing -> Botargas
-    { rolId: 12, categoriaId: 12, subcategoriaId: 132 }, // Marketing -> Convenios
-    { rolId: 12, categoriaId: 12, subcategoriaId: 130 }, // Marketing -> Diseño de postal
-    { rolId: 12, categoriaId: 12, subcategoriaId: 134 }, // Marketing -> Firmas
-    { rolId: 12, categoriaId: 12, subcategoriaId: 131 }, // Marketing -> Mailings
-    { rolId: 12, categoriaId: 12, subcategoriaId: 136 }, // Marketing -> Proyectos especiales
-    { rolId: 12, categoriaId: 12, subcategoriaId: 135 }, // Marketing -> Señalética
-
-    // Community manager (ID: 13)
-    { rolId: 13, categoriaId: 12, subcategoriaId: 140 }, // Marketing -> Publicación colaboradores
-    { rolId: 13, categoriaId: 12, subcategoriaId: 139 }, // Marketing -> Publicación redes sociales
-
-    // Editor (ID: 17 - NUEVO)
-    { rolId: 17, categoriaId: 12, subcategoriaId: 142 }, // Marketing -> Video institucional
-
-    // Auditor CSH (ID: 5)
-    { rolId: 5, categoriaId: 1, subcategoriaId: 58 },   // Alumno -> Traslado
-
-    // Visitante administrador (ID: 15)
-    { rolId: 15, categoriaId: 1, subcategoriaId: null }, // Alumno (completa)
-    { rolId: 15, categoriaId: 2, subcategoriaId: null }, // Aspirante (completa)
-    { rolId: 15, categoriaId: 3, subcategoriaId: null }, // Colaborador (completa)
-    { rolId: 15, categoriaId: 4, subcategoriaId: null }, // Docente (completa)
-    { rolId: 15, categoriaId: 5, subcategoriaId: null }, // Plataforma Humanitas (completa)
-    { rolId: 15, categoriaId: 11, subcategoriaId: null }, // Otro (completa)
-    { rolId: 15, categoriaId: 1, subcategoriaId: 9 },   // Alumno -> Correo institucional
-    { rolId: 15, categoriaId: 1, subcategoriaId: 58 },  // Alumno -> Traslado
-    { rolId: 15, categoriaId: 3, subcategoriaId: 67 },  // Colaborador -> Altas -> Creación correo
-
-    // Soporte técnico (ID: 28 - S_1)
-    { rolId: 28, categoriaId: 1, subcategoriaId: null }, // Alumno (completa)
-    { rolId: 28, categoriaId: 2, subcategoriaId: null }, // Aspirante (completa)
-    { rolId: 28, categoriaId: 3, subcategoriaId: null }, // Colaborador (completa)
-    { rolId: 28, categoriaId: 4, subcategoriaId: null }, // Docente (completa)
-    { rolId: 28, categoriaId: 5, subcategoriaId: null }, // Plataforma Humanitas (completa)
-    { rolId: 28, categoriaId: 11, subcategoriaId: null }, // Otro (completa)
-    { rolId: 28, categoriaId: 1, subcategoriaId: 9 },   // Alumno -> Correo institucional
-    { rolId: 28, categoriaId: 1, subcategoriaId: 58 },  // Alumno -> Traslado
-    { rolId: 28, categoriaId: 3, subcategoriaId: 67 },  // Colaborador -> Altas -> Creación correo
+    { rolId: 3, categoriaId: 12, subcategoriaId: null }, // Marketing (completa)
   ];
 
   await prisma.permisoCategoria.createMany({

@@ -260,6 +260,30 @@ secciones.forEach((sec) => {
             </select>
           </div>
           <div>
+            <label for="alias" class="block text-sm font-medium mb-1">Alias (Nombre a mostrar)</label>
+            <input
+              type="text"
+              id="alias"
+              name="alias"
+              value={user.alias || ""}
+              class="block w-full rounded-md border-border bg-input p-2 accent-secondary focus:outline-none focus:ring-1 focus:ring-secondary disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={!canEdit}
+              placeholder="Ej. Gera"
+            />
+          </div>
+          <div>
+            <label for="puesto" class="block text-sm font-medium mb-1">Puesto</label>
+            <input
+              type="text"
+              id="puesto"
+              name="puesto"
+              value={(user as any).puesto || ""}
+              class="block w-full rounded-md border-border bg-input p-2 accent-secondary focus:outline-none focus:ring-1 focus:ring-secondary disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={!canEdit}
+              placeholder="Ej. Tech Lead"
+            />
+          </div>
+          <div>
             <label class="block text-sm font-medium mb-1">Último inicio de sesión</label>
             <p class="text-lg">{formattedLastLogin}</p>
           </div>
@@ -313,6 +337,74 @@ secciones.forEach((sec) => {
                   name="acepta_tickets"
                   class="sr-only peer"
                   checked={user.acepta_tickets}
+                  disabled={!canEdit}
+                />
+                <div class="toggle-bg h-5 w-9 absolute rounded-full transition-all peer-focus:outline-none opacity-50 peer-checked:opacity-100 disabled:opacity-30 peer-disabled:cursor-not-allowed bg-muted-foreground peer-checked:bg-primary" />
+                <div class="toggle-knob absolute top-[2px] left-[2px] bg-white border border-gray-300 rounded-full h-4 w-4 transition-transform peer-checked:translate-x-[16px] peer-checked:border-white z-10" />
+              </label>
+            </div>
+
+            <!-- Toggle: Levanta CSH -->
+            <div class="flex items-center justify-between gap-2 border border-border/60 bg-muted/10 px-3 py-2 rounded-md">
+              <label for="tckt_csh" class="text-sm font-medium select-none truncate">Levanta CSH</label>
+              <label class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full toggle-wrapper group">
+                <input
+                  type="checkbox"
+                  id="tckt_csh"
+                  name="tckt_csh"
+                  class="sr-only peer"
+                  checked={(user as any).tckt_csh}
+                  disabled={!canEdit}
+                />
+                <div class="toggle-bg h-5 w-9 absolute rounded-full transition-all peer-focus:outline-none opacity-50 peer-checked:opacity-100 disabled:opacity-30 peer-disabled:cursor-not-allowed bg-muted-foreground peer-checked:bg-primary" />
+                <div class="toggle-knob absolute top-[2px] left-[2px] bg-white border border-gray-300 rounded-full h-4 w-4 transition-transform peer-checked:translate-x-[16px] peer-checked:border-white z-10" />
+              </label>
+            </div>
+
+            <!-- Toggle: Levanta Mkt -->
+            <div class="flex items-center justify-between gap-2 border border-border/60 bg-muted/10 px-3 py-2 rounded-md">
+              <label for="tckt_mkt" class="text-sm font-medium select-none truncate">Levanta Mkt</label>
+              <label class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full toggle-wrapper group">
+                <input
+                  type="checkbox"
+                  id="tckt_mkt"
+                  name="tckt_mkt"
+                  class="sr-only peer"
+                  checked={(user as any).tckt_mkt}
+                  disabled={!canEdit}
+                />
+                <div class="toggle-bg h-5 w-9 absolute rounded-full transition-all peer-focus:outline-none opacity-50 peer-checked:opacity-100 disabled:opacity-30 peer-disabled:cursor-not-allowed bg-muted-foreground peer-checked:bg-primary" />
+                <div class="toggle-knob absolute top-[2px] left-[2px] bg-white border border-gray-300 rounded-full h-4 w-4 transition-transform peer-checked:translate-x-[16px] peer-checked:border-white z-10" />
+              </label>
+            </div>
+
+            <!-- Toggle: Atiende CSH -->
+            <div class="flex items-center justify-between gap-2 border border-border/60 bg-muted/10 px-3 py-2 rounded-md">
+              <label for="atiende_csh" class="text-sm font-medium select-none truncate">Atiende CSH</label>
+              <label class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full toggle-wrapper group">
+                <input
+                  type="checkbox"
+                  id="atiende_csh"
+                  name="atiende_csh"
+                  class="sr-only peer"
+                  checked={(user as any).atiende_csh}
+                  disabled={!canEdit}
+                />
+                <div class="toggle-bg h-5 w-9 absolute rounded-full transition-all peer-focus:outline-none opacity-50 peer-checked:opacity-100 disabled:opacity-30 peer-disabled:cursor-not-allowed bg-muted-foreground peer-checked:bg-primary" />
+                <div class="toggle-knob absolute top-[2px] left-[2px] bg-white border border-gray-300 rounded-full h-4 w-4 transition-transform peer-checked:translate-x-[16px] peer-checked:border-white z-10" />
+              </label>
+            </div>
+
+            <!-- Toggle: Atiende Mkt -->
+            <div class="flex items-center justify-between gap-2 border border-border/60 bg-muted/10 px-3 py-2 rounded-md">
+              <label for="atiende_mkt" class="text-sm font-medium select-none truncate">Atiende Mkt</label>
+              <label class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full toggle-wrapper group">
+                <input
+                  type="checkbox"
+                  id="atiende_mkt"
+                  name="atiende_mkt"
+                  class="sr-only peer"
+                  checked={(user as any).atiende_mkt}
                   disabled={!canEdit}
                 />
                 <div class="toggle-bg h-5 w-9 absolute rounded-full transition-all peer-focus:outline-none opacity-50 peer-checked:opacity-100 disabled:opacity-30 peer-disabled:cursor-not-allowed bg-muted-foreground peer-checked:bg-primary" />

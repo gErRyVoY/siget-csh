@@ -32,7 +32,7 @@ interface AssignmentResult {
  * Reglas de disponibilidad (aplican en pasos 3a y 3b):
  * - activo: true
  * - acepta_tickets: true
- * - rol.atiendeTicketsCsh / rol.atiendeTicketsMkt según la categoría
+ * - usuario.atiende_csh / usuario.atiende_mkt según la categoría
  * - horario_disponibilidad: DEBE estar definido y el agente debe estar dentro del rango actual.
  *   Un agente SIN horario definido se considera NO disponible.
  */
@@ -123,7 +123,7 @@ async function findAllCandidates(
 
     const specificUsers = specificAssignments
         .map(a => a.atiende)
-        .filter(u => u.activo && hasCorrectRoleFlag(u as AgentWithRelations, isMarketing)) as AgentWithRelations[];
+        .filter(u => u.activo && hasCorrectUserFlag(u as any, isMarketing)) as AgentWithRelations[];
 
     if (specificUsers.length > 0) {
         return specificUsers;
@@ -147,9 +147,7 @@ async function findAllCandidates(
         where: {
             rolId: { in: roleIds },
             activo: true,
-            rol: isMarketing
-                ? { atiendeTicketsMkt: true }
-                : { atiendeTicketsCsh: true }
+            ...(isMarketing ? { atiende_mkt: true } : { atiende_csh: true })
         },
         include: { rol: true }
     });
@@ -184,7 +182,7 @@ async function findAgentsBySpecificAssignment(
         .filter(u =>
             u.activo &&
             u.acepta_tickets &&
-            hasCorrectRoleFlag(u as AgentWithRelations, isMarketing)
+            hasCorrectUserFlag(u as any, isMarketing)
         ) as AgentWithRelations[];
 }
 
@@ -214,9 +212,7 @@ async function findAgentsByRolePermissions(
             rolId: { in: roleIds },
             activo: true,
             acepta_tickets: true,
-            rol: isMarketing
-                ? { atiendeTicketsMkt: true }
-                : { atiendeTicketsCsh: true }
+            ...(isMarketing ? { atiende_mkt: true } : { atiende_csh: true })
         },
         include: { rol: true, asignaciones_categorias: true }
     });
@@ -306,9 +302,9 @@ function selectByLowestLoad(agents: AgentWithRelations[]): AgentWithRelations {
 }
 
 /**
- * Verifica si el agente tiene el flag de rol correcto según el tipo de categoría.
+ * Verifica si el agente tiene el flag de usuario correcto según el tipo de categoría.
  */
-function hasCorrectRoleFlag(agent: AgentWithRelations, isMarketing: boolean): boolean {
-    if (isMarketing) return agent.rol.atiendeTicketsMkt;
-    return agent.rol.atiendeTicketsCsh;
+function hasCorrectUserFlag(agent: AgentWithRelations & { atiende_csh?: boolean; atiende_mkt?: boolean }, isMarketing: boolean): boolean {
+    if (isMarketing) return (agent as any).atiende_mkt === true;
+    return (agent as any).atiende_csh === true;
 }

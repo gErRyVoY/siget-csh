@@ -120,13 +120,13 @@ if (!ticket) {
 }
 
 const session = await getSession(Astro.request);
-const PRIVILEGED_ROLES = [1, 2, 3, 4, 5, 6, 15];
+const PRIVILEGED_ROLES = [2, 3]; // admin y superadmin
 const MARKETING_CATEGORY_ID = 12;
 
 const userRoleId = session?.user?.rol?.id ?? -1;
 const userId = session?.user?.id ? parseInt(String(session.user.id), 10) : -1;
 const isPrivileged = PRIVILEGED_ROLES.includes(userRoleId);
-const isMktAgent = session?.user?.rol?.atiendeTicketsMkt === true;
+const isMktAgent = (session?.user as any)?.atiende_mkt === true;
 
 // --- Control de Acceso a nivel de ticket ---
 // Determinar si el usuario puede ver este ticket:
@@ -187,7 +187,7 @@ if (isPrivileged) {
             where: {
                 activo: true,
                 OR: [
-                    { rol: { atiendeTicketsMkt: true } },
+                    { atiende_mkt: true },
                     {
                         asignaciones_categorias: {
                             some: {
@@ -209,7 +209,7 @@ if (isPrivileged) {
             where: {
                 activo: true,
                 OR: [
-                    { rol: { atiendeTicketsCsh: true } },
+                    { atiende_csh: true },
                     {
                         asignaciones_categorias: {
                             some: {

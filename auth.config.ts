@@ -58,12 +58,17 @@ export default defineConfig({
         });
 
         const userData = response.data;
+        const orgUnitPath = userData.orgUnitPath || "";
+        const orgUnit = orgUnitPath.toLowerCase();
 
-        if (!userData.orgUnitPath || userData.orgUnitPath === "/") {
+        if (!orgUnitPath || orgUnitPath === "/") {
           return '/login?error=OUNoAsignada';
         }
 
-        if (!userData.orgUnitPath.toLowerCase().includes('colaboradores')) {
+        const isColaborador = orgUnit.includes('colaboradores');
+        const isEarlyAdopter = orgUnit.includes('early adopters');
+
+        if (!isColaborador && !isEarlyAdopter) {
           return '/login?error=NoEsColaborador';
         }
 
@@ -73,6 +78,7 @@ export default defineConfig({
 
         // --- Consulta a API de Recursos Humanos ---
         let claveTrabajador: string | undefined = undefined;
+        let puestoTrabajador: string | undefined = undefined;
         let horarioDisponibilidad: Record<string, { inicio: string; fin: string }> | undefined = undefined;
 
         try {
@@ -85,46 +91,57 @@ export default defineConfig({
             }
           });
 
-          if (rhResponse.ok) {
-            const rhData = await rhResponse.json();
-            if (rhData.status === 'success' && rhData.data?.trabajador) {
-              claveTrabajador = rhData.data.trabajador;
-              
-              // Consultar horario con la clave obtenida
-              const horarioResponse = await fetch(`${baseUrl}/api/rh/horario-trabajador?trabajador=${claveTrabajador}`, {
-                headers: {
-                  'x-api-key': process.env.TOKEN_ESPERADO || 'CHURRUMAIS-1979'
-                }
-              });
+          if (!rhResponse.ok) {
+            console.log(`API RH no devolvió respuesta exitosa para el correo: ${profile.email}`);
+            return '/login?error=ColaboradorNoActivo';
+          }
 
-              if (horarioResponse.ok) {
-                const horarioResult = await horarioResponse.json();
-                if (horarioResult.status === 'ok' && horarioResult.data && horarioResult.data.dias_laborales) {
-                  const apiDias = horarioResult.data.dias_laborales;
-                  const newHorario: Record<string, { inicio: string; fin: string }> = {};
-                  const diasMap: Record<string, string> = { "1": "lunes", "2": "martes", "3": "miercoles", "4": "jueves", "5": "viernes", "6": "sabado" };
-                  
-                  for (const num in diasMap) {
-                    if (apiDias[num] && apiDias[num].turno_normal) {
-                      const { entrada, salida } = apiDias[num].turno_normal;
-                      const inicio = entrada.length === 4 ? `${entrada.substring(0, 2)}:${entrada.substring(2)}` : 'No disponible';
-                      const fin = salida.length === 4 ? `${salida.substring(0, 2)}:${salida.substring(2)}` : 'No disponible';
-                      if (inicio !== 'No disponible' && fin !== 'No disponible') {
-                        newHorario[diasMap[num]] = { inicio, fin };
-                      }
-                    }
-                  }
-                  if (Object.keys(newHorario).length > 0) {
-                    horarioDisponibilidad = newHorario;
+          const rhData = await rhResponse.json();
+          if (rhData.status !== 'success' || !rhData.data?.trabajador) {
+            console.log(`API RH no arrojó datos de trabajador activo para el correo: ${profile.email}`);
+            return '/login?error=ColaboradorNoActivo';
+          }
+
+          claveTrabajador = rhData.data.trabajador;
+          
+          // Capturar el puesto del trabajador
+          if (rhData.data?.desc_puesto) {
+            puestoTrabajador = (rhData.data.desc_puesto as string).trim();
+          }
+          
+          // Consultar horario con la clave obtenida
+          const horarioResponse = await fetch(`${baseUrl}/api/rh/horario-trabajador?trabajador=${claveTrabajador}`, {
+            headers: {
+              'x-api-key': process.env.TOKEN_ESPERADO || 'CHURRUMAIS-1979'
+            }
+          });
+
+          if (horarioResponse.ok) {
+            const horarioResult = await horarioResponse.json();
+            if (horarioResult.status === 'ok' && horarioResult.data && horarioResult.data.dias_laborales) {
+              const apiDias = horarioResult.data.dias_laborales;
+              const newHorario: Record<string, { inicio: string; fin: string }> = {};
+              const diasMap: Record<string, string> = { "1": "lunes", "2": "martes", "3": "miercoles", "4": "jueves", "5": "viernes", "6": "sabado" };
+              
+              for (const num in diasMap) {
+                if (apiDias[num] && apiDias[num].turno_normal) {
+                  const { entrada, salida } = apiDias[num].turno_normal;
+                  const inicio = entrada.length === 4 ? `${entrada.substring(0, 2)}:${entrada.substring(2)}` : 'No disponible';
+                  const fin = salida.length === 4 ? `${salida.substring(0, 2)}:${salida.substring(2)}` : 'No disponible';
+                  if (inicio !== 'No disponible' && fin !== 'No disponible') {
+                    newHorario[diasMap[num]] = { inicio, fin };
                   }
                 }
               }
+              if (Object.keys(newHorario).length > 0) {
+                horarioDisponibilidad = newHorario;
+              }
             }
-          } else {
-            console.log(`API RH no encontró el correo o devolvió error: ${profile.email}`);
           }
         } catch (error) {
           console.error("Error al consultar API de RH en el login:", error);
+          // Si hay un error de red/servidor en la consulta del API de RH, bloqueamos por seguridad
+          return '/login?error=ColaboradorNoActivo';
         }
 
         if (!dbUser) {
@@ -151,7 +168,7 @@ export default defineConfig({
             return '/login?error=AccesoNoPermitido';
           }
 
-          const defaultRoleId = 14;
+          const defaultRoleId = 1; // 'user' en el nuevo esquema
 
           await prisma.usuario.create({
             data: {
@@ -164,11 +181,15 @@ export default defineConfig({
               activo: true,
               acepta_tickets: true,
               ...(claveTrabajador && { clave: claveTrabajador }),
+              ...(puestoTrabajador && { puesto: puestoTrabajador }),
               ...(horarioDisponibilidad && { horario_disponibilidad: horarioDisponibilidad }),
             }
           });
           console.log(`Usuario ${profile.email} creado exitosamente.`);
         } else {
+          // Cotejar si el puesto cambió y actualizar si difiere
+          const needsPuestoUpdate = puestoTrabajador && puestoTrabajador !== dbUser.puesto;
+
           await prisma.usuario.update({
             where: { mail: profile.email },
             data: {
@@ -177,6 +198,7 @@ export default defineConfig({
               image: userData.thumbnailPhotoUrl ?? dbUser.image,
               ultimo_login: new Date(),
               ...(!dbUser.clave && claveTrabajador && { clave: claveTrabajador }),
+              ...(needsPuestoUpdate && { puesto: puestoTrabajador }),
               ...(horarioDisponibilidad && { horario_disponibilidad: horarioDisponibilidad }),
             }
           });
@@ -226,6 +248,9 @@ export default defineConfig({
           token.image = fullUser.image;
           token.alias = fullUser.alias ?? undefined;
           token.acepta_tickets = fullUser.acepta_tickets;
+          token.puesto = (fullUser as any).puesto ?? undefined;
+          token.atiende_csh = (fullUser as any).atiende_csh ?? false;
+          token.atiende_mkt = (fullUser as any).atiende_mkt ?? false;
           
           token.rolId = fullUser.rolId;
           token.rol = fullUser.rol;
@@ -233,12 +258,14 @@ export default defineConfig({
           
           token.permisos = fullUser.rol.permisos.map(p => p.nombre);
 
+          // Calcular secciones base del rol
           const seccionesRolList = fullUser.rol.permisos_seccion
             .filter(ps => ps.activo && ps.seccion.activo)
             .map(ps => ps.seccion.identificador);
           
           let seccionesAprobadas = new Set(seccionesRolList);
 
+          // Aplicar overrides individuales del usuario
           fullUser.permisos_seccion.forEach(ps => {
             if (!ps.seccion.activo) return;
             
@@ -250,8 +277,6 @@ export default defineConfig({
           });
 
           token.secciones = Array.from(seccionesAprobadas);
-          token.atiendeTicketsCsh = (fullUser.rol as any).atiendeTicketsCsh ?? false;
-          token.atiendeTicketsMkt = (fullUser.rol as any).atiendeTicketsMkt ?? false;
         }
       }
       return token;
@@ -259,17 +284,16 @@ export default defineConfig({
 
     async session({ session, token }) {
       if (token.userId && session.user) {
-        session.user.id = String(token.userId); // Convertir a string para cumplir el tipo
+        session.user.id = String(token.userId);
         session.user.rol = token.rol as Rol;
         session.user.empresa = token.empresa as Empresa;
         session.user.image = token.image as string | null;
         session.user.alias = token.alias as string | undefined;
         session.user.acepta_tickets = (token.acepta_tickets as boolean | undefined) ?? true;
-        // Propagate flags from rol (stored in token)
-        if (session.user.rol) {
-          (session.user.rol as any).atiendeTicketsCsh = (token as any).atiendeTicketsCsh ?? false;
-          (session.user.rol as any).atiendeTicketsMkt = (token as any).atiendeTicketsMkt ?? false;
-        }
+        session.user.puesto = token.puesto as string | undefined;
+        // Propagate atiende flags from user (stored in token)
+        (session.user as any).atiende_csh = (token as any).atiende_csh ?? false;
+        (session.user as any).atiende_mkt = (token as any).atiende_mkt ?? false;
         // Asignar los permisos a la sesión
         session.user.permisos = token.permisos as string[];
         session.user.secciones = token.secciones as string[];
@@ -288,13 +312,16 @@ declare module "@auth/core/types" {
       id?: string | number;
       name?: string | null;
       email?: string | null;
-      rol?: Rol & { atiendeTicketsCsh?: boolean; atiendeTicketsMkt?: boolean };
+      rol?: Rol;
       empresa?: Empresa;
       image?: string | null;
       alias?: string;
+      puesto?: string;
       acepta_tickets?: boolean;
-      permisos?: string[]; // Añadir permisos a la sesión
-      secciones?: string[]; // Secciones permitidas
+      atiende_csh?: boolean;
+      atiende_mkt?: boolean;
+      permisos?: string[];
+      secciones?: string[];
     };
   }
 }
@@ -307,8 +334,11 @@ declare module "@auth/core/jwt" {
     empresa?: Empresa;
     image?: string | null;
     alias?: string;
+    puesto?: string;
     acepta_tickets?: boolean;
-    permisos?: string[]; // Añadir permisos al token
-    secciones?: string[]; // Secciones permitidas
+    atiende_csh?: boolean;
+    atiende_mkt?: boolean;
+    permisos?: string[];
+    secciones?: string[];
   }
 }
