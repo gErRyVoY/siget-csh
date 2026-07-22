@@ -7,37 +7,54 @@ async function main() {
 
   // --- Limpiar datos existentes (en orden de dependencia) ---
   const forceClean = process.env.FORCE_CLEAN === 'true';
+  // ⚠️  PROTECCIÓN CRÍTICA: los datos transaccionales NUNCA se borran con el seed.
+  // Para limpiarlos se requiere la variable FORCE_CLEAN_TRANSACTIONAL=true además de FORCE_CLEAN=true.
+  const forceCleanTransactional = forceClean && process.env.FORCE_CLEAN_TRANSACTIONAL === 'true';
 
-  if (forceClean) {
-    console.log('Cleaning existing data (FORCE_CLEAN=true)...');
+  if (forceCleanTransactional) {
+    console.log('⚠️  MODO DESTRUCTIVO TOTAL (FORCE_CLEAN + FORCE_CLEAN_TRANSACTIONAL)...');
+    console.log('   → Limpiando datos TRANSACCIONALES (tickets, traslados, incidencias, usuarios)...');
     await prisma.notificacionesCorreo.deleteMany({});
-    await prisma.plantillaCorreo.deleteMany({});
     await prisma.historialSolicitud.deleteMany({});
     await prisma.traslado.deleteMany({});
     await prisma.ticket.deleteMany({});
+    await prisma.logs.deleteMany({});
+    await prisma.incidencia.deleteMany({});
     await prisma.asignacionesCategorias.deleteMany({});
+    await prisma.usuario.deleteMany({});
+  } else if (forceClean) {
+    console.log('Limpiando SOLO catálogos estáticos (FORCE_CLEAN=true)...');
+    console.log('   → Los datos transaccionales (tickets, traslados, usuarios, incidencias) se CONSERVAN.');
+    // Solo limpiamos relaciones de catálogo, no los datos de negocio
+    await prisma.asignacionesCategorias.deleteMany({});
+    await prisma.permisoUsuarioSeccion.deleteMany({});
+    await prisma.permisoRolSeccion.deleteMany({});
+  } else {
+    console.log('Modo seguro: seed idempotente sin borrar nada (FORCE_CLEAN no activo).');
+  }
+
+  if (forceClean) {
+    // Catálogos de soporte (seguros de limpiar, el seed los repobla)
     await prisma.subcategoriaCategorias.deleteMany({});
     await prisma.subcategoria.deleteMany({});
     await prisma.categoria.deleteMany({});
-    await prisma.permisoUsuarioSeccion.deleteMany({});
-    await prisma.permisoRolSeccion.deleteMany({});
     await prisma.seccion.deleteMany({});
-    await prisma.logs.deleteMany({});
-    await prisma.incidencia.deleteMany({});
-    await prisma.usuario.deleteMany({});
-    await prisma.permiso.deleteMany({}); // Limpiar permisos
-    await prisma.rol.deleteMany({});      // Limpiar roles
+    await prisma.plantillaCorreo.deleteMany({});
+    await prisma.permiso.deleteMany({});
+    await prisma.rol.deleteMany({});
     await prisma.bloque.deleteMany({});
     await prisma.ciclo.deleteMany({});
     await prisma.carrera.deleteMany({});
     await prisma.oferta.deleteMany({});
     await prisma.descuento.deleteMany({});
     await prisma.planPago.deleteMany({});
-    await prisma.empresa.deleteMany({});
     await prisma.estatus.deleteMany({});
-  } else {
-    console.log('Skipping data cleaning (FORCE_CLEAN is not true). Seed will run in safe mode.');
+    // Empresas solo si también se limpian transaccionales (tienen FK a tickets/usuarios)
+    if (forceCleanTransactional) {
+      await prisma.empresa.deleteMany({});
+    }
   }
+
 
   // --- Insertar Empresas ---
   console.log('Seeding empresa...');
