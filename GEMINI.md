@@ -5,18 +5,16 @@
 >
 > **⚠️ REGLA CRÍTICA PARA EL ASISTENTE:** El asistente **NO debe ejecutar `git push`** en ninguna circunstancia a menos que el usuario lo solicite **de forma explícita**. Se permiten `git add` y `git commit` para preparar los cambios, pero el push queda **reservado exclusivamente para cuando el usuario lo indique**.
 
-**Tarea Actual:** Completada — Activación de Asignación y Validación 100% Exitosa (2026-07-22) ✅
+**Tarea Actual:** Completada — Despliegue de Cambios a Repositorio (2026-07-22) ✅
 
-**Estado:** Completado.
-1. Se ejecutó `UPDATE rol SET atiende_csh = true WHERE id = 2;` activando la recepción automática de tickets para todos los agentes con rol `admin`.
-2. Se ejecutó el script `scripts/sync-carga-actual.ts`, corrigiendo la desincronización de `carga_actual` en 7 usuarios (sincronizados exactamente con los tickets activos reales).
-3. Se volvió a ejecutar la suite completa de validación `scripts/validate-flows.ts` logrando **23/23 pruebas pasadas (100% OK)**.
+**Estado:** Completado. Se ejecutó `git push origin siget-apprunner-new` subiendo los 9 commits de la sesión (Refactor de asignación avanzada, Hardening de seguridad en middleware, Corrección de bucle de redirección en `UserProfile`/roles y Scripts de validación 23/23).
 
 **Pasos Siguientes:**
-1. Monitoreo general de la aplicación.
-2. Aguardar instrucción del usuario para realizar `git push` cuando sea oportuno.
+1. Monitoreo del despliegue automático en AWS App Runner.
+2. Monitoreo general de la aplicación.
 
 **Pasos Completados:**
+- ✅ **Despliegue a Repositorio (2026-07-22):** `git push` completado exitosamente a la rama `siget-apprunner-new` (commit `33e98d1`). AWS App Runner iniciando compilación y despliegue automático.
 - ✅ **Activación de Asignación y Validación 100% Exitosa (2026-07-22):** Se activó `atiende_csh=true` en el rol 2 (`admin`) habilitando la asignación automática a los 8 agentes del equipo. Se resincronizó la columna `carga_actual` con `scripts/sync-carga-actual.ts` (7 usuarios corregidos). La suite de validación `scripts/validate-flows.ts` alcanzó **23/23 pruebas pasadas (100% OK)**.
 - ✅ **Pruebas y Validación General (2026-07-22):** Se creó y ejecutó el script `scripts/validate-flows.ts` (5 suites: catálogos, asignación, tickets, middleware RBAC, traslados). Se documentaron hallazgos críticos de asignación y desincronización de `carga_actual`. Se creó `scripts/sync-carga-actual.ts` para corregir contadores.
 - ✅ **Refactor y Seguridad Integral en Middleware (2026-07-22):** Refactorizado `src/middleware.ts` para responder status `401` JSON en endpoints `/api/*` sin sesión activa, validar secciones en rutas con ordenamiento por longitud descendente de `sectionRouteMap`, y añadir cabeceras HTTP de seguridad (`X-Frame-Options`, `X-Content-Type-Options`, `COOP`, `CEOP`, `Referrer-Policy`). Se validó compilación 100% limpia con 0 errores en `npx astro check`.
