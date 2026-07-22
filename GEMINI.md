@@ -5,15 +5,16 @@
 >
 > **⚠️ REGLA CRÍTICA PARA EL ASISTENTE:** El asistente **NO debe ejecutar `git push`** en ninguna circunstancia a menos que el usuario lo solicite **de forma explícita**. Se permiten `git add` y `git commit` para preparar los cambios, pero el push queda **reservado exclusivamente para cuando el usuario lo indique**.
 
-**Tarea Actual:** Completada — Restauración de BD y Hardening del Seed (2026-07-22) ✅
+**Tarea Actual:** Completada — Refactor de Lógica de Asignación Avanzada (2026-07-22) ✅
 
-**Estado:** Completado. Se restauraron 100 usuarios, 20 tickets, 9 traslados, 41 entradas de historial y 123 incidencias desde el backup JSON del 2026-07-21. Se corrigió el `seed.ts` para que `FORCE_CLEAN=true` jamás borre datos transaccionales. Se añadió la OU `Early Adopters` como válida para el login. Se corrigió un `ReferenceError: userData is not defined` en `auth.config.ts`.
+**Estado:** Completado. Se refactorizó `src/services/ticketAssignmentService.ts` para verificar permisos híbridos (`atiende_csh`/`atiende_mkt` en Usuario o Rol), comprobar la disponibilidad con `acepta_tickets` y formateo de hora 24h de alta precisión en `America/Mexico_City`, y desempate por menor `carga_actual` e ID. Se validó en `update.ts` que los usuarios asignados manualmente estén activos.
 
 **Pasos Siguientes:**
-1. Validar la creación y edición de usuarios bajo el nuevo modelo en staging/producción.
-2. Monitoreo general de la aplicación.
+1. Validar flujos de tickets y asignación automática en staging/producción.
+2. Refactorizar y reforzar `src/middleware.ts` para seguridad de rutas.
 
 **Pasos Completados:**
+- ✅ **Refactor de Lógica de Asignación Avanzada (2026-07-22):** Refactorizado `src/services/ticketAssignmentService.ts` para validar permisos híbridos (`atiende_csh`/`atiende_mkt` en Usuario o Rol), verificar disponibilidad con `acepta_tickets`, y formatear horarios 24h en la zona horaria `America/Mexico_City`. Se incluyó desempate determinista por carga e ID, y validación de usuarios activos al asignar manualmente en `api/tickets/update.ts`. Se corrigieron errores de TypeScript en la app alcanzando 0 errores en `npx astro check`.
 - ✅ **Restauración de BD y Hardening del Seed v2 (2026-07-22):** El seed borró datos transaccionales al ejecutarse con `FORCE_CLEAN=true`. Se creó el script `scripts/restore-backup.ts` que restaura datos desde el backup JSON más reciente, mapeando el esquema anterior al actual (rolId viejo → 1/2/3, columnas renombradas, defaults para campos nuevos). Se restauraron 100 usuarios, 20 tickets, 9 traslados, 41 historiales y 123 incidencias. El `seed.ts` fue refactorizado con doble protección: `FORCE_CLEAN=true` solo limpia catálogos estáticos; para borrar datos transaccionales se requiere además `FORCE_CLEAN_TRANSACTIONAL=true`.
 - ✅ **OU Early Adopters en Login (2026-07-22):** Se añadió la Unidad Organizativa `Early Adopters` como válida en el callback `signIn` de `auth.config.ts`, además de `Colaboradores`. Se corrigió simultáneamente un `ReferenceError: userData is not defined` causado por el reordenamiento accidental de las líneas de asignación.
 - ✅ **Doble Filtro de Autenticación y Cotejo de Puesto (2026-07-21):** Se implementó la validación obligatoria con Google (dominio `@humanitas.edu.mx` y verificación de Unidad Organizativa "Colaboradores"). Se añadió un segundo filtro obligatorio contra la API de Recursos Humanos; si el correo no devuelve datos del trabajador, el inicio de sesión es bloqueado devolviendo el error `ColaboradorNoActivo`. Si el colaborador es válido, se coteja su puesto actual en la base de datos contra el puesto arrojado por la API de Recursos Humanos (`desc_puesto`), actualizándose en la BD si existe alguna diferencia.

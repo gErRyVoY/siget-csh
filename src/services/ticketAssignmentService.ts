@@ -123,7 +123,7 @@ async function findAllCandidates(
 
     const specificUsers = specificAssignments
         .map(a => a.atiende)
-        .filter(u => u.activo && hasCorrectUserFlag(u as any, isMarketing)) as AgentWithRelations[];
+        .filter(u => u && u.activo && hasCorrectUserFlag(u as AgentWithRelations, isMarketing)) as AgentWithRelations[];
 
     if (specificUsers.length > 0) {
         return specificUsers;
@@ -147,7 +147,9 @@ async function findAllCandidates(
         where: {
             rolId: { in: roleIds },
             activo: true,
-            ...(isMarketing ? { atiende_mkt: true } : { atiende_csh: true })
+            ...(isMarketing
+                ? { OR: [{ atiende_mkt: true }, { rol: { atiende_mkt: true } }] }
+                : { OR: [{ atiende_csh: true }, { rol: { atiende_csh: true } }] })
         },
         include: { rol: true }
     });
@@ -180,9 +182,10 @@ async function findAgentsBySpecificAssignment(
     return assignments
         .map(a => a.atiende)
         .filter(u =>
+            u &&
             u.activo &&
             u.acepta_tickets &&
-            hasCorrectUserFlag(u as any, isMarketing)
+            hasCorrectUserFlag(u as AgentWithRelations, isMarketing)
         ) as AgentWithRelations[];
 }
 
@@ -212,7 +215,9 @@ async function findAgentsByRolePermissions(
             rolId: { in: roleIds },
             activo: true,
             acepta_tickets: true,
-            ...(isMarketing ? { atiende_mkt: true } : { atiende_csh: true })
+            ...(isMarketing
+                ? { OR: [{ atiende_mkt: true }, { rol: { atiende_mkt: true } }] }
+                : { OR: [{ atiende_csh: true }, { rol: { atiende_csh: true } }] })
         },
         include: { rol: true, asignaciones_categorias: true }
     });
@@ -263,14 +268,23 @@ function filterBySchedule(agents: AgentWithRelations[]): AgentWithRelations[] {
         .normalize('NFD')
         .replace(/[\u0300-\u036f]/g, '');
 
-    const currentTime = now.toLocaleTimeString('es-MX', {
+    const timeParts = new Intl.DateTimeFormat('en-US', {
+        timeZone: 'America/Mexico_City',
         hour: '2-digit',
         minute: '2-digit',
-        hour12: false,
-        timeZone: 'America/Mexico_City'
-    });
+        hourCycle: 'h23'
+    }).formatToParts(now);
+
+    const hour = timeParts.find(p => p.type === 'hour')?.value.padStart(2, '0') || '00';
+    const minute = timeParts.find(p => p.type === 'minute')?.value.padStart(2, '0') || '00';
+    const currentTime = `${hour}:${minute}`;
 
     return agents.filter(agent => {
+        if (!agent.activo || !agent.acepta_tickets) {
+            console.log(`[Assignment] Agente ${agent.id} ignorado: inactivo o no acepta tickets`);
+            return false;
+        }
+
         // Sin horario definido → NO disponible para asignación automática
         if (!agent.horario_disponibilidad || typeof agent.horario_disponibilidad !== 'object') {
             console.log(`[Assignment] Agente ${agent.id} ignorado: sin horario definido`);
@@ -296,15 +310,24 @@ function filterBySchedule(agents: AgentWithRelations[]): AgentWithRelations[] {
 
 /**
  * Selecciona el agente con menor carga de trabajo de una lista ya filtrada.
+ * En caso de empate en carga_actual, desempata por ID ascendente.
  */
 function selectByLowestLoad(agents: AgentWithRelations[]): AgentWithRelations {
-    return [...agents].sort((a, b) => a.carga_actual - b.carga_actual)[0];
+    const sorted = [...agents].sort((a, b) => {
+        if (a.carga_actual !== b.carga_actual) {
+            return a.carga_actual - b.carga_actual;
+        }
+        return a.id - b.id;
+    });
+    return sorted[0];
 }
 
 /**
- * Verifica si el agente tiene el flag de usuario correcto según el tipo de categoría.
+ * Verifica si el agente tiene el flag de usuario/rol correcto según el tipo de categoría.
  */
-function hasCorrectUserFlag(agent: AgentWithRelations & { atiende_csh?: boolean; atiende_mkt?: boolean }, isMarketing: boolean): boolean {
-    if (isMarketing) return (agent as any).atiende_mkt === true;
-    return (agent as any).atiende_csh === true;
+function hasCorrectUserFlag(agent: AgentWithRelations, isMarketing: boolean): boolean {
+    if (isMarketing) {
+        return agent.atiende_mkt === true || agent.rol?.atiende_mkt === true;
+    }
+    return agent.atiende_csh === true || agent.rol?.atiende_csh === true;
 }

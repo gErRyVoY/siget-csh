@@ -145,11 +145,12 @@ export default defineConfig({
         }
 
         if (!dbUser) {
-          const ouParts = userData.orgUnitPath.split('/').filter(part => part);
+          const orgUnit = userData.orgUnitPath || '';
+          const ouParts = orgUnit.split('/').filter(part => part);
           const firstLevelOU = ouParts[0];
 
           if (!firstLevelOU) {
-            console.error(`No se pudo extraer el primer nivel de la OU: ${userData.orgUnitPath}`);
+            console.error(`No se pudo extraer el primer nivel de la OU: ${orgUnit}`);
             return '/login?error=ErrorOU';
           }
 

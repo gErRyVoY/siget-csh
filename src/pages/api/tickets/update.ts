@@ -50,6 +50,13 @@ export const PATCH: APIRoute = async ({ request, locals }) => {
         if ('atiendeId' in updateDataInput) {
             const parsedAtiendeId = Number(updateDataInput.atiendeId);
             if (parsedAtiendeId > 0) {
+                const targetAgent = await prisma.usuario.findUnique({
+                    where: { id: parsedAtiendeId },
+                    select: { id: true, activo: true }
+                });
+                if (!targetAgent || !targetAgent.activo) {
+                    return new Response(JSON.stringify({ message: 'El usuario seleccionado para atender no está activo.' }), { status: 400 });
+                }
                 updateData.atiende = { connect: { id: parsedAtiendeId } };
             } else if (ticketBeforeUpdate.atiendeId !== null) {
                 updateData.atiende = { disconnect: true };

@@ -41,7 +41,7 @@ export const PATCH: APIRoute = async ({ request }) => {
 
   try {
     const data = await request.json();
-    const { slug, tckt_virtual } = data;
+    const { slug, tckt_virtual, tckt_csh, tckt_mkt } = data;
     const adminUserId = parseInt(session.user.id as string, 10);
 
     if (isNaN(adminUserId)) {

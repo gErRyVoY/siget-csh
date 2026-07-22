@@ -1132,7 +1132,7 @@ const GOOGLE_APP_ID = import.meta.env.GOOGLE_APP_ID || process.env.GOOGLE_APP_ID
       }
     });
 
-    function getWeeksText(dates) {
+    function getWeeksText(dates: Date[]): string {
       if (dates.length === 0) return "";
       const weeks = dates.map(d => {
         const date = new Date(d.getTime());
@@ -1141,7 +1141,7 @@ const GOOGLE_APP_ID = import.meta.env.GOOGLE_APP_ID || process.env.GOOGLE_APP_ID
         const week1 = new Date(date.getFullYear(), 0, 4);
         return 1 + Math.round(((date.getTime() - week1.getTime()) / 86400000 - 3 + (week1.getDay() + 6) % 7) / 7);
       });
-      const uniqueWeeks = Array.from(new Set(weeks)).sort((a, b) => a - b);
+      const uniqueWeeks = Array.from(new Set(weeks)).sort((a: number, b: number) => a - b);
       if (uniqueWeeks.length === 1) {
         return `Semana #${uniqueWeeks[0]}`;
       }
@@ -1218,7 +1218,7 @@ const GOOGLE_APP_ID = import.meta.env.GOOGLE_APP_ID || process.env.GOOGLE_APP_ID
         cells.push(`<td style="width:${CELL_W};height:${CELL_H};border:1px solid #e5e7eb;background-color:#f9fafb;"></td>`);
       }
 
-      const formatT = (t) => {
+      const formatT = (t: string | null | undefined): string => {
         if (!t) return "";
         if (t.length === 4) return `${t.substring(0, 2)}:${t.substring(2, 4)}`;
         return t;
@@ -1350,7 +1350,7 @@ const GOOGLE_APP_ID = import.meta.env.GOOGLE_APP_ID || process.env.GOOGLE_APP_ID
         </div>
       `;
 
-      const listLines = [];
+      const listLines: string[] = [];
       const sortedActiveIncidencias = Array.from(activeMap.values())
         .filter(inc => !inc.omitida)
         .sort((a, b) => new Date(a.fecha).getTime() - new Date(b.fecha).getTime());
@@ -1378,7 +1378,7 @@ const GOOGLE_APP_ID = import.meta.env.GOOGLE_APP_ID || process.env.GOOGLE_APP_ID
         } else if (isAllNull) {
           parts.push("Inasistencia.");
         } else {
-          if (inc.entrada_turno && hIni) {
+          if (inc.entrada_turno && hIni && rEnt) {
             const diffEnt = timeDiffMins(rEnt, hIni);
             let elColor = "";
             if (diffEnt < 0) elColor = "color:#16a34a;";
@@ -1398,7 +1398,7 @@ const GOOGLE_APP_ID = import.meta.env.GOOGLE_APP_ID || process.env.GOOGLE_APP_ID
             parts.push("Falta registro de entrada.");
           }
 
-          if (inc.salida_turno && hFin) {
+          if (inc.salida_turno && hFin && rSal) {
             const diffSal = timeDiffMins(rSal, hFin);
             let slColor = "";
             if (diffSal > 5) slColor = "color:#16a34a;";
