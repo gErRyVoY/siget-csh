@@ -135,10 +135,10 @@ async function main() {
       { id: 8, nombre: 'Dashboard', identificador: 'marketing_dashboard', grupo: 'Tickets marketing' },
       { id: 9, nombre: 'Todos', identificador: 'marketing_todos', grupo: 'Tickets marketing' },
 
-      { id: 10, nombre: 'Plataforma Humanitas', identificador: 'plataforma_humanitas', grupo: 'Otros' },
-      { id: 11, nombre: 'Asistencia remota', identificador: 'asistencia_remota', grupo: 'Otros' },
-      { id: 12, nombre: 'Base de conocimientos', identificador: 'base_conocimientos', grupo: 'Otros' },
-      { id: 13, nombre: 'Horario de atención', identificador: 'horario_atencion', grupo: 'Otros' },
+      { id: 10, nombre: 'Plataforma Humanitas', identificador: 'plataforma_humanitas', grupo: 'Generales' },
+      { id: 11, nombre: 'Asistencia remota', identificador: 'asistencia_remota', grupo: 'Generales' },
+      { id: 12, nombre: 'Base de conocimientos', identificador: 'base_conocimientos', grupo: 'Generales' },
+      { id: 13, nombre: 'Horario de atención', identificador: 'horario_atencion', grupo: 'Generales' },
 
       { id: 14, nombre: 'Crear', identificador: 'admin_correos_crear', grupo: 'Administrador', subgrupo: 'Correos institucionales' },
       { id: 15, nombre: 'Actualizar', identificador: 'admin_correos_actualizar', grupo: 'Administrador', subgrupo: 'Correos institucionales' },
@@ -149,6 +149,7 @@ async function main() {
       { id: 19, nombre: 'Tickets', identificador: 'admin_siget_tickets', grupo: 'Administrador', subgrupo: 'SiGeT' },
       { id: 20, nombre: 'Usuarios', identificador: 'admin_siget_usuarios', grupo: 'Administrador', subgrupo: 'SiGeT' },
       { id: 21, nombre: 'Roles', identificador: 'admin_siget_roles', grupo: 'Administrador', subgrupo: 'SiGeT' },
+      { id: 22, nombre: 'Modo Oscuro', identificador: 'feature_dark_mode', grupo: 'Generales', descripcion: 'Habilita el botón de Modo Oscuro globalmente en la plataforma.' },
     ],
     skipDuplicates: true,
   });
@@ -156,7 +157,7 @@ async function main() {
   const allAbrirTicket = [1, 2, 3];
   const allTicketsSoporte = [4, 5, 6];
   const allTicketsMarketing = [7, 8, 9];
-  const allOtros = [10, 11, 12, 13];
+  const allOtros = [10, 11, 12, 13, 22];
   const allAdminSiget = [14, 15, 16, 17, 18, 19, 20, 21];
 
   const rolesSecciones = [

@@ -15,20 +15,32 @@ const orderGrupos = [
   "Abrir ticket",
   "Tickets soporte",
   "Tickets marketing",
-  "Otros",
+  "Generales",
   "Administrador",
 ];
 const groupedSecciones: { [key: string]: { [key: string]: typeof secciones } } =
   {};
 
 secciones.forEach((sec) => {
-  const group = sec.grupo || "Otros";
+  let group = sec.grupo || "Generales";
+  if (group === "Otros") group = "Generales";
   const subgroup = sec.subgrupo || "General";
   if (!groupedSecciones[group]) groupedSecciones[group] = {};
   if (!groupedSecciones[group][subgroup])
     groupedSecciones[group][subgroup] = [];
   groupedSecciones[group][subgroup].push(sec);
 });
+
+// Colocar 'feature_dark_mode' (Modo Oscuro) al inicio del grupo 'Generales'
+if (groupedSecciones["Generales"]) {
+  Object.keys(groupedSecciones["Generales"]).forEach((subgroupName) => {
+    groupedSecciones["Generales"][subgroupName].sort((a, b) => {
+      if (a.identificador === "feature_dark_mode") return -1;
+      if (b.identificador === "feature_dark_mode") return 1;
+      return a.nombre.localeCompare(b.nombre);
+    });
+  });
+}
 ---
 
 <MainLayout title="Gestión de secciones globales">
