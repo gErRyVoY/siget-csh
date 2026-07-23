@@ -41,25 +41,7 @@ const horarioString = JSON.stringify(dbUser.horario_disponibilidad ?? {});
         <h2 class="text-xl font-semibold mb-4 border-b pb-2">
           Configuración general
         </h2>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div class="space-y-2">
-            <label for="alias" class="block text-sm font-medium"
-              >Alias (opcional)</label
-            >
-            <input
-              type="text"
-              id="alias"
-              name="alias"
-              value={dbUser.alias ?? ""}
-              placeholder="Ej. Juan P."
-              class="w-full rounded-md border-border bg-input p-2 accent-secondary focus:outline-none focus:ring-1 focus:ring-secondary"
-            />
-            <p class="text-xs text-muted-foreground">
-              Este nombre se mostrará en lugar de tu nombre completo en la
-              plataforma.
-            </p>
-          </div>
-
+        <div>
           <div class="space-y-2 flex flex-col justify-center">
             <label class="block text-sm font-medium mb-1"
               >Asignación de tickets</label
@@ -292,7 +274,6 @@ const horarioString = JSON.stringify(dbUser.horario_disponibilidad ?? {});
       });
 
       const data = {
-        alias: formData.get("alias"),
         acepta_tickets: vacToggle.checked,
         horario_disponibilidad:
           Object.keys(horarioData).length > 0 ? horarioData : null,
