@@ -3,10 +3,11 @@ import { prisma } from "@/lib/db";
 
 export const GET: APIRoute = async () => {
     // ⚡ Phase 1: Run all independent queries in parallel
-    const [ticketCounts, activeCycle, statuses] = await Promise.all([
+    const [ticketCounts, activeCycle, statuses, sinAsignarCount] = await Promise.all([
         prisma.ticket.groupBy({ by: ["estatusId"], _count: { id: true } }),
         prisma.ciclo.findFirst({ where: { activo: true } }),
         prisma.estatus.findMany(),
+        prisma.ticket.count({ where: { atiendeId: null } }),
     ]);
 
     const getCount = (name: string) => {
@@ -37,6 +38,7 @@ export const GET: APIRoute = async () => {
             nuevos: getCount("Nuevo"),
             enProgreso: getCount("En progreso"),
             enEspera: getCount("En espera"),
+            sinAsignar: sinAsignarCount,
             traslados: trasladosCount,
             total: total,
             solucionados: getCount("Solucionado"),
