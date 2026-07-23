@@ -18,10 +18,11 @@ if (!dbUser) {
   return Astro.redirect("/login");
 }
 
-// El usuario puede editar su perfil si atiende tickets CSH o Marketing (flag a nivel de usuario)
+// Permite el acceso a la vista si es Admin/Superadmin (rol 2 o 3) o si atiende tickets
+const isPrivileged = [2, 3].includes(dbUser.rolId);
 const atiendeTickets = (dbUser as any).atiende_csh || (dbUser as any).atiende_mkt;
 
-if (!atiendeTickets) {
+if (!isPrivileged && !atiendeTickets) {
   return Astro.redirect("/");
 }
 

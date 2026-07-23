@@ -5,20 +5,20 @@
 >
 > **⚠️ REGLA CRÍTICA PARA EL ASISTENTE:** El asistente **NO debe ejecutar `git push`** en ninguna circunstancia a menos que el usuario lo solicite **de forma explícita**. Se permiten `git add` y `git commit` para preparar los cambios, pero el push queda **reservado exclusivamente para cuando el usuario lo indique**.
 
-**Tarea Actual:** Completada — Mejoras de UI en Listados de Tickets y Dashboard (2026-07-23) ✅
+**Tarea Actual:** Completada — Ajustes de Edición de Usuario y Permisos de Perfil (2026-07-23) ✅
 
 **Estado:** Completado.
-1. Se reestructuraron los filtros de los listados de tickets (CSH/Marketing/Usuario) en **dos filas**: fila 1 con `grid-cols-4` para los 4 selectores y fila 2 con los inputs de fecha "Desde" y "Hasta".
-2. El filtro de fechas ahora solo activa la búsqueda cuando **ambas fechas** están seleccionadas, o limpia el filtro cuando ambas se borran.
-3. Se añadió el filtro de fechas a la vista `/tickets/soporte/usuario` (Mis tickets).
-4. Se aplicaron los **colores de antigüedad** a la columna de fecha en la tabla desktop de `/tickets/soporte/usuario` (verde ≤1 día, amarillo 3-5 días, rojo ≥7 días).
-5. Se reorganizó el Dashboard General en un **grid de 3 filas**: fila 1 (Nuevos, En progreso, En espera, Traslados), fila 2 (Total, Sin asignar, Solucionados, Duplicados), fila 3 (Cancelados solo, alineado a la izquierda).
+1. Se reestructuró la vista de edición de usuarios (`/admin/usuarios/editar/[id]`): se removieron los campos editables `alias` y `puesto` (el puesto ahora es de solo lectura arrojado por la API de RH) y la `clave` del trabajador se mantiene gestionada por el flujo de inicio de sesión de RH.
+2. Se ajustaron los permisos de acceso en `/user/perfil` y `/user/perfil/incidencias` para permitir el acceso a Administradores/Superadministradores (roles 2 y 3) independientemente de si tienen banderas de atender tickets activas.
+3. Se actualizó la API de parches de usuarios (`src/pages/api/admin/usuarios.ts`) y la lógica de envío (`src/scripts/user-edit-form-logic.ts`) para sanitizar `empresaId` y `rolId` adecuadamente.
+4. `npx astro check` validó la aplicación con **0 errores**.
 
 **Pasos Siguientes:**
 1. Monitoreo general de la aplicación.
-2. Aguardar confirmación del usuario para realizar `git push`.
+2. Despliegue automático en curso vía AWS App Runner tras `git push`.
 
 **Pasos Completados:**
+- ✅ **Ajustes de Edición de Usuario y Permisos de Perfil (2026-07-23):** Reestructurada la edición de usuarios para mostrar `puesto` como solo lectura. Permitido acceso a Administradores/Superadministradores (roles 2 y 3) a las páginas `/user/perfil` y `/user/perfil/incidencias`. Sanitizados `empresaId` y `rolId` en el submit de edición. `astro check` pasó con 0 errores.
 - ✅ **Mejoras de UI en Listados de Tickets y Dashboard (2026-07-23):** Reestructurados los filtros de `/tickets/soporte`, `/tickets/marketing` y `/tickets/soporte/usuario` en dos filas (`grid-cols-4`): selectores en fila 1 y fechas "Desde/Hasta" en fila 2. El filtro de fechas solo navega cuando ambas fechas tienen valor. Se aplicaron colores de antigüedad (verde/amarillo/rojo) a la columna de fecha en la tabla desktop de `/tickets/soporte/usuario`. El Dashboard General se reorganizó en 3 filas con `Cancelados` solo en la 3ª fila alineado a la izquierda.
 - ✅ **Renombrar Sección a GENERALES e Integrar Modo Oscuro (2026-07-23):** Se cambió la denominación del grupo de secciones de "Otros" a "GENERALES" en `/admin/secciones`, `/admin/roles`, edición de usuarios y `seed.ts`. Se incorporó la opción de "Modo Oscuro" (`feature_dark_mode`) posicionada al inicio de la lista de GENERALES, permitiendo a los administradores habilitar/inhabilitar el toggle de tema oscuro globalmente.
 - ✅ **Despliegue a Repositorio (2026-07-22):** `git push` completado exitosamente a la rama `siget-apprunner-new` (commit `33e98d1`). AWS App Runner iniciando compilación y despliegue automático.

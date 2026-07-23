@@ -18,9 +18,10 @@ if (!dbUser) {
   return Astro.redirect("/login");
 }
 
+const isPrivileged = [2, 3].includes(dbUser.rolId);
 const atiendeTickets = (dbUser as any).atiende_csh || (dbUser as any).atiende_mkt;
 
-if (!atiendeTickets) {
+if (!isPrivileged && !atiendeTickets) {
   return Astro.redirect("/");
 }
 

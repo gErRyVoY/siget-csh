@@ -79,6 +79,7 @@ const FULL_EDIT_ROLES = [
   "Director CSH",
   "Ingeniero soporte 3",
   "Desarrollador",
+  "Superadmin",
 ];
 const RESTRICTED_EDIT_ROLES = [
   "Ingeniero soporte 1",
@@ -94,14 +95,16 @@ const MARKETING_TEAM_ROLES = [
 ];
 
 const currentUserRole = session?.user?.rol?.rol || "";
+const currentUserRoleId = session?.user?.rol?.id ?? 0;
+const isSuperAdmin = currentUserRoleId === 3 || (session?.user?.rol as any)?.administrador === true || currentUserRole === "Superadmin";
 
 // Check capabilities
-const isFullEditor = FULL_EDIT_ROLES.includes(currentUserRole);
+const isFullEditor = FULL_EDIT_ROLES.includes(currentUserRole) || isSuperAdmin;
 const isRestrictedEditor = RESTRICTED_EDIT_ROLES.includes(currentUserRole);
 
 // Special Marketing Logic
 const isMarketingDirector = currentUserRole === "Director Marketing";
-const isMarketingTeamMember = MARKETING_TEAM_ROLES.includes(currentUserRole);
+const isMarketingTeamMember = MARKETING_TEAM_ROLES.includes(currentUserRole) && !isSuperAdmin;
 
 // Target User Properties
 const targetUserNivelSoporte = user.rol?.nivel_soporte;
@@ -115,7 +118,7 @@ const canMarketingEdit = isMarketingDirector && targetIsMarketing;
 const canEdit = canFullEdit || canRestrictedEdit || canMarketingEdit;
 
 // Field Restrictions
-const isEmpresaReadOnly = !canFullEdit; // Only Full Editors can change Empresa (implied from "excepto empresa" for Mkt Director)
+const isEmpresaReadOnly = !canFullEdit; // Superadmins and Full Editors can change Empresa
 const isRoleSelectFiltered = isMarketingTeamMember;
 const areAuditorChecksHidden = isMarketingTeamMember;
 
@@ -236,15 +239,8 @@ if (groupedSecciones["Generales"]) {
             <p class="text-lg">{user.mail}</p>
           </div>
           <div>
-            <label for="clave" class="block text-sm font-medium mb-1">Clave</label>
-            <input
-              type="text"
-              id="clave"
-              name="clave"
-              value={user.clave || ""}
-              class="block w-full rounded-md border-border bg-input p-2 accent-secondary focus:outline-none focus:ring-1 focus:ring-secondary disabled:opacity-50 disabled:cursor-not-allowed"
-              disabled={!canEdit}
-            />
+            <label class="block text-sm font-medium mb-1">Clave</label>
+            <p class="text-lg">{user.clave || "N/A"}</p>
           </div>
           <div>
             <label for="empresaId" class="block text-sm font-medium mb-1">Empresa</label>
@@ -271,28 +267,8 @@ if (groupedSecciones["Generales"]) {
             </select>
           </div>
           <div>
-            <label for="alias" class="block text-sm font-medium mb-1">Alias (Nombre a mostrar)</label>
-            <input
-              type="text"
-              id="alias"
-              name="alias"
-              value={user.alias || ""}
-              class="block w-full rounded-md border-border bg-input p-2 accent-secondary focus:outline-none focus:ring-1 focus:ring-secondary disabled:opacity-50 disabled:cursor-not-allowed"
-              disabled={!canEdit}
-              placeholder="Ej. Gera"
-            />
-          </div>
-          <div>
-            <label for="puesto" class="block text-sm font-medium mb-1">Puesto</label>
-            <input
-              type="text"
-              id="puesto"
-              name="puesto"
-              value={(user as any).puesto || ""}
-              class="block w-full rounded-md border-border bg-input p-2 accent-secondary focus:outline-none focus:ring-1 focus:ring-secondary disabled:opacity-50 disabled:cursor-not-allowed"
-              disabled={!canEdit}
-              placeholder="Ej. Tech Lead"
-            />
+            <label class="block text-sm font-medium mb-1">Puesto</label>
+            <p class="text-lg">{(user as any).puesto || "N/A"}</p>
           </div>
           <div>
             <label class="block text-sm font-medium mb-1">Último inicio de sesión</label>
@@ -309,6 +285,7 @@ if (groupedSecciones["Generales"]) {
               id="rolId"
               name="rolId"
               class="block w-full rounded-md border-border bg-input p-2 accent-secondary focus:outline-none focus:ring-1 focus:ring-secondary disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={!canFullEdit}
             >
               {
                 displayedRoles.map((rol) => (

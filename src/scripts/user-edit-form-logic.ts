@@ -130,13 +130,11 @@ export function initializeUserEditForm() {
                 }
             });
 
-            const data = {
+            const rawEmpresaId = formData.get('empresaId');
+            const rawRolId = formData.get('rolId');
+
+            const data: Record<string, any> = {
                 id: userId,
-                empresaId: parseInt(formData.get('empresaId') as string),
-                rolId: parseInt(formData.get('rolId') as string),
-                clave: formData.get('clave') as string,
-                alias: formData.get('alias') as string,
-                puesto: formData.get('puesto') as string,
                 activo: (form.elements.namedItem('activo') as HTMLInputElement)?.checked ?? false,
                 acepta_tickets: (form.elements.namedItem('acepta_tickets') as HTMLInputElement)?.checked ?? false,
                 tckt_csh: (form.elements.namedItem('tckt_csh') as HTMLInputElement)?.checked ?? false,
@@ -147,6 +145,13 @@ export function initializeUserEditForm() {
                 auditor_req: (form.elements.namedItem('auditor_req') as HTMLInputElement)?.checked ?? false,
                 horario_disponibilidad: Object.keys(horarioData).length > 0 ? horarioData : null,
             };
+
+            if (rawEmpresaId && !isNaN(parseInt(rawEmpresaId as string, 10))) {
+                data.empresaId = parseInt(rawEmpresaId as string, 10);
+            }
+            if (rawRolId && !isNaN(parseInt(rawRolId as string, 10))) {
+                data.rolId = parseInt(rawRolId as string, 10);
+            }
 
 
             try {
