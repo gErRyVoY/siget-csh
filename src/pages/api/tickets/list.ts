@@ -70,6 +70,26 @@ export const GET: APIRoute = async ({ request }) => {
       }
     }
 
+    const dateFrom = params.get('dateFrom');
+    const dateTo = params.get('dateTo');
+    if (dateFrom || dateTo) {
+      const dateFilter: Prisma.DateTimeFilter = {};
+      if (dateFrom) {
+        const start = new Date(dateFrom + 'T00:00:00');
+        if (!isNaN(start.getTime())) dateFilter.gte = start;
+      }
+      if (dateTo) {
+        const end = new Date(dateTo + 'T23:59:59.999');
+        if (!isNaN(end.getTime())) dateFilter.lte = end;
+      } else if (dateFrom) {
+        const endOfDay = new Date(dateFrom + 'T23:59:59.999');
+        if (!isNaN(endOfDay.getTime())) dateFilter.lte = endOfDay;
+      }
+      if (dateFilter.gte || dateFilter.lte) {
+        where.fechaalta = dateFilter;
+      }
+    }
+
     // --- Pagination ---
     const page = parseInt(params.get('page') || '1', 10);
     const limitParam = params.get('limit');

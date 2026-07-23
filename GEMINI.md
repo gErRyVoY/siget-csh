@@ -5,17 +5,21 @@
 >
 > **⚠️ REGLA CRÍTICA PARA EL ASISTENTE:** El asistente **NO debe ejecutar `git push`** en ninguna circunstancia a menos que el usuario lo solicite **de forma explícita**. Se permiten `git add` y `git commit` para preparar los cambios, pero el push queda **reservado exclusivamente para cuando el usuario lo indique**.
 
-**Tarea Actual:** Completada — Renombrar Sección a GENERALES e Integrar Modo Oscuro (2026-07-23) ✅
+**Tarea Actual:** Completada — Mejoras de UI en Listados de Tickets y Dashboard (2026-07-23) ✅
 
 **Estado:** Completado.
-1. Se renombró el grupo de secciones "Otros" a **"GENERALES"** en la vista de administración `/admin/secciones`, en la vista de configuración de roles `/admin/roles`, en el formulario de edición de usuarios `/admin/usuarios/editar/[id]` y en `prisma/seed.ts`.
-2. Se registró e integró la sección global **Modo Oscuro** (`feature_dark_mode`) en la base de datos y en `seed.ts`, colocándola al **inicio de la lista** dentro del grupo GENERALES en la UI de `/admin/secciones`.
+1. Se reestructuraron los filtros de los listados de tickets (CSH/Marketing/Usuario) en **dos filas**: fila 1 con `grid-cols-4` para los 4 selectores y fila 2 con los inputs de fecha "Desde" y "Hasta".
+2. El filtro de fechas ahora solo activa la búsqueda cuando **ambas fechas** están seleccionadas, o limpia el filtro cuando ambas se borran.
+3. Se añadió el filtro de fechas a la vista `/tickets/soporte/usuario` (Mis tickets).
+4. Se aplicaron los **colores de antigüedad** a la columna de fecha en la tabla desktop de `/tickets/soporte/usuario` (verde ≤1 día, amarillo 3-5 días, rojo ≥7 días).
+5. Se reorganizó el Dashboard General en un **grid de 3 filas**: fila 1 (Nuevos, En progreso, En espera, Traslados), fila 2 (Total, Sin asignar, Solucionados, Duplicados), fila 3 (Cancelados solo, alineado a la izquierda).
 
 **Pasos Siguientes:**
 1. Monitoreo general de la aplicación.
 2. Aguardar confirmación del usuario para realizar `git push`.
 
 **Pasos Completados:**
+- ✅ **Mejoras de UI en Listados de Tickets y Dashboard (2026-07-23):** Reestructurados los filtros de `/tickets/soporte`, `/tickets/marketing` y `/tickets/soporte/usuario` en dos filas (`grid-cols-4`): selectores en fila 1 y fechas "Desde/Hasta" en fila 2. El filtro de fechas solo navega cuando ambas fechas tienen valor. Se aplicaron colores de antigüedad (verde/amarillo/rojo) a la columna de fecha en la tabla desktop de `/tickets/soporte/usuario`. El Dashboard General se reorganizó en 3 filas con `Cancelados` solo en la 3ª fila alineado a la izquierda.
 - ✅ **Renombrar Sección a GENERALES e Integrar Modo Oscuro (2026-07-23):** Se cambió la denominación del grupo de secciones de "Otros" a "GENERALES" en `/admin/secciones`, `/admin/roles`, edición de usuarios y `seed.ts`. Se incorporó la opción de "Modo Oscuro" (`feature_dark_mode`) posicionada al inicio de la lista de GENERALES, permitiendo a los administradores habilitar/inhabilitar el toggle de tema oscuro globalmente.
 - ✅ **Despliegue a Repositorio (2026-07-22):** `git push` completado exitosamente a la rama `siget-apprunner-new` (commit `33e98d1`). AWS App Runner iniciando compilación y despliegue automático.
 - ✅ **Activación de Asignación y Validación 100% Exitosa (2026-07-22):** Se activó `atiende_csh=true` en el rol 2 (`admin`) habilitando la asignación automática a los 8 agentes del equipo. Se resincronizó la columna `carga_actual` con `scripts/sync-carga-actual.ts` (7 usuarios corregidos). La suite de validación `scripts/validate-flows.ts` alcanzó **23/23 pruebas pasadas (100% OK)**.

@@ -162,11 +162,7 @@ const empresas = await prisma.empresa.findMany({
       </div>
 
       <form id="add-company-form" class="space-y-4">
-        <!-- Info ID -->
-        <div class="bg-muted/40 border border-border/60 rounded-md p-2.5 flex items-center justify-between text-xs text-muted-foreground">
-          <span>Identificador (ID):</span>
-          <span class="font-mono font-semibold text-foreground bg-background px-2 py-0.5 rounded border border-border">Auto-asignado por BD</span>
-        </div>
+
 
         <!-- Nombre -->
         <div>
@@ -221,6 +217,7 @@ const empresas = await prisma.empresa.findMany({
             required
             class="w-full bg-input border border-border rounded-md px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
           >
+            <option value="" selected disabled>Selecciona el tipo</option>
             <option value="Magno">Magno</option>
             <option value="Ejecutivo">Ejecutivo</option>
             <option value="Oficina">Oficina</option>
@@ -241,17 +238,17 @@ const empresas = await prisma.empresa.findMany({
             </label>
 
             <label class="flex items-center justify-between p-2.5 bg-muted/40 border border-border/60 rounded-md cursor-pointer hover:bg-muted/70 transition-colors">
-              <span class="text-xs font-medium text-foreground">Tickets CSH</span>
+              <span class="text-xs font-medium text-foreground">Puede levantar tickets a CSH</span>
               <input type="checkbox" id="company-tckt-csh" checked class="rounded border-gray-300 text-primary focus:ring-primary h-4 w-4" />
             </label>
 
             <label class="flex items-center justify-between p-2.5 bg-muted/40 border border-border/60 rounded-md cursor-pointer hover:bg-muted/70 transition-colors">
-              <span class="text-xs font-medium text-foreground">Tickets Marketing</span>
+              <span class="text-xs font-medium text-foreground">Puede levantar tickets a Marketing</span>
               <input type="checkbox" id="company-tckt-mkt" class="rounded border-gray-300 text-primary focus:ring-primary h-4 w-4" />
             </label>
 
             <label class="flex items-center justify-between p-2.5 bg-muted/40 border border-border/60 rounded-md cursor-pointer hover:bg-muted/70 transition-colors">
-              <span class="text-xs font-medium text-foreground">Campus Virtual Origen</span>
+              <span class="text-xs font-medium text-foreground">Acceso a campus Virtual</span>
               <input type="checkbox" id="company-tckt-virtual" class="rounded border-gray-300 text-primary focus:ring-primary h-4 w-4" />
             </label>
           </div>
@@ -481,6 +478,10 @@ const empresas = await prisma.empresa.findMany({
       }
       if (!slug) {
         toast.error("El slug es requerido.");
+        return;
+      }
+      if (!tipo) {
+        toast.error("Por favor selecciona el tipo de empresa.");
         return;
       }
 

@@ -321,6 +321,7 @@ if (isAdminOrSuper && !isNaN(currentUserId)) {
 
                 <!-- ══════ TAB: GENERAL ══════ -->
                 <div id="panel-general" class="tab-panel hidden">
+                    <!-- Fila 1: Nuevos, En progreso, En espera, Traslados -->
                     <div id="main-stats" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                         <a href={`/tickets/soporte?status=${getStatusId("Nuevo")}`} class="block transition-transform hover:scale-105">
                             <StatCard title="Nuevos" value={stats.nuevos.toString()} description="Tickets sin atender" color={statusColors["Tickets Nuevos"]} statKey="nuevos" />
@@ -336,7 +337,8 @@ if (isAdminOrSuper && !isNaN(currentUserId)) {
                         </a>
                     </div>
 
-                    <div id="secondary-stats" class="hidden md:grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-6">
+                    <!-- Fila 2: Total, Sin asignar, Solucionados, Duplicados -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-6">
                         <div class="block">
                             <StatCard title="Total de tickets" value={stats.total.toString()} description="Todos los tickets registrados" color={statusColors["Total de Tickets"]} statKey="total" />
                         </div>
@@ -349,19 +351,20 @@ if (isAdminOrSuper && !isNaN(currentUserId)) {
                         <a href={`/tickets/soporte?status=${getStatusId("Duplicado")}`} class="block transition-transform hover:scale-105">
                             <StatCard title="Duplicados" value={stats.duplicados.toString()} description="Solicitudes duplicadas" color={statusColors["Tickets Duplicados"]} statKey="duplicados" />
                         </a>
+                    </div>
+
+                    <!-- Fila 3: Cancelados solo, alineado a la izquierda -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-6">
                         <a href={`/tickets/soporte?status=${getStatusId("Cancelado")}`} class="block transition-transform hover:scale-105">
                             <StatCard title="Cancelados" value={stats.cancelados.toString()} description="Tickets que no procedieron" color={statusColors["Tickets Cancelados"]} statKey="cancelados" />
                         </a>
-                    </div>
-
-                    <div class="mt-6 text-center md:hidden">
-                        <button id="toggle-stats-btn" class="text-sm font-semibold text-primary hover:underline">Ver todo</button>
                     </div>
                 </div>
             </div>
         ) : (
             <!-- Vista normal para usuarios sin tabs -->
             <div>
+                <!-- Fila 1 -->
                 <div id="main-stats" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                     <a href={`/tickets/soporte?status=${getStatusId("Nuevo")}`} class="block transition-transform hover:scale-105">
                         <StatCard title="Nuevos" value={stats.nuevos.toString()} description="Tickets sin atender" color={statusColors["Tickets Nuevos"]} statKey="nuevos" />
@@ -377,7 +380,8 @@ if (isAdminOrSuper && !isNaN(currentUserId)) {
                     </a>
                 </div>
 
-                <div id="secondary-stats" class="hidden md:grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-6">
+                <!-- Fila 2 -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-6">
                     <div class="block">
                         <StatCard title="Total de tickets" value={stats.total.toString()} description="Todos los tickets registrados" color={statusColors["Total de Tickets"]} statKey="total" />
                     </div>
@@ -390,13 +394,13 @@ if (isAdminOrSuper && !isNaN(currentUserId)) {
                     <a href={`/tickets/soporte?status=${getStatusId("Duplicado")}`} class="block transition-transform hover:scale-105">
                         <StatCard title="Duplicados" value={stats.duplicados.toString()} description="Solicitudes duplicadas" color={statusColors["Tickets Duplicados"]} statKey="duplicados" />
                     </a>
+                </div>
+
+                <!-- Fila 3: Cancelados solo -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-6">
                     <a href={`/tickets/soporte?status=${getStatusId("Cancelado")}`} class="block transition-transform hover:scale-105">
                         <StatCard title="Cancelados" value={stats.cancelados.toString()} description="Tickets que no procedieron" color={statusColors["Tickets Cancelados"]} statKey="cancelados" />
                     </a>
-                </div>
-
-                <div class="mt-6 text-center md:hidden">
-                    <button id="toggle-stats-btn" class="text-sm font-semibold text-primary hover:underline">Ver todo</button>
                 </div>
             </div>
         )}
@@ -407,25 +411,6 @@ if (isAdminOrSuper && !isNaN(currentUserId)) {
     let dashboardEventSource: EventSource | null = null;
 
     document.addEventListener("astro:page-load", () => {
-        // ── Toggle "Ver todo" (vista sin pestañas, móvil) ──
-        const toggleBtn = document.getElementById("toggle-stats-btn");
-        const secondaryStats = document.getElementById("secondary-stats");
-
-        if (toggleBtn && secondaryStats) {
-            toggleBtn.addEventListener("click", () => {
-                const isHidden = secondaryStats.classList.contains("hidden");
-                if (isHidden) {
-                    secondaryStats.classList.remove("hidden");
-                    secondaryStats.classList.add("grid");
-                    toggleBtn.textContent = "Ver menos";
-                } else {
-                    secondaryStats.classList.add("hidden");
-                    secondaryStats.classList.remove("grid");
-                    toggleBtn.textContent = "Ver todo";
-                }
-            });
-        }
-
         // ── Lógica de Pestañas ──────────────────────────────────────
         const tabBtns = document.querySelectorAll<HTMLButtonElement>(".tab-btn");
         const tabPanels = document.querySelectorAll<HTMLElement>(".tab-panel");
