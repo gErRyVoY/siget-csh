@@ -336,7 +336,7 @@ if (isAdminOrSuper && !isNaN(currentUserId)) {
                         </a>
                     </div>
 
-                    <div id="secondary-stats" class="hidden md:grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6 mt-6">
+                    <div id="secondary-stats" class="hidden md:grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-6">
                         <div class="block">
                             <StatCard title="Total de tickets" value={stats.total.toString()} description="Todos los tickets registrados" color={statusColors["Total de Tickets"]} statKey="total" />
                         </div>
@@ -377,7 +377,7 @@ if (isAdminOrSuper && !isNaN(currentUserId)) {
                     </a>
                 </div>
 
-                <div id="secondary-stats" class="hidden md:grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6 mt-6">
+                <div id="secondary-stats" class="hidden md:grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-6">
                     <div class="block">
                         <StatCard title="Total de tickets" value={stats.total.toString()} description="Todos los tickets registrados" color={statusColors["Total de Tickets"]} statKey="total" />
                     </div>
