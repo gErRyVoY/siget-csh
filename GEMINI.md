@@ -5,19 +5,19 @@
 >
 > **⚠️ REGLA CRÍTICA PARA EL ASISTENTE:** El asistente **NO debe ejecutar `git push`** en ninguna circunstancia a menos que el usuario lo solicite **de forma explícita**. Se permiten `git add` y `git commit` para preparar los cambios, pero el push queda **reservado exclusivamente para cuando el usuario lo indique**.
 
-**Tarea Actual:** Completada — Aislamiento de Tickets Marketing, Ajuste de Fuente de Descripción y Restricción de Atiende por Rol (2026-07-24) ✅
+**Tarea Actual:** Completada — Permisos Granulares de Atiende, Fix Selects Flashing y Marketing para Rol Usuario (2026-07-24) ✅
 
 **Estado:** Completado.
-1. Se excluyeron los tickets de la categoría Marketing (`categoriaId = 12`) de todas las consultas de estadísticas del Dashboard CSH (`src/pages/index.astro`), de las listas y selectores de Soporte (`/tickets/soporte` y `/tickets/soporte/usuario`) para todos los roles.
-2. Se aumentó el tamaño de fuente de la descripción en el detalle de tickets (`/tickets/view/[id]`) a `text-base` (igualando el tamaño del nombre de la empresa).
-3. Se inhabilitó el campo `Atiende` (`disabled={!isPrivileged}`) en la vista de detalle y en el endpoint de actualización (`api/tickets/update.ts`) para usuarios que no sean Administradores o Superadministradores.
+1. Se implementó `canEditAtiende` con lógica granular: **Superadmin** puede reasignar siempre; **Admin** solo puede reasignar si el ticket está asignado a él mismo y no fue él quien lo creó; **Rol Usuario** nunca puede cambiar el campo Atiende. Aplicado en frontend (`[id].astro`) y backend (`api/tickets/update.ts`).
+2. Se corrigió el bug de **"selects no reflejan valor guardado"**: se reemplazó `navigate()` de Astro View Transitions (que cacheaba el DOM) por `window.location.assign()` para forzar recarga real del servidor, en `ticket-view-logic.ts` y en el handler de guardado de traslados de `[id].astro`.
+3. Se habilitaron las secciones **`crear_ticket_marketing` (id=3)** y **`marketing_mis_tickets` (id=7)** para el rol Usuario (rolId=1) en `seed.ts` y en la BD via script `add-marketing-sections-rol1.ts`. El sidebar ya las muestra correctamente.
 4. `npx astro check` validó la aplicación con **0 errores**.
 
 **Pasos Siguientes:**
 1. Monitoreo general y feedback del usuario.
 
 **Pasos Completados:**
-- ✅ **Aislamiento de Tickets Marketing, Fuente de Descripción y Restricción de Atiende (2026-07-24):** Exclusión estricta de tickets de Marketing en Soporte y Dashboard CSH; tamaño de fuente de descripción ajustado a `text-base`; restricción de edición del campo Atiende en frontend y backend para roles no privilegiados. `npx astro check` pasó con 0 errores.
+- ✅ **Permisos Granulares de Atiende, Fix Selects Flashing y Marketing para Rol Usuario (2026-07-24):** Implementada lógica `canEditAtiende` en frontend y backend (Superadmin siempre; Admin solo si asignado y no creador; Usuario nunca). Corregido bug de selects con valor obsoleto al guardar, reemplazando `navigate()` View Transitions por `window.location.assign()`. Habilitadas secciones `crear_ticket_marketing` y `marketing_mis_tickets` para rolId=1 en seed y BD via script. `npx astro check` 0 errores.
 - ✅ **Actualizaciones de UI/UX en Vistas de Tickets y Dashboard de Marketing (2026-07-24):** Aplicada paridad de diseño y restricciones de roles entre Soporte y Marketing: botón "Volver" estilizado, descripción sólo lectura, visibilidad de toggle archivado y prefijo "Solicita:" condicionada por rol, ocultamiento de solicitante para colaboradores, filtros de fecha en marketing/usuario, separación de tickets por categoría, dashboard con pestañas para marketing y spinner dorado de carga. `npx astro check` pasó con 0 errores.
 - ✅ **Excepción de Inicio de Sesión para Usuario de Prueba (2026-07-23):** Omisión de validación con la API de RH y comprobación de OU en `auth.config.ts` para `alumno.prueba1@humanitas.edu.mx` con el fin de permitir pruebas con rol de usuario.
 - ✅ **Ajustes de Edición de Usuario y Permisos de Perfil (2026-07-23):** Reestructurada la edición de usuarios para mostrar `puesto` como solo lectura. Permitido acceso a Administradores/Superadministradores (roles 2 y 3) a las páginas `/user/perfil` y `/user/perfil/incidencias`. Sanitizados `empresaId` y `rolId` en el submit de edición. `astro check` pasó con 0 errores.
