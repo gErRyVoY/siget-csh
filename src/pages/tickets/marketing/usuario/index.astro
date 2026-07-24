@@ -21,6 +21,8 @@ const statusFilter = url.searchParams.get("status") || "all";
 const subcategoryFilter = url.searchParams.get("subcategory") || "all";
 const companyFilter = url.searchParams.get("company") || "all";
 const assigneeFilter = url.searchParams.get("assignee") || "all";
+const dateFromFilter = url.searchParams.get("dateFrom") || "";
+const dateToFilter = url.searchParams.get("dateTo") || "";
 const page = parseInt(url.searchParams.get("page") || "1");
 const pageSize = 10;
 
@@ -33,7 +35,12 @@ const userId = user.id ? parseInt(String(user.id)) || 0 : 0;
 const finalWhere: any = {
     AND: [
         { categoriaId: MARKETING_CATEGORY_ID },
-        { atiendeId: userId },
+        {
+            OR: [
+                { solicitanteId: userId },
+                { atiendeId: userId },
+            ],
+        },
     ],
 };
 
@@ -78,6 +85,24 @@ if (assigneeFilter !== "all") {
         if (!isNaN(assignId)) {
             finalWhere.AND.push({ atiendeId: assignId });
         }
+    }
+}
+
+if (dateFromFilter || dateToFilter) {
+    const dateFilter: any = {};
+    if (dateFromFilter) {
+        const start = new Date(dateFromFilter + "T00:00:00");
+        if (!isNaN(start.getTime())) dateFilter.gte = start;
+    }
+    if (dateToFilter) {
+        const end = new Date(dateToFilter + "T23:59:59.999");
+        if (!isNaN(end.getTime())) dateFilter.lte = end;
+    } else if (dateFromFilter) {
+        const endOfDay = new Date(dateFromFilter + "T23:59:59.999");
+        if (!isNaN(endOfDay.getTime())) dateFilter.lte = endOfDay;
+    }
+    if (dateFilter.gte || dateFilter.lte) {
+        finalWhere.AND.push({ fechaalta: dateFilter });
     }
 }
 
@@ -288,6 +313,38 @@ const getTicketDateColor = (date: Date, status: string) => {
                     </select>
                 </div>
             </div>
+            <!-- Fila 2: Fechas -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-3">
+                <div>
+                    <label
+                        for="dateFrom-input"
+                        class="block text-sm font-medium text-muted-foreground mb-1"
+                        >Desde</label
+                    >
+                    <input
+                        type="date"
+                        id="dateFrom-input"
+                        value={dateFromFilter}
+                        class="w-full bg-input border-border text-foreground rounded-md p-2 text-sm focus:ring-2 focus:ring-primary focus:border-transparent"
+                    />
+                </div>
+                <div>
+                    <label
+                        for="dateTo-input"
+                        class="block text-sm font-medium text-muted-foreground mb-1"
+                        >Hasta</label
+                    >
+                    <input
+                        type="date"
+                        id="dateTo-input"
+                        value={dateToFilter}
+                        class="w-full bg-input border-border text-foreground rounded-md p-2 text-sm focus:ring-2 focus:ring-primary focus:border-transparent"
+                    />
+                </div>
+                <div class="flex items-end">
+                    <p class="text-xs text-muted-foreground pb-2">Selecciona ambas fechas para filtrar</p>
+                </div>
+            </div>
         </div>
 
         <!-- Vista Cards (Mobile) -->
@@ -485,6 +542,31 @@ const getTicketDateColor = (date: Date, status: string) => {
         // Botón limpiar filtros
         const resetBtn = document.getElementById("reset-filters");
         if (resetBtn) resetBtn.addEventListener("click", () => navigate(window.location.pathname));
+
+        // Manejo de fechas: solo busca cuando ambas están llenas
+        const dateFromInput = document.getElementById("dateFrom-input") as HTMLInputElement;
+        const dateToInput = document.getElementById("dateTo-input") as HTMLInputElement;
+
+        const handleDateChange = () => {
+            const url = new URL(window.location.href);
+            const from = dateFromInput?.value || "";
+            const to = dateToInput?.value || "";
+
+            if (from && to) {
+                url.searchParams.set("dateFrom", from);
+                url.searchParams.set("dateTo", to);
+                url.searchParams.set("page", "1");
+                navigate(url.toString());
+            } else if (!from && !to) {
+                url.searchParams.delete("dateFrom");
+                url.searchParams.delete("dateTo");
+                url.searchParams.set("page", "1");
+                navigate(url.toString());
+            }
+        };
+
+        dateFromInput?.addEventListener("change", handleDateChange);
+        dateToInput?.addEventListener("change", handleDateChange);
 
         const selects = document.querySelectorAll("select");
         selects.forEach((select) => {

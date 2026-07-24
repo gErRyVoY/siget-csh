@@ -161,7 +161,7 @@ async function main() {
   const allAdminSiget = [14, 15, 16, 17, 18, 19, 20, 21];
 
   const rolesSecciones = [
-    { rolId: 1, seccionIds: [1, 2, 4, ...allOtros] },
+    { rolId: 1, seccionIds: [1, 2, 3, 4, 7, ...allOtros] },
     { rolId: 2, seccionIds: [...allAbrirTicket, ...allTicketsSoporte, ...allTicketsMarketing, ...allOtros, ...allAdminSiget] },
     { rolId: 3, seccionIds: [...allAbrirTicket, ...allTicketsSoporte, ...allTicketsMarketing, ...allOtros, ...allAdminSiget] }
   ];

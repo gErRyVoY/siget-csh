@@ -52,13 +52,19 @@ const getStatusColor = (nombre: string) => {
     }
 };
 
+const MARKETING_CATEGORY_ID = 12;
+
 // ── Stats Generales ──────────────────────────────────────────────
 const [ticketCounts, activeCycle, statuses, alumnosCategory, sinAsignarCount] = await Promise.all([
-    prisma.ticket.groupBy({ by: ["estatusId"], _count: { id: true } }),
+    prisma.ticket.groupBy({
+        by: ["estatusId"],
+        where: { categoriaId: { not: MARKETING_CATEGORY_ID } },
+        _count: { id: true }
+    }),
     prisma.ciclo.findFirst({ where: { activo: true } }),
     prisma.estatus.findMany(),
     prisma.categoria.findFirst({ where: { nombre: "Alumnos" } }),
-    prisma.ticket.count({ where: { atiendeId: null } }),
+    prisma.ticket.count({ where: { atiendeId: null, categoriaId: { not: MARKETING_CATEGORY_ID } } }),
 ]);
 
 const getCount = (name: string) => {
@@ -111,7 +117,7 @@ if (isAdminOrSuper && !isNaN(currentUserId)) {
     const [personalCounts, personalTrasladosCount, personalRecent] = await Promise.all([
         prisma.ticket.groupBy({
             by: ["estatusId"],
-            where: { atiendeId: currentUserId },
+            where: { atiendeId: currentUserId, categoriaId: { not: MARKETING_CATEGORY_ID } },
             _count: { id: true },
         }),
         activeCycle
@@ -129,6 +135,7 @@ if (isAdminOrSuper && !isNaN(currentUserId)) {
         prisma.ticket.findMany({
             where: {
                 atiendeId: currentUserId,
+                categoriaId: { not: MARKETING_CATEGORY_ID },
                 estatus: { nombre: { in: ["Nuevo", "En progreso", "En espera"] } },
             },
             orderBy: { fechaalta: "desc" },

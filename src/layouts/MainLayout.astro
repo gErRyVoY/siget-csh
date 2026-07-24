@@ -111,7 +111,7 @@ const NOTIFICATION_FULL_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="24
             // Mostrar overlay al iniciar la navegación
             document.addEventListener("astro:before-preparation", () => {
                 const overlay = getOrCreateLoadingOverlay();
-                overlay.style.display = "block";
+                overlay.style.display = "flex";
             });
 
             // Ocultar overlay tras el swap del DOM
@@ -204,6 +204,8 @@ const NOTIFICATION_FULL_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="24
                         id="page-loading-overlay"
                         transition:persist="loading-overlay"
                     >
+                        <div class="spinner-ring"></div>
+                        <span class="spinner-text">Cargando...</span>
                     </div>
 
                     <main
@@ -475,7 +477,7 @@ const NOTIFICATION_FULL_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="24
 
                             // Show loading overlay
                             const overlay = document.getElementById("page-loading-overlay");
-                            if (overlay) overlay.style.display = "block";
+                            if (overlay) overlay.style.display = "flex";
 
                             window.location.href = `/tickets/view/${ticket.id}?source=mis-tickets`;
                         });

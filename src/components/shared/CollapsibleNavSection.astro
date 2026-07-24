@@ -31,9 +31,25 @@ const isLinkActive = (href: string) => {
                 return true;
             }
             if (
-                (!source || source === "todos") &&
+                source === "todos" &&
                 href === "/tickets/soporte"
             ) {
+                return true;
+            }
+            if (
+                source === "marketing_todos" &&
+                href === "/tickets/marketing"
+            ) {
+                return true;
+            }
+            if (
+                source === "marketing_usuario" &&
+                href === "/tickets/marketing/usuario"
+            ) {
+                return true;
+            }
+            // Default for no source: soporte
+            if (!source && href === "/tickets/soporte") {
                 return true;
             }
             return false;

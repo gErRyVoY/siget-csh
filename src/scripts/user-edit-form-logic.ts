@@ -115,7 +115,7 @@ export function initializeUserEditForm() {
 
             const overlay = document.getElementById('page-loading-overlay');
             if (overlay) {
-                overlay.style.display = 'block';
+                overlay.style.display = 'flex';
             }
 
             const formData = new FormData(form);

@@ -127,6 +127,8 @@ const userRoleId = session?.user?.rol?.id ?? -1;
 const userId = session?.user?.id ? parseInt(String(session.user.id), 10) : -1;
 const isPrivileged = PRIVILEGED_ROLES.includes(userRoleId);
 const isMktAgent = (session?.user as any)?.atiende_mkt === true;
+const isSuperAdmin = userRoleId === 3;
+const isAdmin = userRoleId === 2;
 
 // --- Control de Acceso a nivel de ticket ---
 // Determinar si el usuario puede ver este ticket:
@@ -134,6 +136,16 @@ const isMktAgent = (session?.user as any)?.atiende_mkt === true;
 // 2. Tiene rol privilegiado CSH y el ticket NO es de Marketing
 // 3. Tiene rol de Marketing y el ticket SÍ es de Marketing
 const isOwner = ticket.solicitanteId === userId;
+
+// Lógica de edición del campo Atiende:
+// - Superadmin: siempre puede reasignar
+// - Admin: solo si el ticket está asignado a él mismo (y no es el creador)
+// - Resto: no puede cambiar Atiende
+const canEditAtiende: boolean = isSuperAdmin
+    ? true
+    : isAdmin && !isOwner && ticket.atiendeId === userId
+    ? true
+    : false;
 const canViewAsCsh = isPrivileged && ticket.categoriaId !== MARKETING_CATEGORY_ID;
 const canViewAsMkt = isMktAgent && ticket.categoriaId === MARKETING_CATEGORY_ID;
 
@@ -246,7 +258,11 @@ const parseFileName = (key: string) => {
 
 const source = Astro.url.searchParams.get("source");
 const backLink =
-    source === "mis-tickets" ? "/tickets/soporte/usuario" : "/tickets/soporte";
+    source === "mis-tickets" ? "/tickets/soporte/usuario" :
+    source === "todos" ? "/tickets/soporte" :
+    source === "marketing_todos" ? "/tickets/marketing" :
+    source === "marketing_usuario" ? "/tickets/marketing/usuario" :
+    "/tickets/soporte";
 
 let afectadoLabel = "Clave";
 let nombreLabel = "Nombre del Afectado";
@@ -769,12 +785,17 @@ console.log("CAREER DEBUG:", { ofertaDesc, carreraOriginal: traslado?.carrera?.d
                     /* --- VISTA NORMAL (EXISTENTE) --- */
                     <>
                         <div class="flex justify-between items-center mb-4">
-                            <p class="text-lg font-semibold">
-                                {ticket.solicitante.nombres} {ticket.solicitante.apellidos}
-                            </p>
+                            {isPrivileged || isMktAgent ? (
+                                <p class="text-lg font-semibold">
+                                    <span class="text-muted-foreground font-normal text-sm mr-1">Solicita:</span>
+                                    {ticket.solicitante.nombres} {ticket.solicitante.apellidos}
+                                </p>
+                            ) : (
+                                <span></span>
+                            )}
                             <a
                                 href={backLink}
-                                class="bg-muted text-muted-foreground hover:bg-muted/80 px-6 py-2 rounded-md text-sm font-semibold transition-colors"
+                                class="bg-muted-foreground text-white hover:bg-muted-foreground/80 px-6 py-2 rounded-md text-sm font-semibold transition-colors"
                             >
                                 Volver a la lista
                             </a>
@@ -827,13 +848,14 @@ console.log("CAREER DEBUG:", { ofertaDesc, carreraOriginal: traslado?.carrera?.d
                             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 <div>
                                     <label for="atiendeId" class="block text-xs font-medium text-muted-foreground">Atiende</label>
-                                    <select id="atiendeId" name="atiendeId" class="mt-1 block w-full rounded-md border-border bg-input p-2 text-sm">
+                                    <select id="atiendeId" name="atiendeId" class="mt-1 block w-full rounded-md border-border bg-input p-2 text-sm" disabled={!canEditAtiende}>
                                         <option value="">No asignado</option>
                                         {agents.map((agent) => (
                                             <option value={agent.id} selected={agent.id === ticket.atiendeId}>{`${agent.nombres} ${agent.apellidos}`}</option>
                                         ))}
                                     </select>
                                 </div>
+                                {isPrivileged && (
                                 <div class="pt-4">
                                     <div class="flex items-center gap-2">
                                         <label class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full toggle-wrapper group">
@@ -844,6 +866,7 @@ console.log("CAREER DEBUG:", { ofertaDesc, carreraOriginal: traslado?.carrera?.d
                                         <span class="text-sm font-medium">Archivado</span>
                                     </div>
                                 </div>
+                                )}
                             </div>
 
                             {/* ... Afectado Fields ... */}
@@ -866,7 +889,7 @@ console.log("CAREER DEBUG:", { ofertaDesc, carreraOriginal: traslado?.carrera?.d
 
                             <div>
                                 <label class="block text-xs font-medium text-muted-foreground">Descripción</label>
-                                <textarea name="descripcion" rows="6" class="mt-1 block w-full rounded-md border-border bg-input p-2 text-sm whitespace-pre-wrap">{ticket.descripcion}</textarea>
+                                <p class="mt-1 text-base whitespace-pre-wrap leading-relaxed">{ticket.descripcion}</p>
                             </div>
                         </div>
                     </>
@@ -1164,6 +1187,7 @@ console.log("CAREER DEBUG:", { ofertaDesc, carreraOriginal: traslado?.carrera?.d
         statuses,
         currentUserId: session?.user?.id,
         accessToken: session?.accessToken,
+        canEditAtiende,
     }}
 >
     window.ticketViewData = {
@@ -1175,6 +1199,7 @@ console.log("CAREER DEBUG:", { ofertaDesc, carreraOriginal: traslado?.carrera?.d
         isCreator: currentUserId
             ? parseInt(currentUserId, 10) === ticket.solicitanteId
             : false,
+        canEditAtiende,
     };
 </script>
 <script>
@@ -1399,7 +1424,7 @@ console.log("CAREER DEBUG:", { ofertaDesc, carreraOriginal: traslado?.carrera?.d
                              });
                              if (!res.ok) throw new Error("Error updating ticket");
                              toast.success("Ticket actualizado correctamente");
-                             setTimeout(() => navigate(window.location.pathname + window.location.search), 1000);
+                             setTimeout(() => window.location.assign(window.location.pathname + window.location.search), 800);
                          } catch (e) {
                              console.error(e);
                              toast.error("Error al actualizar");

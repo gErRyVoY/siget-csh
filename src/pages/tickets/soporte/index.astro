@@ -45,9 +45,12 @@ if (statusFilter !== "all") {
     };
 }
 
+const MARKETING_CATEGORY_ID = 12;
+
 // Construir el filtro principal
 const where: any = {
     ...statusWhere,
+    NOT: { categoriaId: MARKETING_CATEGORY_ID }, // Soporte no muestra tickets de Marketing
 };
 
 if (categoryFilter !== "all") {
@@ -103,6 +106,7 @@ if (dateFromFilter || dateToFilter) {
 // Obtener datos para los selectores (DINÁMICOS basados en Estatus)
 const dropdownScope = {
     ...statusWhere,
+    NOT: { categoriaId: MARKETING_CATEGORY_ID },
 };
 
 const statuses = await prisma.estatus.findMany({
@@ -127,6 +131,7 @@ const filteredStatuses = statuses.filter((status) =>
 const categories = await prisma.categoria.findMany({
     where: {
         activo: true,
+        id: { not: MARKETING_CATEGORY_ID },
         tickets: {
             some: dropdownScope,
         },

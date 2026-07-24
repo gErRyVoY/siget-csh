@@ -47,7 +47,14 @@ export const PATCH: APIRoute = async ({ request, locals }) => {
         if (updateDataInput.estatusId) updateData.estatus = { connect: { id: Number(updateDataInput.estatusId) } };
         if (updateDataInput.solicitanteId) updateData.solicitante = { connect: { id: Number(updateDataInput.solicitanteId) } };
         
-        if ('atiendeId' in updateDataInput) {
+        const isSuperAdmin = userRoleId === 3;
+        const isAdmin = userRoleId === 2;
+        // Superadmin puede reasignar siempre
+        // Admin solo puede reasignar si el ticket está asignado a él mismo y no es el creador
+        const canEditAtiende = isSuperAdmin
+            || (isAdmin && !isOwner && ticketBeforeUpdate.atiendeId === currentUserId);
+
+        if ('atiendeId' in updateDataInput && canEditAtiende) {
             const parsedAtiendeId = Number(updateDataInput.atiendeId);
             if (parsedAtiendeId > 0) {
                 const targetAgent = await prisma.usuario.findUnique({

@@ -10,27 +10,29 @@ if (!session || !session.user) {
 }
 
 const MARKETING_CATEGORY_ID = 12;
+const rolId = session.user.rol?.id ?? 1;
+const isAdminOrSuper = rolId === 2 || rolId === 3;
+const currentUserId = parseInt(session.user.id as string, 10);
 
 const statusColors = {
-    "Total de Tickets": "#6b7280", // gray-500
-    "Tickets Nuevos": "#a1a1aa", // zinc-400
-    "Tickets En progreso": "#3b82f6", // blue-500
-    "Tickets En espera": "#38bdf8", // sky-400
-    "Tickets Solucionados": "#84cc16", // lime-500
-    "Tickets Duplicados": "#171717", // neutral-900
-    "Tickets Cancelados": "#dc2626", // red-600
+    "Total de Tickets": "#6b7280",
+    "Tickets Nuevos": "#a1a1aa",
+    "Tickets En progreso": "#3b82f6",
+    "Tickets En espera": "#38bdf8",
+    "Tickets Solucionados": "#84cc16",
+    "Tickets Duplicados": "#171717",
+    "Tickets Cancelados": "#dc2626",
 };
 
-// conteos iniciales
-const ticketCounts = await prisma.ticket.groupBy({
-    by: ["estatusId"],
-    _count: { id: true },
-    where: {
-        categoriaId: MARKETING_CATEGORY_ID,
-    },
-});
-
-const statuses = await prisma.estatus.findMany();
+// ── Stats Generales ──────────────────────────────────────────────
+const [ticketCounts, statuses] = await Promise.all([
+    prisma.ticket.groupBy({
+        by: ["estatusId"],
+        _count: { id: true },
+        where: { categoriaId: MARKETING_CATEGORY_ID },
+    }),
+    prisma.estatus.findMany(),
+]);
 
 const getCount = (name: string) => {
     const status = statuses.find((s) => s.nombre === name);
@@ -50,111 +52,222 @@ const stats = {
     duplicados: getCount("Duplicado"),
     cancelados: getCount("Cancelado"),
 };
+
+// ── Stats Personales (solo admin/superadmin) ─────────────────────
+let personalStats = {
+    nuevos: 0,
+    enProgreso: 0,
+    enEspera: 0,
+    total: 0,
+    solucionados: 0,
+    duplicados: 0,
+    cancelados: 0,
+};
+let recentPersonalTickets: any[] = [];
+
+if (isAdminOrSuper && !isNaN(currentUserId)) {
+    const [personalCounts, personalRecent] = await Promise.all([
+        prisma.ticket.groupBy({
+            by: ["estatusId"],
+            where: { atiendeId: currentUserId, categoriaId: MARKETING_CATEGORY_ID },
+            _count: { id: true },
+        }),
+        prisma.ticket.findMany({
+            where: {
+                atiendeId: currentUserId,
+                categoriaId: MARKETING_CATEGORY_ID,
+                estatus: { nombre: { in: ["Nuevo", "En progreso", "En espera"] } },
+            },
+            orderBy: { fechaalta: "desc" },
+            take: 5,
+            include: {
+                estatus: { select: { nombre: true } },
+                empresa: { select: { nombre: true } },
+                subcategoria: { select: { nombre: true } },
+                solicitante: { select: { nombres: true, apellidos: true } },
+            },
+        }),
+    ]);
+
+    const getPersonalCount = (name: string) => {
+        const status = statuses.find((s) => s.nombre === name);
+        if (!status) return 0;
+        return personalCounts.find((c) => c.estatusId === status.id)?._count.id || 0;
+    };
+
+    personalStats = {
+        nuevos: getPersonalCount("Nuevo"),
+        enProgreso: getPersonalCount("En progreso"),
+        enEspera: getPersonalCount("En espera"),
+        total: personalCounts.reduce((acc, curr) => acc + curr._count.id, 0),
+        solucionados: getPersonalCount("Solucionado"),
+        duplicados: getPersonalCount("Duplicado"),
+        cancelados: getPersonalCount("Cancelado"),
+    };
+    recentPersonalTickets = personalRecent;
+}
 ---
 
 <MainLayout title="Dashboard Marketing">
-    <div class="max-w-full mx-auto">
+    <div class="w-full max-w-full mx-auto overflow-hidden">
         <h1 class="text-3xl font-bold mb-6">Dashboard Marketing</h1>
-        <div
-            id="main-stats"
-            class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"
-        >
-            <div class="block transition-transform hover:scale-105">
-                <StatCard
-                    title="Total de Tickets"
-                    value={stats.total.toString()}
-                    description="Todos los tickets de Marketing"
-                    color={statusColors["Total de Tickets"]}
-                    statKey="total"
-                />
+
+        {isAdminOrSuper ? (
+            <!-- Layout con Pestañas para Admin/Superadmin -->
+            <div>
+                <!-- Tab Navigation -->
+                <div class="flex items-center gap-1 border-b border-border mb-6">
+                    <button
+                        id="tab-personal"
+                        data-tab="personal"
+                        class="tab-btn relative px-5 py-2.5 text-sm font-semibold rounded-t-md transition-colors duration-150 text-primary border-b-2 border-primary bg-card"
+                    >
+                        <span class="flex items-center gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+                            Personal
+                        </span>
+                    </button>
+                    <button
+                        id="tab-general"
+                        data-tab="general"
+                        class="tab-btn relative px-5 py-2.5 text-sm font-semibold rounded-t-md transition-colors duration-150 text-muted-foreground border-b-2 border-transparent hover:text-foreground"
+                    >
+                        <span class="flex items-center gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+                            General
+                        </span>
+                    </button>
+                </div>
+
+                <!-- ══════ TAB: PERSONAL ══════ -->
+                <div id="panel-personal" class="tab-panel">
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                        <a href={`/tickets/marketing?status=${getStatusId("Nuevo")}&assignee=${currentUserId}`} class="block transition-transform hover:scale-105">
+                            <StatCard title="Mis Nuevos" value={personalStats.nuevos.toString()} description="Tickets nuevos asignados a mí" color={statusColors["Tickets Nuevos"]} statKey="p-nuevos" />
+                        </a>
+                        <a href={`/tickets/marketing?status=${getStatusId("En progreso")}&assignee=${currentUserId}`} class="block transition-transform hover:scale-105">
+                            <StatCard title="En progreso" value={personalStats.enProgreso.toString()} description="Mis tickets en atención activa" color={statusColors["Tickets En progreso"]} statKey="p-enProgreso" />
+                        </a>
+                        <a href={`/tickets/marketing?status=${getStatusId("En espera")}&assignee=${currentUserId}`} class="block transition-transform hover:scale-105">
+                            <StatCard title="En espera" value={personalStats.enEspera.toString()} description="Esperando respuesta del solicitante" color={statusColors["Tickets En espera"]} statKey="p-enEspera" />
+                        </a>
+                        <div class="block">
+                            <StatCard title="Total asignados" value={personalStats.total.toString()} description="Todos mis tickets históricos" color={statusColors["Total de Tickets"]} statKey="p-total" />
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-6">
+                        <a href={`/tickets/marketing?status=${getStatusId("Solucionado")}&assignee=${currentUserId}`} class="block transition-transform hover:scale-105">
+                            <StatCard title="Solucionados" value={personalStats.solucionados.toString()} description="Tickets resueltos por mí" color={statusColors["Tickets Solucionados"]} statKey="p-solucionados" />
+                        </a>
+                        <a href={`/tickets/marketing?status=${getStatusId("Duplicado")}&assignee=${currentUserId}`} class="block transition-transform hover:scale-105">
+                            <StatCard title="Duplicados" value={personalStats.duplicados.toString()} description="Mis solicitudes duplicadas" color={statusColors["Tickets Duplicados"]} statKey="p-duplicados" />
+                        </a>
+                        <a href={`/tickets/marketing?status=${getStatusId("Cancelado")}&assignee=${currentUserId}`} class="block transition-transform hover:scale-105">
+                            <StatCard title="Cancelados" value={personalStats.cancelados.toString()} description="Tickets cancelados asignados a mí" color={statusColors["Tickets Cancelados"]} statKey="p-cancelados" />
+                        </a>
+                    </div>
+
+                    {recentPersonalTickets.length > 0 && (
+                        <div class="mt-8 bg-card border border-border rounded-xl shadow-sm overflow-hidden">
+                            <div class="px-5 py-4 border-b border-border flex items-center justify-between">
+                                <h2 class="text-sm font-semibold text-foreground flex items-center gap-2">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-primary"><path d="M9 12h6"/><path d="M12 9v6"/><path d="M3 12a9 9 0 1 0 18 0 9 9 0 0 0-18 0"/></svg>
+                                    Mis tickets activos recientes
+                                </h2>
+                                <a href="/tickets/marketing/usuario" class="text-xs text-primary hover:underline font-medium">Ver todos →</a>
+                            </div>
+                            <div class="divide-y divide-border">
+                                {recentPersonalTickets.map((ticket) => (
+                                    <a
+                                        href={`/tickets/view/${ticket.id}?source=marketing_todos`}
+                                        class="flex items-center justify-between px-5 py-3 hover:bg-muted/40 transition-colors group"
+                                    >
+                                        <div class="flex items-center gap-3 min-w-0">
+                                            <span class="text-xs font-mono text-muted-foreground shrink-0">#{ticket.id}</span>
+                                            <div class="min-w-0">
+                                                <p class="text-sm font-medium text-foreground truncate group-hover:text-primary transition-colors">
+                                                    {ticket.solicitante?.nombres} {ticket.solicitante?.apellidos}
+                                                </p>
+                                                <p class="text-xs text-muted-foreground truncate">
+                                                    {ticket.empresa?.nombre} · {ticket.subcategoria?.nombre || "Marketing"}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <span class="text-xs font-semibold px-2 py-0.5 rounded-full shrink-0 ml-2" style={`background-color: ${ticket.estatus.nombre === "Nuevo" ? "#a1a1aa" : ticket.estatus.nombre === "En progreso" ? "#3b82f6" : "#38bdf8"}; color: white;`}>
+                                            {ticket.estatus.nombre}
+                                        </span>
+                                    </a>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                <!-- ══════ TAB: GENERAL ══════ -->
+                <div id="panel-general" class="tab-panel hidden">
+                    <div id="main-stats" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                        <div class="block transition-transform hover:scale-105">
+                            <StatCard title="Total de Tickets" value={stats.total.toString()} description="Todos los tickets de Marketing" color={statusColors["Total de Tickets"]} statKey="total" />
+                        </div>
+                        <a href={`/tickets/marketing?status=${getStatusId("Nuevo")}`} class="block transition-transform hover:scale-105">
+                            <StatCard title="Tickets Nuevos" value={stats.nuevos.toString()} description="Tickets sin atender" color={statusColors["Tickets Nuevos"]} statKey="nuevos" />
+                        </a>
+                        <a href={`/tickets/marketing?status=${getStatusId("En progreso")}`} class="block transition-transform hover:scale-105">
+                            <StatCard title="Tickets En progreso" value={stats.enProgreso.toString()} description="Siendo atendidos activamente" color={statusColors["Tickets En progreso"]} statKey="enProgreso" />
+                        </a>
+                        <a href={`/tickets/marketing?status=${getStatusId("En espera")}`} class="block transition-transform hover:scale-105">
+                            <StatCard title="Tickets En espera" value={stats.enEspera.toString()} description="En espera de una respuesta" color={statusColors["Tickets En espera"]} statKey="enEspera" />
+                        </a>
+                    </div>
+                    <div id="secondary-stats" class="hidden md:grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-6">
+                        <a href={`/tickets/marketing?status=${getStatusId("Solucionado")}`} class="block transition-transform hover:scale-105">
+                            <StatCard title="Tickets Solucionados" value={stats.solucionados.toString()} description="Marcados como solucionados" color={statusColors["Tickets Solucionados"]} statKey="solucionados" />
+                        </a>
+                        <a href={`/tickets/marketing?status=${getStatusId("Duplicado")}`} class="block transition-transform hover:scale-105">
+                            <StatCard title="Tickets Duplicados" value={stats.duplicados.toString()} description="Solicitudes duplicadas" color={statusColors["Tickets Duplicados"]} statKey="duplicados" />
+                        </a>
+                        <a href={`/tickets/marketing?status=${getStatusId("Cancelado")}`} class="block transition-transform hover:scale-105">
+                            <StatCard title="Tickets Cancelados" value={stats.cancelados.toString()} description="Tickets que no procedieron" color={statusColors["Tickets Cancelados"]} statKey="cancelados" />
+                        </a>
+                    </div>
+                    <div class="mt-6 text-center md:hidden">
+                        <button id="toggle-stats-btn" class="text-sm font-semibold text-primary hover:underline">Ver todo</button>
+                    </div>
+                </div>
             </div>
-            <a
-                href={`/tickets/marketing?status=${getStatusId("Nuevo")}`}
-                class="block transition-transform hover:scale-105"
-            >
-                <StatCard
-                    title="Tickets Nuevos"
-                    value={stats.nuevos.toString()}
-                    description="Tickets sin atender"
-                    color={statusColors["Tickets Nuevos"]}
-                    statKey="nuevos"
-                />
-            </a>
-            <a
-                href={`/tickets/marketing?status=${getStatusId("En progreso")}`}
-                class="block transition-transform hover:scale-105"
-            >
-                <StatCard
-                    title="Tickets En progreso"
-                    value={stats.enProgreso.toString()}
-                    description="Siendo atendidos activamente"
-                    color={statusColors["Tickets En progreso"]}
-                    statKey="enProgreso"
-                />
-            </a>
-            <a
-                href={`/tickets/marketing?status=${getStatusId("En espera")}`}
-                class="block transition-transform hover:scale-105"
-            >
-                <StatCard
-                    title="Tickets En espera"
-                    value={stats.enEspera.toString()}
-                    description="En espera de una respuesta"
-                    color={statusColors["Tickets En espera"]}
-                    statKey="enEspera"
-                />
-            </a>
-        </div>
-
-        <div
-            id="secondary-stats"
-            class="hidden md:grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-6"
-        >
-            <a
-                href={`/tickets/marketing?status=${getStatusId("Solucionado")}`}
-                class="block transition-transform hover:scale-105"
-            >
-                <StatCard
-                    title="Tickets Solucionados"
-                    value={stats.solucionados.toString()}
-                    description="Marcados como solucionados"
-                    color={statusColors["Tickets Solucionados"]}
-                    statKey="solucionados"
-                />
-            </a>
-            <a
-                href={`/tickets/marketing?status=${getStatusId("Duplicado")}`}
-                class="block transition-transform hover:scale-105"
-            >
-                <StatCard
-                    title="Tickets Duplicados"
-                    value={stats.duplicados.toString()}
-                    description="Solicitudes duplicadas"
-                    color={statusColors["Tickets Duplicados"]}
-                    statKey="duplicados"
-                />
-            </a>
-            <a
-                href={`/tickets/marketing?status=${getStatusId("Cancelado")}`}
-                class="block transition-transform hover:scale-105"
-            >
-                <StatCard
-                    title="Tickets Cancelados"
-                    value={stats.cancelados.toString()}
-                    description="Tickets que no procedieron"
-                    color={statusColors["Tickets Cancelados"]}
-                    statKey="cancelados"
-                />
-            </a>
-        </div>
-
-        <div class="mt-6 text-center md:hidden">
-            <button
-                id="toggle-stats-btn"
-                class="text-sm font-semibold text-primary hover:underline"
-                >Ver todo</button
-            >
-        </div>
+        ) : (
+            <!-- Vista simple para Marketing agents (no admin) -->
+            <div>
+                <div id="main-stats" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div class="block transition-transform hover:scale-105">
+                        <StatCard title="Total de Tickets" value={stats.total.toString()} description="Todos los tickets de Marketing" color={statusColors["Total de Tickets"]} statKey="total" />
+                    </div>
+                    <a href={`/tickets/marketing?status=${getStatusId("Nuevo")}`} class="block transition-transform hover:scale-105">
+                        <StatCard title="Tickets Nuevos" value={stats.nuevos.toString()} description="Tickets sin atender" color={statusColors["Tickets Nuevos"]} statKey="nuevos" />
+                    </a>
+                    <a href={`/tickets/marketing?status=${getStatusId("En progreso")}`} class="block transition-transform hover:scale-105">
+                        <StatCard title="Tickets En progreso" value={stats.enProgreso.toString()} description="Siendo atendidos activamente" color={statusColors["Tickets En progreso"]} statKey="enProgreso" />
+                    </a>
+                    <a href={`/tickets/marketing?status=${getStatusId("En espera")}`} class="block transition-transform hover:scale-105">
+                        <StatCard title="Tickets En espera" value={stats.enEspera.toString()} description="En espera de una respuesta" color={statusColors["Tickets En espera"]} statKey="enEspera" />
+                    </a>
+                </div>
+                <div id="secondary-stats" class="hidden md:grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-6">
+                    <a href={`/tickets/marketing?status=${getStatusId("Solucionado")}`} class="block transition-transform hover:scale-105">
+                        <StatCard title="Tickets Solucionados" value={stats.solucionados.toString()} description="Marcados como solucionados" color={statusColors["Tickets Solucionados"]} statKey="solucionados" />
+                    </a>
+                    <a href={`/tickets/marketing?status=${getStatusId("Duplicado")}`} class="block transition-transform hover:scale-105">
+                        <StatCard title="Tickets Duplicados" value={stats.duplicados.toString()} description="Solicitudes duplicadas" color={statusColors["Tickets Duplicados"]} statKey="duplicados" />
+                    </a>
+                    <a href={`/tickets/marketing?status=${getStatusId("Cancelado")}`} class="block transition-transform hover:scale-105">
+                        <StatCard title="Tickets Cancelados" value={stats.cancelados.toString()} description="Tickets que no procedieron" color={statusColors["Tickets Cancelados"]} statKey="cancelados" />
+                    </a>
+                </div>
+                <div class="mt-6 text-center md:hidden">
+                    <button id="toggle-stats-btn" class="text-sm font-semibold text-primary hover:underline">Ver todo</button>
+                </div>
+            </div>
+        )}
     </div>
 </MainLayout>
 
@@ -162,10 +275,32 @@ const stats = {
     let dashboardEventSource: EventSource | null = null;
 
     document.addEventListener("astro:page-load", () => {
+        // ── Tab switching ──────────────────────────────────────────
+        const tabBtns = document.querySelectorAll<HTMLButtonElement>(".tab-btn");
+        const panels = document.querySelectorAll<HTMLElement>(".tab-panel");
+
+        tabBtns.forEach((btn) => {
+            btn.addEventListener("click", () => {
+                const target = btn.dataset.tab;
+                tabBtns.forEach((b) => {
+                    b.classList.remove("text-primary", "border-primary", "bg-card", "border-b-2");
+                    b.classList.add("text-muted-foreground", "border-transparent");
+                });
+                btn.classList.remove("text-muted-foreground", "border-transparent");
+                btn.classList.add("text-primary", "border-primary", "bg-card", "border-b-2");
+                panels.forEach((p) => {
+                    if (p.id === `panel-${target}`) {
+                        p.classList.remove("hidden");
+                    } else {
+                        p.classList.add("hidden");
+                    }
+                });
+            });
+        });
+
+        // ── Toggle secondary stats ─────────────────────────────────
         const toggleBtn = document.getElementById("toggle-stats-btn");
         const secondaryStats = document.getElementById("secondary-stats");
-        const userId = document.body.dataset.userId;
-
         if (toggleBtn && secondaryStats) {
             toggleBtn.addEventListener("click", () => {
                 const isHidden = secondaryStats.classList.contains("hidden");
@@ -181,21 +316,16 @@ const stats = {
             });
         }
 
-        // Real-time updates logic
+        // ── Real-time updates via SSE ──────────────────────────────
         const updateStats = async () => {
             try {
-                // LLAMAR AL NUEVO ENDPOINT DE MARKETING
                 const response = await fetch("/api/dashboard/stats-marketing");
                 if (!response.ok) return;
                 const data = await response.json();
-
                 const updateEl = (key: string, value: any) => {
-                    const el = document.querySelector(
-                        `[data-stat-key="${key}"]`,
-                    );
+                    const el = document.querySelector(`[data-stat-key="${key}"]`);
                     if (el) el.textContent = value.toString();
                 };
-
                 updateEl("nuevos", data.nuevos);
                 updateEl("enProgreso", data.enProgreso);
                 updateEl("enEspera", data.enEspera);
@@ -208,26 +338,15 @@ const stats = {
             }
         };
 
+        const userId = document.body.dataset.userId;
         if (userId) {
             if (dashboardEventSource) dashboardEventSource.close();
-            // Reutilizamos el mismo endpoint SSE general.
-            // El endpoint updateStats filtra lo que pide al servidor.
-            dashboardEventSource = new EventSource(
-                `/api/notifications/sse?userId=${userId}`,
-            );
-
+            dashboardEventSource = new EventSource(`/api/notifications/sse?userId=${userId}`);
             dashboardEventSource.onmessage = (event) => {
                 if (event.data === ": heartbeat") return;
                 const data = JSON.parse(event.data);
                 if (data.type === "connected") return;
-
-                if (
-                    [
-                        "ticket_created",
-                        "ticket_updated",
-                        "ticket_assigned",
-                    ].includes(data.type)
-                ) {
+                if (["ticket_created", "ticket_updated", "ticket_assigned"].includes(data.type)) {
                     updateStats();
                 }
             };

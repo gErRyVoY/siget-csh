@@ -31,11 +31,18 @@ const pageSize = 10;
 // Definir estatus activos para la vista por defecto
 const activeStatusNames = ["Sin asignar", "Nuevo", "En progreso", "En espera"];
 
-// Scope base: Tickets propios o asignados
+const MARKETING_CATEGORY_ID = 12;
+
+// Scope base: Tickets propios o asignados (excluyendo Marketing)
 const baseWhere: any = {
-    OR: [
-        { solicitanteId: user.id ? parseInt(String(user.id)) : 0 },
-        { atiendeId: user.id ? parseInt(String(user.id)) : 0 },
+    AND: [
+        {
+            OR: [
+                { solicitanteId: user.id ? parseInt(String(user.id)) : 0 },
+                { atiendeId: user.id ? parseInt(String(user.id)) : 0 },
+            ],
+        },
+        { categoriaId: { not: MARKETING_CATEGORY_ID } },
     ],
 };
 
@@ -114,6 +121,7 @@ const filteredStatuses = statuses.filter((status) =>
 const categories = await prisma.categoria.findMany({
     where: {
         activo: true,
+        id: { not: MARKETING_CATEGORY_ID },
         tickets: {
             some: dropdownScope,
         },
