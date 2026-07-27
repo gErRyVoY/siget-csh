@@ -331,3 +331,68 @@ function hasCorrectUserFlag(agent: AgentWithRelations, isMarketing: boolean): bo
     }
     return agent.atiende_csh === true || agent.rol?.atiende_csh === true;
 }
+
+/**
+ * Verifica si un agente puede ser asignado MANUALMENTE a un ticket de una categoría/subcategoría dada.
+ *
+ * Criterios para asignación manual:
+ * 1. El agente está activo (`activo === true`).
+ * 2. Tiene flag de atender la categoría (`atiende_csh` o `atiende_mkt` según la categoría).
+ * 3. Tiene la categoría/subcategoría habilitada (por asignación específica activa o por permiso de rol no revocado).
+ * 
+ * NOTA: Para asignación manual NO se toma en cuenta `acepta_tickets`, `carga_actual` ni `horario_disponibilidad`.
+ */
+export async function canAgentBeAssignedManually(
+    agentId: number,
+    categoriaId: number,
+    subcategoriaId?: number | null
+): Promise<{ canAssign: boolean; reason?: string }> {
+    const isMarketing = categoriaId === MARKETING_CATEGORY_ID;
+
+    const agent = await prisma.usuario.findUnique({
+        where: { id: agentId },
+        include: { rol: true, asignaciones_categorias: true }
+    });
+
+    if (!agent || !agent.activo) {
+        return { canAssign: false, reason: 'El usuario seleccionado no está activo' };
+    }
+
+    if (!hasCorrectUserFlag(agent as AgentWithRelations, isMarketing)) {
+        return { canAssign: false, reason: `El usuario no tiene habilitado atender tickets de ${isMarketing ? 'Marketing' : 'CSH'}` };
+    }
+
+    // Verificar si el agente tiene la categoría/subcategoría habilitada
+    // 1. Asignación específica
+    const specificCat = agent.asignaciones_categorias.find(
+        a => a.categoriaId === categoriaId && (subcategoriaId ? a.subcategoriaId === subcategoriaId : a.subcategoriaId === null)
+    );
+
+    if (specificCat) {
+        if (specificCat.activo) return { canAssign: true };
+        return { canAssign: false, reason: 'El usuario tiene revocada esta categoría/subcategoría' };
+    }
+
+    // 2. Permiso por rol
+    const rolePermission = await prisma.permisoCategoria.findFirst({
+        where: {
+            rolId: agent.rolId,
+            categoriaId: categoriaId,
+            activo: true,
+            ...(subcategoriaId ? { OR: [{ subcategoriaId: subcategoriaId }, { subcategoriaId: null }] } : { subcategoriaId: null })
+        }
+    });
+
+    if (rolePermission) {
+        const explicitRevoked = agent.asignaciones_categorias.find(
+            a => a.categoriaId === categoriaId && a.activo === false &&
+                 (subcategoriaId ? (a.subcategoriaId === subcategoriaId || a.subcategoriaId === null) : a.subcategoriaId === null)
+        );
+        if (explicitRevoked) {
+            return { canAssign: false, reason: 'El usuario tiene revocada esta categoría/subcategoría' };
+        }
+        return { canAssign: true };
+    }
+
+    return { canAssign: false, reason: 'El usuario no tiene habilitada esta categoría/subcategoría' };
+}

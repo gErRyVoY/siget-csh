@@ -216,6 +216,55 @@ if (groupedSecciones["Generales"]) {
     });
   });
 }
+
+// --- VISIBILIDAD & PERMISOS POR ROL OBJETIVO ---
+const targetRoleId = user.rolId; // 1 = Usuario, 2 = Admin, 3 = Superadmin
+const currentUserId = session?.user?.id ? parseInt(String(session.user.id), 10) : -1;
+const isTargetSelfSuperAdmin = isSuperAdmin && currentUserId === user.id;
+
+// Visibilidad de Secciones Principales
+const showHorarioSection = targetRoleId === 2 && !isTargetSelfSuperAdmin; // Admin sólo de consulta
+const isHorarioReadOnly = targetRoleId === 2; // Solo lectura para Admin
+const showSeccionesSection = (targetRoleId === 1 || targetRoleId === 2) && !isTargetSelfSuperAdmin;
+const showCategoriasSection = (targetRoleId === 2 || targetRoleId === 3); // Oculto para Usuario (1)
+
+// Visibilidad de Toggles Superiores
+const showToggleActivo = !isTargetSelfSuperAdmin;
+const showToggleAsignar = targetRoleId !== 1;
+const showToggleAtiendeCSH = targetRoleId !== 1;
+const showToggleAtiendeMKT = targetRoleId !== 1;
+const showToggleAuditorDocs = targetRoleId !== 1 && !areAuditorChecksHidden;
+const showToggleAuditorReqs = targetRoleId !== 1 && !areAuditorChecksHidden;
+
+// Clasificación de Categorías (Habilitadas vs Sin acceso)
+const habilitadasCats: typeof categoriasMaster = [];
+const sinAccesoCats: typeof categoriasMaster = [];
+
+categoriasMaster.forEach((cat) => {
+  const catKey = `${cat.id}-null`;
+  const isInheritedCat = inheritedCategories[catKey] === true;
+  const explicitStateCat = assignedUserCategories[catKey];
+  const isCheckedCat = explicitStateCat !== undefined ? explicitStateCat : isInheritedCat;
+
+  let activeSubCount = 0;
+  cat.subcategoria_categorias.forEach((subRel) => {
+    const subKey = `${cat.id}-${subRel.subcategoria.id}`;
+    const isInheritedSub = inheritedCategories[subKey] === true || isInheritedCat || explicitStateCat === true;
+    const explicitStateSub = assignedUserCategories[subKey];
+    const isCheckedSub = explicitStateSub !== undefined ? explicitStateSub : isInheritedSub;
+    if (isCheckedSub) activeSubCount++;
+  });
+
+  const isEnabled = cat.subcategoria_categorias.length === 0 ? isCheckedCat : activeSubCount > 0;
+  if (isEnabled) {
+    habilitadasCats.push(cat);
+  } else {
+    sinAccesoCats.push(cat);
+  }
+});
+
+habilitadasCats.sort((a, b) => a.nombre.localeCompare(b.nombre));
+sinAccesoCats.sort((a, b) => a.nombre.localeCompare(b.nombre));
 ---
 
 <MainLayout title={`Editar usuario: ${concatenatedName}`}>
@@ -285,7 +334,7 @@ if (groupedSecciones["Generales"]) {
               id="rolId"
               name="rolId"
               class="block w-full rounded-md border-border bg-input p-2 accent-secondary focus:outline-none focus:ring-1 focus:ring-secondary disabled:opacity-50 disabled:cursor-not-allowed"
-              disabled={!canFullEdit}
+              disabled={!canFullEdit || isTargetSelfSuperAdmin}
             >
               {
                 displayedRoles.map((rol) => (
@@ -295,45 +344,55 @@ if (groupedSecciones["Generales"]) {
                 ))
               }
             </select>
+            {isTargetSelfSuperAdmin && (
+              <p class="text-xs text-muted-foreground mt-1 italic">
+                * Solo otro superadmin puede cambiar tu rol.
+              </p>
+            )}
           </div>
 
           <!-- NEW CHECKBOX LAYOUT (TOGGLES 2x2 GRID) -->
           <div class="grid grid-cols-2 gap-x-6 gap-y-4">
             <!-- Toggle: Activo -->
-            <div class="flex items-center justify-between gap-2 border border-border/60 bg-muted/10 px-3 py-2 rounded-md">
-              <label for="activo" class="text-sm font-medium select-none truncate">Activo</label>
-              <label class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full toggle-wrapper group">
-                <input
-                  type="checkbox"
-                  id="activo"
-                  name="activo"
-                  class="sr-only peer"
-                  checked={user.activo}
-                  disabled={!canEdit}
-                />
-                <div class="toggle-bg h-5 w-9 absolute rounded-full transition-all peer-focus:outline-none opacity-50 peer-checked:opacity-100 disabled:opacity-30 peer-disabled:cursor-not-allowed bg-muted-foreground peer-checked:bg-primary" />
-                <div class="toggle-knob absolute top-[2px] left-[2px] bg-white border border-gray-300 rounded-full h-4 w-4 transition-transform peer-checked:translate-x-[16px] peer-checked:border-white z-10" />
-              </label>
-            </div>
+            {showToggleActivo && (
+              <div class="flex items-center justify-between gap-2 border border-border/60 bg-muted/10 px-3 py-2 rounded-md" id="container-activo">
+                <label for="activo" class="text-sm font-medium select-none truncate">Activo</label>
+                <label class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full toggle-wrapper group">
+                  <input
+                    type="checkbox"
+                    id="activo"
+                    name="activo"
+                    class="sr-only peer"
+                    checked={user.activo}
+                    disabled={!canEdit}
+                  />
+                  <div class="toggle-bg h-5 w-9 absolute rounded-full transition-all peer-focus:outline-none opacity-50 peer-checked:opacity-100 disabled:opacity-30 peer-disabled:cursor-not-allowed bg-muted-foreground peer-checked:bg-primary" />
+                  <div class="toggle-knob absolute top-[2px] left-[2px] bg-white border border-gray-300 rounded-full h-4 w-4 transition-transform peer-checked:translate-x-[16px] peer-checked:border-white z-10" />
+                </label>
+              </div>
+            )}
+
             <!-- Toggle: Asignar tickets -->
-            <div class="flex items-center justify-between gap-2 border border-border/60 bg-muted/10 px-3 py-2 rounded-md">
-              <label for="acepta_tickets" class="text-sm font-medium select-none truncate">Asignar tickets</label>
-              <label class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full toggle-wrapper group">
-                <input
-                  type="checkbox"
-                  id="acepta_tickets"
-                  name="acepta_tickets"
-                  class="sr-only peer"
-                  checked={user.acepta_tickets}
-                  disabled={!canEdit}
-                />
-                <div class="toggle-bg h-5 w-9 absolute rounded-full transition-all peer-focus:outline-none opacity-50 peer-checked:opacity-100 disabled:opacity-30 peer-disabled:cursor-not-allowed bg-muted-foreground peer-checked:bg-primary" />
-                <div class="toggle-knob absolute top-[2px] left-[2px] bg-white border border-gray-300 rounded-full h-4 w-4 transition-transform peer-checked:translate-x-[16px] peer-checked:border-white z-10" />
-              </label>
-            </div>
+            {showToggleAsignar && (
+              <div class="flex items-center justify-between gap-2 border border-border/60 bg-muted/10 px-3 py-2 rounded-md" id="container-acepta_tickets">
+                <label for="acepta_tickets" class="text-sm font-medium select-none truncate">Asignar tickets</label>
+                <label class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full toggle-wrapper group">
+                  <input
+                    type="checkbox"
+                    id="acepta_tickets"
+                    name="acepta_tickets"
+                    class="sr-only peer"
+                    checked={user.acepta_tickets}
+                    disabled={!canEdit}
+                  />
+                  <div class="toggle-bg h-5 w-9 absolute rounded-full transition-all peer-focus:outline-none opacity-50 peer-checked:opacity-100 disabled:opacity-30 peer-disabled:cursor-not-allowed bg-muted-foreground peer-checked:bg-primary" />
+                  <div class="toggle-knob absolute top-[2px] left-[2px] bg-white border border-gray-300 rounded-full h-4 w-4 transition-transform peer-checked:translate-x-[16px] peer-checked:border-white z-10" />
+                </label>
+              </div>
+            )}
 
             <!-- Toggle: Levanta CSH -->
-            <div class="flex items-center justify-between gap-2 border border-border/60 bg-muted/10 px-3 py-2 rounded-md">
+            <div class="flex items-center justify-between gap-2 border border-border/60 bg-muted/10 px-3 py-2 rounded-md" id="container-tckt_csh">
               <label for="tckt_csh" class="text-sm font-medium select-none truncate">Levanta CSH</label>
               <label class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full toggle-wrapper group">
                 <input
@@ -350,7 +409,7 @@ if (groupedSecciones["Generales"]) {
             </div>
 
             <!-- Toggle: Levanta Mkt -->
-            <div class="flex items-center justify-between gap-2 border border-border/60 bg-muted/10 px-3 py-2 rounded-md">
+            <div class="flex items-center justify-between gap-2 border border-border/60 bg-muted/10 px-3 py-2 rounded-md" id="container-tckt_mkt">
               <label for="tckt_mkt" class="text-sm font-medium select-none truncate">Levanta Mkt</label>
               <label class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full toggle-wrapper group">
                 <input
@@ -367,265 +426,379 @@ if (groupedSecciones["Generales"]) {
             </div>
 
             <!-- Toggle: Atiende CSH -->
-            <div class="flex items-center justify-between gap-2 border border-border/60 bg-muted/10 px-3 py-2 rounded-md">
-              <label for="atiende_csh" class="text-sm font-medium select-none truncate">Atiende CSH</label>
-              <label class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full toggle-wrapper group">
-                <input
-                  type="checkbox"
-                  id="atiende_csh"
-                  name="atiende_csh"
-                  class="sr-only peer"
-                  checked={(user as any).atiende_csh}
-                  disabled={!canEdit}
-                />
-                <div class="toggle-bg h-5 w-9 absolute rounded-full transition-all peer-focus:outline-none opacity-50 peer-checked:opacity-100 disabled:opacity-30 peer-disabled:cursor-not-allowed bg-muted-foreground peer-checked:bg-primary" />
-                <div class="toggle-knob absolute top-[2px] left-[2px] bg-white border border-gray-300 rounded-full h-4 w-4 transition-transform peer-checked:translate-x-[16px] peer-checked:border-white z-10" />
-              </label>
-            </div>
+            {showToggleAtiendeCSH && (
+              <div class="flex items-center justify-between gap-2 border border-border/60 bg-muted/10 px-3 py-2 rounded-md" id="container-atiende_csh">
+                <label for="atiende_csh" class="text-sm font-medium select-none truncate">Atiende CSH</label>
+                <label class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full toggle-wrapper group">
+                  <input
+                    type="checkbox"
+                    id="atiende_csh"
+                    name="atiende_csh"
+                    class="sr-only peer"
+                    checked={(user as any).atiende_csh}
+                    disabled={!canEdit}
+                  />
+                  <div class="toggle-bg h-5 w-9 absolute rounded-full transition-all peer-focus:outline-none opacity-50 peer-checked:opacity-100 disabled:opacity-30 peer-disabled:cursor-not-allowed bg-muted-foreground peer-checked:bg-primary" />
+                  <div class="toggle-knob absolute top-[2px] left-[2px] bg-white border border-gray-300 rounded-full h-4 w-4 transition-transform peer-checked:translate-x-[16px] peer-checked:border-white z-10" />
+                </label>
+              </div>
+            )}
 
             <!-- Toggle: Atiende Mkt -->
-            <div class="flex items-center justify-between gap-2 border border-border/60 bg-muted/10 px-3 py-2 rounded-md">
-              <label for="atiende_mkt" class="text-sm font-medium select-none truncate">Atiende Mkt</label>
-              <label class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full toggle-wrapper group">
-                <input
-                  type="checkbox"
-                  id="atiende_mkt"
-                  name="atiende_mkt"
-                  class="sr-only peer"
-                  checked={(user as any).atiende_mkt}
-                  disabled={!canEdit}
-                />
-                <div class="toggle-bg h-5 w-9 absolute rounded-full transition-all peer-focus:outline-none opacity-50 peer-checked:opacity-100 disabled:opacity-30 peer-disabled:cursor-not-allowed bg-muted-foreground peer-checked:bg-primary" />
-                <div class="toggle-knob absolute top-[2px] left-[2px] bg-white border border-gray-300 rounded-full h-4 w-4 transition-transform peer-checked:translate-x-[16px] peer-checked:border-white z-10" />
-              </label>
-            </div>
+            {showToggleAtiendeMKT && (
+              <div class="flex items-center justify-between gap-2 border border-border/60 bg-muted/10 px-3 py-2 rounded-md" id="container-atiende_mkt">
+                <label for="atiende_mkt" class="text-sm font-medium select-none truncate">Atiende Mkt</label>
+                <label class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full toggle-wrapper group">
+                  <input
+                    type="checkbox"
+                    id="atiende_mkt"
+                    name="atiende_mkt"
+                    class="sr-only peer"
+                    checked={(user as any).atiende_mkt}
+                    disabled={!canEdit}
+                  />
+                  <div class="toggle-bg h-5 w-9 absolute rounded-full transition-all peer-focus:outline-none opacity-50 peer-checked:opacity-100 disabled:opacity-30 peer-disabled:cursor-not-allowed bg-muted-foreground peer-checked:bg-primary" />
+                  <div class="toggle-knob absolute top-[2px] left-[2px] bg-white border border-gray-300 rounded-full h-4 w-4 transition-transform peer-checked:translate-x-[16px] peer-checked:border-white z-10" />
+                </label>
+              </div>
+            )}
 
-            {!areAuditorChecksHidden && (
-              <>
-                <!-- Toggle: Auditor Docs -->
-                <div class="flex items-center justify-between gap-2 border border-border/60 bg-muted/10 px-3 py-2 rounded-md">
-                  <label for="auditor_docs" class="text-sm font-medium select-none truncate">Auditor Docs</label>
-                  <label class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full toggle-wrapper group">
-                    <input
-                      type="checkbox"
-                      id="auditor_docs"
-                      name="auditor_docs"
-                      class="sr-only peer"
-                      checked={user.auditor_docs}
-                      disabled={!canEdit}
-                    />
-                    <div class="toggle-bg h-5 w-9 absolute rounded-full transition-all peer-focus:outline-none opacity-50 peer-checked:opacity-100 disabled:opacity-30 peer-disabled:cursor-not-allowed bg-muted-foreground peer-checked:bg-primary" />
-                    <div class="toggle-knob absolute top-[2px] left-[2px] bg-white border border-gray-300 rounded-full h-4 w-4 transition-transform peer-checked:translate-x-[16px] peer-checked:border-white z-10" />
-                  </label>
-                </div>
-                <!-- Toggle: Auditor Reqs -->
-                <div class="flex items-center justify-between gap-2 border border-border/60 bg-muted/10 px-3 py-2 rounded-md">
-                  <label for="auditor_req" class="text-sm font-medium select-none truncate">Auditor Reqs</label>
-                  <label class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full toggle-wrapper group">
-                    <input
-                      type="checkbox"
-                      id="auditor_req"
-                      name="auditor_req"
-                      class="sr-only peer"
-                      checked={user.auditor_req}
-                      disabled={!canEdit}
-                    />
-                    <div class="toggle-bg h-5 w-9 absolute rounded-full transition-all peer-focus:outline-none opacity-50 peer-checked:opacity-100 disabled:opacity-30 peer-disabled:cursor-not-allowed bg-muted-foreground peer-checked:bg-primary" />
-                    <div class="toggle-knob absolute top-[2px] left-[2px] bg-white border border-gray-300 rounded-full h-4 w-4 transition-transform peer-checked:translate-x-[16px] peer-checked:border-white z-10" />
-                  </label>
-                </div>
-              </>
+            {showToggleAuditorDocs && (
+              <div class="flex items-center justify-between gap-2 border border-border/60 bg-muted/10 px-3 py-2 rounded-md" id="container-auditor_docs">
+                <label for="auditor_docs" class="text-sm font-medium select-none truncate">Auditor Docs</label>
+                <label class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full toggle-wrapper group">
+                  <input
+                    type="checkbox"
+                    id="auditor_docs"
+                    name="auditor_docs"
+                    class="sr-only peer"
+                    checked={user.auditor_docs}
+                    disabled={!canEdit}
+                  />
+                  <div class="toggle-bg h-5 w-9 absolute rounded-full transition-all peer-focus:outline-none opacity-50 peer-checked:opacity-100 disabled:opacity-30 peer-disabled:cursor-not-allowed bg-muted-foreground peer-checked:bg-primary" />
+                  <div class="toggle-knob absolute top-[2px] left-[2px] bg-white border border-gray-300 rounded-full h-4 w-4 transition-transform peer-checked:translate-x-[16px] peer-checked:border-white z-10" />
+                </label>
+              </div>
+            )}
+
+            {showToggleAuditorReqs && (
+              <div class="flex items-center justify-between gap-2 border border-border/60 bg-muted/10 px-3 py-2 rounded-md" id="container-auditor_req">
+                <label for="auditor_req" class="text-sm font-medium select-none truncate">Auditor Reqs</label>
+                <label class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full toggle-wrapper group">
+                  <input
+                    type="checkbox"
+                    id="auditor_req"
+                    name="auditor_req"
+                    class="sr-only peer"
+                    checked={user.auditor_req}
+                    disabled={!canEdit}
+                  />
+                  <div class="toggle-bg h-5 w-9 absolute rounded-full transition-all peer-focus:outline-none opacity-50 peer-checked:opacity-100 disabled:opacity-30 peer-disabled:cursor-not-allowed bg-muted-foreground peer-checked:bg-primary" />
+                  <div class="toggle-knob absolute top-[2px] left-[2px] bg-white border border-gray-300 rounded-full h-4 w-4 transition-transform peer-checked:translate-x-[16px] peer-checked:border-white z-10" />
+                </label>
+              </div>
             )}
           </div>
         </div>
 
         <!-- HORARIOS COLLAPSIBLE -->
-        <details class="group mt-6 main-accordion overflow-hidden rounded-md border border-border bg-card">
-          <summary class="flex items-center justify-between cursor-pointer list-none select-none outline-none h-[50px] px-4 hover:bg-secondary hover:text-white transition-colors group-open:bg-secondary group-open:text-white ui-summary">
-            <h2 class="text-sm font-medium">Horario de disponibilidad</h2>
-            <div class="transform transition-transform duration-200 group-open:rotate-180">
-              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-current"><path d="m6 9 6 6 6-6"/></svg>
+        {showHorarioSection && (
+          <details class="group mt-6 main-accordion overflow-hidden rounded-md border border-border bg-card">
+            <summary class="flex items-center justify-between cursor-pointer list-none select-none outline-none h-[50px] px-4 hover:bg-secondary hover:text-white transition-colors group-open:bg-secondary group-open:text-white ui-summary">
+              <div class="flex items-center gap-2">
+                <h2 class="text-sm font-medium">Horario de disponibilidad</h2>
+                {isHorarioReadOnly && (
+                  <span class="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded border border-border">
+                    Solo consulta (sincronizado vía RH)
+                  </span>
+                )}
+              </div>
+              <div class="transform transition-transform duration-200 group-open:rotate-180">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-current"><path d="m6 9 6 6 6-6"/></svg>
+              </div>
+            </summary>
+            <div class="md:col-span-2 p-4 border-t border-border bg-card">
+              {isHorarioReadOnly && (
+                <p class="text-xs text-muted-foreground mb-3 italic">
+                  * Este horario se obtiene y actualiza automáticamente desde la API de Recursos Humanos cuando el usuario inicia sesión.
+                </p>
+              )}
+              <div
+                class="mt-2 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-4"
+                id="horarios-container"
+                data-readonly={isHorarioReadOnly ? "true" : "false"}
+              >
+                <!-- Horarios Semanales se insertan aquí -->
+              </div>
             </div>
-          </summary>
-          <div class="md:col-span-2 p-4 border-t border-border bg-card">
-            <div
-              class="mt-2 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-4"
-              id="horarios-container"
-            >
-              <!-- Horarios Semanales se insertan aquí -->
-            </div>
-          </div>
-        </details>
+          </details>
+        )}
         <!-- END HORARIOS COLLAPSIBLE -->
 
-        <!-- NEW SECCIONES LAYOUT COLLAPSIBLE -->
-        <details class="group mt-4 main-accordion overflow-hidden rounded-md border border-border bg-card">
-          <summary class="flex items-center justify-between cursor-pointer list-none select-none outline-none h-[50px] px-4 hover:bg-secondary hover:text-white transition-colors group-open:bg-secondary group-open:text-white ui-summary">
-            <h2 class="text-sm font-medium">
-              Secciones que puede ver el usuario:
-            </h2>
-            <div class="transform transition-transform duration-200 group-open:rotate-180">
-              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-current"><path d="m6 9 6 6 6-6"/></svg>
-            </div>
-          </summary>
-          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-4 border-t border-border bg-card">
-            {
-              orderGrupos.map((grupo) => {
-                if (!groupedSecciones[grupo]) return null;
+        <!-- SECCIONES COLLAPSIBLE -->
+        {showSeccionesSection && (
+          <details class="group mt-4 main-accordion overflow-hidden rounded-md border border-border bg-card">
+            <summary class="flex items-center justify-between cursor-pointer list-none select-none outline-none h-[50px] px-4 hover:bg-secondary hover:text-white transition-colors group-open:bg-secondary group-open:text-white ui-summary">
+              <h2 class="text-sm font-medium">
+                Secciones que puede ver el usuario:
+              </h2>
+              <div class="transform transition-transform duration-200 group-open:rotate-180">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-current"><path d="m6 9 6 6 6-6"/></svg>
+              </div>
+            </summary>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-4 border-t border-border bg-card">
+              {
+                orderGrupos.map((grupo) => {
+                  if (!groupedSecciones[grupo]) return null;
+                  if (grupo === "Administrador") return null; // Ocultar Administrador para Usuario y Admin
 
-                const subgroups = groupedSecciones[grupo];
-                return (
-                  <div class="bg-card border rounded-lg p-4 shadow-sm">
-                    <h3 class="text-xs font-semibold text-muted-foreground mb-4 uppercase tracking-wider">
-                      {grupo}
-                    </h3>
-                    <div class="space-y-6">
-                      {Object.entries(subgroups).map(([subgroupName, secs]) => (
-                        <div class="space-y-3">
-                          {subgroupName !== "General" && (
-                            <h4 class="text-[11px] font-bold text-muted-foreground border-b pb-1 uppercase">
-                              {subgroupName}
-                            </h4>
-                          )}
-                          <div class="space-y-3 pl-1">
-                            {secs.map((seccion) => {
-                              const isInherited = userRoleSections.includes(
-                                seccion.id,
-                              );
-                              const explicitState =
-                                explicitPermissions[seccion.id];
-                              const isChecked =
-                                explicitState !== undefined
-                                  ? explicitState
-                                  : isInherited;
+                  const subgroups = groupedSecciones[grupo];
+                  return (
+                    <div class="bg-card border rounded-lg p-4 shadow-sm">
+                      <h3 class="text-xs font-semibold text-muted-foreground mb-4 uppercase tracking-wider">
+                        {grupo}
+                      </h3>
+                      <div class="space-y-6">
+                        {Object.entries(subgroups).map(([subgroupName, secs]) => {
+                          // Si es rol Usuario (1), filtrar las opciones "Todos"
+                          const filteredSecs = targetRoleId === 1 
+                            ? secs.filter(s => s.identificador !== "soporte_todos" && s.identificador !== "marketing_todos")
+                            : secs;
 
-                              return (
-                                <div class="flex items-center justify-between gap-4">
-                                  <label
-                                    for={`sec-${seccion.id}`}
-                                    class="text-sm cursor-pointer select-none truncate pr-2 flex-1"
-                                    title={seccion.nombre}
-                                  >
-                                    {seccion.nombre}
-                                  </label>
-                                  <label
-                                    class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full toggle-wrapper group"
-                                    data-inherited={
-                                      isInherited ? "true" : "false"
-                                    }
-                                    title={
-                                      isChecked
-                                        ? "Revocar acceso"
-                                        : "Otorgar acceso"
-                                    }
-                                  >
-                                    <input
-                                      type="checkbox"
-                                      id={`sec-${seccion.id}`}
-                                      class="sr-only peer section-toggle"
-                                      data-seccion-id={seccion.id}
-                                      data-usuario-id={user.id}
-                                      checked={isChecked}
-                                      disabled={!canEdit}
-                                    />
-                                    <div class="toggle-bg h-5 w-9 absolute rounded-full transition-all peer-focus:outline-none opacity-50 peer-checked:opacity-100 disabled:opacity-30 peer-disabled:cursor-not-allowed border-box bg-muted-foreground border border-transparent group-data-[inherited=false]:peer-checked:bg-primary group-data-[inherited=true]:peer-checked:bg-secondary group-data-[inherited=true]:border-secondary group-data-[inherited=true]:peer-checked:border-transparent" />
-                                    <div class="toggle-knob absolute top-[2px] left-[2px] bg-white border border-gray-300 rounded-full h-4 w-4 transition-transform peer-checked:translate-x-[16px] peer-checked:border-white z-10" />
-                                  </label>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      ))}
+                          if (filteredSecs.length === 0) return null;
+
+                          return (
+                            <div class="space-y-3">
+                              {subgroupName !== "General" && (
+                                <h4 class="text-[11px] font-bold text-muted-foreground border-b pb-1 uppercase">
+                                  {subgroupName}
+                                </h4>
+                              )}
+                              <div class="space-y-3 pl-1">
+                                {filteredSecs.map((seccion) => {
+                                  const isInherited = userRoleSections.includes(seccion.id);
+                                  const explicitState = explicitPermissions[seccion.id];
+                                  const isChecked = explicitState !== undefined ? explicitState : isInherited;
+
+                                  return (
+                                    <div class="flex items-center justify-between gap-4">
+                                      <label
+                                        for={`sec-${seccion.id}`}
+                                        class="text-sm cursor-pointer select-none truncate pr-2 flex-1"
+                                        title={seccion.nombre}
+                                      >
+                                        {seccion.nombre}
+                                      </label>
+                                      <label
+                                        class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full toggle-wrapper group"
+                                        data-inherited={isInherited ? "true" : "false"}
+                                        title={isChecked ? "Revocar acceso" : "Otorgar acceso"}
+                                      >
+                                        <input
+                                          type="checkbox"
+                                          id={`sec-${seccion.id}`}
+                                          class="sr-only peer section-toggle"
+                                          data-seccion-id={seccion.id}
+                                          data-usuario-id={user.id}
+                                          checked={isChecked}
+                                          disabled={!canEdit}
+                                        />
+                                        <div class="toggle-bg h-5 w-9 absolute rounded-full transition-all peer-focus:outline-none opacity-50 peer-checked:opacity-100 disabled:opacity-30 peer-disabled:cursor-not-allowed border-box bg-muted-foreground border border-transparent group-data-[inherited=false]:peer-checked:bg-primary group-data-[inherited=true]:peer-checked:bg-secondary group-data-[inherited=true]:border-secondary group-data-[inherited=true]:peer-checked:border-transparent" />
+                                        <div class="toggle-knob absolute top-[2px] left-[2px] bg-white border border-gray-300 rounded-full h-4 w-4 transition-transform peer-checked:translate-x-[16px] peer-checked:border-white z-10" />
+                                      </label>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
-                  </div>
-                );
-              })
-            }
-          </div>
-        </details>
-        <!-- END NEW SECCIONES LAYOUT -->
+                  );
+                })
+              }
+            </div>
+          </details>
+        )}
+        <!-- END SECCIONES COLLAPSIBLE -->
 
         <!-- CATEGORIAS COLLAPSIBLE -->
-        <details class="group mt-4 mb-4 main-accordion rounded-md border border-border bg-card">
-          <summary class="flex items-center justify-between cursor-pointer list-none select-none outline-none h-[50px] px-4 hover:bg-secondary hover:text-white transition-colors group-open:bg-secondary group-open:text-white ui-summary group-open:rounded-t-md group-open:rounded-b-none rounded-md">
-            <h2 class="text-sm font-medium">
-              Categorías y subcategorías que puede atender:
-            </h2>
-            <div class="transform transition-transform duration-200 group-open:rotate-180">
-              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-current"><path d="m6 9 6 6 6-6"/></svg>
-            </div>
-          </summary>
-          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 p-2 border-t border-border bg-card rounded-b-md">
-            {
-              categoriasMaster.map(cat => {
-                const catKey = `${cat.id}-null`;
-                const isInheritedCat = inheritedCategories[catKey] === true;
-                const explicitStateCat = assignedUserCategories[catKey];
-                const isCheckedCat = explicitStateCat !== undefined ? explicitStateCat : isInheritedCat;
+        {showCategoriasSection && (
+          <details class="group mt-4 mb-4 main-accordion rounded-md border border-border bg-card" open>
+            <summary class="flex items-center justify-between cursor-pointer list-none select-none outline-none h-[50px] px-4 hover:bg-secondary hover:text-white transition-colors group-open:bg-secondary group-open:text-white ui-summary group-open:rounded-t-md group-open:rounded-b-none rounded-md">
+              <h2 class="text-sm font-medium">
+                Categorías y subcategorías que puede atender:
+              </h2>
+              <div class="transform transition-transform duration-200 group-open:rotate-180">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-current"><path d="m6 9 6 6 6-6"/></svg>
+              </div>
+            </summary>
+            <div class="p-4 border-t border-border bg-card rounded-b-md space-y-6">
+              <!-- SUBSECCIÓN: HABILITADAS -->
+              <div>
+                <h3 class="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-2">
+                  <span class="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                  Habilitadas ({habilitadasCats.length})
+                </h3>
+                {habilitadasCats.length > 0 ? (
+                  <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                    {
+                      habilitadasCats.map(cat => {
+                        const catKey = `${cat.id}-null`;
+                        const isInheritedCat = inheritedCategories[catKey] === true;
+                        const explicitStateCat = assignedUserCategories[catKey];
+                        const isCheckedCat = explicitStateCat !== undefined ? explicitStateCat : isInheritedCat;
 
-                let activeSubCount = 0;
-                let totalSubs = cat.subcategoria_categorias.length;
-                cat.subcategoria_categorias.forEach(subRel => {
-                  const subKey = `${cat.id}-${subRel.subcategoria.id}`;
-                  const isInheritedSub = inheritedCategories[subKey] === true || isInheritedCat || explicitStateCat === true;
-                  const explicitStateSub = assignedUserCategories[subKey];
-                  const isCheckedSub = explicitStateSub !== undefined ? explicitStateSub : isInheritedSub;
-                  if (isCheckedSub) activeSubCount++;
-                });
-
-                const isFullCategory = totalSubs === 0 ? isCheckedCat : (activeSubCount === totalSubs && isCheckedCat);
-                const isPartialCategory = activeSubCount > 0 && !isFullCategory;
-                const showCheckedUiCat = isFullCategory || isPartialCategory;
-
-                return (
-                  <details class="group/cat bg-card border rounded-lg shadow-sm">
-                    <summary class="flex items-center justify-between gap-4 p-3 cursor-pointer list-none select-none outline-none hover:bg-muted/50 transition-colors rounded-lg group-open/cat:rounded-b-none border-b border-transparent group-open/cat:border-border group-open/cat:bg-muted/10">
-                      <div class="flex items-center gap-2 flex-1 overflow-hidden">
-                        <div class="transform transition-transform duration-200 group-open/cat:rotate-180 shrink-0 text-muted-foreground mr-1">
-                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-current"><path d="m6 9 6 6 6-6"/></svg>
-                        </div>
-                        <span class="text-[13px] font-bold uppercase truncate text-primary">{cat.nombre}</span>
-                      </div>
-                      <div class="shrink-0" onclick="event.stopPropagation();">
-                        <label class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full toggle-wrapper group/catbtn" data-full={isFullCategory ? "true" : "false"} title={showCheckedUiCat ? "Revocar categoría entera" : "Permitir categoría entera"}>
-                          <input type="checkbox" id={`cat-${cat.id}`} class="sr-only peer category-toggle main-category-toggle" data-categoria-id={cat.id} data-usuario-id={user.id} checked={showCheckedUiCat} disabled={!canEdit}/>
-                          <div class="toggle-bg h-5 w-9 absolute rounded-full transition-all peer-focus:outline-none opacity-50 peer-checked:opacity-100 disabled:opacity-30 peer-disabled:cursor-not-allowed bg-muted-foreground border border-transparent group-data-[full=false]/catbtn:peer-checked:bg-primary group-data-[full=true]/catbtn:peer-checked:bg-secondary group-data-[full=true]/catbtn:border-secondary group-data-[full=true]/catbtn:peer-checked:border-transparent" />
-                          <div class="toggle-knob absolute top-[2px] left-[2px] bg-white border border-gray-300 rounded-full h-4 w-4 transition-transform z-10" class:list={[{'translate-x-[16px] border-white': showCheckedUiCat}]} />
-                        </label>
-                      </div>
-                    </summary>
-                    {cat.subcategoria_categorias.length > 0 ? (
-                      <div class="p-3 space-y-3 pl-8 bg-card rounded-b-lg">
-                        {cat.subcategoria_categorias.map(subRel => {
-                          const subcat = subRel.subcategoria;
-                          const subKey = `${cat.id}-${subcat.id}`;
+                        let activeSubCount = 0;
+                        let totalSubs = cat.subcategoria_categorias.length;
+                        cat.subcategoria_categorias.forEach(subRel => {
+                          const subKey = `${cat.id}-${subRel.subcategoria.id}`;
                           const isInheritedSub = inheritedCategories[subKey] === true || isInheritedCat || explicitStateCat === true;
                           const explicitStateSub = assignedUserCategories[subKey];
                           const isCheckedSub = explicitStateSub !== undefined ? explicitStateSub : isInheritedSub;
-                          return (
-                            <div class="flex items-center justify-between gap-4">
-                              <label for={`sub-${cat.id}-${subcat.id}`} class="text-[13px] cursor-pointer select-none truncate pr-2 flex-1 text-muted-foreground" title={subcat.nombre}>{subcat.nombre}</label>
-                              <label class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full toggle-wrapper group/sub" data-inherited={isInheritedSub ? "true" : "false"} title={isCheckedSub ? "Revocar acceso" : "Otorgar acceso"}>
-                                <input type="checkbox" id={`sub-${cat.id}-${subcat.id}`} class="sr-only peer category-toggle" data-categoria-id={cat.id} data-subcategoria-id={subcat.id} data-usuario-id={user.id} checked={isCheckedSub} disabled={!canEdit}/>
-                                <div class="toggle-bg h-5 w-9 absolute rounded-full transition-all peer-focus:outline-none opacity-50 peer-checked:opacity-100 disabled:opacity-30 peer-disabled:cursor-not-allowed border-box bg-muted-foreground border border-transparent group-data-[inherited=false]/sub:peer-checked:bg-primary group-data-[inherited=true]/sub:peer-checked:bg-secondary group-data-[inherited=true]/sub:border-secondary group-data-[inherited=true]/sub:peer-checked:border-transparent" />
-                                <div class="toggle-knob absolute top-[2px] left-[2px] bg-white border border-gray-300 rounded-full h-4 w-4 transition-transform peer-checked:translate-x-[16px] peer-checked:border-white z-10" />
-                              </label>
-                            </div>
-                          )
-                        })}
-                      </div>
-                    ) : (
-                      <div class="p-3 pl-8 bg-card rounded-b-lg text-[13px] text-muted-foreground italic">
-                        Sin subcategorías
-                      </div>
-                    )}
-                  </details>
-                );
-              })
-            }
-          </div>
-        </details>
+                          if (isCheckedSub) activeSubCount++;
+                        });
+
+                        const isFullCategory = totalSubs === 0 ? isCheckedCat : (activeSubCount === totalSubs && isCheckedCat);
+                        const isPartialCategory = activeSubCount > 0 && !isFullCategory;
+                        const showCheckedUiCat = isFullCategory || isPartialCategory;
+
+                        return (
+                          <details class="group/cat bg-card border rounded-lg shadow-sm">
+                            <summary class="flex items-center justify-between gap-4 p-3 cursor-pointer list-none select-none outline-none hover:bg-muted/50 transition-colors rounded-lg group-open/cat:rounded-b-none border-b border-transparent group-open/cat:border-border group-open/cat:bg-muted/10">
+                              <div class="flex items-center gap-2 flex-1 overflow-hidden">
+                                <div class="transform transition-transform duration-200 group-open/cat:rotate-180 shrink-0 text-muted-foreground mr-1">
+                                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-current"><path d="m6 9 6 6 6-6"/></svg>
+                                </div>
+                                <span class="text-[13px] font-bold uppercase truncate text-primary">{cat.nombre}</span>
+                              </div>
+                              <div class="shrink-0" onclick="event.stopPropagation();">
+                                <label class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full toggle-wrapper group/catbtn" data-full={isFullCategory ? "true" : "false"} title={showCheckedUiCat ? "Revocar categoría entera" : "Permitir categoría entera"}>
+                                  <input type="checkbox" id={`cat-${cat.id}`} class="sr-only peer category-toggle main-category-toggle" data-categoria-id={cat.id} data-usuario-id={user.id} checked={showCheckedUiCat} disabled={!canEdit}/>
+                                  <div class="toggle-bg h-5 w-9 absolute rounded-full transition-all peer-focus:outline-none opacity-50 peer-checked:opacity-100 disabled:opacity-30 peer-disabled:cursor-not-allowed bg-muted-foreground border border-transparent group-data-[full=false]/catbtn:peer-checked:bg-primary group-data-[full=true]/catbtn:peer-checked:bg-secondary group-data-[full=true]/catbtn:border-secondary group-data-[full=true]/catbtn:peer-checked:border-transparent" />
+                                  <div class="toggle-knob absolute top-[2px] left-[2px] bg-white border border-gray-300 rounded-full h-4 w-4 transition-transform z-10" class:list={[{'translate-x-[16px] border-white': showCheckedUiCat}]} />
+                                </label>
+                              </div>
+                            </summary>
+                            {cat.subcategoria_categorias.length > 0 ? (
+                              <div class="p-3 space-y-3 pl-8 bg-card rounded-b-lg">
+                                {cat.subcategoria_categorias.map(subRel => {
+                                  const subcat = subRel.subcategoria;
+                                  const subKey = `${cat.id}-${subcat.id}`;
+                                  const isInheritedSub = inheritedCategories[subKey] === true || isInheritedCat || explicitStateCat === true;
+                                  const explicitStateSub = assignedUserCategories[subKey];
+                                  const isCheckedSub = explicitStateSub !== undefined ? explicitStateSub : isInheritedSub;
+                                  return (
+                                    <div class="flex items-center justify-between gap-4">
+                                      <label for={`sub-${cat.id}-${subcat.id}`} class="text-[13px] cursor-pointer select-none truncate pr-2 flex-1 text-muted-foreground" title={subcat.nombre}>{subcat.nombre}</label>
+                                      <label class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full toggle-wrapper group/sub" data-inherited={isInheritedSub ? "true" : "false"} title={isCheckedSub ? "Revocar acceso" : "Otorgar acceso"}>
+                                        <input type="checkbox" id={`sub-${cat.id}-${subcat.id}`} class="sr-only peer category-toggle" data-categoria-id={cat.id} data-subcategoria-id={subcat.id} data-usuario-id={user.id} checked={isCheckedSub} disabled={!canEdit}/>
+                                        <div class="toggle-bg h-5 w-9 absolute rounded-full transition-all peer-focus:outline-none opacity-50 peer-checked:opacity-100 disabled:opacity-30 peer-disabled:cursor-not-allowed border-box bg-muted-foreground border border-transparent group-data-[inherited=false]/sub:peer-checked:bg-primary group-data-[inherited=true]/sub:peer-checked:bg-secondary group-data-[inherited=true]/sub:border-secondary group-data-[inherited=true]/sub:peer-checked:border-transparent" />
+                                        <div class="toggle-knob absolute top-[2px] left-[2px] bg-white border border-gray-300 rounded-full h-4 w-4 transition-transform peer-checked:translate-x-[16px] peer-checked:border-white z-10" />
+                                      </label>
+                                    </div>
+                                  )
+                                })}
+                              </div>
+                            ) : (
+                              <div class="p-3 pl-8 bg-card rounded-b-lg text-[13px] text-muted-foreground italic">
+                                Sin subcategorías
+                              </div>
+                            )}
+                          </details>
+                        );
+                      })
+                    }
+                  </div>
+                ) : (
+                  <p class="text-xs text-muted-foreground italic pl-2">No tiene ninguna categoría habilitada.</p>
+                )}
+              </div>
+
+              <!-- SUBSECCIÓN: SIN ACCESO -->
+              <div>
+                <h3 class="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-2">
+                  <span class="inline-block w-2.5 h-2.5 rounded-full bg-muted-foreground/40"></span>
+                  Sin acceso ({sinAccesoCats.length})
+                </h3>
+                {sinAccesoCats.length > 0 ? (
+                  <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                    {
+                      sinAccesoCats.map(cat => {
+                        const catKey = `${cat.id}-null`;
+                        const isInheritedCat = inheritedCategories[catKey] === true;
+                        const explicitStateCat = assignedUserCategories[catKey];
+                        const isCheckedCat = explicitStateCat !== undefined ? explicitStateCat : isInheritedCat;
+
+                        let activeSubCount = 0;
+                        let totalSubs = cat.subcategoria_categorias.length;
+                        cat.subcategoria_categorias.forEach(subRel => {
+                          const subKey = `${cat.id}-${subRel.subcategoria.id}`;
+                          const isInheritedSub = inheritedCategories[subKey] === true || isInheritedCat || explicitStateCat === true;
+                          const explicitStateSub = assignedUserCategories[subKey];
+                          const isCheckedSub = explicitStateSub !== undefined ? explicitStateSub : isInheritedSub;
+                          if (isCheckedSub) activeSubCount++;
+                        });
+
+                        const isFullCategory = totalSubs === 0 ? isCheckedCat : (activeSubCount === totalSubs && isCheckedCat);
+                        const isPartialCategory = activeSubCount > 0 && !isFullCategory;
+                        const showCheckedUiCat = isFullCategory || isPartialCategory;
+
+                        return (
+                          <details class="group/cat bg-card border rounded-lg shadow-sm">
+                            <summary class="flex items-center justify-between gap-4 p-3 cursor-pointer list-none select-none outline-none hover:bg-muted/50 transition-colors rounded-lg group-open/cat:rounded-b-none border-b border-transparent group-open/cat:border-border group-open/cat:bg-muted/10">
+                              <div class="flex items-center gap-2 flex-1 overflow-hidden">
+                                <div class="transform transition-transform duration-200 group-open/cat:rotate-180 shrink-0 text-muted-foreground mr-1">
+                                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-current"><path d="m6 9 6 6 6-6"/></svg>
+                                </div>
+                                <span class="text-[13px] font-bold uppercase truncate text-primary">{cat.nombre}</span>
+                              </div>
+                              <div class="shrink-0" onclick="event.stopPropagation();">
+                                <label class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full toggle-wrapper group/catbtn" data-full={isFullCategory ? "true" : "false"} title={showCheckedUiCat ? "Revocar categoría entera" : "Permitir categoría entera"}>
+                                  <input type="checkbox" id={`cat-${cat.id}`} class="sr-only peer category-toggle main-category-toggle" data-categoria-id={cat.id} data-usuario-id={user.id} checked={showCheckedUiCat} disabled={!canEdit}/>
+                                  <div class="toggle-bg h-5 w-9 absolute rounded-full transition-all peer-focus:outline-none opacity-50 peer-checked:opacity-100 disabled:opacity-30 peer-disabled:cursor-not-allowed bg-muted-foreground border border-transparent group-data-[full=false]/catbtn:peer-checked:bg-primary group-data-[full=true]/catbtn:peer-checked:bg-secondary group-data-[full=true]/catbtn:border-secondary group-data-[full=true]/catbtn:peer-checked:border-transparent" />
+                                  <div class="toggle-knob absolute top-[2px] left-[2px] bg-white border border-gray-300 rounded-full h-4 w-4 transition-transform z-10" class:list={[{'translate-x-[16px] border-white': showCheckedUiCat}]} />
+                                </label>
+                              </div>
+                            </summary>
+                            {cat.subcategoria_categorias.length > 0 ? (
+                              <div class="p-3 space-y-3 pl-8 bg-card rounded-b-lg">
+                                {cat.subcategoria_categorias.map(subRel => {
+                                  const subcat = subRel.subcategoria;
+                                  const subKey = `${cat.id}-${subcat.id}`;
+                                  const isInheritedSub = inheritedCategories[subKey] === true || isInheritedCat || explicitStateCat === true;
+                                  const explicitStateSub = assignedUserCategories[subKey];
+                                  const isCheckedSub = explicitStateSub !== undefined ? explicitStateSub : isInheritedSub;
+                                  return (
+                                    <div class="flex items-center justify-between gap-4">
+                                      <label for={`sub-${cat.id}-${subcat.id}`} class="text-[13px] cursor-pointer select-none truncate pr-2 flex-1 text-muted-foreground" title={subcat.nombre}>{subcat.nombre}</label>
+                                      <label class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full toggle-wrapper group/sub" data-inherited={isInheritedSub ? "true" : "false"} title={isCheckedSub ? "Revocar acceso" : "Otorgar acceso"}>
+                                        <input type="checkbox" id={`sub-${cat.id}-${subcat.id}`} class="sr-only peer category-toggle" data-categoria-id={cat.id} data-subcategoria-id={subcat.id} data-usuario-id={user.id} checked={isCheckedSub} disabled={!canEdit}/>
+                                        <div class="toggle-bg h-5 w-9 absolute rounded-full transition-all peer-focus:outline-none opacity-50 peer-checked:opacity-100 disabled:opacity-30 peer-disabled:cursor-not-allowed border-box bg-muted-foreground border border-transparent group-data-[inherited=false]/sub:peer-checked:bg-primary group-data-[inherited=true]/sub:peer-checked:bg-secondary group-data-[inherited=true]/sub:border-secondary group-data-[inherited=true]/sub:peer-checked:border-transparent" />
+                                        <div class="toggle-knob absolute top-[2px] left-[2px] bg-white border border-gray-300 rounded-full h-4 w-4 transition-transform peer-checked:translate-x-[16px] peer-checked:border-white z-10" />
+                                      </label>
+                                    </div>
+                                  )
+                                })}
+                              </div>
+                            ) : (
+                              <div class="p-3 pl-8 bg-card rounded-b-lg text-[13px] text-muted-foreground italic">
+                                Sin subcategorías
+                              </div>
+                            )}
+                          </details>
+                        );
+                      })
+                    }
+                  </div>
+                ) : (
+                  <p class="text-xs text-muted-foreground italic pl-2">Todas las categorías están habilitadas.</p>
+                )}
+              </div>
+            </div>
+          </details>
+        )}
         <!-- END CATEGORIAS COLLAPSIBLE -->
 
         {

@@ -85,18 +85,71 @@ export function initializeUserEditForm() {
             if (finSelect) finSelect.value = horarioDia.fin;
         });
 
-        // Event listener para el botón de resetear horario
-        const resetBtn = document.getElementById('reset-horario-btn');
-        if (resetBtn) {
-            resetBtn.addEventListener('click', () => {
-                dias.forEach(dia => {
-                    const normalizedDia = dia.normalize("NFD").replace(/[̀-ͯ]/g, "");
-                    const inicioSelect = document.getElementById(`${normalizedDia}-inicio`) as HTMLSelectElement;
-                    const finSelect = document.getElementById(`${normalizedDia}-fin`) as HTMLSelectElement;
-                    if (inicioSelect) inicioSelect.value = 'No disponible';
-                    if (finSelect) finSelect.value = 'No disponible';
+        // Si es de solo consulta (Admin), deshabilitar selects y ocultar botón reset
+        if (container.dataset.readonly === 'true') {
+            const selects = container.querySelectorAll('select');
+            selects.forEach(s => (s as HTMLSelectElement).disabled = true);
+            const resetBtn = document.getElementById('reset-horario-btn');
+            if (resetBtn) resetBtn.style.display = 'none';
+        } else {
+            // Event listener para el botón de resetear horario
+            const resetBtn = document.getElementById('reset-horario-btn');
+            if (resetBtn) {
+                resetBtn.addEventListener('click', () => {
+                    dias.forEach(dia => {
+                        const normalizedDia = dia.normalize("NFD").replace(/[̀-ͯ]/g, "");
+                        const inicioSelect = document.getElementById(`${normalizedDia}-inicio`) as HTMLSelectElement;
+                        const finSelect = document.getElementById(`${normalizedDia}-fin`) as HTMLSelectElement;
+                        if (inicioSelect) inicioSelect.value = 'No disponible';
+                        if (finSelect) finSelect.value = 'No disponible';
+                    });
+                    toast.success('Horario reseteado en la vista. Recuerda guardar los cambios.');
                 });
-                toast.success('Horario reseteado en la vista. Recuerda guardar los cambios.');
+            }
+        }
+    }
+
+    // --- INTERACCIONES DINÁMICAS ENTRE TOGGLES ---
+    function initToggleListeners() {
+        const rolSelect = document.getElementById('rolId') as HTMLSelectElement | null;
+        const getSelectedRoleId = () => rolSelect ? parseInt(rolSelect.value, 10) : 0;
+
+        // Toggle: Activo -> Apagar los demás al desmarcar
+        const activoInput = document.getElementById('activo') as HTMLInputElement | null;
+        if (activoInput) {
+            activoInput.addEventListener('change', () => {
+                if (!activoInput.checked) {
+                    const togglesToTurnOff = [
+                        'acepta_tickets',
+                        'tckt_csh',
+                        'tckt_mkt',
+                        'atiende_csh',
+                        'atiende_mkt',
+                        'auditor_docs',
+                        'auditor_req'
+                    ];
+                    togglesToTurnOff.forEach(id => {
+                        const input = document.getElementById(id) as HTMLInputElement | null;
+                        if (input && input.checked) {
+                            input.checked = false;
+                        }
+                    });
+                }
+            });
+        }
+
+        // Toggle: Levanta Mkt -> Sincronizar categoría Marketing (id=12) en Admin (rol 2)
+        const tcktMktInput = document.getElementById('tckt_mkt') as HTMLInputElement | null;
+        if (tcktMktInput) {
+            tcktMktInput.addEventListener('change', () => {
+                const roleId = getSelectedRoleId();
+                if (roleId === 2) {
+                    const catMktInput = document.getElementById('cat-12') as HTMLInputElement | null;
+                    if (catMktInput && catMktInput.checked !== tcktMktInput.checked) {
+                        catMktInput.checked = tcktMktInput.checked;
+                        catMktInput.dispatchEvent(new Event('change', { bubbles: true }));
+                    }
+                }
             });
         }
     }
@@ -153,7 +206,6 @@ export function initializeUserEditForm() {
                 data.rolId = parseInt(rawRolId as string, 10);
             }
 
-
             try {
                 const response = await fetch(`/api/admin/usuarios`, {
                     method: 'PATCH',
@@ -166,36 +218,10 @@ export function initializeUserEditForm() {
                     throw new Error(errorData.message || 'Error al actualizar el usuario');
                 }
 
-                const originalRolIdText = form.dataset.originalRolId;
-                const originalClave = form.dataset.originalClave || "";
-                const claveCambiada = data.clave !== originalClave;
-
-                if ((originalRolIdText && data.rolId !== parseInt(originalRolIdText, 10)) || claveCambiada) {
-                    if (claveCambiada) {
-                        toast.success('Usuario actualizado. Sincronizando horario...', {
-                            duration: 3000
-                        });
-                        // Actualizar la clave original en el dataset para futuros submits
-                        form.dataset.originalClave = data.clave;
-                    } else {
-                        toast.success('Rol modificado. Recargando permisos para aplicar exclusiones...', {
-                            duration: 3000
-                        });
-                    }
-                    setTimeout(async () => {
-                        const { navigate } = await import('astro:transitions/client');
-                        navigate(window.location.pathname);
-                    }, 1500);
-                } else {
-                    toast.success('Usuario actualizado correctamente');
-                    if (submitBtn) {
-                        submitBtn.textContent = originalText;
-                        submitBtn.disabled = false;
-                    }
-                    if (overlay) {
-                        overlay.style.display = 'none';
-                    }
-                }
+                toast.success('Usuario actualizado correctamente');
+                setTimeout(() => {
+                    window.location.assign(window.location.pathname);
+                }, 800);
 
             } catch (error: any) {
                 console.error('Submit error:', error);
@@ -221,6 +247,7 @@ export function initializeUserEditForm() {
     }
 
     initHorarios();
+    initToggleListeners();
     initFormSubmit();
     initBackButton();
 }

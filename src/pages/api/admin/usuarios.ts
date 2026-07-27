@@ -122,36 +122,52 @@ export const PATCH: APIRoute = async ({ request }) => {
     // Create a strongly-typed and validated object for the update payload
     const updateData: Prisma.UsuarioUpdateInput = {};
 
+    // Si un superadmin edita su propio usuario, no puede cambiarse el rol ni desactivarse a sí mismo
+    const isSelfEditSuperAdmin = userBeforeUpdate.rolId === 3 && adminUserId === userIdToUpdate;
+
     if (updateDataInput.empresaId !== undefined) {
       updateData.empresa = { connect: { id: parseInt(updateDataInput.empresaId, 10) } };
     }
-    if (updateDataInput.rolId !== undefined) {
+    if (updateDataInput.rolId !== undefined && !isSelfEditSuperAdmin) {
       updateData.rol = { connect: { id: parseInt(updateDataInput.rolId, 10) } };
     }
     if (typeof updateDataInput.activo === 'boolean') {
-      updateData.activo = updateDataInput.activo;
+      updateData.activo = isSelfEditSuperAdmin ? true : updateDataInput.activo;
     }
-    if (typeof updateDataInput.acepta_tickets === 'boolean') {
-      updateData.acepta_tickets = updateDataInput.acepta_tickets;
+
+    // Regla 2.1: Al apagar el toggle de "Activo", apagar el resto de toggles en la BD
+    if (updateData.activo === false) {
+      updateData.acepta_tickets = false;
+      updateData.tckt_csh = false;
+      updateData.tckt_mkt = false;
+      updateData.atiende_csh = false;
+      updateData.atiende_mkt = false;
+      updateData.auditor_docs = false;
+      updateData.auditor_req = false;
+    } else {
+      if (typeof updateDataInput.acepta_tickets === 'boolean') {
+        updateData.acepta_tickets = updateDataInput.acepta_tickets;
+      }
+      if (typeof updateDataInput.tckt_csh === 'boolean') {
+        updateData.tckt_csh = updateDataInput.tckt_csh;
+      }
+      if (typeof updateDataInput.tckt_mkt === 'boolean') {
+        updateData.tckt_mkt = updateDataInput.tckt_mkt;
+      }
+      if (typeof updateDataInput.atiende_csh === 'boolean') {
+        updateData.atiende_csh = updateDataInput.atiende_csh;
+      }
+      if (typeof updateDataInput.atiende_mkt === 'boolean') {
+        updateData.atiende_mkt = updateDataInput.atiende_mkt;
+      }
+      if (typeof updateDataInput.auditor_docs === 'boolean') {
+        updateData.auditor_docs = updateDataInput.auditor_docs;
+      }
+      if (typeof updateDataInput.auditor_req === 'boolean') {
+        updateData.auditor_req = updateDataInput.auditor_req;
+      }
     }
-    if (typeof updateDataInput.tckt_csh === 'boolean') {
-      updateData.tckt_csh = updateDataInput.tckt_csh;
-    }
-    if (typeof updateDataInput.tckt_mkt === 'boolean') {
-      updateData.tckt_mkt = updateDataInput.tckt_mkt;
-    }
-    if (typeof updateDataInput.atiende_csh === 'boolean') {
-      updateData.atiende_csh = updateDataInput.atiende_csh;
-    }
-    if (typeof updateDataInput.atiende_mkt === 'boolean') {
-      updateData.atiende_mkt = updateDataInput.atiende_mkt;
-    }
-    if (typeof updateDataInput.auditor_docs === 'boolean') {
-      updateData.auditor_docs = updateDataInput.auditor_docs;
-    }
-    if (typeof updateDataInput.auditor_req === 'boolean') {
-      updateData.auditor_req = updateDataInput.auditor_req;
-    }
+
     if (updateDataInput.horario_disponibilidad !== undefined) {
       updateData.horario_disponibilidad = updateDataInput.horario_disponibilidad;
     }

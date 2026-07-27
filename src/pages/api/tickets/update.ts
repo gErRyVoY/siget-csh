@@ -4,6 +4,7 @@ import { prisma } from '@/lib/db';
 import type { Prisma, Prioridad } from '@prisma/client';
 import { sendNotification } from '../notifications/sse';
 import { sendTicketNotification } from '@/services/emailService';
+import { canAgentBeAssignedManually } from '@/services/ticketAssignmentService';
 
 const PRIVILEGED_ROLES = [2, 3]; // admin y superadmin
 
@@ -57,12 +58,13 @@ export const PATCH: APIRoute = async ({ request, locals }) => {
         if ('atiendeId' in updateDataInput && canEditAtiende) {
             const parsedAtiendeId = Number(updateDataInput.atiendeId);
             if (parsedAtiendeId > 0) {
-                const targetAgent = await prisma.usuario.findUnique({
-                    where: { id: parsedAtiendeId },
-                    select: { id: true, activo: true }
-                });
-                if (!targetAgent || !targetAgent.activo) {
-                    return new Response(JSON.stringify({ message: 'El usuario seleccionado para atender no está activo.' }), { status: 400 });
+                const validation = await canAgentBeAssignedManually(
+                    parsedAtiendeId,
+                    ticketBeforeUpdate.categoriaId,
+                    ticketBeforeUpdate.subcategoriaId
+                );
+                if (!validation.canAssign) {
+                    return new Response(JSON.stringify({ message: validation.reason || 'El usuario seleccionado no puede atender este ticket.' }), { status: 400 });
                 }
                 updateData.atiende = { connect: { id: parsedAtiendeId } };
             } else if (ticketBeforeUpdate.atiendeId !== null) {
