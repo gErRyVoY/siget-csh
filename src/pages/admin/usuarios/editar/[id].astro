@@ -793,7 +793,7 @@ sinAccesoCats.sort((a, b) => a.nombre.localeCompare(b.nombre));
                               <div class="shrink-0" onclick="event.stopPropagation();">
                                 <label class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full toggle-wrapper group/catbtn" data-full={isFullCategory ? "true" : "false"} title={showCheckedUiCat ? "Revocar categoría entera" : "Permitir categoría entera"}>
                                   <input type="checkbox" id={`cat-${cat.id}`} class="sr-only peer category-toggle main-category-toggle" data-categoria-id={cat.id} data-usuario-id={user.id} checked={showCheckedUiCat} disabled={!canEditCategorias}/>
-                                  <div class="toggle-bg h-5 w-9 absolute rounded-full transition-all peer-focus:outline-none opacity-50 peer-checked:opacity-100 disabled:opacity-30 peer-disabled:cursor-not-allowed bg-muted-foreground border border-transparent group-data-[full=false]/catbtn:peer-checked:bg-primary group-data-[full=true]/catbtn:peer-checked:bg-secondary group-data-[full=true]/catbtn:border-secondary group-data-[full=true]/catbtn:peer-checked:border-transparent" />
+                                  <div class="toggle-bg h-5 w-9 absolute rounded-full transition-all peer-focus:outline-none opacity-50 peer-checked:opacity-100 disabled:opacity-30 peer-disabled:cursor-not-allowed bg-muted-foreground border border-white group-data-[full=false]/catbtn:peer-checked:bg-primary group-data-[full=true]/catbtn:peer-checked:bg-secondary" />
                                   <div class="toggle-knob absolute top-[2px] left-[2px] bg-white border border-gray-300 rounded-full h-4 w-4 transition-transform z-10" class:list={[{'translate-x-[16px] border-white': showCheckedUiCat}]} />
                                 </label>
                               </div>
@@ -880,7 +880,7 @@ sinAccesoCats.sort((a, b) => a.nombre.localeCompare(b.nombre));
                               <div class="shrink-0" onclick="event.stopPropagation();">
                                 <label class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full toggle-wrapper group/catbtn" data-full="false" title="Permitir categoría entera">
                                   <input type="checkbox" id={`cat-${cat.id}`} class="sr-only peer category-toggle main-category-toggle" data-categoria-id={cat.id} data-usuario-id={user.id} checked={false} disabled={!canEditCategorias}/>
-                                  <div class="toggle-bg h-5 w-9 absolute rounded-full transition-all peer-focus:outline-none opacity-50 peer-checked:opacity-100 disabled:opacity-30 peer-disabled:cursor-not-allowed bg-muted-foreground border border-transparent group-data-[full=false]/catbtn:peer-checked:bg-primary" />
+                                  <div class="toggle-bg h-5 w-9 absolute rounded-full transition-all peer-focus:outline-none opacity-50 peer-checked:opacity-100 disabled:opacity-30 peer-disabled:cursor-not-allowed bg-muted-foreground border border-white group-data-[full=false]/catbtn:peer-checked:bg-primary group-data-[full=true]/catbtn:peer-checked:bg-secondary" />
                                   <div class="toggle-knob absolute top-[2px] left-[2px] bg-white border border-gray-300 rounded-full h-4 w-4 transition-transform z-10" />
                                 </label>
                               </div>
@@ -1018,35 +1018,59 @@ sinAccesoCats.sort((a, b) => a.nombre.localeCompare(b.nombre));
         const usuarioId = input.dataset.usuarioId;
         const activo = input.checked;
 
+        function refreshAllToggleStates() {
+            // 1. Actualizar data-full en los acordeones de subcategorías
+            document.querySelectorAll('.sub-accordion').forEach(subAcc => {
+                const summaryToggle = subAcc.querySelector(':scope > summary .category-toggle') as HTMLInputElement | null;
+                if (!summaryToggle) return;
+                const wrapper = summaryToggle.closest('.toggle-wrapper');
+                if (!wrapper) return;
+
+                const childInputs = Array.from(subAcc.querySelectorAll('.p-2 .category-toggle')) as HTMLInputElement[];
+                if (childInputs.length > 0) {
+                    const allChecked = childInputs.every(c => c.checked);
+                    wrapper.setAttribute('data-full', (summaryToggle.checked && allChecked) ? 'true' : 'false');
+                }
+            });
+
+            // 2. Actualizar data-full y knob en las tarjetas de categoría principales
+            document.querySelectorAll('.group\\/cat').forEach(catCard => {
+                const parentToggle = catCard.querySelector('.main-category-toggle') as HTMLInputElement | null;
+                if (!parentToggle) return;
+                const parentLabel = parentToggle.closest('.toggle-wrapper');
+                if (!parentLabel) return;
+
+                const childSubs = Array.from(catCard.querySelectorAll('.category-toggle[data-subcategoria-id]')) as HTMLInputElement[];
+                if (childSubs.length > 0) {
+                    const totalSubs = childSubs.length;
+                    const activeSubs = childSubs.filter(c => c.checked).length;
+                    const isFull = activeSubs === totalSubs;
+
+                    parentToggle.checked = activeSubs > 0;
+                    parentLabel.setAttribute('data-full', isFull ? 'true' : 'false');
+
+                    const knob = parentLabel.querySelector('.toggle-knob');
+                    if (knob) {
+                        if (activeSubs > 0) {
+                            knob.classList.add('translate-x-[16px]', 'border-white');
+                        } else {
+                            knob.classList.remove('translate-x-[16px]', 'border-white');
+                        }
+                    }
+                }
+            });
+        }
+
         // Visual cascade: if a category is unchecked/checked, cascade visual state to its subcategories instantly
         if (!subcategoriaId) {
            const childSubs = document.querySelectorAll(`.category-toggle[data-categoria-id="${categoriaId}"][data-subcategoria-id]`);
            childSubs.forEach(child => {
              const childInput = child as HTMLInputElement;
              childInput.checked = activo;
-             const parentLabel = childInput.closest('.toggle-wrapper');
-             if (parentLabel) parentLabel.setAttribute('data-inherited', activo ? 'true' : 'false');
            });
-           
-           const btnLabel = input.closest('.toggle-wrapper');
-           if (btnLabel) {
-               btnLabel.setAttribute('data-full', activo ? 'true' : 'false');
-           }
-           
-           // Actualizar el knob del parent (porque usamos class:list condicionado)
-           const knob = btnLabel?.querySelector('.toggle-knob');
-           if (knob) {
-                if (activo) {
-                    knob.classList.add('translate-x-[16px]', 'border-white');
-                } else {
-                    knob.classList.remove('translate-x-[16px]', 'border-white');
-                }
-           }
         } else {
             // --- Cascada visual: si se apaga una subcategoría, apagar todos sus hijos recursivamente ---
             if (!activo) {
-                // Buscar todos los toggles que son "descendientes" de este nodo dentro de la misma categoría.
-                // Un descendiente tiene data-subcategoria-id cuyo toggle-wrapper esté dentro del contenedor padre del toggle actual.
                 const currentWrapper = input.closest('details');
                 if (currentWrapper) {
                     const childToggles = currentWrapper.querySelectorAll<HTMLInputElement>(`.category-toggle[data-categoria-id="${categoriaId}"][data-subcategoria-id]`);
@@ -1061,41 +1085,9 @@ sinAccesoCats.sort((a, b) => a.nombre.localeCompare(b.nombre));
                     });
                 }
             }
-
-            // Update parent dynamically based on partial vs full
-            const childSubs = Array.from(document.querySelectorAll(`.category-toggle[data-categoria-id="${categoriaId}"][data-subcategoria-id]`));
-            const totalSubs = childSubs.length;
-            const activeSubs = childSubs.filter(c => (c as HTMLInputElement).checked).length;
-            
-            const parentToggle = document.querySelector(`.main-category-toggle[data-categoria-id="${categoriaId}"]`) as HTMLInputElement;
-            if (parentToggle) {
-                const parentLabel = parentToggle.closest('.toggle-wrapper');
-                const knob = parentLabel?.querySelector('.toggle-knob');
-                
-                let isFull = false;
-                let isPartial = false;
-                
-                if (activeSubs === totalSubs) {
-                    parentToggle.checked = true;
-                    isFull = true;
-                } else if (activeSubs > 0) {
-                    parentToggle.checked = true;
-                    isPartial = true;
-                } else {
-                    parentToggle.checked = false;
-                }
-                
-                if (parentLabel) parentLabel.setAttribute('data-full', isFull ? 'true' : 'false');
-                
-                if (knob) {
-                    if (isFull || isPartial) {
-                        knob.classList.add('translate-x-[16px]', 'border-white');
-                    } else {
-                        knob.classList.remove('translate-x-[16px]', 'border-white');
-                    }
-                }
-            }
         }
+
+        refreshAllToggleStates();
 
         try {
           const res = await fetch("/api/admin/usuarios/categorias", {

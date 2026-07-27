@@ -26,6 +26,27 @@ const explicitStateSub = assignedUserCategories[subKey];
 const isInheritedSub = (inheritedCategories[subKey] === true || isInheritedCat || explicitStateCat === true) && explicitStateSub !== false;
 const isCheckedSub = explicitStateSub !== undefined ? explicitStateSub : isInheritedSub;
 const hasChildren = node.children && node.children.length > 0;
+
+// Determinar si el encendido es TOTAL (Guinda / secondary) o PARCIAL (Dorado / primary)
+let isFullSub = true;
+if (hasChildren) {
+    function areAllDescendantsChecked(n: UserSubcatTreeNode): boolean {
+        return n.children.every(child => {
+            const sKey = `${catId}-${child.id}`;
+            const expSub = assignedUserCategories[sKey];
+            const inhSub = (inheritedCategories[sKey] === true || isInheritedCat || explicitStateCat === true) && expSub !== false;
+            const isAct = expSub !== undefined ? expSub : inhSub;
+            if (!isAct) return false;
+            if (child.children && child.children.length > 0) {
+                return areAllDescendantsChecked(child);
+            }
+            return true;
+        });
+    }
+    isFullSub = isCheckedSub && areAllDescendantsChecked(node);
+} else {
+    isFullSub = isCheckedSub;
+}
 ---
 
 {hasChildren ? (
@@ -38,9 +59,9 @@ const hasChildren = node.children && node.children.length > 0;
         <span class="text-[13px] font-semibold text-foreground group-hover/subsum:text-white transition-colors truncate" title={node.nombre}>{node.nombre}</span>
       </div>
       <div class="shrink-0" onclick="event.stopPropagation();">
-        <label class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full toggle-wrapper group/sub" data-inherited={isInheritedSub ? "true" : "false"} title={isCheckedSub ? "Revocar acceso" : "Otorgar acceso"}>
+        <label class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full toggle-wrapper group/sub" data-full={isFullSub ? "true" : "false"} title={isCheckedSub ? "Revocar acceso" : "Otorgar acceso"}>
           <input type="checkbox" id={`sub-${catId}-${node.id}`} class="sr-only peer category-toggle" data-categoria-id={catId} data-subcategoria-id={node.id} data-usuario-id={userId} checked={isCheckedSub} disabled={!canEdit}/>
-          <div class="toggle-bg h-5 w-9 absolute rounded-full transition-all peer-focus:outline-none opacity-50 peer-checked:opacity-100 disabled:opacity-30 peer-disabled:cursor-not-allowed border-box bg-muted-foreground border border-transparent group-data-[inherited=false]/sub:peer-checked:bg-primary group-data-[inherited=true]/sub:peer-checked:bg-secondary group-data-[inherited=true]/sub:border-secondary group-data-[inherited=true]/sub:peer-checked:border-transparent" />
+          <div class="toggle-bg h-5 w-9 absolute rounded-full transition-all peer-focus:outline-none opacity-50 peer-checked:opacity-100 disabled:opacity-30 peer-disabled:cursor-not-allowed border-box bg-muted-foreground border border-white group-data-[full=false]/sub:peer-checked:bg-primary group-data-[full=true]/sub:peer-checked:bg-secondary" />
           <div class="toggle-knob absolute top-[2px] left-[2px] bg-white border border-gray-300 rounded-full h-4 w-4 transition-transform peer-checked:translate-x-[16px] peer-checked:border-white z-10" />
         </label>
       </div>
@@ -63,9 +84,9 @@ const hasChildren = node.children && node.children.length > 0;
 ) : (
   <div class="flex items-center justify-between gap-4 p-2 rounded hover:bg-secondary hover:text-white transition-colors group/subitem">
     <label for={`sub-${catId}-${node.id}`} class="text-[13px] cursor-pointer select-none truncate pr-2 flex-1 text-muted-foreground group-hover/subitem:text-white transition-colors" title={node.nombre}>{node.nombre}</label>
-    <label class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full toggle-wrapper group/sub" data-inherited={isInheritedSub ? "true" : "false"} title={isCheckedSub ? "Revocar acceso" : "Otorgar acceso"}>
+    <label class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full toggle-wrapper group/sub" data-full="true" title={isCheckedSub ? "Revocar acceso" : "Otorgar acceso"}>
       <input type="checkbox" id={`sub-${catId}-${node.id}`} class="sr-only peer category-toggle" data-categoria-id={catId} data-subcategoria-id={node.id} data-usuario-id={userId} checked={isCheckedSub} disabled={!canEdit}/>
-      <div class="toggle-bg h-5 w-9 absolute rounded-full transition-all peer-focus:outline-none opacity-50 peer-checked:opacity-100 disabled:opacity-30 peer-disabled:cursor-not-allowed border-box bg-muted-foreground border border-transparent group-data-[inherited=false]/sub:peer-checked:bg-primary group-data-[inherited=true]/sub:peer-checked:bg-secondary group-data-[inherited=true]/sub:border-secondary group-data-[inherited=true]/sub:peer-checked:border-transparent" />
+      <div class="toggle-bg h-5 w-9 absolute rounded-full transition-all peer-focus:outline-none opacity-50 peer-checked:opacity-100 disabled:opacity-30 peer-disabled:cursor-not-allowed border-box bg-muted-foreground border border-white group-data-[full=false]/sub:peer-checked:bg-primary group-data-[full=true]/sub:peer-checked:bg-secondary" />
       <div class="toggle-knob absolute top-[2px] left-[2px] bg-white border border-gray-300 rounded-full h-4 w-4 transition-transform peer-checked:translate-x-[16px] peer-checked:border-white z-10" />
     </label>
   </div>
