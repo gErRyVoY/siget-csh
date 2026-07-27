@@ -72,3 +72,12 @@
 
 - [x] **4.1** Correr `npx astro check` y verificar compilación limpia con 0 errores.
 - [x] **4.2** Probar los flujos dinámicos con distintos roles y actualizar el estado de tareas.
+
+---
+
+## 🔴 FASE 5: Correcciones Post-Despliegue (2026-07-27)
+
+- [x] **5.1** **Superadmin bloqueado en Categorías**: Se creó `canEditCategorias` independiente de `canEdit`/`isTargetSelfSuperAdmin` para que los toggles de categorías siempre sean editables para Admin y Superadmin, incluso en la edición del propio perfil.
+- [x] **5.2** **Cascada de apagado de subcategoría a hijos**: Se añadió lógica en el cliente (`[id].astro` script) para que al apagar una subcategoría con hijos, se recorra el `details` padre del DOM y se apaguen visualmente todos los `category-toggle` descendientes (y se actualicen sus knobs).
+- [x] **5.3** **"Habilitadas" mostraba subcategorías inactivas**: Se refactorizó la construcción del árbol SSR con dos funciones (`filterActiveSubtree`/`filterInactiveSubtree`) y se añadieron los campos `enabledSubcategorias` / `disabledSubcategorias` a `UserCatNode`. Las tarjetas en "Habilitadas" ahora solo muestran las subcategorías activas y agregan un sub-acordeón interno "Sin acceso" para las inactivas.
+- [x] **5.4** Verificar compilación `npx astro check` con 0 errores. ✅ (149 archivos, 0 errores, 0 warnings)

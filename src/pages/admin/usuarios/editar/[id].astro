@@ -223,6 +223,8 @@ const showHorarioSection = targetRoleId === 2 && !isTargetSelfSuperAdmin; // Adm
 const isHorarioReadOnly = targetRoleId === 2; // Solo lectura para Admin
 const showSeccionesSection = (targetRoleId === 1 || targetRoleId === 2) && !isTargetSelfSuperAdmin;
 const showCategoriasSection = (targetRoleId === 2 || targetRoleId === 3); // Oculto para Usuario (1)
+// Los toggles de Categorías SIEMPRE son editables para Admin/Superadmin (no depende de self-edit)
+const canEditCategorias = canEdit && (currentUserRoleId === 2 || currentUserRoleId === 3);
 
 // Visibilidad de Toggles Superiores
 const showToggleActivo = !isTargetSelfSuperAdmin;
@@ -291,33 +293,97 @@ function isSubtreeActive(
 interface UserCatNode {
     id: number;
     nombre: string;
-    subcategorias: UserSubcatTreeNode[];
+    subcategorias: UserSubcatTreeNode[];        // todas (para la sección "Sin acceso")
+    enabledSubcategorias: UserSubcatTreeNode[]; // solo las activas (para la sección "Habilitadas")
+    disabledSubcategorias: UserSubcatTreeNode[];// solo las inactivas
+    isEnabled: boolean; // si al menos una subcategoría está activa (o la cat en sí)
+}
+
+function filterActiveSubtree(
+    node: UserSubcatTreeNode,
+    catId: number,
+    inheritedCategoriesMap: Record<string, boolean>,
+    assignedUserCategoriesMap: Record<string, boolean>
+): UserSubcatTreeNode | null {
+    const subKey = `${catId}-${node.id}`;
+    const explicitSub = assignedUserCategoriesMap[subKey];
+    const catKey = `${catId}-null`;
+    const explicitCat = assignedUserCategoriesMap[catKey];
+    const inheritedCat = inheritedCategoriesMap[catKey] === true;
+    const isInherited = (inheritedCategoriesMap[subKey] === true || inheritedCat || explicitCat === true) && explicitSub !== false;
+    const isActive = explicitSub !== undefined ? explicitSub : isInherited;
+
+    // Filtrar los hijos activos
+    const activeChildren = node.children
+        .map(c => filterActiveSubtree(c, catId, inheritedCategoriesMap, assignedUserCategoriesMap))
+        .filter((c): c is UserSubcatTreeNode => c !== null);
+
+    if (isActive || activeChildren.length > 0) {
+        return { ...node, children: activeChildren };
+    }
+    return null;
+}
+
+function filterInactiveSubtree(
+    node: UserSubcatTreeNode,
+    catId: number,
+    inheritedCategoriesMap: Record<string, boolean>,
+    assignedUserCategoriesMap: Record<string, boolean>
+): UserSubcatTreeNode | null {
+    const subKey = `${catId}-${node.id}`;
+    const explicitSub = assignedUserCategoriesMap[subKey];
+    const catKey = `${catId}-null`;
+    const explicitCat = assignedUserCategoriesMap[catKey];
+    const inheritedCat = inheritedCategoriesMap[catKey] === true;
+    const isInherited = (inheritedCategoriesMap[subKey] === true || inheritedCat || explicitCat === true) && explicitSub !== false;
+    const isActive = explicitSub !== undefined ? explicitSub : isInherited;
+
+    // Filtrar los hijos inactivos
+    const inactiveChildren = node.children
+        .map(c => filterInactiveSubtree(c, catId, inheritedCategoriesMap, assignedUserCategoriesMap))
+        .filter((c): c is UserSubcatTreeNode => c !== null);
+
+    if (!isActive || inactiveChildren.length > 0) {
+        return { ...node, children: inactiveChildren };
+    }
+    return null;
 }
 
 const habilitadasCats: UserCatNode[] = [];
 const sinAccesoCats: UserCatNode[] = [];
 
 categories.forEach((cat) => {
-  const subTree = buildUserSubcategoryTree(null, cat.id, subcategories, subcatRelations);
-  const catKey = `${cat.id}-null`;
-  const isInheritedCat = inheritedCategories[catKey] === true;
-  const explicitStateCat = assignedUserCategories[catKey];
-  const isCheckedCat = explicitStateCat !== undefined ? explicitStateCat : isInheritedCat;
+    const subTree = buildUserSubcategoryTree(null, cat.id, subcategories, subcatRelations);
+    const catKey = `${cat.id}-null`;
+    const isInheritedCat = inheritedCategories[catKey] === true;
+    const explicitStateCat = assignedUserCategories[catKey];
+    const isCheckedCat = explicitStateCat !== undefined ? explicitStateCat : isInheritedCat;
 
-  const hasActiveSub = subTree.some(node => isSubtreeActive(node, cat.id, inheritedCategories, assignedUserCategories));
-  const isEnabled = subTree.length === 0 ? isCheckedCat : hasActiveSub;
+    const enabledSubcategorias = subTree
+        .map(n => filterActiveSubtree(n, cat.id, inheritedCategories, assignedUserCategories))
+        .filter((n): n is UserSubcatTreeNode => n !== null);
 
-  const catNode: UserCatNode = {
-    id: cat.id,
-    nombre: cat.nombre,
-    subcategorias: subTree,
-  };
+    const disabledSubcategorias = subTree
+        .map(n => filterInactiveSubtree(n, cat.id, inheritedCategories, assignedUserCategories))
+        .filter((n): n is UserSubcatTreeNode => n !== null);
 
-  if (isEnabled) {
-    habilitadasCats.push(catNode);
-  } else {
-    sinAccesoCats.push(catNode);
-  }
+    const hasActiveSub = enabledSubcategorias.length > 0;
+    const isEnabled = subTree.length === 0 ? isCheckedCat : hasActiveSub;
+
+    const catNode: UserCatNode = {
+        id: cat.id,
+        nombre: cat.nombre,
+        subcategorias: subTree,
+        enabledSubcategorias,
+        disabledSubcategorias,
+        isEnabled,
+    };
+
+    if (isEnabled) {
+        habilitadasCats.push(catNode);
+    } else {
+        sinAccesoCats.push(catNode);
+    }
 });
 
 habilitadasCats.sort((a, b) => a.nombre.localeCompare(b.nombre));
@@ -707,23 +773,12 @@ sinAccesoCats.sort((a, b) => a.nombre.localeCompare(b.nombre));
                         const explicitStateCat = assignedUserCategories[catKey];
                         const isCheckedCat = explicitStateCat !== undefined ? explicitStateCat : isInheritedCat;
 
-                        let totalSubs = 0;
-                        let activeSubCount = 0;
-                        function countNodes(nodes: typeof cat.subcategorias) {
-                          nodes.forEach(n => {
-                            totalSubs++;
-                            const subKey = `${cat.id}-${n.id}`;
-                            const isInheritedSub = inheritedCategories[subKey] === true || isInheritedCat || explicitStateCat === true;
-                            const explicitStateSub = assignedUserCategories[subKey];
-                            const isCheckedSub = explicitStateSub !== undefined ? explicitStateSub : isInheritedSub;
-                            if (isCheckedSub) activeSubCount++;
-                            if (n.children) countNodes(n.children);
-                          });
-                        }
-                        countNodes(cat.subcategorias);
-
-                        const isFullCategory = totalSubs === 0 ? isCheckedCat : (activeSubCount === totalSubs && isCheckedCat);
-                        const isPartialCategory = activeSubCount > 0 && !isFullCategory;
+                        const enabledSubs = cat.enabledSubcategorias;
+                        const disabledSubs = cat.disabledSubcategorias;
+                        const totalSubs = cat.subcategorias.length;
+                        // Para el toggle: se considera "full" si isCheckedCat y no hay subs inactivas
+                        const isFullCategory = totalSubs === 0 ? isCheckedCat : (disabledSubs.length === 0 && isCheckedCat);
+                        const isPartialCategory = enabledSubs.length > 0 && !isFullCategory;
                         const showCheckedUiCat = isFullCategory || isPartialCategory;
 
                         return (
@@ -737,32 +792,56 @@ sinAccesoCats.sort((a, b) => a.nombre.localeCompare(b.nombre));
                               </div>
                               <div class="shrink-0" onclick="event.stopPropagation();">
                                 <label class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full toggle-wrapper group/catbtn" data-full={isFullCategory ? "true" : "false"} title={showCheckedUiCat ? "Revocar categoría entera" : "Permitir categoría entera"}>
-                                  <input type="checkbox" id={`cat-${cat.id}`} class="sr-only peer category-toggle main-category-toggle" data-categoria-id={cat.id} data-usuario-id={user.id} checked={showCheckedUiCat} disabled={!canEdit}/>
+                                  <input type="checkbox" id={`cat-${cat.id}`} class="sr-only peer category-toggle main-category-toggle" data-categoria-id={cat.id} data-usuario-id={user.id} checked={showCheckedUiCat} disabled={!canEditCategorias}/>
                                   <div class="toggle-bg h-5 w-9 absolute rounded-full transition-all peer-focus:outline-none opacity-50 peer-checked:opacity-100 disabled:opacity-30 peer-disabled:cursor-not-allowed bg-muted-foreground border border-transparent group-data-[full=false]/catbtn:peer-checked:bg-primary group-data-[full=true]/catbtn:peer-checked:bg-secondary group-data-[full=true]/catbtn:border-secondary group-data-[full=true]/catbtn:peer-checked:border-transparent" />
                                   <div class="toggle-knob absolute top-[2px] left-[2px] bg-white border border-gray-300 rounded-full h-4 w-4 transition-transform z-10" class:list={[{'translate-x-[16px] border-white': showCheckedUiCat}]} />
                                 </label>
                               </div>
                             </summary>
-                            {cat.subcategorias.length > 0 ? (
-                              <div class="p-3 space-y-1 bg-card rounded-b-lg">
-                                {cat.subcategorias.map(subNode => (
-                                  <UserSubcategoryItem
-                                    node={subNode}
-                                    catId={cat.id}
-                                    inheritedCategories={inheritedCategories}
-                                    assignedUserCategories={assignedUserCategories}
-                                    userId={user.id}
-                                    canEdit={canEdit}
-                                    isInheritedCat={isInheritedCat}
-                                    explicitStateCat={explicitStateCat}
-                                  />
-                                ))}
-                              </div>
-                            ) : (
-                              <div class="p-3 pl-8 bg-card rounded-b-lg text-[13px] text-muted-foreground italic">
-                                Sin subcategorías
-                              </div>
-                            )}
+                            <div class="p-3 space-y-1 bg-card rounded-b-lg">
+                              {/* Subcategorías habilitadas */}
+                              {enabledSubs.length > 0 && enabledSubs.map(subNode => (
+                                <UserSubcategoryItem
+                                  node={subNode}
+                                  catId={cat.id}
+                                  inheritedCategories={inheritedCategories}
+                                  assignedUserCategories={assignedUserCategories}
+                                  userId={user.id}
+                                  canEdit={canEditCategorias}
+                                  isInheritedCat={isInheritedCat}
+                                  explicitStateCat={explicitStateCat}
+                                />
+                              ))}
+                              {/* Sub-acordeón "Sin acceso" interno si hay subcategorías inactivas */}
+                              {disabledSubs.length > 0 && (
+                                <details class="group/sinac mt-2">
+                                  <summary class="flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground cursor-pointer list-none select-none outline-none hover:text-foreground transition-colors py-1">
+                                    <div class="transform transition-transform duration-200 group-open/sinac:rotate-90">
+                                      <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+                                    </div>
+                                    <span class="inline-block w-2 h-2 rounded-full bg-muted-foreground/40 shrink-0"></span>
+                                    Sin acceso ({disabledSubs.length})
+                                  </summary>
+                                  <div class="mt-1 pl-3 space-y-1 border-l border-dashed border-border">
+                                    {disabledSubs.map(subNode => (
+                                      <UserSubcategoryItem
+                                        node={subNode}
+                                        catId={cat.id}
+                                        inheritedCategories={inheritedCategories}
+                                        assignedUserCategories={assignedUserCategories}
+                                        userId={user.id}
+                                        canEdit={canEditCategorias}
+                                        isInheritedCat={isInheritedCat}
+                                        explicitStateCat={explicitStateCat}
+                                      />
+                                    ))}
+                                  </div>
+                                </details>
+                              )}
+                              {enabledSubs.length === 0 && disabledSubs.length === 0 && (
+                                <p class="text-[13px] text-muted-foreground italic pl-2">Sin subcategorías</p>
+                              )}
+                            </div>
                           </details>
                         );
                       })
@@ -787,25 +866,7 @@ sinAccesoCats.sort((a, b) => a.nombre.localeCompare(b.nombre));
                         const isInheritedCat = inheritedCategories[catKey] === true;
                         const explicitStateCat = assignedUserCategories[catKey];
                         const isCheckedCat = explicitStateCat !== undefined ? explicitStateCat : isInheritedCat;
-
-                        let totalSubs = 0;
-                        let activeSubCount = 0;
-                        function countNodes(nodes: typeof cat.subcategorias) {
-                          nodes.forEach(n => {
-                            totalSubs++;
-                            const subKey = `${cat.id}-${n.id}`;
-                            const isInheritedSub = inheritedCategories[subKey] === true || isInheritedCat || explicitStateCat === true;
-                            const explicitStateSub = assignedUserCategories[subKey];
-                            const isCheckedSub = explicitStateSub !== undefined ? explicitStateSub : isInheritedSub;
-                            if (isCheckedSub) activeSubCount++;
-                            if (n.children) countNodes(n.children);
-                          });
-                        }
-                        countNodes(cat.subcategorias);
-
-                        const isFullCategory = totalSubs === 0 ? isCheckedCat : (activeSubCount === totalSubs && isCheckedCat);
-                        const isPartialCategory = activeSubCount > 0 && !isFullCategory;
-                        const showCheckedUiCat = isFullCategory || isPartialCategory;
+                        const showCheckedUiCat = false; // Siempre apagado en "Sin acceso"
 
                         return (
                           <details class="group/cat bg-card border rounded-lg shadow-sm">
@@ -817,10 +878,10 @@ sinAccesoCats.sort((a, b) => a.nombre.localeCompare(b.nombre));
                                 <span class="text-[13px] font-bold uppercase truncate text-primary">{cat.nombre}</span>
                               </div>
                               <div class="shrink-0" onclick="event.stopPropagation();">
-                                <label class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full toggle-wrapper group/catbtn" data-full={isFullCategory ? "true" : "false"} title={showCheckedUiCat ? "Revocar categoría entera" : "Permitir categoría entera"}>
-                                  <input type="checkbox" id={`cat-${cat.id}`} class="sr-only peer category-toggle main-category-toggle" data-categoria-id={cat.id} data-usuario-id={user.id} checked={showCheckedUiCat} disabled={!canEdit}/>
-                                  <div class="toggle-bg h-5 w-9 absolute rounded-full transition-all peer-focus:outline-none opacity-50 peer-checked:opacity-100 disabled:opacity-30 peer-disabled:cursor-not-allowed bg-muted-foreground border border-transparent group-data-[full=false]/catbtn:peer-checked:bg-primary group-data-[full=true]/catbtn:peer-checked:bg-secondary group-data-[full=true]/catbtn:border-secondary group-data-[full=true]/catbtn:peer-checked:border-transparent" />
-                                  <div class="toggle-knob absolute top-[2px] left-[2px] bg-white border border-gray-300 rounded-full h-4 w-4 transition-transform z-10" class:list={[{'translate-x-[16px] border-white': showCheckedUiCat}]} />
+                                <label class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full toggle-wrapper group/catbtn" data-full="false" title="Permitir categoría entera">
+                                  <input type="checkbox" id={`cat-${cat.id}`} class="sr-only peer category-toggle main-category-toggle" data-categoria-id={cat.id} data-usuario-id={user.id} checked={false} disabled={!canEditCategorias}/>
+                                  <div class="toggle-bg h-5 w-9 absolute rounded-full transition-all peer-focus:outline-none opacity-50 peer-checked:opacity-100 disabled:opacity-30 peer-disabled:cursor-not-allowed bg-muted-foreground border border-transparent group-data-[full=false]/catbtn:peer-checked:bg-primary" />
+                                  <div class="toggle-knob absolute top-[2px] left-[2px] bg-white border border-gray-300 rounded-full h-4 w-4 transition-transform z-10" />
                                 </label>
                               </div>
                             </summary>
@@ -833,7 +894,7 @@ sinAccesoCats.sort((a, b) => a.nombre.localeCompare(b.nombre));
                                     inheritedCategories={inheritedCategories}
                                     assignedUserCategories={assignedUserCategories}
                                     userId={user.id}
-                                    canEdit={canEdit}
+                                    canEdit={canEditCategorias}
                                     isInheritedCat={isInheritedCat}
                                     explicitStateCat={explicitStateCat}
                                   />
@@ -982,6 +1043,25 @@ sinAccesoCats.sort((a, b) => a.nombre.localeCompare(b.nombre));
                 }
            }
         } else {
+            // --- Cascada visual: si se apaga una subcategoría, apagar todos sus hijos recursivamente ---
+            if (!activo) {
+                // Buscar todos los toggles que son "descendientes" de este nodo dentro de la misma categoría.
+                // Un descendiente tiene data-subcategoria-id cuyo toggle-wrapper esté dentro del contenedor padre del toggle actual.
+                const currentWrapper = input.closest('details');
+                if (currentWrapper) {
+                    const childToggles = currentWrapper.querySelectorAll<HTMLInputElement>(`.category-toggle[data-categoria-id="${categoriaId}"][data-subcategoria-id]`);
+                    childToggles.forEach(childInput => {
+                        if (childInput !== input) {
+                            childInput.checked = false;
+                            const childKnob = childInput.closest('.toggle-wrapper')?.querySelector('.toggle-knob');
+                            if (childKnob) {
+                                childKnob.classList.remove('translate-x-[16px]', 'border-white');
+                            }
+                        }
+                    });
+                }
+            }
+
             // Update parent dynamically based on partial vs full
             const childSubs = Array.from(document.querySelectorAll(`.category-toggle[data-categoria-id="${categoriaId}"][data-subcategoria-id]`));
             const totalSubs = childSubs.length;

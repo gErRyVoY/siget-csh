@@ -22,8 +22,8 @@ interface Props {
 const { node, catId, inheritedCategories, assignedUserCategories, userId, canEdit, isInheritedCat, explicitStateCat } = Astro.props;
 
 const subKey = `${catId}-${node.id}`;
-const isInheritedSub = inheritedCategories[subKey] === true || isInheritedCat || explicitStateCat === true;
 const explicitStateSub = assignedUserCategories[subKey];
+const isInheritedSub = (inheritedCategories[subKey] === true || isInheritedCat || explicitStateCat === true) && explicitStateSub !== false;
 const isCheckedSub = explicitStateSub !== undefined ? explicitStateSub : isInheritedSub;
 const hasChildren = node.children && node.children.length > 0;
 ---
