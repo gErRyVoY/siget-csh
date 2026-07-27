@@ -109,10 +109,112 @@ export function initializeUserEditForm() {
         }
     }
 
-    // --- INTERACCIONES DINÁMICAS ENTRE TOGGLES ---
+    // --- INTERACCIONES DINÁMICAS ENTRE TOGGLES Y SECCIONES ---
     function initToggleListeners() {
         const rolSelect = document.getElementById('rolId') as HTMLSelectElement | null;
-        const getSelectedRoleId = () => rolSelect ? parseInt(rolSelect.value, 10) : 0;
+        const getSelectedRoleId = () => rolSelect ? parseInt(rolSelect.value, 10) : parseInt(form.dataset.originalRolId || '0', 10);
+
+        // Mapeo de IDs de sección
+        const SEC_CREAR_CSH = 1;
+        const SEC_TRASLADO = 2;
+        const SEC_CREAR_MKT = 3;
+        const SEC_SOPORTE_MIS_TKTS = 4;
+        const SEC_SOPORTE_DASHBOARD = 5;
+        const SEC_SOPORTE_TODOS = 6;
+        const SEC_MKT_MIS_TKTS = 7;
+        const SEC_MKT_DASHBOARD = 8;
+        const SEC_MKT_TODOS = 9;
+
+        function setSectionChecked(secId: number, checked: boolean) {
+            const input = document.getElementById(`sec-${secId}`) as HTMLInputElement | null;
+            if (input && input.checked !== checked) {
+                input.checked = checked;
+                input.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+        }
+
+        // Sincronización principal según el rol seleccionado
+        function syncTogglesAndSections(changedSource: string) {
+            const roleId = getSelectedRoleId();
+            const tcktCsh = (document.getElementById('tckt_csh') as HTMLInputElement | null)?.checked ?? false;
+            const tcktMkt = (document.getElementById('tckt_mkt') as HTMLInputElement | null)?.checked ?? false;
+            const atiendeCsh = (document.getElementById('atiende_csh') as HTMLInputElement | null)?.checked ?? false;
+            const atiendeMkt = (document.getElementById('atiende_mkt') as HTMLInputElement | null)?.checked ?? false;
+
+            if (roleId === 1) {
+                // ROL USUARIO
+                if (changedSource === 'tckt_csh') {
+                    setSectionChecked(SEC_CREAR_CSH, tcktCsh);
+                    setSectionChecked(SEC_SOPORTE_DASHBOARD, tcktCsh);
+                    setSectionChecked(SEC_SOPORTE_MIS_TKTS, tcktCsh);
+                }
+                if (changedSource === 'tckt_mkt') {
+                    setSectionChecked(SEC_CREAR_MKT, tcktMkt);
+                    setSectionChecked(SEC_MKT_DASHBOARD, tcktMkt);
+                }
+            } else if (roleId === 2 || roleId === 3) {
+                // ROL ADMIN / SUPERADMIN
+                if (changedSource === 'atiende_csh') {
+                    if (atiendeCsh) {
+                        setSectionChecked(SEC_CREAR_CSH, true);
+                        setSectionChecked(SEC_CREAR_MKT, true);
+                        setSectionChecked(SEC_TRASLADO, true);
+                        setSectionChecked(SEC_SOPORTE_DASHBOARD, true);
+                        setSectionChecked(SEC_SOPORTE_MIS_TKTS, true);
+                        setSectionChecked(SEC_SOPORTE_TODOS, true);
+                        setSectionChecked(SEC_MKT_DASHBOARD, true);
+                        setSectionChecked(SEC_MKT_MIS_TKTS, true);
+                        if (atiendeMkt) {
+                            setSectionChecked(SEC_MKT_TODOS, true);
+                        }
+                    } else {
+                        setSectionChecked(SEC_SOPORTE_TODOS, false);
+                    }
+                }
+
+                if (changedSource === 'atiende_mkt') {
+                    if (atiendeMkt) {
+                        setSectionChecked(SEC_CREAR_CSH, true);
+                        setSectionChecked(SEC_CREAR_MKT, true);
+                        setSectionChecked(SEC_TRASLADO, true);
+                        setSectionChecked(SEC_MKT_DASHBOARD, true);
+                        setSectionChecked(SEC_MKT_MIS_TKTS, true);
+                        setSectionChecked(SEC_MKT_TODOS, true);
+                        setSectionChecked(SEC_SOPORTE_DASHBOARD, true);
+                        setSectionChecked(SEC_SOPORTE_MIS_TKTS, true);
+                        if (atiendeCsh) {
+                            setSectionChecked(SEC_SOPORTE_TODOS, true);
+                        }
+
+                        // Sincronizar categoría Marketing (id=12)
+                        const catMktInput = document.getElementById('cat-12') as HTMLInputElement | null;
+                        if (catMktInput && !catMktInput.checked) {
+                            catMktInput.checked = true;
+                            catMktInput.dispatchEvent(new Event('change', { bubbles: true }));
+                        }
+                    } else {
+                        setSectionChecked(SEC_MKT_TODOS, false);
+
+                        // Desactivar categoría Marketing (id=12)
+                        const catMktInput = document.getElementById('cat-12') as HTMLInputElement | null;
+                        if (catMktInput && catMktInput.checked) {
+                            catMktInput.checked = false;
+                            catMktInput.dispatchEvent(new Event('change', { bubbles: true }));
+                        }
+                    }
+                }
+
+                if (changedSource === 'tckt_csh') {
+                    setSectionChecked(SEC_SOPORTE_DASHBOARD, tcktCsh || atiendeCsh);
+                    setSectionChecked(SEC_SOPORTE_MIS_TKTS, tcktCsh || atiendeCsh);
+                }
+
+                if (changedSource === 'tckt_mkt') {
+                    setSectionChecked(SEC_MKT_DASHBOARD, tcktMkt || atiendeMkt);
+                    setSectionChecked(SEC_MKT_MIS_TKTS, tcktMkt || atiendeMkt);
+                }
+            }
+        }
 
         // Toggle: Activo -> Apagar los demás al desmarcar
         const activoInput = document.getElementById('activo') as HTMLInputElement | null;
@@ -138,20 +240,15 @@ export function initializeUserEditForm() {
             });
         }
 
-        // Toggle: Levanta Mkt -> Sincronizar categoría Marketing (id=12) en Admin (rol 2)
-        const tcktMktInput = document.getElementById('tckt_mkt') as HTMLInputElement | null;
-        if (tcktMktInput) {
-            tcktMktInput.addEventListener('change', () => {
-                const roleId = getSelectedRoleId();
-                if (roleId === 2) {
-                    const catMktInput = document.getElementById('cat-12') as HTMLInputElement | null;
-                    if (catMktInput && catMktInput.checked !== tcktMktInput.checked) {
-                        catMktInput.checked = tcktMktInput.checked;
-                        catMktInput.dispatchEvent(new Event('change', { bubbles: true }));
-                    }
-                }
-            });
-        }
+        // Listeners para toggles
+        ['tckt_csh', 'tckt_mkt', 'atiende_csh', 'atiende_mkt'].forEach(toggleId => {
+            const input = document.getElementById(toggleId) as HTMLInputElement | null;
+            if (input) {
+                input.addEventListener('change', () => {
+                    syncTogglesAndSections(toggleId);
+                });
+            }
+        });
     }
 
     function initFormSubmit() {
