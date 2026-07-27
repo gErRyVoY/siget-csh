@@ -3,6 +3,7 @@ import MainLayout from "@/layouts/MainLayout.astro";
 import { prisma } from "@/lib/db";
 import type { Usuario, Empresa, Rol } from "@prisma/client";
 import { getSession } from "auth-astro/server";
+import UserSubcategoryItem from "./UserSubcategoryItem.astro";
 
 const { id } = Astro.params;
 const session = await getSession(Astro.request);
@@ -16,20 +17,15 @@ const user = await prisma.usuario.findUnique({
     asignaciones_categorias: true,
   },
 });
-const empresas = await prisma.empresa.findMany({ orderBy: { nombre: "asc" } });
-const roles = await prisma.rol.findMany({ orderBy: { rol: "asc" } });
-const secciones = await prisma.seccion.findMany({ orderBy: [{ grupo: "asc" }, { nombre: "asc" }] });
-const categoriasMaster = await prisma.categoria.findMany({
-  where: { activo: true },
-  include: {
-    subcategoria_categorias: {
-      where: { activo: true, subcategoria: { activo: true } },
-      include: { subcategoria: true },
-      orderBy: { subcategoria: { nombre: 'asc'} }
-    }
-  },
-  orderBy: { nombre: 'asc' }
-});
+
+const [empresas, roles, secciones, categories, subcategories, subcatRelations] = await Promise.all([
+  prisma.empresa.findMany({ orderBy: { nombre: "asc" } }),
+  prisma.rol.findMany({ orderBy: { rol: "asc" } }),
+  prisma.seccion.findMany({ orderBy: [{ grupo: "asc" }, { nombre: "asc" }] }),
+  prisma.categoria.findMany({ where: { activo: true }, orderBy: { nombre: "asc" } }),
+  prisma.subcategoria.findMany({ where: { activo: true }, orderBy: { nombre: "asc" } }),
+  prisma.subcategoriaCategorias.findMany({ where: { activo: true } }),
+]);
 
 if (!user) {
   return Astro.redirect("/404");
@@ -236,30 +232,91 @@ const showToggleAtiendeMKT = targetRoleId !== 1;
 const showToggleAuditorDocs = targetRoleId !== 1 && !areAuditorChecksHidden;
 const showToggleAuditorReqs = targetRoleId !== 1 && !areAuditorChecksHidden;
 
-// Clasificación de Categorías (Habilitadas vs Sin acceso)
-const habilitadasCats: typeof categoriasMaster = [];
-const sinAccesoCats: typeof categoriasMaster = [];
+// Estructura recursiva para subcategorías en árbol (soporta N niveles)
+interface UserSubcatTreeNode {
+    id: number;
+    nombre: string;
+    parent_subcategoriaId: number | null;
+    children: UserSubcatTreeNode[];
+}
 
-categoriasMaster.forEach((cat) => {
+function buildUserSubcategoryTree(
+    parentSubId: number | null, 
+    catId: number, 
+    allSubs: typeof subcategories, 
+    relations: typeof subcatRelations
+): UserSubcatTreeNode[] {
+    const levelSubs = allSubs.filter(sub => {
+        if (parentSubId === null) {
+            const isLinked = relations.some(r => r.categoriaId === catId && r.subcategoriaId === sub.id);
+            return isLinked && sub.parent_subcategoriaId === null;
+        } else {
+            return sub.parent_subcategoriaId === parentSubId;
+        }
+    });
+
+    return levelSubs.map(sub => {
+        const children = buildUserSubcategoryTree(sub.id, catId, allSubs, relations);
+        return {
+            id: sub.id,
+            nombre: sub.nombre,
+            parent_subcategoriaId: sub.parent_subcategoriaId,
+            children: children.sort((a, b) => a.nombre.localeCompare(b.nombre))
+        };
+    }).sort((a, b) => a.nombre.localeCompare(b.nombre));
+}
+
+function isSubtreeActive(
+  node: UserSubcatTreeNode, 
+  catId: number, 
+  inheritedCategoriesMap: Record<string, boolean>, 
+  assignedUserCategoriesMap: Record<string, boolean>
+): boolean {
+  const catKey = `${catId}-null`;
+  const isInheritedCat = inheritedCategoriesMap[catKey] === true;
+  const explicitStateCat = assignedUserCategoriesMap[catKey];
+
+  const subKey = `${catId}-${node.id}`;
+  const isInheritedSub = inheritedCategoriesMap[subKey] === true || isInheritedCat || explicitStateCat === true;
+  const explicitStateSub = assignedUserCategoriesMap[subKey];
+  const isCheckedSub = explicitStateSub !== undefined ? explicitStateSub : isInheritedSub;
+
+  if (isCheckedSub) return true;
+  if (node.children && node.children.length > 0) {
+    return node.children.some(child => isSubtreeActive(child, catId, inheritedCategoriesMap, assignedUserCategoriesMap));
+  }
+  return false;
+}
+
+interface UserCatNode {
+    id: number;
+    nombre: string;
+    subcategorias: UserSubcatTreeNode[];
+}
+
+const habilitadasCats: UserCatNode[] = [];
+const sinAccesoCats: UserCatNode[] = [];
+
+categories.forEach((cat) => {
+  const subTree = buildUserSubcategoryTree(null, cat.id, subcategories, subcatRelations);
   const catKey = `${cat.id}-null`;
   const isInheritedCat = inheritedCategories[catKey] === true;
   const explicitStateCat = assignedUserCategories[catKey];
   const isCheckedCat = explicitStateCat !== undefined ? explicitStateCat : isInheritedCat;
 
-  let activeSubCount = 0;
-  cat.subcategoria_categorias.forEach((subRel) => {
-    const subKey = `${cat.id}-${subRel.subcategoria.id}`;
-    const isInheritedSub = inheritedCategories[subKey] === true || isInheritedCat || explicitStateCat === true;
-    const explicitStateSub = assignedUserCategories[subKey];
-    const isCheckedSub = explicitStateSub !== undefined ? explicitStateSub : isInheritedSub;
-    if (isCheckedSub) activeSubCount++;
-  });
+  const hasActiveSub = subTree.some(node => isSubtreeActive(node, cat.id, inheritedCategories, assignedUserCategories));
+  const isEnabled = subTree.length === 0 ? isCheckedCat : hasActiveSub;
 
-  const isEnabled = cat.subcategoria_categorias.length === 0 ? isCheckedCat : activeSubCount > 0;
+  const catNode: UserCatNode = {
+    id: cat.id,
+    nombre: cat.nombre,
+    subcategorias: subTree,
+  };
+
   if (isEnabled) {
-    habilitadasCats.push(cat);
+    habilitadasCats.push(catNode);
   } else {
-    sinAccesoCats.push(cat);
+    sinAccesoCats.push(catNode);
   }
 });
 
@@ -650,15 +707,20 @@ sinAccesoCats.sort((a, b) => a.nombre.localeCompare(b.nombre));
                         const explicitStateCat = assignedUserCategories[catKey];
                         const isCheckedCat = explicitStateCat !== undefined ? explicitStateCat : isInheritedCat;
 
+                        let totalSubs = 0;
                         let activeSubCount = 0;
-                        let totalSubs = cat.subcategoria_categorias.length;
-                        cat.subcategoria_categorias.forEach(subRel => {
-                          const subKey = `${cat.id}-${subRel.subcategoria.id}`;
-                          const isInheritedSub = inheritedCategories[subKey] === true || isInheritedCat || explicitStateCat === true;
-                          const explicitStateSub = assignedUserCategories[subKey];
-                          const isCheckedSub = explicitStateSub !== undefined ? explicitStateSub : isInheritedSub;
-                          if (isCheckedSub) activeSubCount++;
-                        });
+                        function countNodes(nodes: typeof cat.subcategorias) {
+                          nodes.forEach(n => {
+                            totalSubs++;
+                            const subKey = `${cat.id}-${n.id}`;
+                            const isInheritedSub = inheritedCategories[subKey] === true || isInheritedCat || explicitStateCat === true;
+                            const explicitStateSub = assignedUserCategories[subKey];
+                            const isCheckedSub = explicitStateSub !== undefined ? explicitStateSub : isInheritedSub;
+                            if (isCheckedSub) activeSubCount++;
+                            if (n.children) countNodes(n.children);
+                          });
+                        }
+                        countNodes(cat.subcategorias);
 
                         const isFullCategory = totalSubs === 0 ? isCheckedCat : (activeSubCount === totalSubs && isCheckedCat);
                         const isPartialCategory = activeSubCount > 0 && !isFullCategory;
@@ -681,25 +743,20 @@ sinAccesoCats.sort((a, b) => a.nombre.localeCompare(b.nombre));
                                 </label>
                               </div>
                             </summary>
-                            {cat.subcategoria_categorias.length > 0 ? (
-                              <div class="p-3 space-y-3 pl-8 bg-card rounded-b-lg">
-                                {cat.subcategoria_categorias.map(subRel => {
-                                  const subcat = subRel.subcategoria;
-                                  const subKey = `${cat.id}-${subcat.id}`;
-                                  const isInheritedSub = inheritedCategories[subKey] === true || isInheritedCat || explicitStateCat === true;
-                                  const explicitStateSub = assignedUserCategories[subKey];
-                                  const isCheckedSub = explicitStateSub !== undefined ? explicitStateSub : isInheritedSub;
-                                  return (
-                                    <div class="flex items-center justify-between gap-4">
-                                      <label for={`sub-${cat.id}-${subcat.id}`} class="text-[13px] cursor-pointer select-none truncate pr-2 flex-1 text-muted-foreground" title={subcat.nombre}>{subcat.nombre}</label>
-                                      <label class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full toggle-wrapper group/sub" data-inherited={isInheritedSub ? "true" : "false"} title={isCheckedSub ? "Revocar acceso" : "Otorgar acceso"}>
-                                        <input type="checkbox" id={`sub-${cat.id}-${subcat.id}`} class="sr-only peer category-toggle" data-categoria-id={cat.id} data-subcategoria-id={subcat.id} data-usuario-id={user.id} checked={isCheckedSub} disabled={!canEdit}/>
-                                        <div class="toggle-bg h-5 w-9 absolute rounded-full transition-all peer-focus:outline-none opacity-50 peer-checked:opacity-100 disabled:opacity-30 peer-disabled:cursor-not-allowed border-box bg-muted-foreground border border-transparent group-data-[inherited=false]/sub:peer-checked:bg-primary group-data-[inherited=true]/sub:peer-checked:bg-secondary group-data-[inherited=true]/sub:border-secondary group-data-[inherited=true]/sub:peer-checked:border-transparent" />
-                                        <div class="toggle-knob absolute top-[2px] left-[2px] bg-white border border-gray-300 rounded-full h-4 w-4 transition-transform peer-checked:translate-x-[16px] peer-checked:border-white z-10" />
-                                      </label>
-                                    </div>
-                                  )
-                                })}
+                            {cat.subcategorias.length > 0 ? (
+                              <div class="p-3 space-y-1 bg-card rounded-b-lg">
+                                {cat.subcategorias.map(subNode => (
+                                  <UserSubcategoryItem
+                                    node={subNode}
+                                    catId={cat.id}
+                                    inheritedCategories={inheritedCategories}
+                                    assignedUserCategories={assignedUserCategories}
+                                    userId={user.id}
+                                    canEdit={canEdit}
+                                    isInheritedCat={isInheritedCat}
+                                    explicitStateCat={explicitStateCat}
+                                  />
+                                ))}
                               </div>
                             ) : (
                               <div class="p-3 pl-8 bg-card rounded-b-lg text-[13px] text-muted-foreground italic">
@@ -731,15 +788,20 @@ sinAccesoCats.sort((a, b) => a.nombre.localeCompare(b.nombre));
                         const explicitStateCat = assignedUserCategories[catKey];
                         const isCheckedCat = explicitStateCat !== undefined ? explicitStateCat : isInheritedCat;
 
+                        let totalSubs = 0;
                         let activeSubCount = 0;
-                        let totalSubs = cat.subcategoria_categorias.length;
-                        cat.subcategoria_categorias.forEach(subRel => {
-                          const subKey = `${cat.id}-${subRel.subcategoria.id}`;
-                          const isInheritedSub = inheritedCategories[subKey] === true || isInheritedCat || explicitStateCat === true;
-                          const explicitStateSub = assignedUserCategories[subKey];
-                          const isCheckedSub = explicitStateSub !== undefined ? explicitStateSub : isInheritedSub;
-                          if (isCheckedSub) activeSubCount++;
-                        });
+                        function countNodes(nodes: typeof cat.subcategorias) {
+                          nodes.forEach(n => {
+                            totalSubs++;
+                            const subKey = `${cat.id}-${n.id}`;
+                            const isInheritedSub = inheritedCategories[subKey] === true || isInheritedCat || explicitStateCat === true;
+                            const explicitStateSub = assignedUserCategories[subKey];
+                            const isCheckedSub = explicitStateSub !== undefined ? explicitStateSub : isInheritedSub;
+                            if (isCheckedSub) activeSubCount++;
+                            if (n.children) countNodes(n.children);
+                          });
+                        }
+                        countNodes(cat.subcategorias);
 
                         const isFullCategory = totalSubs === 0 ? isCheckedCat : (activeSubCount === totalSubs && isCheckedCat);
                         const isPartialCategory = activeSubCount > 0 && !isFullCategory;
@@ -762,25 +824,20 @@ sinAccesoCats.sort((a, b) => a.nombre.localeCompare(b.nombre));
                                 </label>
                               </div>
                             </summary>
-                            {cat.subcategoria_categorias.length > 0 ? (
-                              <div class="p-3 space-y-3 pl-8 bg-card rounded-b-lg">
-                                {cat.subcategoria_categorias.map(subRel => {
-                                  const subcat = subRel.subcategoria;
-                                  const subKey = `${cat.id}-${subcat.id}`;
-                                  const isInheritedSub = inheritedCategories[subKey] === true || isInheritedCat || explicitStateCat === true;
-                                  const explicitStateSub = assignedUserCategories[subKey];
-                                  const isCheckedSub = explicitStateSub !== undefined ? explicitStateSub : isInheritedSub;
-                                  return (
-                                    <div class="flex items-center justify-between gap-4">
-                                      <label for={`sub-${cat.id}-${subcat.id}`} class="text-[13px] cursor-pointer select-none truncate pr-2 flex-1 text-muted-foreground" title={subcat.nombre}>{subcat.nombre}</label>
-                                      <label class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full toggle-wrapper group/sub" data-inherited={isInheritedSub ? "true" : "false"} title={isCheckedSub ? "Revocar acceso" : "Otorgar acceso"}>
-                                        <input type="checkbox" id={`sub-${cat.id}-${subcat.id}`} class="sr-only peer category-toggle" data-categoria-id={cat.id} data-subcategoria-id={subcat.id} data-usuario-id={user.id} checked={isCheckedSub} disabled={!canEdit}/>
-                                        <div class="toggle-bg h-5 w-9 absolute rounded-full transition-all peer-focus:outline-none opacity-50 peer-checked:opacity-100 disabled:opacity-30 peer-disabled:cursor-not-allowed border-box bg-muted-foreground border border-transparent group-data-[inherited=false]/sub:peer-checked:bg-primary group-data-[inherited=true]/sub:peer-checked:bg-secondary group-data-[inherited=true]/sub:border-secondary group-data-[inherited=true]/sub:peer-checked:border-transparent" />
-                                        <div class="toggle-knob absolute top-[2px] left-[2px] bg-white border border-gray-300 rounded-full h-4 w-4 transition-transform peer-checked:translate-x-[16px] peer-checked:border-white z-10" />
-                                      </label>
-                                    </div>
-                                  )
-                                })}
+                            {cat.subcategorias.length > 0 ? (
+                              <div class="p-3 space-y-1 bg-card rounded-b-lg">
+                                {cat.subcategorias.map(subNode => (
+                                  <UserSubcategoryItem
+                                    node={subNode}
+                                    catId={cat.id}
+                                    inheritedCategories={inheritedCategories}
+                                    assignedUserCategories={assignedUserCategories}
+                                    userId={user.id}
+                                    canEdit={canEdit}
+                                    isInheritedCat={isInheritedCat}
+                                    explicitStateCat={explicitStateCat}
+                                  />
+                                ))}
                               </div>
                             ) : (
                               <div class="p-3 pl-8 bg-card rounded-b-lg text-[13px] text-muted-foreground italic">

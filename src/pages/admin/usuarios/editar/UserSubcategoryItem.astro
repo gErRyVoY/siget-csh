@@ -1,0 +1,72 @@
+---
+import Self from "./UserSubcategoryItem.astro";
+
+interface UserSubcatTreeNode {
+    id: number;
+    nombre: string;
+    parent_subcategoriaId: number | null;
+    children: UserSubcatTreeNode[];
+}
+
+interface Props {
+    node: UserSubcatTreeNode;
+    catId: number;
+    inheritedCategories: Record<string, boolean>;
+    assignedUserCategories: Record<string, boolean>;
+    userId: number;
+    canEdit: boolean;
+    isInheritedCat: boolean;
+    explicitStateCat?: boolean;
+}
+
+const { node, catId, inheritedCategories, assignedUserCategories, userId, canEdit, isInheritedCat, explicitStateCat } = Astro.props;
+
+const subKey = `${catId}-${node.id}`;
+const isInheritedSub = inheritedCategories[subKey] === true || isInheritedCat || explicitStateCat === true;
+const explicitStateSub = assignedUserCategories[subKey];
+const isCheckedSub = explicitStateSub !== undefined ? explicitStateSub : isInheritedSub;
+const hasChildren = node.children && node.children.length > 0;
+---
+
+{hasChildren ? (
+  <details class="group/sub border border-border/40 rounded bg-card/60 mt-2 mb-2 sub-accordion" open>
+    <summary class="sub-summary flex items-center justify-between gap-4 p-2.5 cursor-pointer list-none select-none outline-none hover:bg-muted/40 transition-colors rounded group-open/sub:border-b group-open/sub:border-border/30">
+      <div class="flex items-center gap-2 flex-1 overflow-hidden">
+        <div class="transform transition-transform duration-200 group-open/sub:rotate-90 shrink-0 text-muted-foreground mr-1">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-current"><path d="m9 6 6 6-6 6"/></svg>
+        </div>
+        <span class="text-[13px] font-semibold text-foreground truncate" title={node.nombre}>{node.nombre}</span>
+      </div>
+      <div class="shrink-0" onclick="event.stopPropagation();">
+        <label class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full toggle-wrapper group/sub" data-inherited={isInheritedSub ? "true" : "false"} title={isCheckedSub ? "Revocar acceso" : "Otorgar acceso"}>
+          <input type="checkbox" id={`sub-${catId}-${node.id}`} class="sr-only peer category-toggle" data-categoria-id={catId} data-subcategoria-id={node.id} data-usuario-id={userId} checked={isCheckedSub} disabled={!canEdit}/>
+          <div class="toggle-bg h-5 w-9 absolute rounded-full transition-all peer-focus:outline-none opacity-50 peer-checked:opacity-100 disabled:opacity-30 peer-disabled:cursor-not-allowed border-box bg-muted-foreground border border-transparent group-data-[inherited=false]/sub:peer-checked:bg-primary group-data-[inherited=true]/sub:peer-checked:bg-secondary group-data-[inherited=true]/sub:border-secondary group-data-[inherited=true]/sub:peer-checked:border-transparent" />
+          <div class="toggle-knob absolute top-[2px] left-[2px] bg-white border border-gray-300 rounded-full h-4 w-4 transition-transform peer-checked:translate-x-[16px] peer-checked:border-white z-10" />
+        </label>
+      </div>
+    </summary>
+    <div class="p-2 space-y-1 pl-4 border-t border-border/20 bg-card/40 rounded-b">
+      {node.children.map(child => (
+        <Self
+          node={child}
+          catId={catId}
+          inheritedCategories={inheritedCategories}
+          assignedUserCategories={assignedUserCategories}
+          userId={userId}
+          canEdit={canEdit}
+          isInheritedCat={isInheritedCat}
+          explicitStateCat={explicitStateCat}
+        />
+      ))}
+    </div>
+  </details>
+) : (
+  <div class="flex items-center justify-between gap-4 p-2 rounded hover:bg-muted/30 transition-colors">
+    <label for={`sub-${catId}-${node.id}`} class="text-[13px] cursor-pointer select-none truncate pr-2 flex-1 text-muted-foreground" title={node.nombre}>{node.nombre}</label>
+    <label class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full toggle-wrapper group/sub" data-inherited={isInheritedSub ? "true" : "false"} title={isCheckedSub ? "Revocar acceso" : "Otorgar acceso"}>
+      <input type="checkbox" id={`sub-${catId}-${node.id}`} class="sr-only peer category-toggle" data-categoria-id={catId} data-subcategoria-id={node.id} data-usuario-id={userId} checked={isCheckedSub} disabled={!canEdit}/>
+      <div class="toggle-bg h-5 w-9 absolute rounded-full transition-all peer-focus:outline-none opacity-50 peer-checked:opacity-100 disabled:opacity-30 peer-disabled:cursor-not-allowed border-box bg-muted-foreground border border-transparent group-data-[inherited=false]/sub:peer-checked:bg-primary group-data-[inherited=true]/sub:peer-checked:bg-secondary group-data-[inherited=true]/sub:border-secondary group-data-[inherited=true]/sub:peer-checked:border-transparent" />
+      <div class="toggle-knob absolute top-[2px] left-[2px] bg-white border border-gray-300 rounded-full h-4 w-4 transition-transform peer-checked:translate-x-[16px] peer-checked:border-white z-10" />
+    </label>
+  </div>
+)}
