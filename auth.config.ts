@@ -221,6 +221,12 @@ export default defineConfig({
           });
           console.log(`Usuario ${profile.email} creado exitosamente.`);
         } else {
+          // Si el usuario ya existe en la base de datos de SiGeT y se encuentra inactivo, denegar inicio de sesión
+          if (!dbUser.activo) {
+            console.warn(`Intento de inicio de sesión bloqueado para usuario inactivo: ${profile.email}`);
+            return '/login?error=UsuarioInactivo';
+          }
+
           // Cotejar si el puesto cambió y actualizar si difiere
           const needsPuestoUpdate = puestoTrabajador && puestoTrabajador !== dbUser.puesto;
 

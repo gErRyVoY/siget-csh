@@ -37,6 +37,13 @@ if (error) {
                     "El colaborador no se encuentra registrado o activo en el sistema de Recursos Humanos.",
             };
             break;
+        case "UsuarioInactivo":
+            errorMessage = {
+                title: "Cuenta Inactiva",
+                message:
+                    "Tu usuario se encuentra inactivo en SiGeT. Por favor, contacta con el administrador.",
+            };
+            break;
         case "AccesoNoPermitido":
             isAccessDeniedError = true;
             errorMessage = {

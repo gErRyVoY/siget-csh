@@ -229,6 +229,8 @@ const canEditCategorias = canEdit && (currentUserRoleId === 2 || currentUserRole
 // Visibilidad de Toggles Superiores
 const showToggleActivo = !isTargetSelfSuperAdmin;
 const showToggleAsignar = targetRoleId !== 1;
+const showToggleLevantaCSH = targetRoleId !== 3;
+const showToggleLevantaMKT = targetRoleId !== 3;
 const showToggleAtiendeCSH = targetRoleId !== 1;
 const showToggleAtiendeMKT = targetRoleId !== 1;
 const showToggleAuditorDocs = targetRoleId !== 1 && !areAuditorChecksHidden;
@@ -515,38 +517,42 @@ sinAccesoCats.sort((a, b) => a.nombre.localeCompare(b.nombre));
             )}
 
             <!-- Toggle: Levanta CSH -->
-            <div class="flex items-center justify-between gap-2 border border-border/60 bg-muted/10 px-3 py-2 rounded-md" id="container-tckt_csh">
-              <label for="tckt_csh" class="text-sm font-medium select-none truncate">Levanta CSH</label>
-              <label class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full toggle-wrapper group">
-                <input
-                  type="checkbox"
-                  id="tckt_csh"
-                  name="tckt_csh"
-                  class="sr-only peer"
-                  checked={(user as any).tckt_csh}
-                  disabled={!canEdit}
-                />
-                <div class="toggle-bg h-5 w-9 absolute rounded-full transition-all peer-focus:outline-none opacity-50 peer-checked:opacity-100 disabled:opacity-30 peer-disabled:cursor-not-allowed bg-muted-foreground peer-checked:bg-primary" />
-                <div class="toggle-knob absolute top-[2px] left-[2px] bg-white border border-gray-300 rounded-full h-4 w-4 transition-transform peer-checked:translate-x-[16px] peer-checked:border-white z-10" />
-              </label>
-            </div>
+            {showToggleLevantaCSH && (
+              <div class="flex items-center justify-between gap-2 border border-border/60 bg-muted/10 px-3 py-2 rounded-md" id="container-tckt_csh">
+                <label for="tckt_csh" class="text-sm font-medium select-none truncate">Levanta CSH</label>
+                <label class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full toggle-wrapper group">
+                  <input
+                    type="checkbox"
+                    id="tckt_csh"
+                    name="tckt_csh"
+                    class="sr-only peer"
+                    checked={(user as any).tckt_csh}
+                    disabled={!canEdit}
+                  />
+                  <div class="toggle-bg h-5 w-9 absolute rounded-full transition-all peer-focus:outline-none opacity-50 peer-checked:opacity-100 disabled:opacity-30 peer-disabled:cursor-not-allowed bg-muted-foreground peer-checked:bg-primary border border-white" />
+                  <div class="toggle-knob absolute top-[2px] left-[2px] bg-white border border-gray-300 rounded-full h-4 w-4 transition-transform peer-checked:translate-x-[16px] peer-checked:border-white z-10" />
+                </label>
+              </div>
+            )}
 
             <!-- Toggle: Levanta Mkt -->
-            <div class="flex items-center justify-between gap-2 border border-border/60 bg-muted/10 px-3 py-2 rounded-md" id="container-tckt_mkt">
-              <label for="tckt_mkt" class="text-sm font-medium select-none truncate">Levanta Mkt</label>
-              <label class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full toggle-wrapper group">
-                <input
-                  type="checkbox"
-                  id="tckt_mkt"
-                  name="tckt_mkt"
-                  class="sr-only peer"
-                  checked={(user as any).tckt_mkt}
-                  disabled={!canEdit}
-                />
-                <div class="toggle-bg h-5 w-9 absolute rounded-full transition-all peer-focus:outline-none opacity-50 peer-checked:opacity-100 disabled:opacity-30 peer-disabled:cursor-not-allowed bg-muted-foreground peer-checked:bg-primary" />
-                <div class="toggle-knob absolute top-[2px] left-[2px] bg-white border border-gray-300 rounded-full h-4 w-4 transition-transform peer-checked:translate-x-[16px] peer-checked:border-white z-10" />
-              </label>
-            </div>
+            {showToggleLevantaMKT && (
+              <div class="flex items-center justify-between gap-2 border border-border/60 bg-muted/10 px-3 py-2 rounded-md" id="container-tckt_mkt">
+                <label for="tckt_mkt" class="text-sm font-medium select-none truncate">Levanta Mkt</label>
+                <label class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full toggle-wrapper group">
+                  <input
+                    type="checkbox"
+                    id="tckt_mkt"
+                    name="tckt_mkt"
+                    class="sr-only peer"
+                    checked={(user as any).tckt_mkt}
+                    disabled={!canEdit}
+                  />
+                  <div class="toggle-bg h-5 w-9 absolute rounded-full transition-all peer-focus:outline-none opacity-50 peer-checked:opacity-100 disabled:opacity-30 peer-disabled:cursor-not-allowed bg-muted-foreground peer-checked:bg-primary border border-white" />
+                  <div class="toggle-knob absolute top-[2px] left-[2px] bg-white border border-gray-300 rounded-full h-4 w-4 transition-transform peer-checked:translate-x-[16px] peer-checked:border-white z-10" />
+                </label>
+              </div>
+            )}
 
             <!-- Toggle: Atiende CSH -->
             {showToggleAtiendeCSH && (

@@ -6,7 +6,12 @@ import { getSession } from "auth-astro/server";
 const session = await getSession(Astro.request);
 
 const secciones = await prisma.seccion.findMany({
-  orderBy: [{ grupo: "desc" }, { subgrupo: "asc" }, { nombre: "asc" }],
+  where: {
+    identificador: {
+      not: "admin_siget_secciones",
+    },
+  },
+  orderBy: [{ grupo: "asc" }, { subgrupo: "asc" }, { nombre: "asc" }],
 });
 
 // Agrupar secciones para UI
@@ -31,16 +36,18 @@ secciones.forEach((sec) => {
   groupedSecciones[group][subgroup].push(sec);
 });
 
-// Colocar 'feature_dark_mode' (Modo Oscuro) al inicio del grupo 'Generales'
-if (groupedSecciones["Generales"]) {
-  Object.keys(groupedSecciones["Generales"]).forEach((subgroupName) => {
-    groupedSecciones["Generales"][subgroupName].sort((a, b) => {
-      if (a.identificador === "feature_dark_mode") return -1;
-      if (b.identificador === "feature_dark_mode") return 1;
+// Ordenar secciones dentro de cada subgrupo (A-Z) respetando 'feature_dark_mode' al inicio de Generales
+Object.keys(groupedSecciones).forEach((grupoName) => {
+  Object.keys(groupedSecciones[grupoName]).forEach((subgroupName) => {
+    groupedSecciones[grupoName][subgroupName].sort((a, b) => {
+      if (grupoName === "Generales") {
+        if (a.identificador === "feature_dark_mode") return -1;
+        if (b.identificador === "feature_dark_mode") return 1;
+      }
       return a.nombre.localeCompare(b.nombre);
     });
   });
-}
+});
 ---
 
 <MainLayout title="Gestión de secciones globales">
@@ -103,6 +110,11 @@ if (groupedSecciones["Generales"]) {
                           </label>
                         </div>
                       ))}
+                      {grupo === "Administrador" && subgroupName === "SiGeT" && (
+                        <p class="text-[11px] text-muted-foreground italic border-t pt-2 mt-2">
+                          * La sección "Secciones" no es editable para evitar el bloqueo accidental de la administración.
+                        </p>
+                      )}
                     </div>
                   </div>
                 ))}
