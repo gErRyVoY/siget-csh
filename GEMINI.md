@@ -5,19 +5,19 @@
 >
 > **⚠️ REGLA CRÍTICA PARA EL ASISTENTE:** El asistente **NO debe ejecutar `git push`** en ninguna circunstancia a menos que el usuario lo solicite **de forma explícita**. Se permiten `git add` y `git commit` para preparar los cambios, pero el push queda **reservado exclusivamente para cuando el usuario lo indique**.
 
-**Tarea Actual:** Completada — Rediseño de Edición de Usuarios y Validaciones de Asignación de Tickets (2026-07-27) ✅
+**Tarea Actual:** Completada — Subcategorías Jerárquicas Recursivas en Edición de Usuarios (2026-07-27) ✅
 
 **Estado:** Completado.
-1. Se dividió el panel de categorías en dos subsecciones: **"Habilitadas"** y **"Sin acceso"**, ordenadas alfabéticamente A-Z en un grid responsivo (2 cols desktop / 1 col tablet-móvil).
-2. Se implementaron las restricciones visuales y lógicas según el rol objetivo (**Usuario**, **Admin** y **Superadmin**) en `/admin/usuarios/editar/[id]`.
-3. Se integraron listeners dinámicos en el cliente (`user-edit-form-logic.ts`) para sincronizar toggles (como la desactivación en cascada al apagar `Activo`) y recarga de vista tras guardar.
-4. Se agregó la función `canAgentBeAssignedManually` en `ticketAssignmentService.ts` y se aplicó en `api/tickets/update.ts` para garantizar que la asignación manual requiera tener habilitada la categoría/subcategoría y el flag `atiende_csh`/`atiende_mkt`.
-5. `npx astro check` validó la aplicación con **0 errores**.
+1. Se creó el componente recursivo `UserSubcategoryItem.astro` para renderizar acordeones anidados de subcategorías con N niveles de profundidad en `/admin/usuarios/editar/[id]`.
+2. Se actualizaron las consultas y la construcción del árbol en el frontmatter de `[id].astro` para agrupar todas las subcategorías por jerarquía (hijas con `parent_subcategoriaId`), replicando exactamente la estructura de `/admin/categorias`.
+3. Se conservó el grid responsivo (2 columnas en desktop / 1 en móvil) para la distribución de las tarjetas de categorías principales dentro de las subsecciones "Habilitadas" y "Sin acceso".
+4. `npx astro check` validó la aplicación con **0 errores** en 149 archivos.
 
 **Pasos Siguientes:**
 1. Monitoreo general y feedback del usuario.
 
 **Pasos Completados:**
+- ✅ **Subcategorías Jerárquicas Recursivas en Edición de Usuarios (2026-07-27):** Integración del componente `UserSubcategoryItem.astro` para desplegar subcategorías jerárquicas en acordeones anidados con N niveles de profundidad (paridad con `/admin/categorias`), manteniendo la plantilla en grid responsivo (2 cols desktop / 1 móvil). `npx astro check` 0 errores.
 - ✅ **Rediseño de Edición de Usuarios y Validaciones de Asignación de Tickets (2026-07-27):** Categorías organizadas en subsecciones "Habilitadas" y "Sin acceso" (A-Z, grid responsivo); componentes y toggles de edición de usuarios condicionados estrictamente por rol (Usuario, Admin, Superadmin); sincronización dinámica de toggles y recarga de vista; validación de asignación manual de tickets verificando flag `atiende_csh/mkt` y permisos de categoría. `npx astro check` 0 errores.
 - ✅ **Permisos Granulares de Atiende, Fix Selects Flashing y Marketing para Rol Usuario (2026-07-24):** Implementada lógica `canEditAtiende` en frontend y backend (Superadmin siempre; Admin solo si asignado y no creador; Usuario nunca). Corregido bug de selects con valor obsoleto al guardar, reemplazando `navigate()` View Transitions por `window.location.assign()`. Habilitadas secciones `crear_ticket_marketing` y `marketing_mis_tickets` para rolId=1 en seed y BD via script. `npx astro check` 0 errores.
 - ✅ **Actualizaciones de UI/UX en Vistas de Tickets y Dashboard de Marketing (2026-07-24):** Aplicada paridad de diseño y restricciones de roles entre Soporte y Marketing: botón "Volver" estilizado, descripción sólo lectura, visibilidad de toggle archivado y prefijo "Solicita:" condicionada por rol, ocultamiento de solicitante para colaboradores, filtros de fecha en marketing/usuario, separación de tickets por categoría, dashboard con pestañas para marketing y spinner dorado de carga. `npx astro check` pasó con 0 errores.
