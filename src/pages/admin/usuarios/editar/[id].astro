@@ -783,12 +783,12 @@ sinAccesoCats.sort((a, b) => a.nombre.localeCompare(b.nombre));
 
                         return (
                           <details class="group/cat bg-card border rounded-lg shadow-sm">
-                            <summary class="flex items-center justify-between gap-4 p-3 cursor-pointer list-none select-none outline-none hover:bg-muted/50 transition-colors rounded-lg group-open/cat:rounded-b-none border-b border-transparent group-open/cat:border-border group-open/cat:bg-muted/10">
+                            <summary class="flex items-center justify-between gap-4 p-3 cursor-pointer list-none select-none outline-none hover:bg-secondary hover:text-white transition-colors rounded-lg group-open/cat:rounded-b-none border-b border-transparent group-open/cat:border-border group-open/cat:bg-muted/10 group/catsum">
                               <div class="flex items-center gap-2 flex-1 overflow-hidden">
-                                <div class="transform transition-transform duration-200 group-open/cat:rotate-180 shrink-0 text-muted-foreground mr-1">
+                                <div class="transform transition-transform duration-200 group-open/cat:rotate-180 shrink-0 text-muted-foreground group-hover/catsum:text-white mr-1 transition-colors">
                                   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-current"><path d="m6 9 6 6 6-6"/></svg>
                                 </div>
-                                <span class="text-[13px] font-bold uppercase truncate text-primary">{cat.nombre}</span>
+                                <span class="text-[13px] font-bold uppercase truncate text-primary group-hover/catsum:text-white transition-colors">{cat.nombre}</span>
                               </div>
                               <div class="shrink-0" onclick="event.stopPropagation();">
                                 <label class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full toggle-wrapper group/catbtn" data-full={isFullCategory ? "true" : "false"} title={showCheckedUiCat ? "Revocar categoría entera" : "Permitir categoría entera"}>
@@ -870,12 +870,12 @@ sinAccesoCats.sort((a, b) => a.nombre.localeCompare(b.nombre));
 
                         return (
                           <details class="group/cat bg-card border rounded-lg shadow-sm">
-                            <summary class="flex items-center justify-between gap-4 p-3 cursor-pointer list-none select-none outline-none hover:bg-muted/50 transition-colors rounded-lg group-open/cat:rounded-b-none border-b border-transparent group-open/cat:border-border group-open/cat:bg-muted/10">
+                            <summary class="flex items-center justify-between gap-4 p-3 cursor-pointer list-none select-none outline-none hover:bg-secondary hover:text-white transition-colors rounded-lg group-open/cat:rounded-b-none border-b border-transparent group-open/cat:border-border group-open/cat:bg-muted/10 group/catsum">
                               <div class="flex items-center gap-2 flex-1 overflow-hidden">
-                                <div class="transform transition-transform duration-200 group-open/cat:rotate-180 shrink-0 text-muted-foreground mr-1">
+                                <div class="transform transition-transform duration-200 group-open/cat:rotate-180 shrink-0 text-muted-foreground group-hover/catsum:text-white mr-1 transition-colors">
                                   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-current"><path d="m6 9 6 6 6-6"/></svg>
                                 </div>
-                                <span class="text-[13px] font-bold uppercase truncate text-primary">{cat.nombre}</span>
+                                <span class="text-[13px] font-bold uppercase truncate text-primary group-hover/catsum:text-white transition-colors">{cat.nombre}</span>
                               </div>
                               <div class="shrink-0" onclick="event.stopPropagation();">
                                 <label class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full toggle-wrapper group/catbtn" data-full="false" title="Permitir categoría entera">

@@ -30,12 +30,12 @@ const hasChildren = node.children && node.children.length > 0;
 
 {hasChildren ? (
   <details class="group/sub border border-border/40 rounded bg-card/60 mt-2 mb-2 sub-accordion" open>
-    <summary class="sub-summary flex items-center justify-between gap-4 p-2.5 cursor-pointer list-none select-none outline-none hover:bg-muted/40 transition-colors rounded group-open/sub:border-b group-open/sub:border-border/30">
+    <summary class="sub-summary flex items-center justify-between gap-4 p-2.5 cursor-pointer list-none select-none outline-none hover:bg-secondary hover:text-white transition-colors rounded group-open/sub:border-b group-open/sub:border-border/30 group/subsum">
       <div class="flex items-center gap-2 flex-1 overflow-hidden">
-        <div class="transform transition-transform duration-200 group-open/sub:rotate-90 shrink-0 text-muted-foreground mr-1">
+        <div class="transform transition-transform duration-200 group-open/sub:rotate-90 shrink-0 text-muted-foreground group-hover/subsum:text-white mr-1 transition-colors">
           <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-current"><path d="m9 6 6 6-6 6"/></svg>
         </div>
-        <span class="text-[13px] font-semibold text-foreground truncate" title={node.nombre}>{node.nombre}</span>
+        <span class="text-[13px] font-semibold text-foreground group-hover/subsum:text-white transition-colors truncate" title={node.nombre}>{node.nombre}</span>
       </div>
       <div class="shrink-0" onclick="event.stopPropagation();">
         <label class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full toggle-wrapper group/sub" data-inherited={isInheritedSub ? "true" : "false"} title={isCheckedSub ? "Revocar acceso" : "Otorgar acceso"}>
@@ -61,8 +61,8 @@ const hasChildren = node.children && node.children.length > 0;
     </div>
   </details>
 ) : (
-  <div class="flex items-center justify-between gap-4 p-2 rounded hover:bg-muted/30 transition-colors">
-    <label for={`sub-${catId}-${node.id}`} class="text-[13px] cursor-pointer select-none truncate pr-2 flex-1 text-muted-foreground" title={node.nombre}>{node.nombre}</label>
+  <div class="flex items-center justify-between gap-4 p-2 rounded hover:bg-secondary hover:text-white transition-colors group/subitem">
+    <label for={`sub-${catId}-${node.id}`} class="text-[13px] cursor-pointer select-none truncate pr-2 flex-1 text-muted-foreground group-hover/subitem:text-white transition-colors" title={node.nombre}>{node.nombre}</label>
     <label class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full toggle-wrapper group/sub" data-inherited={isInheritedSub ? "true" : "false"} title={isCheckedSub ? "Revocar acceso" : "Otorgar acceso"}>
       <input type="checkbox" id={`sub-${catId}-${node.id}`} class="sr-only peer category-toggle" data-categoria-id={catId} data-subcategoria-id={node.id} data-usuario-id={userId} checked={isCheckedSub} disabled={!canEdit}/>
       <div class="toggle-bg h-5 w-9 absolute rounded-full transition-all peer-focus:outline-none opacity-50 peer-checked:opacity-100 disabled:opacity-30 peer-disabled:cursor-not-allowed border-box bg-muted-foreground border border-transparent group-data-[inherited=false]/sub:peer-checked:bg-primary group-data-[inherited=true]/sub:peer-checked:bg-secondary group-data-[inherited=true]/sub:border-secondary group-data-[inherited=true]/sub:peer-checked:border-transparent" />

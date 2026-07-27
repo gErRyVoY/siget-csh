@@ -15,6 +15,14 @@
 
 **Pasos Siguientes:**
 1. Monitoreo general y feedback del usuario.
+2. **[PENDIENTE]** Optimización de consultas de sesión duplicadas (N+1 por request). Plan detallado en `implementation_plan.md`. Resumen:
+   - **Problema:** El callback `jwt` de Auth.js (`auth.config.ts:258`) hace 7 queries a la BD en cada `getSession()`. Como `getSession()` se llama en middleware + cada página + cada API, se generan 14–21 queries de sesión por navegación.
+   - **Solución propuesta (Fase 1 - bajo riesgo):** Crear `src/lib/session-cache.ts` con un `WeakMap<Request, Session>` que cachee la sesión dentro del mismo ciclo de request. Esto reduce de 14–21 a **7 queries** por navegación (67% reducción).
+   - **Impacto en funcionalidades:**
+     - ✅ Cambios de permisos en `/admin/secciones`: NO afectan. Cada nueva navegación = nuevo `Request` = query fresca.
+     - ✅ Notificaciones SSE de tickets: NO afectan. El endpoint `sse.ts` no usa `getSession()`, lee `userId` del query param.
+     - ✅ `/api/notifications/count` y `/api/notifications/list`: NO afectan. Son requests independientes con datos frescos.
+   - **Requiere aprobación explícita antes de implementar.**
 
 **Pasos Completados:**
 - ✅ **Subcategorías Jerárquicas Recursivas en Edición de Usuarios (2026-07-27):** Integración del componente `UserSubcategoryItem.astro` para desplegar subcategorías jerárquicas en acordeones anidados con N niveles de profundidad (paridad con `/admin/categorias`), manteniendo la plantilla en grid responsivo (2 cols desktop / 1 móvil). `npx astro check` 0 errores.
