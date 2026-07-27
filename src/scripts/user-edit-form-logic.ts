@@ -37,7 +37,7 @@ export function initializeUserEditForm() {
     function initHorarios() {
         const container = document.getElementById('horarios-container');
         if (!container) {
-            console.error('Could not find a container with id \'horarios-container\'.');
+            // La sección de horario no está disponible para este rol (ej. Superadmin). Es normal.
             return;
         }
 

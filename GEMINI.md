@@ -5,12 +5,12 @@
 >
 > **⚠️ REGLA CRÍTICA PARA EL ASISTENTE:** El asistente **NO debe ejecutar `git push`** en ninguna circunstancia a menos que el usuario lo solicite **de forma explícita**. Se permiten `git add` y `git commit` para preparar los cambios, pero el push queda **reservado exclusivamente para cuando el usuario lo indique**.
 
-**Tarea Actual:** Completada — Subcategorías Jerárquicas Recursivas en Edición de Usuarios (2026-07-27) ✅
+**Tarea Actual:** Completada — Correcciones Post-Despliegue en Edición de Usuarios (2026-07-27) ✅
 
 **Estado:** Completado.
-1. Se creó el componente recursivo `UserSubcategoryItem.astro` para renderizar acordeones anidados de subcategorías con N niveles de profundidad en `/admin/usuarios/editar/[id]`.
-2. Se actualizaron las consultas y la construcción del árbol en el frontmatter de `[id].astro` para agrupar todas las subcategorías por jerarquía (hijas con `parent_subcategoriaId`), replicando exactamente la estructura de `/admin/categorias`.
-3. Se conservó el grid responsivo (2 columnas en desktop / 1 en móvil) para la distribución de las tarjetas de categorías principales dentro de las subsecciones "Habilitadas" y "Sin acceso".
+1. Se creó `canEditCategorias` independiente de `canEdit`/`isTargetSelfSuperAdmin` para que los toggles de categorías siempre sean editables para Admin/Superadmin, incluso al editar el propio perfil.
+2. Se refactorizó el árbol SSR de categorías con `filterActiveSubtree`/`filterInactiveSubtree`: en la sección "Habilitadas" solo aparecen las subcategorías activas, y las inactivas se agrupan en un sub-acordeón interno "Sin acceso" dentro de la misma tarjeta de categoría.
+3. Se añadió cascada visual en el cliente: al apagar una subcategoría con hijos, todos sus descendientes en el DOM se apagan visualmente (y sus knobs se actualizan).
 4. `npx astro check` validó la aplicación con **0 errores** en 149 archivos.
 
 **Pasos Siguientes:**
