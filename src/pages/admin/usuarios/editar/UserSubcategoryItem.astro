@@ -43,7 +43,7 @@ if (hasChildren) {
             return true;
         });
     }
-    isFullSub = isCheckedSub && areAllDescendantsChecked(node);
+    isFullSub = areAllDescendantsChecked(node);
 } else {
     isFullSub = isCheckedSub;
 }

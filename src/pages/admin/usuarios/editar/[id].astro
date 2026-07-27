@@ -776,8 +776,8 @@ sinAccesoCats.sort((a, b) => a.nombre.localeCompare(b.nombre));
                         const enabledSubs = cat.enabledSubcategorias;
                         const disabledSubs = cat.disabledSubcategorias;
                         const totalSubs = cat.subcategorias.length;
-                        // Para el toggle: se considera "full" si isCheckedCat y no hay subs inactivas
-                        const isFullCategory = totalSubs === 0 ? isCheckedCat : (disabledSubs.length === 0 && isCheckedCat);
+                        // Para el toggle: se considera "full" (Guinda) si no hay subcategorías inactivas (100% habilitadas) o si es una categoría sin subcategorías marcada activa
+                        const isFullCategory = totalSubs === 0 ? isCheckedCat : (disabledSubs.length === 0 && enabledSubs.length > 0);
                         const isPartialCategory = enabledSubs.length > 0 && !isFullCategory;
                         const showCheckedUiCat = isFullCategory || isPartialCategory;
 
