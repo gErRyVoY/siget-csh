@@ -5,23 +5,26 @@
 >
 > **⚠️ REGLA CRÍTICA PARA EL ASISTENTE:** El asistente **NO debe ejecutar `git push`** en ninguna circunstancia a menos que el usuario lo solicite **de forma explícita**. Se permiten `git add` y `git commit` para preparar los cambios, pero el push queda **reservado exclusivamente para cuando el usuario lo indique**.
 
-**Tarea Actual:** Completada — Correcciones Post-Despliegue en Edición de Usuarios (2026-07-27) ✅
+**Tarea Actual:** Completada — Mejoras en Secciones, Permisos de Usuario e Inactividad (2026-07-27) ✅
 
 **Estado:** Completado.
-1. Se creó `canEditCategorias` independiente de `canEdit`/`isTargetSelfSuperAdmin` para que los toggles de categorías siempre sean editables para Admin/Superadmin, incluso al editar el propio perfil.
-2. Se refactorizó el árbol SSR de categorías con `filterActiveSubtree`/`filterInactiveSubtree`: en la sección "Habilitadas" solo aparecen las subcategorías activas, y las inactivas se agrupan en un sub-acordeón interno "Sin acceso" dentro de la misma tarjeta de categoría.
-3. Se añadió cascada visual en el cliente: al apagar una subcategoría con hijos, todos sus descendientes en el DOM se apagan visualmente (y sus knobs se actualizan).
-4. `npx astro check` validó la aplicación con **0 errores** en 149 archivos.
+1. **`/admin/secciones`:** Ocultada la sección 'Secciones' (`admin_siget_secciones`) para prevenir auto-bloqueo accidental, añadida nota aclaratoria e incorporada la sección 'Empresas' (`admin_siget_empresas` ID 23) a la lista global. Orden de subgrupos ajustado a A-Z manteniendo 'Modo Oscuro' al inicio de Generales.
+2. **Seguridad e Inactividad:** Añadida validación estricta de `dbUser.activo` en el callback `signIn` de Auth.js para denegar el acceso con el código `UsuarioInactivo` si la cuenta está desactivada en SiGeT.
+3. **Edición de Usuarios (`[id].astro`):** Ocultados los toggles `Levanta CSH` y `Levanta Mkt` cuando el usuario editado es Superadmin (`rolId === 3`).
+4. **Sincronización Bidireccional de Toggles y Secciones (`user-edit-form-logic.ts`):** Al activar/desactivar `tckt_csh`, `tckt_mkt`, `atiende_csh` o `atiende_mkt`, las secciones de permisos correspondientes se encienden/apagan dinámicamente en la UI según el rol.
+5. **Categoría Marketing Automática:** Al marcar `atiende_mkt`, la categoría Marketing (ID 12) se activa automáticamente y al desmarcar se desactiva.
+6. `npx astro check` validó la aplicación con **0 errores** en 149 archivos.
 
 **Pasos Siguientes:**
 1. Monitoreo general y feedback del usuario.
-2. **[PENDIENTE]** Optimización de consultas de sesión duplicadas (N+1 por request). Plan detallado en `implementation_plan.md`. Resumen:
+2. **[PENDIENTE]** Candado In-Flight de Secciones (Fase 2.2 del TODO): Polling de `sectionsRevision` en `MainLayout.astro` para redirigir si una sección cambia en caliente.
+3. **[PENDIENTE]** Optimización de consultas de sesión duplicadas (N+1 por request). Plan detallado en `implementation_plan.md`. Resumen:
    - **Problema:** El callback `jwt` de Auth.js (`auth.config.ts:258`) hace 7 queries a la BD en cada `getSession()`. Como `getSession()` se llama en middleware + cada página + cada API, se generan 14–21 queries de sesión por navegación.
    - **Solución propuesta (Fase 1 - bajo riesgo):** Crear `src/lib/session-cache.ts` con un `WeakMap<Request, Session>` que cachee la sesión dentro del mismo ciclo de request. Esto reduce de 14–21 a **7 queries** por navegación (67% reducción).
    - **Impacto en funcionalidades:**
      - ✅ Cambios de permisos en `/admin/secciones`: NO afectan. Cada nueva navegación = nuevo `Request` = query fresca.
      - ✅ Notificaciones SSE de tickets: NO afectan. El endpoint `sse.ts` no usa `getSession()`, lee `userId` del query param.
-     - ✅ `/api/notifications/count` y `/api/notifications/list`: NO afectan. Son requests independientes con datos frescos.
+     - ✅ `/api/notifications/count` y `/api/notifications/list`: NO afectan. Son requests independientes with datos frescos.
    - **Requiere aprobación explícita antes de implementar.**
 
 **Pasos Completados:**
