@@ -154,34 +154,34 @@ export function initializeUserEditForm() {
                 }
             } else if (roleId === 2 || roleId === 3) {
                 // ROL ADMIN / SUPERADMIN
+                const isSuper = roleId === 3;
+                const effectiveLevantaCsh = isSuper || tcktCsh;
+                const effectiveLevantaMkt = isSuper || tcktMkt;
+
                 if (changedSource === 'atiende_csh') {
                     if (atiendeCsh) {
-                        setSectionChecked(SEC_CREAR_CSH, true);
-                        setSectionChecked(SEC_CREAR_MKT, true);
                         setSectionChecked(SEC_TRASLADO, true);
                         setSectionChecked(SEC_SOPORTE_DASHBOARD, true);
                         setSectionChecked(SEC_SOPORTE_MIS_TKTS, true);
                         setSectionChecked(SEC_SOPORTE_TODOS, true);
-                        setSectionChecked(SEC_MKT_DASHBOARD, true);
-                        setSectionChecked(SEC_MKT_MIS_TKTS, true);
                         if (atiendeMkt) {
                             setSectionChecked(SEC_MKT_TODOS, true);
                         }
                     } else {
                         setSectionChecked(SEC_SOPORTE_TODOS, false);
+                        if (!effectiveLevantaCsh) {
+                            setSectionChecked(SEC_SOPORTE_DASHBOARD, false);
+                            setSectionChecked(SEC_SOPORTE_MIS_TKTS, false);
+                        }
                     }
                 }
 
                 if (changedSource === 'atiende_mkt') {
                     if (atiendeMkt) {
-                        setSectionChecked(SEC_CREAR_CSH, true);
-                        setSectionChecked(SEC_CREAR_MKT, true);
                         setSectionChecked(SEC_TRASLADO, true);
                         setSectionChecked(SEC_MKT_DASHBOARD, true);
                         setSectionChecked(SEC_MKT_MIS_TKTS, true);
                         setSectionChecked(SEC_MKT_TODOS, true);
-                        setSectionChecked(SEC_SOPORTE_DASHBOARD, true);
-                        setSectionChecked(SEC_SOPORTE_MIS_TKTS, true);
                         if (atiendeCsh) {
                             setSectionChecked(SEC_SOPORTE_TODOS, true);
                         }
@@ -194,6 +194,10 @@ export function initializeUserEditForm() {
                         }
                     } else {
                         setSectionChecked(SEC_MKT_TODOS, false);
+                        if (!effectiveLevantaMkt) {
+                            setSectionChecked(SEC_MKT_DASHBOARD, false);
+                            setSectionChecked(SEC_MKT_MIS_TKTS, false);
+                        }
 
                         // Desactivar categoría Marketing (id=12)
                         const catMktInput = document.getElementById('cat-12') as HTMLInputElement | null;
@@ -205,14 +209,18 @@ export function initializeUserEditForm() {
                 }
 
                 if (changedSource === 'tckt_csh') {
-                    setSectionChecked(SEC_SOPORTE_DASHBOARD, tcktCsh || atiendeCsh);
-                    setSectionChecked(SEC_SOPORTE_MIS_TKTS, tcktCsh || atiendeCsh);
+                    setSectionChecked(SEC_SOPORTE_DASHBOARD, effectiveLevantaCsh || atiendeCsh);
+                    setSectionChecked(SEC_SOPORTE_MIS_TKTS, effectiveLevantaCsh || atiendeCsh);
                 }
 
                 if (changedSource === 'tckt_mkt') {
-                    setSectionChecked(SEC_MKT_DASHBOARD, tcktMkt || atiendeMkt);
-                    setSectionChecked(SEC_MKT_MIS_TKTS, tcktMkt || atiendeMkt);
+                    setSectionChecked(SEC_MKT_DASHBOARD, effectiveLevantaMkt || atiendeMkt);
+                    setSectionChecked(SEC_MKT_MIS_TKTS, effectiveLevantaMkt || atiendeMkt);
                 }
+
+                // Evaluación unificada para "Abrir ticket > CSH" y "Abrir ticket > Marketing"
+                setSectionChecked(SEC_CREAR_CSH, effectiveLevantaCsh || atiendeCsh);
+                setSectionChecked(SEC_CREAR_MKT, effectiveLevantaMkt || atiendeMkt);
             }
         }
 
