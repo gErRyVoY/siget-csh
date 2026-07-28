@@ -8,6 +8,34 @@ Todos los cambios notables en este proyecto serán documentados en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Versionado Semántico](https://semver.org/lang/es/).
 
+## 2026-07-27 (Gestión de Secciones, Permisos de Usuario y Seguridad de Acceso)
+
+### Feature: Módulo de Gestión de Secciones Globales (`/admin/secciones`)
+*   **Ocultar "Secciones"**: Se omitió la sección `admin_siget_secciones` en la lista global editable para prevenir auto-bloqueos accidentalmente de administradores, incorporando una nota explicativa en el subgrupo SiGeT.
+*   **Sección "Empresas"**: Se añadió la sección `admin_siget_empresas` (ID 23) a la base de datos, el script de seed y los permisos de roles. Se actualizó `src/middleware.ts` para que `/admin/empresas` requiera esta sección específica.
+*   **Ordenamiento A→Z**: Se ajustó el ordenamiento de las consultas y la UI a alfabético ascendente (A→Z) por grupo y subgrupo, manteniendo `feature_dark_mode` al inicio del grupo Generales.
+
+### Security: Restricciones de Acceso e Inactividad de Usuarios
+*   **Bloqueo de Usuarios Inactivos en Login**: Se añadió una validación en `auth.config.ts` (`signIn` callback) que consulta el estado `activo` del usuario en la BD de SiGeT. Si la cuenta se encuentra inactiva, se rechaza la sesión arrojando el error `UsuarioInactivo` con mensaje descriptivo en `login.astro`.
+*   **Restricción del Grupo Administrador**: Se restringió la visibilidad y acceso al grupo de menú "Administrador" (Secciones SiGeT y Correos Institucionales) en `Sidebar.astro` y en los roles base (`seed.ts`), haciéndolo exclusivo para usuarios con el rol **Superadmin** (`rolId === 3`).
+
+### UX/UI & Feature: Rediseño de la Vista de Edición de Usuarios (`/admin/usuarios/editar/[id].astro`)
+*   **Subcategorías Jerárquicas Recursivas**: Integración del componente `UserSubcategoryItem.astro` para desplegar subcategorías jerárquicas en acordeones anidados de N niveles de profundidad.
+*   **Organización SSR de Categorías**: Categorías separadas dinámicamente en subsecciones "Habilitadas" (solo subcategorías activas) y "Sin acceso" (sub-acordeón interno para inactivas).
+*   **Toggles Condicionales por Rol**:
+    *   `canEditCategorias` independizado para permitir que Admin y Superadmin editen permisos de categorías de forma libre.
+    *   La sección de Categorías se oculta automáticamente al editar usuarios con rol `Usuario` (`rolId === 1`).
+    *   Toggles `Levanta CSH` (`tckt_csh`) y `Levanta Mkt` (`tckt_mkt`) ocultados cuando el usuario editado es `Superadmin` (`rolId === 3`).
+*   **Colores y Estados de Toggles**:
+    *   Toggles con borde blanco fino de 1px para destacar visualmente cuando están activos en color guinda.
+    *   Color **Guinda** (`bg-secondary`) para encendido total (100% de subcategorías/hijas activas) y **Dorado** (`bg-primary`) para encendido parcial.
+    *   Acordeones colapsados por defecto al cargar la vista.
+*   **Sincronización Bidireccional de Toggles y Secciones (`user-edit-form-logic.ts`)**:
+    *   Activación/desactivación dinámica en tiempo real entre toggles (`tckt_csh`, `tckt_mkt`, `atiende_csh`, `atiende_mkt`) y las casillas de verificación de secciones según el rol.
+    *   Sincronización automática de la categoría Marketing (`cat-12`) al conmutar `atiende_mkt`.
+    *   Desacoplamiento estricto de vistas entre CSH y Marketing.
+    *   Evaluación unificada para las secciones `Abrir ticket > CSH` y `Abrir ticket > Marketing` (activas si al menos uno entre Levanta o Atiende está encendido).
+
 ## 2026-07-20 (Corrección de Filtros y Mejoras UX en Administración)
 
 ### Feature: Refinamientos UX en la Administración de Categorías
