@@ -163,7 +163,7 @@ async function main() {
 
   const rolesSecciones = [
     { rolId: 1, seccionIds: [1, 2, 3, 4, 7, ...allOtros] },
-    { rolId: 2, seccionIds: [...allAbrirTicket, ...allTicketsSoporte, ...allTicketsMarketing, ...allOtros, ...allAdminSiget] },
+    { rolId: 2, seccionIds: [...allAbrirTicket, ...allTicketsSoporte, ...allTicketsMarketing, ...allOtros] },
     { rolId: 3, seccionIds: [...allAbrirTicket, ...allTicketsSoporte, ...allTicketsMarketing, ...allOtros, ...allAdminSiget] }
   ];
 

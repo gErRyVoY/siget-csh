@@ -44,11 +44,14 @@ const canSeeAsistencia = secciones.includes("asistencia_remota");
 const canSeeBaseConocimientos = secciones.includes("base_conocimientos");
 const canSeeHorario = secciones.includes("horario_atencion");
 
+const userRolId = (session?.user as any)?.rolId ?? (session?.user?.rol as any)?.id ?? 0;
+const isSuperAdmin = userRolId === 3 || (session?.user as any)?.rol === "superadmin";
+
 const canSeeSoporteAdmin = ["soporte_mis_tickets", "soporte_dashboard", "soporte_todos"].some(id => secciones.includes(id));
 const canSeeMarketingAdmin = ["marketing_mis_tickets", "marketing_dashboard", "marketing_todos"].some(id => secciones.includes(id));
-const canSeeAdminCorreos = ["admin_correos_crear", "admin_correos_actualizar"].some(id => secciones.includes(id));
-const canSeeAdminSiget = ["admin_siget_categorias", "admin_siget_ciclos", "admin_siget_secciones", "admin_siget_tickets", "admin_siget_usuarios", "admin_siget_roles"].some(id => secciones.includes(id));
-const canSeeAdminMarketing = false; // Director Marketing ya no tiene un menú administrativo codificado de forma estática, requiere los permisos granulares.
+const canSeeAdminCorreos = isSuperAdmin && ["admin_correos_crear", "admin_correos_actualizar"].some(id => secciones.includes(id));
+const canSeeAdminSiget = isSuperAdmin && ["admin_siget_categorias", "admin_siget_ciclos", "admin_siget_secciones", "admin_siget_tickets", "admin_siget_usuarios", "admin_siget_roles", "admin_siget_empresas"].some(id => secciones.includes(id));
+const canSeeAdminMarketing = false;
 
 const cshHref = "/tickets/soporte/nuevo-ticket-csh";
 const isCshActive = pathname === cshHref;
