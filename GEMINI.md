@@ -5,14 +5,14 @@
 >
 > **⚠️ REGLA CRÍTICA PARA EL ASISTENTE:** El asistente **NO debe ejecutar `git push`** en ninguna circunstancia a menos que el usuario lo solicite **de forma explícita**. Se permiten `git add` y `git commit` para preparar los cambios, pero el push queda **reservado exclusivamente para cuando el usuario lo indique**.
 
-**Tarea Actual:** Completada — Mejoras en Secciones, Permisos de Usuario e Inactividad (2026-07-27) ✅
+**Tarea Actual:** Completada — Mejoras al Reporte de Incidencias (2026-08-01) ✅
 
 **Estado:** Completado.
-1. **`/admin/secciones`:** Ocultada la sección 'Secciones' (`admin_siget_secciones`) para prevenir auto-bloqueo accidental, añadida nota aclaratoria e incorporada la sección 'Empresas' (`admin_siget_empresas` ID 23) a la lista global. Orden de subgrupos ajustado a A-Z manteniendo 'Modo Oscuro' al inicio de Generales.
-2. **Seguridad e Inactividad:** Añadida validación estricta de `dbUser.activo` en el callback `signIn` de Auth.js para denegar el acceso con el código `UsuarioInactivo` si la cuenta está desactivada en SiGeT.
-3. **Edición de Usuarios (`[id].astro`):** Ocultados los toggles `Levanta CSH` y `Levanta Mkt` cuando el usuario editado es Superadmin (`rolId === 3`).
-4. **Sincronización Bidireccional de Toggles y Secciones (`user-edit-form-logic.ts`):** Al activar/desactivar `tckt_csh`, `tckt_mkt`, `atiende_csh` o `atiende_mkt`, las secciones de permisos correspondientes se encienden/apagan dinámicamente en la UI según el rol.
-5. **Categoría Marketing Automática:** Al marcar `atiende_mkt`, la categoría Marketing (ID 12) se activa automáticamente y al desmarcar se desactiva.
+1. **Destinatarios del correo:** Hardcodeado el destinatario a `victor@humanitas.edu.mx` (Víctor Barrera) con el colaborador en CC. Se eliminó la dependencia del rol `Director CSH` que ya no existe.
+2. **Saludo:** Actualizado a `"Buen día Ing. Víctor Barrera,"` en correo real y previsualización.
+3. **Nueva lógica de lista de días:** Ahora el cuerpo del correo y la previsualización muestran **todos los días** del periodo con las reglas: `Sin incidencias` para días normales/omitidos/inasistencias; `Homeoffice.` / `Vacaciones.` según corresponda; `Justificar X minutos.` cuando hay retardo; `Tiempo adicional X minutos.` cuando hay salida tardía; `Motivo: [texto].` cuando aplica.
+4. **UI de tarjetas:** Cambiado `"Reposión de tiempo"` → `"Tiempo adicional"` en la columna de estado de cada tarjeta.
+5. **Modal de confirmación:** Texto actualizado para mencionar a Víctor Barrera y su correo.
 6. `npx astro check` validó la aplicación con **0 errores** en 149 archivos.
 
 **Pasos Siguientes:**
@@ -28,6 +28,7 @@
    - **Requiere aprobación explícita antes de implementar.**
 
 **Pasos Completados:**
+- ✅ **Mejoras en Secciones, Permisos de Usuario e Inactividad (2026-07-27):** Ocultada sección 'Secciones' para prevenir auto-bloqueo, validación de `activo` en signIn, toggles Levanta CSH/Mkt ocultos para Superadmin, sincronización bidireccional de toggles/secciones, activación automática de categoría Marketing.
 - ✅ **Subcategorías Jerárquicas Recursivas en Edición de Usuarios (2026-07-27):** Integración del componente `UserSubcategoryItem.astro` para desplegar subcategorías jerárquicas en acordeones anidados con N niveles de profundidad (paridad con `/admin/categorias`), manteniendo la plantilla en grid responsivo (2 cols desktop / 1 móvil). `npx astro check` 0 errores.
 - ✅ **Rediseño de Edición de Usuarios y Validaciones de Asignación de Tickets (2026-07-27):** Categorías organizadas en subsecciones "Habilitadas" y "Sin acceso" (A-Z, grid responsivo); componentes y toggles de edición de usuarios condicionados estrictamente por rol (Usuario, Admin, Superadmin); sincronización dinámica de toggles y recarga de vista; validación de asignación manual de tickets verificando flag `atiende_csh/mkt` y permisos de categoría. `npx astro check` 0 errores.
 - ✅ **Permisos Granulares de Atiende, Fix Selects Flashing y Marketing para Rol Usuario (2026-07-24):** Implementada lógica `canEditAtiende` en frontend y backend (Superadmin siempre; Admin solo si asignado y no creador; Usuario nunca). Corregido bug de selects con valor obsoleto al guardar, reemplazando `navigate()` View Transitions por `window.location.assign()`. Habilitadas secciones `crear_ticket_marketing` y `marketing_mis_tickets` para rolId=1 en seed y BD via script. `npx astro check` 0 errores.

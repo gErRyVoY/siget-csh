@@ -293,13 +293,9 @@ export const POST: APIRoute = async ({ request }) => {
     });
     await (prisma as any).incidencia.createMany({ data: dataToInsert });
 
-    // 2. Obtener datos del director y colaborador
-    const director = await prisma.usuario.findFirst({
-      where: { rolId: 1, activo: true },
-    });
-    const directorName = director
-      ? `${director.nombres} ${director.apellidos}`
-      : "Director CSH";
+    // 2. Destinatario fijo y datos del colaborador
+    const VICTOR_EMAIL = "victor@humanitas.edu.mx";
+    const VICTOR_NAME = "Ing. Víctor Barrera";
 
     const colaborador = await prisma.usuario.findUnique({ where: { id: userId } });
     if (!colaborador) throw new Error("No se encontró el colaborador actual en la base de datos.");
@@ -342,99 +338,107 @@ export const POST: APIRoute = async ({ request }) => {
       activeMap.set(dateStr, inc);
     }
 
-    // 5. Lista textual de incidencias (solo las no-omitidas) con colores inline
+    // 5. Lista textual de TODOS los días (nuevas reglas de formato)
     const diasSemana = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
     const diasSemanaNorm = ["domingo", "lunes", "martes", "miercoles", "jueves", "viernes", "sabado"];
 
-    const sortedData = [...dataToInsert].sort(
-      (a, b) => a.fecha.getTime() - b.fecha.getTime()
-    );
-    const nonOmittedIncidencias = sortedData.filter(inc => !inc.omitida);
+    // Construir un mapa rápido de incidencias guardadas por fecha
+    const savedMap = new Map<string, any>();
+    for (const inc of dataToInsert) {
+      savedMap.set(inc.fecha.toISOString().split("T")[0], inc);
+    }
 
-    const lines = nonOmittedIncidencias.map((inc) => {
-      const date = inc.fecha;
-      const dayName = diasSemana[date.getUTCDay()];
-      const dayNameNorm = diasSemanaNorm[date.getUTCDay()];
-      const dayNum = date.getUTCDate().toString().padStart(2, "0");
+    // Usar sortedTodos (todos los días del periodo, ya filtrado por quincena)
+    const lines = sortedTodos.map((r: any) => {
+      const date = new Date(r.fecha);
+      const utcDay = date.getUTCDay();
+      if (utcDay === 0) return null; // Ignorar domingos
+
+      const dayName = diasSemana[utcDay];
+      const dayNameNorm = diasSemanaNorm[utcDay];
+      const dayNum = date.getUTCDate();
       const hDia = schedule[dayNameNorm];
+      const dateStr = date.toISOString().split("T")[0];
 
-      const parts: string[] = [`<strong>${dayName} ${dayNum}.</strong>`];
+      // Buscar en las incidencias guardadas de este envío
+      const saved = savedMap.get(dateStr);
 
-      const rEnt = parseTime(inc.entrada_turno);
-      const rSal = parseTime(inc.salida_turno);
+      const isOmitida = saved ? saved.omitida : false;
+      const isAllNull = !r.entrada_turno && !r.salida_turno && !r.entrada_comida && !r.salida_comida;
+
+      // Detectar Homeoffice / Vacaciones
+      const specialLabel = (isAllNull && saved &&
+        (saved.observaciones === "Homeoffice" || saved.observaciones === "Vacaciones"))
+        ? saved.observaciones as string
+        : null;
+
+      const dayLabel = `<strong>${dayName} ${dayNum}.</strong>`;
+
+      // Regla 4 y 1: Día omitido → Sin incidencias
+      if (isOmitida) {
+        return `${dayLabel} Sin incidencias.`;
+      }
+
+      // Regla 5: Homeoffice / Vacaciones
+      if (specialLabel) {
+        return `${dayLabel} ${specialLabel}.`;
+      }
+
+      // Regla 1: Inasistencia o sin datos → Sin incidencias
+      if (isAllNull) {
+        return `${dayLabel} Sin incidencias.`;
+      }
+
+      // Regla 2 y 3: Hay datos de tiempo
+      const rEnt = parseTime(r.entrada_turno);
+      const rSal = parseTime(r.salida_turno);
       const hIni = hDia ? parseHorarioTime(hDia.inicio) : null;
       const hFin = hDia ? parseHorarioTime(hDia.fin) : null;
 
-      const isAllNull =
-        !inc.entrada_turno && !inc.salida_turno && !inc.entrada_comida && !inc.salida_comida;
+      let justificarMins = 0;
 
-      // Detectar Homeoffice / Vacaciones por el campo observaciones
-      const specialLabel = (isAllNull && (inc.observaciones === "Homeoffice" || inc.observaciones === "Vacaciones"))
-        ? inc.observaciones
-        : null;
-
-      if (specialLabel) {
-        parts.push(`${specialLabel}.`);
-      } else if (isAllNull) {
-        parts.push("Inasistencia.");
-      } else {
-        if (inc.entrada_turno && hIni) {
-          const diffEnt = timeDiffMins(rEnt, hIni);
-          let elColor = "";
-          if (diffEnt < 0) elColor = "color:#16a34a;";
-          else if (diffEnt > 15) elColor = "color:#dc2626;";
-          else if (diffEnt >= 6) elColor = "color:#ea580c;";
-          const elStyle = `font-weight:bold;${elColor ? ` ${elColor}` : ""}`;
-          const elText = `<span style="${elStyle}">EL (${formatTime(inc.entrada_turno)})</span>`;
-
-          if (diffEnt > 5) {
-            parts.push(`${elText} Se registra entrada ${diffEnt} minutos tarde. Entrada laboral normal ${hDia.inicio} horas.`);
-          } else if (diffEnt < 0) {
-            parts.push(`${elText} Se registra entrada ${-diffEnt} minutos antes. Entrada laboral normal ${hDia.inicio} horas.`);
-          } else {
-            parts.push(`${elText} Entrada a tiempo.`);
-          }
-        } else if (!inc.entrada_turno) {
-          parts.push("Falta registro de entrada.");
-        }
-
-        if (inc.salida_turno && hFin) {
-          const diffSal = timeDiffMins(rSal, hFin);
-          let slColor = "";
-          if (diffSal > 5) slColor = "color:#16a34a;";
-          const slStyle = `font-weight:bold;${slColor ? ` ${slColor}` : ""}`;
-          const slText = `<span style="${slStyle}">SL (${formatTime(inc.salida_turno)})</span>`;
-
-          if (diffSal > 5) {
-            parts.push(`${slText} Se reponen ${diffSal} minutos del tiempo. Salida laboral normal ${hDia.fin} horas.`);
-          } else if (diffSal < 0) {
-            parts.push(`${slText} Se registra salida ${-diffSal} minutos antes. Salida laboral normal ${hDia.fin} horas.`);
-          } else {
-            parts.push(`${slText} Salida a tiempo.`);
-          }
-        } else if (!inc.salida_turno) {
-          parts.push("Falta registro de salida.");
-        }
-
-        if (inc.entrada_comida && inc.salida_comida) {
-          const rEntC = parseTime(inc.entrada_comida);
-          const rSalC = parseTime(inc.salida_comida);
-          if (rEntC && rSalC) {
-            const diffC = timeDiffMins(rSalC, rEntC);
-            if (diffC > 30) {
-              parts.push(
-                `Comida (${formatTime(inc.entrada_comida)} a ${formatTime(inc.salida_comida)}) Horario de comida excedido por ${diffC - 30} minutos.`
-              );
-            }
-          }
-        }
+      // Detectar si llega tarde (más de 5 min) y capturar los minutos
+      if (rEnt && hIni) {
+        const diffEnt = timeDiffMins(rEnt, hIni);
+        if (diffEnt > 5) justificarMins = diffEnt;
       }
 
-      if (inc.observaciones) parts.push(`<strong>Motivo:</strong> ${inc.observaciones}.`);
-      if (inc.observaciones_comida) parts.push(`<strong>Motivo (Comida):</strong> ${inc.observaciones_comida}.`);
+      // Detectar tiempo adicional (salida tardía > 5 min)
+      let tiempoAdicionalMins = 0;
+      if (rSal && hFin) {
+        const diffSal = timeDiffMins(rSal, hFin);
+        if (diffSal > 5) tiempoAdicionalMins = diffSal;
+      }
+
+      const hasObs = saved && saved.observaciones &&
+        saved.observaciones !== "Homeoffice" && saved.observaciones !== "Vacaciones";
+
+      // Si no hay incidencia relevante (sin retardo, sin tiempo adicional)
+      if (justificarMins === 0 && tiempoAdicionalMins === 0 && !hasObs) {
+        return `${dayLabel} Sin incidencias.`;
+      }
+
+      // Armar línea: Justificar → Tiempo adicional → Motivo → Motivo (Comida)
+      const parts: string[] = [dayLabel];
+
+      if (justificarMins > 0) {
+        parts.push(`Justificar ${justificarMins} minutos.`);
+      }
+
+      if (tiempoAdicionalMins > 0) {
+        parts.push(`Tiempo adicional ${tiempoAdicionalMins} minutos.`);
+      }
+
+      if (hasObs) {
+        parts.push(`Motivo: ${saved.observaciones}.`);
+      }
+
+      if (saved?.observaciones_comida) {
+        parts.push(`Motivo (Comida): ${saved.observaciones_comida}.`);
+      }
 
       return parts.join(" ");
-    });
+    }).filter((line: string | null) => line !== null) as string[];
 
     const htmlList = lines.length > 0 ? `
       <div style="background-color:#f9fafb;border-left:4px solid #caab55;padding:15px;margin:15px 0;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;font-size:14px;line-height:1.6;color:#374151;">
@@ -472,7 +476,7 @@ export const POST: APIRoute = async ({ request }) => {
     }
 
     const emailBody = `
-      <p style="margin:0 0 16px;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;color:#374151;">Buen día Ing. ${directorName},</p>
+      <p style="margin:0 0 16px;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;color:#374151;">Buen día ${VICTOR_NAME},</p>
       <p style="margin:0 0 16px;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;color:#374151;"><strong>Colaborador:</strong> ${colaboradorName}</p>
       <p style="margin:0 0 16px;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;color:#374151;">Se envía el presente correo correspondiente <strong>${periodText}</strong>, con los registros de las incidencias y sus justificaciones:</p>
 
@@ -486,13 +490,10 @@ export const POST: APIRoute = async ({ request }) => {
 
     const htmlWrapped = getHtmlWrapper(emailSubject, emailBody);
 
-    // Para: Director CSH | CC: Colaborador que envía
-    const toEmail = director?.mail || colaborador.mail;
-    const ccEmail = director?.mail ? colaborador.mail : undefined;
-
+    // Para: Víctor Barrera (fijo) | CC: Colaborador que envía
     const sendResult = await sendEmail({
-      to: toEmail,
-      cc: ccEmail,
+      to: VICTOR_EMAIL,
+      cc: colaborador.mail,
       subject: emailSubject,
       htmlBody: htmlWrapped,
       fromName: colaboradorName,

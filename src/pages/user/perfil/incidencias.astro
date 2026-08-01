@@ -216,7 +216,7 @@ const GOOGLE_APP_ID = import.meta.env.GOOGLE_APP_ID || process.env.GOOGLE_APP_ID
           Se enviará el reporte correspondiente al periodo seleccionado.
         </p>
         <p class="text-xs text-muted-foreground">
-          Al confirmar, se generará una tabla calendarizada con los registros y motivos justificados del periodo y se enviará por correo al Director del CSH.
+          Al confirmar, se generará una tabla calendarizada con los registros y motivos justificados del periodo y se enviará por correo a Víctor Barrera (victor@humanitas.edu.mx).
         </p>
       </div>
       <!-- Modal Footer -->
@@ -581,7 +581,7 @@ const GOOGLE_APP_ID = import.meta.env.GOOGLE_APP_ID || process.env.GOOGLE_APP_ID
             }
 
             if (isReposicion) {
-              statusText = "Reposición de tiempo";
+              statusText = "Tiempo adicional";
               statusClass = "text-[#16a34a] font-bold";
               tiempoTurno = minsExtraReposicion;
               extraText = `${minsExtraReposicion} minutos`;
@@ -767,7 +767,7 @@ const GOOGLE_APP_ID = import.meta.env.GOOGLE_APP_ID || process.env.GOOGLE_APP_ID
                         ${isAllNull ? `<span id="status-text-${index}">${isHomeofficeChecked ? "Homeoffice" : isVacacionesChecked ? "Vacaciones" : "Inasistencia"}</span>` : `
                           ${statusText !== 'Horario excedido' ? `<span>${statusText}</span>` : ''}
                           ${statusText !== 'Horario excedido' && extraText ? `<span class="mt-1">${extraText}</span>` : ''}
-                          ${reposicionExtraText ? `<span class="mt-2 text-green-600 font-bold">Reposición de tiempo</span><span class="text-green-600 font-bold">${reposicionExtraText}</span>` : ''}
+                          ${reposicionExtraText ? `<span class="mt-2 text-green-600 font-bold">Tiempo adicional</span><span class="text-green-600 font-bold">${reposicionExtraText}</span>` : ''}
                         `}
                     </div>
                     <div class="p-4 border-b sm:border-b-0 sm:border-r space-y-2 sm:w-[250px] flex-shrink-0 text-sm">
@@ -1351,88 +1351,90 @@ const GOOGLE_APP_ID = import.meta.env.GOOGLE_APP_ID || process.env.GOOGLE_APP_ID
         </div>
       `;
 
+      // Lista de TODOS los días del periodo con las nuevas reglas
       const listLines: string[] = [];
-      const sortedActiveIncidencias = Array.from(activeMap.values())
-        .filter(inc => !inc.omitida)
-        .sort((a, b) => new Date(a.fecha).getTime() - new Date(b.fecha).getTime());
 
-      sortedActiveIncidencias.forEach((inc) => {
-        const date = new Date(inc.fecha);
-        const dayName = diasSemana[date.getUTCDay()];
-        const dayNameNorm = dayName.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-        const dayNum = date.getUTCDate().toString().padStart(2, "0");
+      sorted.forEach((r: any) => {
+        const date = new Date(r.fecha);
+        const utcDay = date.getUTCDay();
+        if (utcDay === 0) return; // Ignorar domingos
+
+        const dayName = diasSemana[utcDay].charAt(0).toUpperCase() + diasSemana[utcDay].slice(1);
+        const dayNameNorm = diasSemana[utcDay].normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+        const dayNum = date.getUTCDate();
         const hDia = horario[dayNameNorm];
+        const dateStr = date.toISOString().split("T")[0];
 
-        const capitalizedName = dayName.charAt(0).toUpperCase() + dayName.slice(1);
-        const parts = [`<strong>${capitalizedName} ${dayNum}.</strong>`];
+        const activeInc = activeMap.get(dateStr);
+        const isOmitida = activeInc ? activeInc.omitida : false;
+        const isAllNull = !r.entrada_turno && !r.salida_turno && !r.entrada_comida && !r.salida_comida;
 
-        const rEnt = parseTime(inc.entrada_turno);
-        const rSal = parseTime(inc.salida_turno);
-        const hIni = hDia ? parseHorarioTime(hDia.inicio) : null;
-        const hFin = hDia ? parseHorarioTime(hDia.fin) : null;
+        // Detectar Homeoffice / Vacaciones
+        const specialLabel = (isAllNull && activeInc &&
+          (activeInc.observaciones === "Homeoffice" || activeInc.observaciones === "Vacaciones"))
+          ? activeInc.observaciones as string
+          : (activeInc ? activeInc.specialLabel : null);
 
-        const isAllNull = !inc.entrada_turno && !inc.salida_turno && !inc.entrada_comida && !inc.salida_comida;
+        const dayLabel = `<strong>${dayName} ${dayNum}.</strong>`;
 
-        if (inc.specialLabel) {
-          // Homeoffice o Vacaciones: solo mostrar la etiqueta especial
-          parts.push(`${inc.specialLabel}.`);
+        let lineText = "";
+
+        if (isOmitida) {
+          // Regla 4: Omitido → Sin incidencias
+          lineText = `${dayLabel} Sin incidencias.`;
+        } else if (specialLabel) {
+          // Regla 5: Homeoffice / Vacaciones
+          lineText = `${dayLabel} ${specialLabel}.`;
         } else if (isAllNull) {
-          parts.push("Inasistencia.");
+          // Regla 1 y 2: Sin datos → Sin incidencias
+          lineText = `${dayLabel} Sin incidencias.`;
         } else {
-          if (inc.entrada_turno && hIni && rEnt) {
+          // Hay datos – evaluar retardo y tiempo adicional
+          const rEnt = parseTime(r.entrada_turno);
+          const rSal = parseTime(r.salida_turno);
+          const hIni = hDia ? parseHorarioTime(hDia.inicio) : null;
+          const hFin = hDia ? parseHorarioTime(hDia.fin) : null;
+
+          let justificarMins = 0;
+          let tiempoAdicionalMins = 0;
+
+          if (rEnt && hIni) {
             const diffEnt = timeDiffMins(rEnt, hIni);
-            let elColor = "";
-            if (diffEnt < 0) elColor = "color:#16a34a;";
-            else if (diffEnt > 15) elColor = "color:#dc2626;";
-            else if (diffEnt >= 6) elColor = "color:#ea580c;";
-            const elStyle = `font-weight:bold;${elColor ? ` ${elColor}` : ""}`;
-            const elText = `<span style="${elStyle}">EL (${formatT(inc.entrada_turno)})</span>`;
-
-            if (diffEnt > 5) {
-              parts.push(`${elText} Se registra entrada ${diffEnt} minutos tarde. Entrada laboral normal ${hDia.inicio} horas.`);
-            } else if (diffEnt < 0) {
-              parts.push(`${elText} Se registra entrada ${-diffEnt} minutos antes. Entrada laboral normal ${hDia.inicio} horas.`);
-            } else {
-              parts.push(`${elText} Entrada a tiempo.`);
-            }
-          } else if (!inc.entrada_turno) {
-            parts.push("Falta registro de entrada.");
+            if (diffEnt > 5) justificarMins = diffEnt;
           }
 
-          if (inc.salida_turno && hFin && rSal) {
+          if (rSal && hFin) {
             const diffSal = timeDiffMins(rSal, hFin);
-            let slColor = "";
-            if (diffSal > 5) slColor = "color:#16a34a;";
-            const slStyle = `font-weight:bold;${slColor ? ` ${slColor}` : ""}`;
-            const slText = `<span style="${slStyle}">SL (${formatT(inc.salida_turno)})</span>`;
-
-            if (diffSal > 5) {
-              parts.push(`${slText} Se reponen ${diffSal} minutos del tiempo. Salida laboral normal ${hDia.fin} horas.`);
-            } else if (diffSal < 0) {
-              parts.push(`${slText} Se registra salida ${-diffSal} minutos antes. Salida laboral normal ${hDia.fin} horas.`);
-            } else {
-              parts.push(`${slText} Salida a tiempo.`);
-            }
-          } else if (!inc.salida_turno) {
-            parts.push("Falta registro de salida.");
+            if (diffSal > 5) tiempoAdicionalMins = diffSal;
           }
 
-          if (inc.entrada_comida && inc.salida_comida) {
-            const rEntC = parseTime(inc.entrada_comida);
-            const rSalC = parseTime(inc.salida_comida);
-            if (rEntC && rSalC) {
-              const diffC = timeDiffMins(rSalC, rEntC);
-              if (diffC > 30) {
-                parts.push(`Comida (${formatT(inc.entrada_comida)} a ${formatT(inc.salida_comida)}) Horario de comida excedido por ${diffC - 30} minutos.`);
-              }
+          const hasObs = activeInc && activeInc.observaciones &&
+            activeInc.observaciones !== "Homeoffice" && activeInc.observaciones !== "Vacaciones";
+          const hasObsComida = activeInc && activeInc.observaciones_comida;
+
+          if (justificarMins === 0 && tiempoAdicionalMins === 0 && !hasObs) {
+            // Sin incidencia relevante
+            lineText = `${dayLabel} Sin incidencias.`;
+          } else {
+            // Armar línea: Justificar → Tiempo adicional → Motivo → Motivo (Comida)
+            const parts: string[] = [dayLabel];
+            if (justificarMins > 0) {
+              parts.push(`Justificar ${justificarMins} minutos.`);
             }
+            if (tiempoAdicionalMins > 0) {
+              parts.push(`Tiempo adicional ${tiempoAdicionalMins} minutos.`);
+            }
+            if (hasObs) {
+              parts.push(`Motivo: ${activeInc.observaciones}.`);
+            }
+            if (hasObsComida) {
+              parts.push(`Motivo (Comida): ${activeInc.observaciones_comida}.`);
+            }
+            lineText = parts.join(" ");
           }
         }
 
-        if (inc.observaciones) parts.push(`<strong>Motivo:</strong> ${inc.observaciones}.`);
-        if (inc.observaciones_comida) parts.push(`<strong>Motivo (Comida):</strong> ${inc.observaciones_comida}.`);
-
-        listLines.push(`<div style="margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid #e5e7eb;">${parts.join(" ")}</div>`);
+        listLines.push(`<div style="margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid #e5e7eb;">${lineText}</div>`);
       });
 
       const htmlList = listLines.length > 0 ? `
@@ -1461,7 +1463,7 @@ const GOOGLE_APP_ID = import.meta.env.GOOGLE_APP_ID || process.env.GOOGLE_APP_ID
             <div style="color: #6b7280; font-size: 12px; font-weight: bold; margin-bottom: 4px;">ASUNTO:</div>
             <div style="color: #111827; font-size: 15px; font-weight: bold;">${emailSubject}</div>
           </div>
-          <p style="margin:0 0 16px;color:#374151;">Buen día Ing. Director CSH,</p>
+          <p style="margin:0 0 16px;color:#374151;">Buen día Ing. Víctor Barrera,</p>
           <p style="margin:0 0 16px;color:#374151;"><strong>Colaborador:</strong> ${colaboradorName}</p>
           <p style="margin:0 0 16px;color:#374151;">Se envía el presente correo correspondiente con los registros de las incidencias y sus justificaciones:</p>
           <div style="margin:20px 0;">
