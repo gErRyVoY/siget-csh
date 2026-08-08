@@ -704,25 +704,25 @@ export function initTicketWizard(treeData: CategoriesTreeData) {
         const searchContainer = document.getElementById('category-search-container');
         if (!searchContainer) return;
 
-        // Build the UI
+        // Build the UI: max-w-[1280px], input h-[42px]
         searchContainer.innerHTML = `
-            <div class="relative w-full max-w-xl">
+            <div class="relative w-full max-w-[1280px]">
                 <div class="relative">
-                    <svg class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <svg class="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground pointer-events-none" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                         <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
                     </svg>
                     <input
                         id="category-search-input"
                         type="text"
-                        placeholder="Buscar categoría o subcategoría..."
+                        placeholder="Buscar categoría o subcategoría... (Ctrl + B)"
                         autocomplete="off"
-                        class="w-full pl-9 pr-4 py-2 rounded-md border border-border bg-card text-sm focus:outline-none focus:ring-2 focus:ring-secondary focus:border-secondary placeholder:text-muted-foreground transition-all"
+                        class="w-full h-[42px] pl-10 pr-10 rounded-md border border-border bg-card text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-secondary focus:border-secondary placeholder:text-muted-foreground transition-all shadow-sm"
                     />
-                    <button id="category-search-clear" class="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors hidden" title="Limpiar búsqueda">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                    <button id="category-search-clear" type="button" class="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors hidden" title="Limpiar búsqueda">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
                     </button>
                 </div>
-                <div id="category-search-dropdown" class="absolute z-50 mt-1 w-full bg-card border border-border rounded-md shadow-lg hidden max-h-64 overflow-y-auto">
+                <div id="category-search-dropdown" class="absolute z-50 mt-1 w-full bg-card border border-border rounded-md shadow-xl hidden max-h-72 overflow-y-auto">
                 </div>
             </div>
         `;
@@ -736,10 +736,37 @@ export function initTicketWizard(treeData: CategoriesTreeData) {
         let activeIndex = -1;
         let currentResults: FlatSearchResult[] = [];
 
+        // Atajo de teclado: Ctrl + B para hacer focus en el buscador
+        document.addEventListener('keydown', (e) => {
+            if ((e.ctrlKey || e.metaKey) && (e.key === 'b' || e.key === 'B')) {
+                e.preventDefault();
+                input.focus();
+                input.select();
+            }
+        });
+
         function highlightQuery(text: string, query: string): string {
             if (!query) return text;
             const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-            return text.replace(new RegExp(`(${escaped})`, 'gi'), '<mark class="bg-yellow-200 dark:bg-yellow-700 rounded-sm text-foreground">$1</mark>');
+            return text.replace(
+                new RegExp(`(${escaped})`, 'gi'),
+                '<mark class="match-mark bg-secondary/15 text-secondary font-bold px-1 rounded-sm transition-colors group-hover:bg-primary group-hover:text-black group-[.search-result-active]:bg-primary group-[.search-result-active]:text-black">$1</mark>'
+            );
+        }
+
+        function updateActiveItem(newIndex: number) {
+            const items = dropdown!.querySelectorAll('.search-result-item');
+            if (items.length === 0) return;
+
+            items.forEach((item, idx) => {
+                if (idx === newIndex) {
+                    item.classList.add('search-result-active', 'bg-secondary', 'text-white');
+                    item.scrollIntoView({ block: 'nearest' });
+                } else {
+                    item.classList.remove('search-result-active', 'bg-secondary', 'text-white');
+                }
+            });
+            activeIndex = newIndex;
         }
 
         function renderDropdown(query: string) {
@@ -767,15 +794,15 @@ export function initTicketWizard(treeData: CategoriesTreeData) {
                     .map((part, pi) => {
                         const isLast = pi === r.pathParts.length - 1;
                         const hl = highlightQuery(part, query);
-                        if (isLast) return `<span class="font-semibold text-foreground">${hl}</span>`;
-                        return `<span class="text-muted-foreground text-xs">${hl}</span>`;
+                        if (isLast) return `<span class="font-semibold text-foreground group-hover:text-white group-[.search-result-active]:text-white">${hl}</span>`;
+                        return `<span class="text-muted-foreground group-hover:text-white/80 group-[.search-result-active]:text-white/80 text-xs">${hl}</span>`;
                     })
-                    .join('<span class="text-muted-foreground mx-1 text-xs">&rsaquo;</span>');
+                    .join('<span class="text-muted-foreground group-hover:text-white/70 group-[.search-result-active]:text-white/70 mx-1 text-xs">&rsaquo;</span>');
 
                 return `<button
                     type="button"
                     data-result-index="${i}"
-                    class="search-result-item w-full text-left px-4 py-2 text-sm hover:bg-secondary/20 focus:bg-secondary/20 flex flex-col gap-0.5 transition-colors"
+                    class="search-result-item group w-full text-left px-4 py-2.5 text-sm text-foreground hover:bg-secondary hover:text-white focus:outline-none flex flex-col gap-0.5 transition-colors border-b border-border/30 last:border-none"
                 >
                     <span class="flex items-center flex-wrap gap-1">${highlighted}</span>
                 </button>`;
@@ -784,10 +811,12 @@ export function initTicketWizard(treeData: CategoriesTreeData) {
             dropdown!.classList.remove('hidden');
             activeIndex = -1;
 
-            // Attach click handlers
-            dropdown!.querySelectorAll('.search-result-item').forEach(btn => {
+            // Attach event handlers
+            dropdown!.querySelectorAll('.search-result-item').forEach((btn, idx) => {
+                btn.addEventListener('mouseenter', () => {
+                    updateActiveItem(idx);
+                });
                 btn.addEventListener('click', () => {
-                    const idx = parseInt((btn as HTMLElement).dataset.resultIndex || '0');
                     selectResult(currentResults[idx]);
                 });
             });
@@ -830,21 +859,27 @@ export function initTicketWizard(treeData: CategoriesTreeData) {
         });
 
         input.addEventListener('keydown', (e) => {
-            const items = dropdown!.querySelectorAll('.search-result-item');
             if (e.key === 'ArrowDown') {
                 e.preventDefault();
-                activeIndex = Math.min(activeIndex + 1, items.length - 1);
-                (items[activeIndex] as HTMLElement)?.focus();
+                if (currentResults.length > 0) {
+                    const nextIndex = Math.min(activeIndex + 1, currentResults.length - 1);
+                    updateActiveItem(nextIndex);
+                }
             } else if (e.key === 'ArrowUp') {
                 e.preventDefault();
-                activeIndex = Math.max(activeIndex - 1, 0);
-                (items[activeIndex] as HTMLElement)?.focus();
+                if (currentResults.length > 0) {
+                    const prevIndex = Math.max(activeIndex - 1, 0);
+                    updateActiveItem(prevIndex);
+                }
             } else if (e.key === 'Escape') {
                 dropdown!.classList.add('hidden');
                 input!.blur();
-            } else if (e.key === 'Enter' && currentResults.length > 0) {
-                e.preventDefault();
-                selectResult(currentResults[Math.max(activeIndex, 0)]);
+            } else if (e.key === 'Enter') {
+                if (currentResults.length > 0) {
+                    e.preventDefault();
+                    const targetIdx = activeIndex >= 0 ? activeIndex : 0;
+                    selectResult(currentResults[targetIdx]);
+                }
             }
         });
 
