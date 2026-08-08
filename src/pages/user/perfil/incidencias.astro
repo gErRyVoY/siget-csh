@@ -568,23 +568,22 @@ const GOOGLE_APP_ID = import.meta.env.GOOGLE_APP_ID || process.env.GOOGLE_APP_ID
           } else if (hInicio && rEntrada) {
             // Tiempos
             const diffEntrada = timeDiffMins(rEntrada, hInicio); // > 0 means late
-            
-            // Check if it qualifies as Reposición (entry before start AND exit after end)
-            let isReposicion = false;
-            let minsExtraReposicion = 0;
+
+            // Calcular minutos de salida tardía
+            let diffSalida = 0;
             if (hFin && rSalida) {
-              const diffSalida = timeDiffMins(rSalida, hFin); // > 0 means late exit
-              if (diffEntrada < 0 && diffSalida > 0) {
-                isReposicion = true;
-                minsExtraReposicion = (-diffEntrada) + diffSalida;
-              }
+              diffSalida = timeDiffMins(rSalida, hFin); // > 0 means late exit
             }
 
-            if (isReposicion) {
+            // Reposición completa: entrada anticipada Y salida tardía
+            const isReposicionCompleta = diffEntrada < -5 && diffSalida > 5;
+
+            if (isReposicionCompleta) {
+              const minsExtra = (-diffEntrada) + diffSalida;
               statusText = "Tiempo adicional";
               statusClass = "text-[#16a34a] font-bold";
-              tiempoTurno = minsExtraReposicion;
-              extraText = `${minsExtraReposicion} minutos`;
+              tiempoTurno = minsExtra;
+              extraText = `${minsExtra} minutos`;
               requiresObs = true;
               showRow = true;
             } else if (diffEntrada > 5) {
@@ -600,31 +599,23 @@ const GOOGLE_APP_ID = import.meta.env.GOOGLE_APP_ID || process.env.GOOGLE_APP_ID
               extraText = `${minsRetardo} minutos`;
               requiresObs = true;
               showRow = true;
-              // Comprobar si además hay salida tardía (reposición parcial)
-              if (hFin && rSalida) {
-                const diffSalRetardo = timeDiffMins(rSalida, hFin); // >0 si salida tardía
-                if (diffSalRetardo > 5) {
-                  reposicionExtraText = `${diffSalRetardo} minutos`;
-                }
+              // Salida tardía adicional al retardo
+              if (diffSalida > 5) {
+                reposicionExtraText = `${diffSalida} minutos`;
               }
             } else {
-              // Check extra time
-              if (hFin && rSalida) {
-                const earlyMins = -diffEntrada; // positive if early
-                const lateMins = timeDiffMins(rSalida, hFin); // positive if left late
+              // Sin retardo – verificar solo salida tardía o entrada anticipada
+              const earlyMins = diffEntrada < -5 ? (-diffEntrada) : 0;
+              const lateMins = diffSalida > 5 ? diffSalida : 0;
+              const totalExtra = earlyMins + lateMins;
 
-                let totalExtra = 0;
-                if (earlyMins >= 60) totalExtra += earlyMins;
-                if (lateMins >= 60) totalExtra += lateMins;
-
-                if (totalExtra >= 60) {
-                  statusText = "Tiempo extra";
-                  statusClass = "text-[#16a34a] font-bold";
-                  tiempoTurno = totalExtra;
-                  extraText = `${totalExtra} minutos`;
-                  requiresObs = true;
-                  showRow = true;
-                }
+              if (totalExtra > 5) {
+                statusText = "Tiempo adicional";
+                statusClass = "text-[#16a34a] font-bold";
+                tiempoTurno = totalExtra;
+                extraText = `${totalExtra} minutos`;
+                requiresObs = true;
+                showRow = true;
               }
             }
           }
@@ -677,15 +668,10 @@ const GOOGLE_APP_ID = import.meta.env.GOOGLE_APP_ID || process.env.GOOGLE_APP_ID
             toggleChecked = !savedRecord.omitida;
           }
 
-          // Detectar sábado para Homeoffice
-          const dateObjForDay = new Date(r.fecha);
-          const utcDayOfWeek = dateObjForDay.getUTCDay(); // 6 = sábado
-          const isSaturday = utcDayOfWeek === 6;
-
-          // Estado inicial de los toggles especiales (guardados como texto en observaciones)
+          // Estado inicial del select de tipo de inasistencia
           const savedObsValue = savedRecord ? (savedRecord.observaciones || "") : "";
-          const isHomeofficeChecked = isSaturday && isAllNull && savedObsValue === "Homeoffice";
-          const isVacacionesChecked = isAllNull && savedObsValue === "Vacaciones";
+          const specialOpciones = ["Homeoffice", "Vacaciones", "Evento", "Asueto"];
+          const savedSpecialObs = isAllNull && specialOpciones.includes(savedObsValue) ? savedObsValue : "Inasistencia";
 
           const dayInt = parseInt(dayNum, 10);
           if (dayInt >= 16) {
@@ -743,17 +729,13 @@ const GOOGLE_APP_ID = import.meta.env.GOOGLE_APP_ID || process.env.GOOGLE_APP_ID
                     <span class="font-bold capitalize">${dayName} ${dayNum}</span>
                     <div class="flex items-center gap-2">
                         ${isAllNull ? `
-                          ${isSaturday ? `
-                          <span class="text-xs font-semibold select-none" id="label-homeoffice-${index}">Homeoffice</span>
-                          <label class="relative inline-flex items-center cursor-pointer">
-                            <input type="checkbox" id="homeoffice-${index}" class="sr-only peer incidencia-homeoffice" ${isHomeofficeChecked ? "checked" : ""} data-index="${index}">
-                            <div class="w-11 h-6 bg-gray-400 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-secondary" id="track-homeoffice-${index}"></div>
-                          </label>` : ''}
-                          <span class="text-xs font-semibold select-none" id="label-vacaciones-${index}">Vacaciones</span>
-                          <label class="relative inline-flex items-center cursor-pointer">
-                            <input type="checkbox" id="vacaciones-${index}" class="sr-only peer incidencia-vacaciones" ${isVacacionesChecked ? "checked" : ""} data-index="${index}">
-                            <div class="w-11 h-6 bg-gray-400 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-secondary" id="track-vacaciones-${index}"></div>
-                          </label>
+                          <select id="tipo-inasistencia-${index}" class="incidencia-tipo-select text-xs font-semibold bg-muted-foreground/20 border-none rounded-md px-2 py-1 cursor-pointer focus:outline-none focus:ring-1 focus:ring-primary" data-index="${index}">
+                            <option value="Inasistencia" ${savedSpecialObs === 'Inasistencia' ? 'selected' : ''}>Inasistencia</option>
+                            <option value="Homeoffice" ${savedSpecialObs === 'Homeoffice' ? 'selected' : ''}>Homeoffice</option>
+                            <option value="Vacaciones" ${savedSpecialObs === 'Vacaciones' ? 'selected' : ''}>Vacaciones</option>
+                            <option value="Evento" ${savedSpecialObs === 'Evento' ? 'selected' : ''}>Evento</option>
+                            <option value="Asueto" ${savedSpecialObs === 'Asueto' ? 'selected' : ''}>Asueto</option>
+                          </select>
                         ` : ''}
                         <span class="text-xs font-semibold select-none toggle-label w-12 text-right" id="label-toggle-${index}">${toggleChecked ? "Enviar" : "Omitir"}</span>
                         <label class="relative inline-flex items-center cursor-pointer">
@@ -764,7 +746,10 @@ const GOOGLE_APP_ID = import.meta.env.GOOGLE_APP_ID || process.env.GOOGLE_APP_ID
                 </div>
                 <div class="flex flex-col sm:flex-row">
                     <div class="p-4 border-b sm:border-b-0 sm:border-r flex flex-col justify-center items-center ${statusText === 'Horario excedido' ? '' : statusClass} sm:w-[150px] shrink-0 text-center" id="status-col-${index}">
-                        ${isAllNull ? `<span id="status-text-${index}">${isHomeofficeChecked ? "Homeoffice" : isVacacionesChecked ? "Vacaciones" : "Inasistencia"}</span>` : `
+                        ${isAllNull ? `<span id="status-text-${index}" class="${
+                          savedSpecialObs === 'Homeoffice' || savedSpecialObs === 'Vacaciones' ? 'text-[#7c3aed] font-bold' :
+                          savedSpecialObs === 'Inasistencia' ? 'text-[#ca1c1c] font-bold' : 'text-[#6b7280] font-bold'
+                        }">${savedSpecialObs}</span>` : `
                           ${statusText !== 'Horario excedido' ? `<span>${statusText}</span>` : ''}
                           ${statusText !== 'Horario excedido' && extraText ? `<span class="mt-1">${extraText}</span>` : ''}
                           ${reposicionExtraText ? `<span class="mt-2 text-green-600 font-bold">Tiempo adicional</span><span class="text-green-600 font-bold">${reposicionExtraText}</span>` : ''}
@@ -801,7 +786,7 @@ const GOOGLE_APP_ID = import.meta.env.GOOGLE_APP_ID || process.env.GOOGLE_APP_ID
                         ${
                           requiresObs
                             ? `
-                            <div id="obs-turno-wrapper-${index}" ${(isHomeofficeChecked || isVacacionesChecked || !toggleChecked) ? 'class="hidden"' : ''}>
+                            <div id="obs-turno-wrapper-${index}" ${(['Homeoffice','Vacaciones','Evento','Asueto'].includes(savedSpecialObs) || !toggleChecked) ? 'class="hidden"' : ''}>
                                 <label class="block font-bold text-sm mb-1">Motivo (Turno):</label>
                                 <textarea id="${obsId}" class="w-full text-sm border-border bg-input p-2 rounded-md ${isSaved ? "opacity-60 cursor-not-allowed" : ""}" rows="2" placeholder="${reqObsText}" ${isSaved ? "disabled" : ""}>${savedObs || ""}</textarea>
                             </div>
@@ -903,28 +888,42 @@ const GOOGLE_APP_ID = import.meta.env.GOOGLE_APP_ID || process.env.GOOGLE_APP_ID
           });
         });
 
-        // Attach event listeners for Homeoffice toggles
-        document.querySelectorAll(".incidencia-homeoffice").forEach((toggle) => {
-          toggle.addEventListener("change", (e) => {
-            const t = e.target as HTMLInputElement;
-            const idx = t.dataset.index;
+
+        // Attach event listener for tipo-inasistencia select
+        document.querySelectorAll(".incidencia-tipo-select").forEach((sel) => {
+          sel.addEventListener("change", (e) => {
+            const s = e.target as HTMLSelectElement;
+            const idx = s.dataset.index;
+            const val = s.value;
             const statusEl = document.getElementById(`status-text-${idx}`);
             const obsWrapper = document.getElementById(`obs-turno-wrapper-${idx}`);
             const obsEl = document.getElementById(`obs-${idx}`) as HTMLTextAreaElement;
-            // Si se activa Homeoffice, desactivar Vacaciones
-            if (t.checked) {
-              const vacEl = document.getElementById(`vacaciones-${idx}`) as HTMLInputElement;
-              if (vacEl) vacEl.checked = false;
-              if (statusEl) statusEl.textContent = "Homeoffice";
-              if (obsWrapper) obsWrapper.classList.add("hidden");
-              if (obsEl) obsEl.value = "";
-            } else {
-              if (statusEl) {
-                const vacEl = document.getElementById(`vacaciones-${idx}`) as HTMLInputElement;
-                statusEl.textContent = (vacEl && vacEl.checked) ? "Vacaciones" : "Inasistencia";
+
+            // Actualizar texto y color del status
+            if (statusEl) {
+              statusEl.textContent = val;
+              // Resetear clases y aplicar según valor
+              statusEl.className = "font-bold";
+              if (val === "Homeoffice" || val === "Vacaciones") {
+                statusEl.classList.add("text-[#7c3aed]");
+              } else if (val === "Inasistencia") {
+                statusEl.classList.add("text-[#ca1c1c]");
+              } else {
+                // Evento / Asueto → gris
+                statusEl.classList.add("text-[#6b7280]");
               }
-              if (obsWrapper) obsWrapper.classList.remove("hidden");
             }
+
+            // Mostrar/ocultar campo Motivo: solo aparece en Inasistencia
+            if (obsWrapper) {
+              if (val === "Inasistencia") {
+                obsWrapper.classList.remove("hidden");
+              } else {
+                obsWrapper.classList.add("hidden");
+                if (obsEl) obsEl.value = "";
+              }
+            }
+
             // Actualizar preview si está abierto
             if (previewModal && !previewModal.classList.contains("hidden") && previewReporteContainer) {
               previewReporteContainer.innerHTML = generateEmailPreviewHtml();
@@ -932,34 +931,6 @@ const GOOGLE_APP_ID = import.meta.env.GOOGLE_APP_ID || process.env.GOOGLE_APP_ID
           });
         });
 
-        // Attach event listeners for Vacaciones toggles
-        document.querySelectorAll(".incidencia-vacaciones").forEach((toggle) => {
-          toggle.addEventListener("change", (e) => {
-            const t = e.target as HTMLInputElement;
-            const idx = t.dataset.index;
-            const statusEl = document.getElementById(`status-text-${idx}`);
-            const obsWrapper = document.getElementById(`obs-turno-wrapper-${idx}`);
-            const obsEl = document.getElementById(`obs-${idx}`) as HTMLTextAreaElement;
-            // Si se activa Vacaciones, desactivar Homeoffice
-            if (t.checked) {
-              const hoEl = document.getElementById(`homeoffice-${idx}`) as HTMLInputElement;
-              if (hoEl) hoEl.checked = false;
-              if (statusEl) statusEl.textContent = "Vacaciones";
-              if (obsWrapper) obsWrapper.classList.add("hidden");
-              if (obsEl) obsEl.value = "";
-            } else {
-              if (statusEl) {
-                const hoEl = document.getElementById(`homeoffice-${idx}`) as HTMLInputElement;
-                statusEl.textContent = (hoEl && hoEl.checked) ? "Homeoffice" : "Inasistencia";
-              }
-              if (obsWrapper) obsWrapper.classList.remove("hidden");
-            }
-            // Actualizar preview si está abierto
-            if (previewModal && !previewModal.classList.contains("hidden") && previewReporteContainer) {
-              previewReporteContainer.innerHTML = generateEmailPreviewHtml();
-            }
-          });
-        });
 
         // Attach event listeners for Edit buttons
         document.querySelectorAll(".btn-editar").forEach((btn) => {
@@ -1167,14 +1138,15 @@ const GOOGLE_APP_ID = import.meta.env.GOOGLE_APP_ID || process.env.GOOGLE_APP_ID
         const obsEl = document.getElementById(`obs-${inc.index}`) as HTMLTextAreaElement;
         const obsComidaEl = document.getElementById(`obs-comida-${inc.index}`) as HTMLTextAreaElement;
 
-        // Verificar toggles especiales Homeoffice / Vacaciones
-        const hoEl = document.getElementById(`homeoffice-${inc.index}`) as HTMLInputElement;
-        const vacEl = document.getElementById(`vacaciones-${inc.index}`) as HTMLInputElement;
-        const isHomeoffice = hoEl ? hoEl.checked : false;
-        const isVacaciones = vacEl ? vacEl.checked : false;
-        const specialLabel = isHomeoffice ? "Homeoffice" : isVacaciones ? "Vacaciones" : null;
+        // Leer el select de tipo de inasistencia
+        const selEl = document.getElementById(`tipo-inasistencia-${inc.index}`) as HTMLSelectElement;
+        const specialLabel = selEl ? selEl.value : null;
+        // Solo aplica como specialLabel si NO es Inasistencia
+        const resolvedSpecial = (specialLabel && specialLabel !== "Inasistencia") ? specialLabel : null;
 
-        let valTurno = specialLabel || (obsEl ? obsEl.value.trim() : "");
+        const isAllNull = !inc.entrada_turno && !inc.salida_turno && !inc.entrada_comida && !inc.salida_comida;
+        // Si hay select de tipo, el valor del turno es el specialLabel
+        let valTurno = resolvedSpecial || (obsEl ? obsEl.value.trim() : "");
         let valComida = obsComidaEl ? obsComidaEl.value.trim() : "";
 
         const dateObj = new Date(inc.fecha);
@@ -1189,10 +1161,11 @@ const GOOGLE_APP_ID = import.meta.env.GOOGLE_APP_ID || process.env.GOOGLE_APP_ID
             observaciones: valTurno || null,
             observaciones_comida: valComida || null,
             omitida: isOmitida,
-            specialLabel
+            specialLabel: resolvedSpecial
           });
         }
       });
+
 
       const CELL_W = "85px";
       const CELL_H = "90px";
@@ -1265,9 +1238,14 @@ const GOOGLE_APP_ID = import.meta.env.GOOGLE_APP_ID || process.env.GOOGLE_APP_ID
             statusLines.push(`<span style="color:#16a34a;font-weight:700;font-size:10px;">SL ${formatT(inc.salida_turno)}</span>`);
           }
         } else if (specialLabel) {
-          // Homeoffice o Vacaciones: fondo morado
-          bgColor = colorMap.especial;
-          statusLines.push(`<span style="color:#7c3aed;font-size:10px;font-weight:700;">${specialLabel}</span>`);
+          // Homeoffice / Vacaciones → morado; Evento / Asueto → gris
+          if (specialLabel === "Homeoffice" || specialLabel === "Vacaciones") {
+            bgColor = colorMap.especial;
+            statusLines.push(`<span style="color:#7c3aed;font-size:10px;font-weight:700;">${specialLabel}</span>`);
+          } else {
+            bgColor = colorMap.inasist;
+            statusLines.push(`<span style="color:#6b7280;font-size:10px;font-weight:700;">${specialLabel}</span>`);
+          }
         } else if (isAllNull) {
           bgColor = colorMap.inasist;
           statusLines.push(`<span style="color:#6b7280;font-size:10px;font-weight:600;">Inasistencia</span>`);
@@ -1341,15 +1319,37 @@ const GOOGLE_APP_ID = import.meta.env.GOOGLE_APP_ID || process.env.GOOGLE_APP_ID
         </table>
       `;
 
-      const legendHtml = `
+      // Leyenda dinámica: solo mostrar los colores que se usen
+      const usedOk = cells.some(c => c.includes(`background-color:${colorMap.ok}`));
+      const usedTarde = cells.some(c => c.includes(`background-color:${colorMap.tarde}`));
+      const usedOrange = cells.some(c => c.includes(`background-color:${colorMap.orange}`));
+      const usedInasist = cells.some(c => c.includes(`background-color:${colorMap.inasist}`));
+      const usedEspecial = cells.some(c => c.includes(`background-color:${colorMap.especial}`));
+
+      // Para el texto de leyenda gris: distinguir qué etiquetas grises se usan
+      const greyLabels: string[] = [];
+      const specialLabelsUsed = new Set<string>();
+      activeMap.forEach((v) => { if (v.specialLabel) specialLabelsUsed.add(v.specialLabel); });
+      if (specialLabelsUsed.has("Inasistencia") || [...activeMap.values()].some(v => !v.specialLabel && !v.entrada_turno && !v.salida_turno && !v.entrada_comida && !v.salida_comida && !v.omitida)) greyLabels.push("Inasistencia");
+      if (specialLabelsUsed.has("Evento")) greyLabels.push("Evento");
+      if (specialLabelsUsed.has("Asueto")) greyLabels.push("Asueto");
+
+      const purpleLabels: string[] = [];
+      if (specialLabelsUsed.has("Homeoffice")) purpleLabels.push("Homeoffice");
+      if (specialLabelsUsed.has("Vacaciones")) purpleLabels.push("Vacaciones");
+
+      const legendItems: string[] = [];
+      if (usedOk) legendItems.push(`<span style="display:inline-flex;align-items:center;gap:4px;"><span style="display:inline-block;width:12px;height:12px;background-color:#d1fae5;border:1px solid #a7f3d0;border-radius:2px;"></span> A tiempo</span>`);
+      if (usedTarde) legendItems.push(`<span style="display:inline-flex;align-items:center;gap:4px;"><span style="display:inline-block;width:12px;height:12px;background-color:#fee2e2;border:1px solid #fca5a5;border-radius:2px;"></span> Justificar</span>`);
+      if (usedOrange) legendItems.push(`<span style="display:inline-flex;align-items:center;gap:4px;"><span style="display:inline-block;width:12px;height:12px;background-color:#ffedd5;border:1px solid #fdba74;border-radius:2px;"></span> Retardo</span>`);
+      if (usedInasist && greyLabels.length > 0) legendItems.push(`<span style="display:inline-flex;align-items:center;gap:4px;"><span style="display:inline-block;width:12px;height:12px;background-color:#f3f4f6;border:1px solid #d1d5db;border-radius:2px;"></span> ${greyLabels.join(" / ")}</span>`);
+      if (usedEspecial && purpleLabels.length > 0) legendItems.push(`<span style="display:inline-flex;align-items:center;gap:4px;"><span style="display:inline-block;width:12px;height:12px;background-color:#ede9fe;border:1px solid #c4b5fd;border-radius:2px;"></span> ${purpleLabels.join(" / ")}</span>`);
+
+      const legendHtml = legendItems.length > 0 ? `
         <div style="margin:10px 0 16px;font-family:'Segoe UI',sans-serif;font-size:11px;color:#6b7280;display:flex;flex-wrap:wrap;gap:8px;">
-          <span style="display:inline-flex;align-items:center;gap:4px;"><span style="display:inline-block;width:12px;height:12px;background-color:#d1fae5;border:1px solid #a7f3d0;border-radius:2px;"></span> A tiempo</span>
-          <span style="display:inline-flex;align-items:center;gap:4px;"><span style="display:inline-block;width:12px;height:12px;background-color:#fee2e2;border:1px solid #fca5a5;border-radius:2px;"></span> Justificar</span>
-          <span style="display:inline-flex;align-items:center;gap:4px;"><span style="display:inline-block;width:12px;height:12px;background-color:#ffedd5;border:1px solid #fdba74;border-radius:2px;"></span> Retardo</span>
-          <span style="display:inline-flex;align-items:center;gap:4px;"><span style="display:inline-block;width:12px;height:12px;background-color:#f3f4f6;border:1px solid #d1d5db;border-radius:2px;"></span> Inasistencia</span>
-          <span style="display:inline-flex;align-items:center;gap:4px;"><span style="display:inline-block;width:12px;height:12px;background-color:#ede9fe;border:1px solid #c4b5fd;border-radius:2px;"></span> Homeoffice / Vacaciones</span>
+          ${legendItems.join("")}
         </div>
-      `;
+      ` : "";
 
       // Lista de TODOS los días del periodo con las nuevas reglas
       const listLines: string[] = [];
@@ -1367,27 +1367,25 @@ const GOOGLE_APP_ID = import.meta.env.GOOGLE_APP_ID || process.env.GOOGLE_APP_ID
 
         const activeInc = activeMap.get(dateStr);
         const isOmitida = activeInc ? activeInc.omitida : false;
+        // Usar el specialLabel resuelto (nunca "Inasistencia")
+        const specialLabel = activeInc ? activeInc.specialLabel : null;
         const isAllNull = !r.entrada_turno && !r.salida_turno && !r.entrada_comida && !r.salida_comida;
-
-        // Detectar Homeoffice / Vacaciones
-        const specialLabel = (isAllNull && activeInc &&
-          (activeInc.observaciones === "Homeoffice" || activeInc.observaciones === "Vacaciones"))
-          ? activeInc.observaciones as string
-          : (activeInc ? activeInc.specialLabel : null);
-
         const dayLabel = `<strong>${dayName} ${dayNum}.</strong>`;
 
         let lineText = "";
 
         if (isOmitida) {
-          // Regla 4: Omitido → Sin incidencias
-          lineText = `${dayLabel} Sin incidencias.`;
-        } else if (specialLabel) {
-          // Regla 5: Homeoffice / Vacaciones
-          lineText = `${dayLabel} ${specialLabel}.`;
+          // Omitido → Sin incidencias
+          lineText = `${dayLabel} <span style="color:#16a34a;">Sin incidencias.</span>`;
+        } else if (specialLabel && specialLabel !== "Inasistencia") {
+          // Homeoffice / Vacaciones / Evento / Asueto
+          const isGrey = specialLabel === "Evento" || specialLabel === "Asueto";
+          const spColor = isGrey ? "#6b7280" : "#7c3aed";
+          lineText = `${dayLabel} <span style="color:${spColor};font-weight:700;">${specialLabel}.</span>`;
         } else if (isAllNull) {
-          // Regla 1 y 2: Sin datos → Sin incidencias
-          lineText = `${dayLabel} Sin incidencias.`;
+          // Inasistencia real (sin select o select = Inasistencia)
+          const inasistLabel = (activeInc && activeInc.specialLabel === null && activeInc.observaciones === null) ? "Inasistencia" : "Sin incidencias";
+          lineText = `${dayLabel} ${inasistLabel}.`;
         } else {
           // Hay datos – evaluar retardo y tiempo adicional
           const rEnt = parseTime(r.entrada_turno);
@@ -1397,10 +1395,14 @@ const GOOGLE_APP_ID = import.meta.env.GOOGLE_APP_ID || process.env.GOOGLE_APP_ID
 
           let justificarMins = 0;
           let tiempoAdicionalMins = 0;
+          let isJustificar = false; // true si >15 min (rojo), false si 6-15 min (naranja)
 
           if (rEnt && hIni) {
             const diffEnt = timeDiffMins(rEnt, hIni);
-            if (diffEnt > 5) justificarMins = diffEnt;
+            if (diffEnt > 5) {
+              justificarMins = diffEnt;
+              isJustificar = diffEnt > 15;
+            }
           }
 
           if (rSal && hFin) {
@@ -1409,26 +1411,27 @@ const GOOGLE_APP_ID = import.meta.env.GOOGLE_APP_ID || process.env.GOOGLE_APP_ID
           }
 
           const hasObs = activeInc && activeInc.observaciones &&
-            activeInc.observaciones !== "Homeoffice" && activeInc.observaciones !== "Vacaciones";
+            !(["Homeoffice","Vacaciones","Evento","Asueto"].includes(activeInc.observaciones));
           const hasObsComida = activeInc && activeInc.observaciones_comida;
 
           if (justificarMins === 0 && tiempoAdicionalMins === 0 && !hasObs) {
             // Sin incidencia relevante
-            lineText = `${dayLabel} Sin incidencias.`;
+            lineText = `${dayLabel} <span style="color:#16a34a;">Sin incidencias.</span>`;
           } else {
-            // Armar línea: Justificar → Tiempo adicional → Motivo → Motivo (Comida)
+            // Armar línea: Justificar → Tiempo adicional → Motivo
             const parts: string[] = [dayLabel];
             if (justificarMins > 0) {
-              parts.push(`Justificar ${justificarMins} minutos.`);
+              const jColor = isJustificar ? "#dc2626" : "#ea580c";
+              parts.push(`<strong style="color:${jColor};">Justificar ${justificarMins} minutos.</strong>`);
             }
             if (tiempoAdicionalMins > 0) {
-              parts.push(`Tiempo adicional ${tiempoAdicionalMins} minutos.`);
+              parts.push(`<strong style="color:#16a34a;">Tiempo adicional ${tiempoAdicionalMins} minutos.</strong>`);
             }
             if (hasObs) {
-              parts.push(`Motivo: ${activeInc.observaciones}.`);
+              parts.push(`<strong>Motivo:</strong> ${activeInc.observaciones}.`);
             }
             if (hasObsComida) {
-              parts.push(`Motivo (Comida): ${activeInc.observaciones_comida}.`);
+              parts.push(`<strong>Motivo (Comida):</strong> ${activeInc.observaciones_comida}.`);
             }
             lineText = parts.join(" ");
           }
@@ -1679,17 +1682,17 @@ const GOOGLE_APP_ID = import.meta.env.GOOGLE_APP_ID || process.env.GOOGLE_APP_ID
         const obsEl = document.getElementById(`obs-${inc.index}`) as HTMLTextAreaElement;
         const obsComidaEl = document.getElementById(`obs-comida-${inc.index}`) as HTMLTextAreaElement;
 
-        // Verificar toggles especiales Homeoffice / Vacaciones
-        const hoEl = document.getElementById(`homeoffice-${inc.index}`) as HTMLInputElement;
-        const vacEl = document.getElementById(`vacaciones-${inc.index}`) as HTMLInputElement;
-        const isHomeoffice = hoEl ? hoEl.checked : false;
-        const isVacaciones = vacEl ? vacEl.checked : false;
-        const specialLabel = isHomeoffice ? "Homeoffice" : isVacaciones ? "Vacaciones" : null;
+        // Leer el select de tipo de inasistencia
+        const selEl = document.getElementById(`tipo-inasistencia-${inc.index}`) as HTMLSelectElement;
+        const tipoInasistencia = selEl ? selEl.value : "Inasistencia";
+        // specialLabel = valor del select cuando NO es Inasistencia
+        const specialLabel = tipoInasistencia !== "Inasistencia" ? tipoInasistencia : null;
 
         let valTurno = specialLabel || (obsEl ? obsEl.value.trim() : "");
         let valComida = obsComidaEl ? obsComidaEl.value.trim() : "";
 
         if (!isOmitida) {
+          // Solo Inasistencia requiere motivo; los demás tipos lo omiten
           if (inc.requiresObs && !specialLabel) {
             if (valTurno.length < 5) {
               if (obsEl) obsEl.classList.add("border-red-500");
