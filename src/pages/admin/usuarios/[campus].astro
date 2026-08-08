@@ -252,7 +252,7 @@ const hasAdminOrSuperadmin = (await prisma.usuario.count({
         const { users, pagination, hasAdminOrSuperadmin: apiHasAdmin } = await response.json();
 
         // Determinar visibilidad de Asig. Tickets
-        const showAsigTickets = apiHasAdmin !== undefined ? apiHasAdmin : (container.dataset.hasAdminSuperadmin === "true");
+        const showAsigTickets = apiHasAdmin !== undefined ? apiHasAdmin : (container?.dataset.hasAdminSuperadmin === "true");
         const thAsig = document.getElementById("th-asig-tickets");
         const vacationSelectContainer = document.getElementById("vacation-select-container");
         if (thAsig) {
