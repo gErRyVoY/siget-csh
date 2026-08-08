@@ -67,8 +67,8 @@ export const GET: APIRoute = async ({ request }) => {
     const limitParam = params.get('limit');
     const limit = limitParam === 'all' ? undefined : parseInt(limitParam || '10', 10);
 
-    // ⚡ Run count + findMany in parallel
-    const [totalUsers, users] = await Promise.all([
+    // ⚡ Run count + findMany + adminCount in parallel
+    const [totalUsers, users, adminCount] = await Promise.all([
       prisma.usuario.count({ where }),
       prisma.usuario.findMany({
         where,
@@ -77,6 +77,12 @@ export const GET: APIRoute = async ({ request }) => {
         orderBy: { nombres: 'asc' },
         include: { rol: true },
       }),
+      prisma.usuario.count({
+        where: {
+          empresaId: empresa.id,
+          rolId: { in: [2, 3] },
+        },
+      }),
     ]);
 
     const totalPages = limit ? Math.ceil(totalUsers / limit) : 1;
@@ -84,6 +90,7 @@ export const GET: APIRoute = async ({ request }) => {
     return new Response(JSON.stringify({
       users,
       pagination: { page, limit: limit || 'all', totalUsers, totalPages },
+      hasAdminOrSuperadmin: adminCount > 0,
     }), { status: 200 });
 
   } catch (error) {

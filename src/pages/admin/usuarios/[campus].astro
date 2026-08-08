@@ -16,10 +16,17 @@ let title = empresa.nombre;
 if (["Magno", "Ejecutivo"].includes(empresa.tipo)) {
   title = `Campus ${empresa.nombre}`;
 }
+
+const hasAdminOrSuperadmin = (await prisma.usuario.count({
+  where: {
+    empresaId: empresa.id,
+    rolId: { in: [2, 3] },
+  },
+})) > 0;
 ---
 
 <MainLayout title={title}>
-  <div class="max-w-7xl mx-auto" id="campus-container" data-campus-slug={campus} data-tckt-virtual={empresa.tckt_virtual ? "true" : "false"}>
+  <div class="max-w-7xl mx-auto" id="campus-container" data-campus-slug={campus} data-tckt-virtual={empresa.tckt_virtual ? "true" : "false"} data-has-admin-superadmin={hasAdminOrSuperadmin ? "true" : "false"}>
     <div class="flex justify-between items-center mb-6">
       <h1 class="text-2xl font-bold">{title}</h1>
     </div>
@@ -99,7 +106,7 @@ if (["Magno", "Ejecutivo"].includes(empresa.tipo)) {
             <option value="all">Todos</option>
           </select>
         </div>
-        <div>
+        <div id="vacation-select-container" class={hasAdminOrSuperadmin ? "" : "hidden"}>
           <label for="vacation-select" class="mr-2 text-sm font-medium"
             >Asig. Tickets:</label
           >
@@ -137,7 +144,9 @@ if (["Magno", "Ejecutivo"].includes(empresa.tipo)) {
             <tr>
               <th class="p-4">Nombre</th>
               <th class="p-4">Estado</th>
-              <th class="p-4">Asig. Tickets</th>
+              <th class="p-4">Levanta CSH</th>
+              <th class="p-4">Levanta Mkt</th>
+              <th id="th-asig-tickets" class={`p-4 ${hasAdminOrSuperadmin ? "" : "hidden"}`}>Asig. Tickets</th>
             </tr>
           </thead>
           <tbody id="users-table-body"></tbody>
@@ -223,7 +232,7 @@ if (["Magno", "Ejecutivo"].includes(empresa.tipo)) {
       tableBody!.classList.remove("hidden");
       tableBody!.innerHTML = `
         <tr>
-          <td colspan="3" class="p-8 text-center text-muted-foreground">
+          <td colspan="5" class="p-8 text-center text-muted-foreground">
             <div class="flex items-center justify-center gap-2">
               <svg class="animate-spin h-5 w-5 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -240,7 +249,20 @@ if (["Magno", "Ejecutivo"].includes(empresa.tipo)) {
         const response = await fetch(url, { cache: "no-store" });
         if (!response.ok)
           throw new Error(`HTTP error! status: ${response.status}`);
-        const { users, pagination } = await response.json();
+        const { users, pagination, hasAdminOrSuperadmin: apiHasAdmin } = await response.json();
+
+        // Determinar visibilidad de Asig. Tickets
+        const showAsigTickets = apiHasAdmin !== undefined ? apiHasAdmin : (container.dataset.hasAdminSuperadmin === "true");
+        const thAsig = document.getElementById("th-asig-tickets");
+        const vacationSelectContainer = document.getElementById("vacation-select-container");
+        if (thAsig) {
+          if (showAsigTickets) thAsig.classList.remove("hidden");
+          else thAsig.classList.add("hidden");
+        }
+        if (vacationSelectContainer) {
+          if (showAsigTickets) vacationSelectContainer.classList.remove("hidden");
+          else vacationSelectContainer.classList.add("hidden");
+        }
 
         tableBody!.innerHTML = "";
         if (users.length === 0) {
@@ -261,7 +283,31 @@ if (["Magno", "Ejecutivo"].includes(empresa.tipo)) {
                 <label class="relative inline-flex items-center cursor-pointer">
                   <input type="checkbox" class="sr-only peer toggle-activo" data-user-id="${user.id}" ${isActivo ? 'checked' : ''}>
                   <div class="w-9 h-5 bg-muted-foreground peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary"></div>
-                  <span class="ml-2 text-xs font-semibold activo-label ${isActivo ? 'text-black' : 'text-secondary'}">${isActivo ? 'Activo' : 'Inactivo'}</span>
+                  <span class="ml-2 text-xs font-semibold activo-label ${isActivo ? 'text-foreground' : 'text-secondary'}">${isActivo ? 'Activo' : 'Inactivo'}</span>
+                </label>
+              </div>
+            `;
+
+            // Render Levanta CSH toggle
+            const isTcktCsh = user.tckt_csh;
+            const tcktCshToggleHtml = `
+              <div class="flex items-center" onclick="event.stopPropagation()">
+                <label class="relative inline-flex items-center cursor-pointer">
+                  <input type="checkbox" class="sr-only peer toggle-tckt-csh" data-user-id="${user.id}" ${isTcktCsh ? 'checked' : ''}>
+                  <div class="w-9 h-5 bg-muted-foreground peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary"></div>
+                  <span class="ml-2 text-xs font-semibold tckt-csh-label ${isTcktCsh ? 'text-foreground' : 'text-secondary'}">${isTcktCsh ? 'Sí' : 'No'}</span>
+                </label>
+              </div>
+            `;
+
+            // Render Levanta Mkt toggle
+            const isTcktMkt = user.tckt_mkt;
+            const tcktMktToggleHtml = `
+              <div class="flex items-center" onclick="event.stopPropagation()">
+                <label class="relative inline-flex items-center cursor-pointer">
+                  <input type="checkbox" class="sr-only peer toggle-tckt-mkt" data-user-id="${user.id}" ${isTcktMkt ? 'checked' : ''}>
+                  <div class="w-9 h-5 bg-muted-foreground peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary"></div>
+                  <span class="ml-2 text-xs font-semibold tckt-mkt-label ${isTcktMkt ? 'text-foreground' : 'text-secondary'}">${isTcktMkt ? 'Sí' : 'No'}</span>
                 </label>
               </div>
             `;
@@ -273,7 +319,7 @@ if (["Magno", "Ejecutivo"].includes(empresa.tipo)) {
                 <label class="relative inline-flex items-center cursor-pointer">
                   <input type="checkbox" class="sr-only peer toggle-vacaciones" data-user-id="${user.id}" ${aceptaTickets ? 'checked' : ''}>
                   <div class="w-9 h-5 bg-muted-foreground peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-secondary"></div>
-                  <span class="ml-2 text-xs font-semibold vacaciones-label ${aceptaTickets ? 'text-secondary' : 'text-black'}">${aceptaTickets ? 'Sí' : 'No'}</span>
+                  <span class="ml-2 text-xs font-semibold vacaciones-label ${aceptaTickets ? 'text-secondary' : 'text-foreground'}">${aceptaTickets ? 'Sí' : 'No'}</span>
                 </label>
               </div>
             `;
@@ -285,10 +331,12 @@ if (["Magno", "Ejecutivo"].includes(empresa.tipo)) {
             };
 
             row.innerHTML = `
-                        <td class="p-4 font-medium text-foreground">${user.nombres} ${user.apellidos}</td>
-                        <td class="p-4">${activoToggleHtml}</td>
-                        <td class="p-4">${vacacionesToggleHtml}</td>
-                    `;
+              <td class="p-4 font-medium text-foreground">${user.nombres} ${user.apellidos}</td>
+              <td class="p-4">${activoToggleHtml}</td>
+              <td class="p-4">${tcktCshToggleHtml}</td>
+              <td class="p-4">${tcktMktToggleHtml}</td>
+              ${showAsigTickets ? `<td class="p-4">${vacacionesToggleHtml}</td>` : ''}
+            `;
             tableBody!.appendChild(row);
           });
 
@@ -299,7 +347,7 @@ if (["Magno", "Ejecutivo"].includes(empresa.tipo)) {
       } catch (error) {
         console.error("Fetch Error:", error);
         if (tableBody) {
-          tableBody.innerHTML = `<tr><td colspan="4" class="p-8 text-center text-destructive">Error al cargar los usuarios.</td></tr>`;
+          tableBody.innerHTML = `<tr><td colspan="5" class="p-8 text-center text-destructive">Error al cargar los usuarios.</td></tr>`;
         }
       }
     }
@@ -318,7 +366,7 @@ if (["Magno", "Ejecutivo"].includes(empresa.tipo)) {
           if (label) {
             label.textContent = newValue ? 'Activo' : 'Inactivo';
             label.className = newValue 
-              ? 'ml-2 text-xs font-semibold activo-label text-black'
+              ? 'ml-2 text-xs font-semibold activo-label text-foreground'
               : 'ml-2 text-xs font-semibold activo-label text-secondary';
           }
 
@@ -335,6 +383,9 @@ if (["Magno", "Ejecutivo"].includes(empresa.tipo)) {
             }
             
             toast.success(`Estado actualizado correctamente.`);
+            if (!newValue) {
+              fetchAndRenderUsers();
+            }
           } catch (error: any) {
             console.error('Error updating user status:', error);
             // Revert UI
@@ -342,10 +393,96 @@ if (["Magno", "Ejecutivo"].includes(empresa.tipo)) {
             if (label) {
               label.textContent = !newValue ? 'Activo' : 'Inactivo';
               label.className = !newValue 
-                ? 'ml-2 text-xs font-semibold activo-label text-black'
+                ? 'ml-2 text-xs font-semibold activo-label text-foreground'
                 : 'ml-2 text-xs font-semibold activo-label text-secondary';
             }
             toast.error(error.message || 'Error al actualizar el estado.');
+          }
+        });
+      });
+
+      // Levanta CSH Toggles
+      document.querySelectorAll('.toggle-tckt-csh').forEach(toggle => {
+        toggle.addEventListener('change', async (e) => {
+          const checkbox = e.target as HTMLInputElement;
+          const userId = checkbox.dataset.userId;
+          if (!userId) return;
+          const newValue = checkbox.checked;
+          const label = (checkbox.nextElementSibling?.nextElementSibling ?? null) as HTMLElement | null;
+
+          if (label) {
+            label.textContent = newValue ? 'Sí' : 'No';
+            label.className = newValue 
+              ? 'ml-2 text-xs font-semibold tckt-csh-label text-foreground'
+              : 'ml-2 text-xs font-semibold tckt-csh-label text-secondary';
+          }
+
+          try {
+            const response = await fetch('/api/admin/usuarios', {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ id: parseInt(userId, 10), tckt_csh: newValue })
+            });
+
+            if (!response.ok) {
+              const errorData = await response.json();
+              throw new Error(errorData.message || 'Error al actualizar');
+            }
+            
+            toast.success(`Permiso Levanta CSH actualizado.`);
+          } catch (error: any) {
+            console.error('Error updating Levanta CSH status:', error);
+            checkbox.checked = !newValue;
+            if (label) {
+              label.textContent = !newValue ? 'Sí' : 'No';
+              label.className = !newValue 
+                ? 'ml-2 text-xs font-semibold tckt-csh-label text-foreground'
+                : 'ml-2 text-xs font-semibold tckt-csh-label text-secondary';
+            }
+            toast.error(error.message || 'Error al actualizar permiso.');
+          }
+        });
+      });
+
+      // Levanta Mkt Toggles
+      document.querySelectorAll('.toggle-tckt-mkt').forEach(toggle => {
+        toggle.addEventListener('change', async (e) => {
+          const checkbox = e.target as HTMLInputElement;
+          const userId = checkbox.dataset.userId;
+          if (!userId) return;
+          const newValue = checkbox.checked;
+          const label = (checkbox.nextElementSibling?.nextElementSibling ?? null) as HTMLElement | null;
+
+          if (label) {
+            label.textContent = newValue ? 'Sí' : 'No';
+            label.className = newValue 
+              ? 'ml-2 text-xs font-semibold tckt-mkt-label text-foreground'
+              : 'ml-2 text-xs font-semibold tckt-mkt-label text-secondary';
+          }
+
+          try {
+            const response = await fetch('/api/admin/usuarios', {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ id: parseInt(userId, 10), tckt_mkt: newValue })
+            });
+
+            if (!response.ok) {
+              const errorData = await response.json();
+              throw new Error(errorData.message || 'Error al actualizar');
+            }
+            
+            toast.success(`Permiso Levanta Mkt actualizado.`);
+          } catch (error: any) {
+            console.error('Error updating Levanta Mkt status:', error);
+            checkbox.checked = !newValue;
+            if (label) {
+              label.textContent = !newValue ? 'Sí' : 'No';
+              label.className = !newValue 
+                ? 'ml-2 text-xs font-semibold tckt-mkt-label text-foreground'
+                : 'ml-2 text-xs font-semibold tckt-mkt-label text-secondary';
+            }
+            toast.error(error.message || 'Error al actualizar permiso.');
           }
         });
       });
@@ -364,7 +501,7 @@ if (["Magno", "Ejecutivo"].includes(empresa.tipo)) {
             label.textContent = newValue ? 'Sí' : 'No';
             label.className = newValue 
               ? 'ml-2 text-xs font-semibold vacaciones-label text-secondary'
-              : 'ml-2 text-xs font-semibold vacaciones-label text-black';
+              : 'ml-2 text-xs font-semibold vacaciones-label text-foreground';
           }
 
           try {
@@ -388,7 +525,7 @@ if (["Magno", "Ejecutivo"].includes(empresa.tipo)) {
               label.textContent = !newValue ? 'Sí' : 'No';
               label.className = !newValue 
                 ? 'ml-2 text-xs font-semibold vacaciones-label text-secondary'
-                : 'ml-2 text-xs font-semibold vacaciones-label text-black';
+                : 'ml-2 text-xs font-semibold vacaciones-label text-foreground';
             }
             toast.error(error.message || 'Error al actualizar asignación.');
           }
