@@ -5,13 +5,15 @@
 >
 > **⚠️ REGLA CRÍTICA PARA EL ASISTENTE:** El asistente **NO debe ejecutar `git push`** en ninguna circunstancia a menos que el usuario lo solicite **de forma explícita**. Se permiten `git add` y `git commit` para preparar los cambios, pero el push queda **reservado exclusivamente para cuando el usuario lo indique**.
 
-**Tarea Actual:** Completada — Buscador de Categorías/Subcategorías con Árbol de Rutas en Wizards CSH y Marketing (2026-08-08) ✅
+**Tarea Actual:** Completada — Rediseño y Atajo de Teclado (Ctrl+B) en Buscador de Categorías (2026-08-08) ✅
 
 **Estado:** Completado.
-1. **Buscador de Categorías/Subcategorías Integrado:** Añadido un campo de búsqueda estilizado (paridad visual con el buscador de `/admin/usuarios`) en las vistas `/tickets/soporte/nuevo-ticket-csh` y `/tickets/marketing/nuevo-ticket-marketing`.
-2. **Aplanado Recursivo del Árbol:** El árbol de categorías y subcategorías se aplana dinámicamente construyendo rutas completas (ejemplo: `Alumno > Correo institucional > Restablecer contraseña`).
-3. **Dropdown Dinámico de Máximo 10 Opciones:** Filtra en tiempo real conforme el usuario escribe, resaltando las coincidencia en el texto. Se puede navegar mediante teclado (Flecha Arriba/Abajo/Enter/Esc) y clic.
-4. **Selección y Navegación Automática:** Al hacer clic o presionar Enter en una opción del dropdown, el wizard resetea sus columnas y simula la selección exacta navegando por cada nivel del árbol hasta activar la vista final (formulario de descripción y campos del afectado).
+1. **Dimensiones y Estilo:** Ancho completo hasta `1280px` con alto exacto de `42px`.
+2. **Atajo `CTRL + B` / `CMD + B`:** Enfoca y selecciona automáticamente el texto del input de búsqueda desde cualquier parte de la vista.
+3. **Paleta de Colores Interactiva:**
+   - Estado normal: Texto negro/foreground, coincidencia resaltada en guinda/secondary.
+   - Estado hover/teclado: Fondo guinda/secondary, texto blanco, y coincidencia resaltada en dorado/primary con letras negras.
+4. **Navegación con Teclado Corregida:** Flecha Abajo/Arriba recorren los 10 elementos integrando `scrollIntoView({ block: 'nearest' })` permitiendo llegar y seleccionar hasta el final del dropdown sin perder el foco ni truncar la vista.
 5. **`npx astro check` validó la aplicación con 0 errores en 149 archivos.**
 
 **Pasos Siguientes:**
@@ -20,6 +22,7 @@
 3. **[PENDIENTE]** Optimización de consultas de sesión duplicadas (N+1 por request). Plan detallado en `implementation_plan.md`.
 
 **Pasos Completados:**
+- ✅ **Rediseño y Atajo de Teclado (Ctrl+B) en Buscador de Categorías (2026-08-08):** Dimensiones 1280px x 42px, atajo `CTRL+B`, esquema de colores guinda/dorado en hover/active y scroll automático corregido en navegación con flechas. `npx astro check` pasó con 0 errores.
 - ✅ **Buscador de Categorías/Subcategorías en Wizards CSH y Marketing (2026-08-08):** Buscador con dropdown de máx 10 resultados mostrando la ruta completa en árbol. Selección automática que despliega la última subcategoría y el formulario de ticket. `npx astro check` pasó con 0 errores.
 - ✅ **Toggles Levanta CSH/Mkt y Visibilidad Condicional de Asig. Tickets en Usuarios por Campus (2026-08-08):** Ocultada columna/filtro 'Asig. Tickets' si no hay administradores en el campus, agregados toggles interactivos 'Levanta CSH' y 'Levanta Mkt' con persistencia inmediata en la BD. `npx astro check` pasó con 0 errores.
 - ✅ **Mejoras UI/Backend de Incidencias: Select de Tipo y Tiempo Adicional (2026-08-08):** Reemplazados toggles HO/Vac por combo select de 5 opciones, corregida lógica de tiempo adicional, leyenda dinámica y formato de lista de días. `npx astro check` 0 errores.
