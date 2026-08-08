@@ -13,10 +13,37 @@ interface CategoriaNode {
     subcategorias: SubcategoriaNode[];
 }
 
-/**
- * Initializes the wizard specifically for Marketing tickets.
- * @param marketingCategory The Marketing category object containing all its subcategories.
- */
+// --- Flat search result for Marketing ---
+interface FlatSearchResult {
+    path: string;
+    pathParts: string[];
+    subcatPath: SubcategoriaNode[];
+}
+
+/** Flatten marketing subcategory tree for search. */
+function flattenMarketingTree(cat: CategoriaNode): FlatSearchResult[] {
+    const results: FlatSearchResult[] = [];
+
+    function walkSubs(subs: SubcategoriaNode[], parentPath: string[], parentSubcatPath: SubcategoriaNode[]) {
+        for (const sub of subs) {
+            const currentPath = [...parentPath, sub.nombre];
+            const currentSubcatPath = [...parentSubcatPath, sub];
+            if (sub.children.length === 0) {
+                results.push({
+                    path: currentPath.join(' > '),
+                    pathParts: currentPath,
+                    subcatPath: currentSubcatPath,
+                });
+            } else {
+                walkSubs(sub.children, currentPath, currentSubcatPath);
+            }
+        }
+    }
+
+    walkSubs(cat.subcategorias, [], []);
+    return results;
+}
+
 export function initMarketingTicketWizard(marketingCategory: CategoriaNode) {
     if (!marketingCategory) {
         console.error('Marketing category data is missing.');
@@ -28,6 +55,9 @@ export function initMarketingTicketWizard(marketingCategory: CategoriaNode) {
         categoria: marketingCategory, // Pre-selected
         nodes: [] as SubcategoriaNode[], // Path of selected subcategory nodes
     };
+
+    // --- Pre-compute flat search index for Marketing ---
+    const flatResults = flattenMarketingTree(marketingCategory);
 
     // --- DOM Element Cache ---
     const wizard = document.getElementById('marketing-wizard');
@@ -638,6 +668,159 @@ export function initMarketingTicketWizard(marketingCategory: CategoriaNode) {
         googleDriveButton.addEventListener("click", handleAuthClick);
         initGoogleDrive();
     }
+
+    // --- Search Bar ---
+    function initSearchBar() {
+        const searchContainer = document.getElementById('category-search-container');
+        if (!searchContainer) return;
+
+        searchContainer.innerHTML = `
+            <div class="relative w-full max-w-xl">
+                <div class="relative">
+                    <svg class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+                    </svg>
+                    <input
+                        id="category-search-input"
+                        type="text"
+                        placeholder="Buscar subcategoría de Marketing..."
+                        autocomplete="off"
+                        class="w-full pl-9 pr-4 py-2 rounded-md border border-border bg-card text-sm focus:outline-none focus:ring-2 focus:ring-secondary focus:border-secondary placeholder:text-muted-foreground transition-all"
+                    />
+                    <button id="category-search-clear" class="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors hidden" title="Limpiar búsqueda">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                    </button>
+                </div>
+                <div id="category-search-dropdown" class="absolute z-50 mt-1 w-full bg-card border border-border rounded-md shadow-lg hidden max-h-64 overflow-y-auto"></div>
+            </div>
+        `;
+
+        const input = document.getElementById('category-search-input') as HTMLInputElement | null;
+        const dropdown = document.getElementById('category-search-dropdown');
+        const clearBtn = document.getElementById('category-search-clear');
+
+        if (!input || !dropdown || !clearBtn) return;
+
+        let activeIndex = -1;
+        let currentResults: FlatSearchResult[] = [];
+
+        function highlightQuery(text: string, query: string): string {
+            if (!query) return text;
+            const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            return text.replace(new RegExp(`(${escaped})`, 'gi'), '<mark class="bg-yellow-200 dark:bg-yellow-700 rounded-sm text-foreground">$1</mark>');
+        }
+
+        function renderDropdown(query: string) {
+            const q = query.trim().toLowerCase();
+            if (q.length < 2) {
+                dropdown!.classList.add('hidden');
+                dropdown!.innerHTML = '';
+                currentResults = [];
+                activeIndex = -1;
+                return;
+            }
+
+            currentResults = flatResults
+                .filter(r => r.path.toLowerCase().includes(q))
+                .slice(0, 10);
+
+            if (currentResults.length === 0) {
+                dropdown!.innerHTML = `<div class="px-4 py-3 text-sm text-muted-foreground">Sin resultados para "${query}".</div>`;
+                dropdown!.classList.remove('hidden');
+                return;
+            }
+
+            dropdown!.innerHTML = currentResults.map((r, i) => {
+                const highlighted = r.pathParts
+                    .map((part, pi) => {
+                        const isLast = pi === r.pathParts.length - 1;
+                        const hl = highlightQuery(part, query);
+                        if (isLast) return `<span class="font-semibold text-foreground">${hl}</span>`;
+                        return `<span class="text-muted-foreground text-xs">${hl}</span>`;
+                    })
+                    .join('<span class="text-muted-foreground mx-1 text-xs">&rsaquo;</span>');
+
+                return `<button type="button" data-result-index="${i}" class="search-result-item w-full text-left px-4 py-2 text-sm hover:bg-secondary/20 focus:bg-secondary/20 flex flex-col gap-0.5 transition-colors">
+                    <span class="flex items-center flex-wrap gap-1">${highlighted}</span>
+                </button>`;
+            }).join('');
+
+            dropdown!.classList.remove('hidden');
+            activeIndex = -1;
+
+            dropdown!.querySelectorAll('.search-result-item').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const idx = parseInt((btn as HTMLElement).dataset.resultIndex || '0');
+                    selectResult(currentResults[idx]);
+                });
+            });
+        }
+
+        function selectResult(result: FlatSearchResult) {
+            // 1. Reset wizard
+            removeColumns(1);
+            hideDescriptionArea();
+            selection.nodes = [];
+
+            // 2. Re-render first column
+            renderColumn(marketingCategory.subcategorias, 1, 'Área de Marketing');
+
+            // 3. Walk subcategory path
+            for (const sub of result.subcatPath) {
+                const subBtn = wizard!.querySelector(`button[data-id="${sub.id}"]`) as HTMLButtonElement | null;
+                if (subBtn) subBtn.click();
+            }
+
+            // 5. Clear search
+            input!.value = '';
+            clearBtn!.classList.add('hidden');
+            dropdown!.classList.add('hidden');
+            dropdown!.innerHTML = '';
+            currentResults = [];
+            activeIndex = -1;
+        }
+
+        input.addEventListener('input', () => {
+            const q = input!.value;
+            clearBtn!.classList.toggle('hidden', q.length === 0);
+            renderDropdown(q);
+        });
+
+        input.addEventListener('keydown', (e) => {
+            const items = dropdown!.querySelectorAll('.search-result-item');
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                activeIndex = Math.min(activeIndex + 1, items.length - 1);
+                (items[activeIndex] as HTMLElement)?.focus();
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                activeIndex = Math.max(activeIndex - 1, 0);
+                (items[activeIndex] as HTMLElement)?.focus();
+            } else if (e.key === 'Escape') {
+                dropdown!.classList.add('hidden');
+                input!.blur();
+            } else if (e.key === 'Enter' && currentResults.length > 0) {
+                e.preventDefault();
+                selectResult(currentResults[Math.max(activeIndex, 0)]);
+            }
+        });
+
+        clearBtn.addEventListener('click', () => {
+            input!.value = '';
+            clearBtn!.classList.add('hidden');
+            dropdown!.classList.add('hidden');
+            dropdown!.innerHTML = '';
+            input!.focus();
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!searchContainer.contains(e.target as Node)) {
+                dropdown!.classList.add('hidden');
+            }
+        });
+    }
+
+    initSearchBar();
 
     // --- Initial Render ---
     if (selection.categoria.subcategorias.length > 0) {

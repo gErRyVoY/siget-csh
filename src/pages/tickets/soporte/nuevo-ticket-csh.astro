@@ -67,6 +67,9 @@ const GOOGLE_APP_ID = process.env.GOOGLE_APP_ID || '';
 
 <MainLayout title="Nuevo ticket para CSH">
     <div class="w-full mx-auto">
+        <!-- Buscador de categoría/subcategoría -->
+        <div id="category-search-container" class="mb-4"></div>
+
         <div id="wizard" class="flex flex-row gap-4 overflow-x-auto pb-4">
             <!-- Columna 1: Categorías (se llenará dinámicamente en el cliente) -->
             <div id="col-1" class="p-4 bg-card border rounded-lg hidden">
