@@ -478,6 +478,8 @@ const GOOGLE_APP_ID = import.meta.env.GOOGLE_APP_ID || process.env.GOOGLE_APP_ID
       incidenciasToSave = [];
       const todayStr = new Date().toISOString().split("T")[0];
       let rendered16Plus = false;
+      let rendered1To15 = false;
+      currentFortnightFilter = "all"; // Resetear en cada nueva búsqueda
 
       registros.forEach((r, index) => {
         const { dayName, dayNum, dayNameNormalized } = formatDate(r.fecha);
@@ -676,6 +678,8 @@ const GOOGLE_APP_ID = import.meta.env.GOOGLE_APP_ID || process.env.GOOGLE_APP_ID
           const dayInt = parseInt(dayNum, 10);
           if (dayInt >= 16) {
             rendered16Plus = true;
+          } else {
+            rendered1To15 = true;
           }
 
           // Push to state
@@ -833,8 +837,13 @@ const GOOGLE_APP_ID = import.meta.env.GOOGLE_APP_ID || process.env.GOOGLE_APP_ID
         if (guardarContainer) guardarContainer.classList.remove("hidden");
         if (guardarContainerTop) guardarContainerTop.classList.remove("hidden");
 
-        // Setup fortnight filters if we have rendered days >= 16
-        if (rendered16Plus) {
+        // Setup fortnight filter buttons segun los periodos disponibles
+        const hasBothPeriods = rendered1To15 && rendered16Plus;
+        const hasOnlyQ1 = rendered1To15 && !rendered16Plus;
+        const hasOnlyQ2 = rendered16Plus && !rendered1To15;
+
+        if (hasBothPeriods) {
+          // Hay dias en ambas quincenas: mostrar los 3 botones
           const btnHtml = `
             <button type="button" class="btn-q-all bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-2 rounded-md text-xs font-semibold transition-colors cursor-pointer" data-filter="all">Ver todo</button>
             <button type="button" class="btn-q-1 bg-muted text-muted-foreground hover:bg-muted/80 px-4 py-2 rounded-md text-xs font-semibold transition-colors cursor-pointer" data-filter="1">Quincena 1</button>
@@ -842,7 +851,25 @@ const GOOGLE_APP_ID = import.meta.env.GOOGLE_APP_ID || process.env.GOOGLE_APP_ID
           `;
           if (filtersTop) filtersTop.innerHTML = btnHtml;
           if (filtersBottom) filtersBottom.innerHTML = btnHtml;
-
+          currentFortnightFilter = "all";
+          setupFortnightFilters();
+        } else if (hasOnlyQ1) {
+          // Solo hay dias en la primera quincena
+          const btnHtml = `
+            <button type="button" class="btn-q-1 bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-2 rounded-md text-xs font-semibold transition-colors cursor-pointer" data-filter="1">Quincena 1</button>
+          `;
+          if (filtersTop) filtersTop.innerHTML = btnHtml;
+          if (filtersBottom) filtersBottom.innerHTML = btnHtml;
+          currentFortnightFilter = "1";
+          setupFortnightFilters();
+        } else if (hasOnlyQ2) {
+          // Solo hay dias en la segunda quincena
+          const btnHtml = `
+            <button type="button" class="btn-q-2 bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-2 rounded-md text-xs font-semibold transition-colors cursor-pointer" data-filter="2">Quincena 2</button>
+          `;
+          if (filtersTop) filtersTop.innerHTML = btnHtml;
+          if (filtersBottom) filtersBottom.innerHTML = btnHtml;
+          currentFortnightFilter = "2";
           setupFortnightFilters();
         }
 
@@ -861,10 +888,9 @@ const GOOGLE_APP_ID = import.meta.env.GOOGLE_APP_ID || process.env.GOOGLE_APP_ID
             const obsComidaWrapper = document.getElementById(`obs-comida-wrapper-${idx}`);
 
             if (t.checked) {
-              // Si es Enviar, mostrar Motivo (Turno) solo si no es Homeoffice/Vacaciones
-              const hoEl = document.getElementById(`homeoffice-${idx}`) as HTMLInputElement;
-              const vacEl = document.getElementById(`vacaciones-${idx}`) as HTMLInputElement;
-              const isSpecial = (hoEl && hoEl.checked) || (vacEl && vacEl.checked);
+              // Si es Enviar, mostrar Motivo (Turno) solo si no es un tipo especial
+              const selEl = document.getElementById(`tipo-inasistencia-${idx}`) as HTMLSelectElement;
+              const isSpecial = selEl && selEl.value !== "Inasistencia";
 
               if (obsTurnoWrapper && !isSpecial) {
                 obsTurnoWrapper.classList.remove("hidden");
