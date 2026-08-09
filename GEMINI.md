@@ -23,6 +23,7 @@
 3. **[PENDIENTE]** Optimización de consultas de sesión duplicadas (N+1 por request). Plan detallado en `implementation_plan.md`.
 
 **Pasos Completados:**
+- ✅ **Despliegue a Repositorio (2026-08-08):** `git push` completado exitosamente a la rama `siget-apprunner-new` (commit `e382725`). AWS App Runner iniciando compilación y despliegue automático.
 - ✅ **Restricción de Edición de Datos de Traslado para Rol Usuario (2026-08-08):** Deshabilitada edición de matrícula, alumno, campus origen/destino y carrera para rol usuario, manteniendo editables únicamente nuevo ingreso, descuento, bloque sugerido, comentarios y adjuntos. `npx astro check` pasó con 0 errores.
 - ✅ **Rediseño y Atajo de Teclado (Ctrl+B) en Buscador de Categorías (2026-08-08):** Dimensiones 1280px x 42px, atajo `CTRL+B`, esquema de colores guinda/dorado en hover/active y scroll automático corregido en navegación con flechas. `npx astro check` pasó con 0 errores.
 - ✅ **Buscador de Categorías/Subcategorías en Wizards CSH y Marketing (2026-08-08):** Buscador con dropdown de máx 10 resultados mostrando la ruta completa en árbol. Selección automática que despliega la última subcategoría y el formulario de ticket. `npx astro check` pasó con 0 errores.
