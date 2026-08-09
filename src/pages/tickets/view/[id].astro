@@ -462,7 +462,7 @@ console.log("CAREER DEBUG:", { ofertaDesc, carreraOriginal: traslado?.carrera?.d
                                         name="matricula" 
                                         value={traslado.matricula} 
                                         class="w-full rounded-md border-border bg-input px-3 py-2 text-sm"
-                                        disabled={!isPrivileged && !isOwner}
+                                        disabled={!isPrivileged}
                                     />
                                 </div>
                                 <div>
@@ -473,7 +473,7 @@ console.log("CAREER DEBUG:", { ofertaDesc, carreraOriginal: traslado?.carrera?.d
                                         name="alumno" 
                                         value={traslado.alumno} 
                                         class="w-full rounded-md border-border bg-input px-3 py-2 text-sm"
-                                        disabled={!isPrivileged && !isOwner}
+                                        disabled={!isPrivileged}
                                     />
                                 </div>
                             </div>
@@ -490,7 +490,7 @@ console.log("CAREER DEBUG:", { ofertaDesc, carreraOriginal: traslado?.carrera?.d
                                         value={traslado.origen?.nombre} 
                                         class="w-full rounded-md border-border bg-input px-3 py-2 text-sm"
                                         autocomplete="off"
-                                        disabled={!isPrivileged && !isOwner}
+                                        disabled={!isPrivileged}
                                     />
                                     <div id="campus-origen-suggestions" class="absolute z-10 w-full bg-popover text-popover-foreground border border-[#797979] rounded-md mt-1 hidden max-h-40 overflow-y-auto shadow-md"></div>
                                 </div>
@@ -504,7 +504,7 @@ console.log("CAREER DEBUG:", { ofertaDesc, carreraOriginal: traslado?.carrera?.d
                                         value={traslado.destino?.nombre} 
                                         class="w-full rounded-md border-border bg-input px-3 py-2 text-sm"
                                         autocomplete="off"
-                                        disabled={!isPrivileged && !isOwner}
+                                        disabled={!isPrivileged}
                                     />
                                     <div id="campus-destino-suggestions" class="absolute z-10 w-full bg-popover text-popover-foreground border border-[#797979] rounded-md mt-1 hidden max-h-40 overflow-y-auto shadow-md"></div>
                                 </div>
@@ -521,7 +521,7 @@ console.log("CAREER DEBUG:", { ofertaDesc, carreraOriginal: traslado?.carrera?.d
                                     value={carreraDisplayValue} 
                                     class="w-full rounded-md border-border bg-input px-3 py-2 text-sm"
                                     autocomplete="off"
-                                    disabled={!isPrivileged && !isOwner}
+                                    disabled={!isPrivileged}
                                 />
                                 <div id="carrera-suggestions" class="absolute z-10 w-full bg-popover text-popover-foreground border border-[#797979] rounded-md mt-1 hidden max-h-48 overflow-y-auto shadow-md"></div>
                             </div>
