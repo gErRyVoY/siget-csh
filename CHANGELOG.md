@@ -8,7 +8,12 @@ Todos los cambios notables en este proyecto serán documentados en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Versionado Semántico](https://semver.org/lang/es/).
 
-## 2026-08-10 (Invalidación de Sesión por Cambio de Rol o Desactivación)
+## 2026-08-10 (Invalidación de Sesión por Cambio de Rol y Restricción de Combos Select)
+
+### Security & UX: Deshabilitación de Combos Select para Rol Usuario (`/tickets/view/[id]`)
+*   **Combos Select Deshabilitados**: En la vista de detalle del ticket (`/tickets/view/[id]`), para usuarios con rol `user` (`rolId: 1`), los desplegables de **Prioridad**, **Estatus** y **Bloque sugerido** quedan deshabilitados (`disabled={!isPrivileged}`).
+*   **Campo "Atiende" en Vista Normal**: Reemplazado el combo `<select>` de "Atiende" por texto plano en la vista normal de tickets cuando el usuario no tiene permisos privilegiados (`!isPrivileged`), logrando paridad de diseño con la vista de traslados.
+*   **Protección en Backend**: Endpoint `PATCH /api/tickets/update` valida `isPrivileged` ignorando cualquier intento de modificación no autorizada de `estatusId`, `prioridad` y `archivado`.
 
 ### Security: Cierre Forzado de Sesión ante Cambios Administrativos
 

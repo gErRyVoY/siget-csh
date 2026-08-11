@@ -413,7 +413,7 @@ console.log("CAREER DEBUG:", { ofertaDesc, carreraOriginal: traslado?.carrera?.d
                                         id="prioridad"
                                         name="prioridad"
                                         class="block w-32 rounded-md border-border bg-input p-2 text-sm"
-                                        disabled={!isPrivileged && !isOwner}
+                                        disabled={!isPrivileged}
                                     >
                                         {priorities.map((p) => (
                                             <option value={p} selected={p === ticket.prioridad}>{p}</option>
@@ -427,7 +427,7 @@ console.log("CAREER DEBUG:", { ofertaDesc, carreraOriginal: traslado?.carrera?.d
                                         name="estatusId"
                                         class="block w-40 rounded-md border-border p-2 text-sm font-medium"
                                         style={`background-color: ${(ticket.estatus.nombre === "Nuevo" && !ticket.atiendeId) ? "var(--primary)" : (statusColors[ticket.estatus.nombre] || "#a1a1aa")}; color: white;`}
-                                        disabled={!isPrivileged && !isOwner}
+                                        disabled={!isPrivileged}
                                     >
                                         {statuses.map((s) => {
                                             let label = s.nombre;
@@ -576,7 +576,7 @@ console.log("CAREER DEBUG:", { ofertaDesc, carreraOriginal: traslado?.carrera?.d
                                         id="bloque-sugerido" 
                                         name="bloque_nombre" 
                                         class="w-full rounded-md border-border bg-input px-3 py-2 text-sm"
-                                        disabled={!isPrivileged && !isOwner}
+                                        disabled={!isPrivileged}
                                         data-current-val={traslado.bloque_nombre || traslado.bloque?.descripcion}
                                     >
                                         {/* Options populated by JS */}
@@ -809,7 +809,7 @@ console.log("CAREER DEBUG:", { ofertaDesc, carreraOriginal: traslado?.carrera?.d
                                 <div>
                                     <label for="prioridad" class="block text-xs font-medium text-muted-foreground">Prioridad</label>
                                     {/* ... Existing Select ... */}
-                                    <select id="prioridad" name="prioridad" class="mt-1 block w-full rounded-md border-border bg-input p-2 text-sm">
+                                    <select id="prioridad" name="prioridad" class="mt-1 block w-full rounded-md border-border bg-input p-2 text-sm" disabled={!isPrivileged}>
                                         {priorities.map((p) => (
                                             <option value={p} selected={p === ticket.prioridad}>{p}</option>
                                         ))}
@@ -822,6 +822,7 @@ console.log("CAREER DEBUG:", { ofertaDesc, carreraOriginal: traslado?.carrera?.d
                                         name="estatusId" 
                                         class="mt-1 block w-full rounded-md border-border p-2 text-sm"
                                         style={`background-color: ${(ticket.estatus.nombre === "Nuevo" && !ticket.atiendeId) ? "var(--primary)" : (statusColors[ticket.estatus.nombre] || "#a1a1aa")}; color: white;`}
+                                        disabled={!isPrivileged}
                                     >
                                         {statuses.map((s) => {
                                             let label = s.nombre;
@@ -848,12 +849,16 @@ console.log("CAREER DEBUG:", { ofertaDesc, carreraOriginal: traslado?.carrera?.d
                             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 <div>
                                     <label for="atiendeId" class="block text-xs font-medium text-muted-foreground">Atiende</label>
-                                    <select id="atiendeId" name="atiendeId" class="mt-1 block w-full rounded-md border-border bg-input p-2 text-sm" disabled={!canEditAtiende}>
-                                        <option value="">No asignado</option>
-                                        {agents.map((agent) => (
-                                            <option value={agent.id} selected={agent.id === ticket.atiendeId}>{`${agent.nombres} ${agent.apellidos}`}</option>
-                                        ))}
-                                    </select>
+                                    {isPrivileged ? (
+                                        <select id="atiendeId" name="atiendeId" class="mt-1 block w-full rounded-md border-border bg-input p-2 text-sm" disabled={!canEditAtiende}>
+                                            <option value="">No asignado</option>
+                                            {agents.map((agent) => (
+                                                <option value={agent.id} selected={agent.id === ticket.atiendeId}>{`${agent.nombres} ${agent.apellidos}`}</option>
+                                            ))}
+                                        </select>
+                                    ) : (
+                                        <p class="mt-1 text-sm font-medium">{ticket.atiende ? `${ticket.atiende.nombres} ${ticket.atiende.apellidos}` : 'No asignado'}</p>
+                                    )}
                                 </div>
                                 {isPrivileged && (
                                 <div class="pt-4">

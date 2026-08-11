@@ -45,8 +45,8 @@ export const PATCH: APIRoute = async ({ request, locals }) => {
         }
 
         const updateData: Prisma.TicketUpdateInput = {};
-        if (updateDataInput.estatusId) updateData.estatus = { connect: { id: Number(updateDataInput.estatusId) } };
-        if (updateDataInput.solicitanteId) updateData.solicitante = { connect: { id: Number(updateDataInput.solicitanteId) } };
+        if (updateDataInput.estatusId && isPrivileged) updateData.estatus = { connect: { id: Number(updateDataInput.estatusId) } };
+        if (updateDataInput.solicitanteId && isPrivileged) updateData.solicitante = { connect: { id: Number(updateDataInput.solicitanteId) } };
         
         const isSuperAdmin = userRoleId === 3;
         const isAdmin = userRoleId === 2;
@@ -71,8 +71,8 @@ export const PATCH: APIRoute = async ({ request, locals }) => {
                 updateData.atiende = { disconnect: true };
             }
         }
-        if (updateDataInput.prioridad) updateData.prioridad = updateDataInput.prioridad as Prioridad;
-        if (typeof updateDataInput.archivado === 'boolean') updateData.archivado = updateDataInput.archivado;
+        if (updateDataInput.prioridad && isPrivileged) updateData.prioridad = updateDataInput.prioridad as Prioridad;
+        if (typeof updateDataInput.archivado === 'boolean' && isPrivileged) updateData.archivado = updateDataInput.archivado;
 
         if (typeof afectado_clave === 'string') updateData.afectado_clave = afectado_clave;
         if (typeof afectado_nombre === 'string') updateData.afectado_nombre = afectado_nombre;

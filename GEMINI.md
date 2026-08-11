@@ -8,14 +8,14 @@
 **Tarea Actual:** Completada — Invalidación de Sesión por Cambio de Rol/Desactivación (2026-08-10) ✅
 
 **Estado:** Completado.
-1. **Campos Deshabilitados para Rol Usuario:** En la vista de detalle de ticket `/tickets/view/[id]`, para usuarios con rol `user` (`rolId: 1`), los campos principales del alumno en tickets de traslado (Matrícula, Nombre del alumno, Campus Origen, Campus Destino y Carrera) quedan estrictamente deshabilitados (`disabled={!isPrivileged}`).
-2. **Campos Permitidos para el Solicitante:** El usuario solicitante conserva habilitada la edición únicamente de:
+1. **Campos y Combos Select Deshabilitados para Rol Usuario:** En la vista de detalle de ticket `/tickets/view/[id]`, para usuarios con rol `user` (`rolId: 1`), los desplegables de **Prioridad**, **Estatus** y **Bloque sugerido**, así como los datos principales del alumno en traslados (Matrícula, Nombre del alumno, Campus Origen, Campus Destino y Carrera) quedan estrictamente deshabilitados (`disabled={!isPrivileged}`).
+2. **Campo Atiende como Texto:** Para rol `user`, el campo **Atiende** en la vista normal de tickets se muestra como texto plano en lugar de un combo `<select>` (exclusivo para `admin` y `superadmin`), manteniendo paridad con la vista de traslados.
+3. **Campos Permitidos para el Solicitante:** El usuario solicitante conserva habilitada la edición únicamente de:
    - ¿Es nuevo ingreso?
    - ¿Tiene descuento? / Tipo de Descuento
-   - Bloque sugerido
    - Añadir nuevos comentarios y adjuntar archivos por comentario.
-3. **Protección en Backend:** Endpoint `PATCH /api/tickets/update` valida `isPrivileged` ignorando modificaciones en `matricula`, `alumno`, `origenId`, `destinoId` y `carreraId` provenientes de usuarios sin privilegio.
-4. **`npx astro check` validó la aplicación con 0 errores en 149 archivos.**
+4. **Protección en Backend:** Endpoint `PATCH /api/tickets/update` valida `isPrivileged` ignorando modificaciones no autorizadas en `estatusId`, `prioridad`, `archivado`, `matricula`, `alumno`, `origenId`, `destinoId` y `carreraId` provenientes de usuarios sin privilegio.
+5. **`npx astro check` validó la aplicación con 0 errores en 149 archivos.**
 
 **Pasos Siguientes:**
 1. Monitoreo general y feedback del usuario.
