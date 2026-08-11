@@ -49,7 +49,7 @@ export const PATCH: APIRoute = async ({ request, locals }) => {
             const newEstatusId = Number(updateDataInput.estatusId);
             if (!isPrivileged) {
                 const targetEstatus = await prisma.estatus.findUnique({ where: { id: newEstatusId } });
-                if (targetEstatus && newEstatusId !== ticketBeforeUpdate.estatusId && (targetEstatus.nombre === 'Nuevo' || targetEstatus.nombre === 'Duplicado')) {
+                if (targetEstatus && newEstatusId !== ticketBeforeUpdate.estatusId && (targetEstatus.nombre === 'Nuevo' || targetEstatus.nombre === 'Duplicado' || targetEstatus.nombre === 'Sin asignar')) {
                     return new Response(JSON.stringify({ message: 'No tienes permiso para cambiar a este estatus' }), { status: 403 });
                 }
             }
