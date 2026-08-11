@@ -9,21 +9,6 @@ if (!session || !session.user) {
     return Astro.redirect("/login");
 }
 
-if (session.user.rol?.nivel_soporte === "Usuario") {
-    return Astro.redirect("/tickets/soporte/usuario");
-}
-
-const MARKETING_ROLES = [
-    "Director Marketing",
-    "Diseñador",
-    "Community manager",
-    "Editor",
-];
-
-if (MARKETING_ROLES.includes(session.user.rol?.rol || "")) {
-    return Astro.redirect("/tickets/marketing/dashboard");
-}
-
 const rolId = session.user.rol?.id ?? 1;
 const isAdminOrSuper = rolId === 2 || rolId === 3;
 const currentUserId = parseInt(session.user.id as string, 10);

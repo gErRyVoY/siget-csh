@@ -23,6 +23,8 @@ import UserProfile from "@/components/shared/UserProfile.astro";
 import AddTicket from "@/components/icons/AddTicket.astro";
 import DashboardIcon from "../icons/DashboardIcon.astro";
 
+import { prisma } from "@/lib/db";
+
 interface Props {
     session: Session | null;
 }
@@ -34,12 +36,30 @@ const { id = "invitado" } = Astro.params;
 // Permisos del sistema RBAC
 const permisos = session?.user?.permisos ?? [];
 const secciones = session?.user?.secciones ?? [];
+const userTcktCsh = (session?.user as any)?.tckt_csh ?? true;
+const userTcktMkt = (session?.user as any)?.tckt_mkt ?? false;
+
+const userIdNum = session?.user?.id ? parseInt(String(session.user.id), 10) : null;
+let hasMarketingTickets = false;
+if (userIdNum) {
+    try {
+        const count = await prisma.ticket.count({
+            where: {
+                solicitanteId: userIdNum,
+                categoriaId: 12, // Categoría Marketing
+            },
+        });
+        hasMarketingTickets = count > 0;
+    } catch (e) {
+        console.error("Error al verificar tickets de marketing del usuario:", e);
+    }
+}
 
 const canViewAllTickets = permisos.includes("ver_todos_tickets");
 
-const canCreateTicketCSH = secciones.includes("crear_ticket_csh");
+const canCreateTicketCSH = userTcktCsh && secciones.includes("crear_ticket_csh");
 const canSeeTraslados = secciones.includes("proceso_traslados");
-const canCreateTicketMarketing = secciones.includes("crear_ticket_marketing");
+const canCreateTicketMarketing = userTcktMkt && secciones.includes("crear_ticket_marketing");
 const canSeeAsistencia = secciones.includes("asistencia_remota");
 const canSeeBaseConocimientos = secciones.includes("base_conocimientos");
 const canSeeHorario = secciones.includes("horario_atencion");
@@ -75,6 +95,24 @@ const mainNavItems = [
     }] : []),
 ];
 
+const mktItems = [
+    ...(secciones.includes("marketing_dashboard") && userRolId !== 1 ? [{
+        href: `/tickets/marketing/dashboard`,
+        label: "Dashboard",
+        icon: DashboardIcon,
+    }] : []),
+    ...(secciones.includes("marketing_mis_tickets") && (userTcktMkt || hasMarketingTickets || userRolId !== 1) ? [{
+        href: `/tickets/marketing/usuario`,
+        label: "Mis tickets",
+        icon: MyTicketsIcon,
+    }] : []),
+    ...(secciones.includes("marketing_todos") && userRolId !== 1 ? [{
+        href: "/tickets/marketing",
+        label: "Todos",
+        icon: AllTicketsIcon,
+    }] : []),
+];
+
 let ticketSections = [
     ...(canSeeSoporteAdmin ? [{
         title: "Tickets soporte",
@@ -94,25 +132,9 @@ let ticketSections = [
             }] : []),
         ],
     }] : []),
-    ...(canSeeMarketingAdmin ? [{
+    ...(canSeeMarketingAdmin && mktItems.length > 0 ? [{
         title: "Tickets marketing",
-        items: [
-            ...(secciones.includes("marketing_dashboard") ? [{
-                href: `/tickets/marketing/dashboard`,
-                label: "Dashboard",
-                icon: DashboardIcon,
-            }] : []),
-            ...(secciones.includes("marketing_mis_tickets") ? [{
-                href: `/tickets/marketing/usuario`,
-                label: "Mis tickets",
-                icon: MyTicketsIcon,
-            }] : []),
-            ...(secciones.includes("marketing_todos") ? [{
-                href: "/tickets/marketing",
-                label: "Todos",
-                icon: AllTicketsIcon,
-            }] : []),
-        ],
+        items: mktItems,
     }] : []),
 ];
 

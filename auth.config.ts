@@ -299,6 +299,8 @@ export default defineConfig({
           token.alias = fullUser.alias ?? undefined;
           token.acepta_tickets = fullUser.acepta_tickets;
           token.puesto = (fullUser as any).puesto ?? undefined;
+          token.tckt_csh = (fullUser as any).tckt_csh ?? true;
+          token.tckt_mkt = (fullUser as any).tckt_mkt ?? false;
           token.atiende_csh = (fullUser as any).atiende_csh ?? false;
           token.atiende_mkt = (fullUser as any).atiende_mkt ?? false;
           
@@ -341,7 +343,9 @@ export default defineConfig({
         session.user.alias = token.alias as string | undefined;
         session.user.acepta_tickets = (token.acepta_tickets as boolean | undefined) ?? true;
         session.user.puesto = token.puesto as string | undefined;
-        // Propagate atiende flags from user (stored in token)
+        // Propagate tckt and atiende flags from user (stored in token)
+        (session.user as any).tckt_csh = (token as any).tckt_csh ?? true;
+        (session.user as any).tckt_mkt = (token as any).tckt_mkt ?? false;
         (session.user as any).atiende_csh = (token as any).atiende_csh ?? false;
         (session.user as any).atiende_mkt = (token as any).atiende_mkt ?? false;
         // Asignar los permisos a la sesión
@@ -368,6 +372,8 @@ declare module "@auth/core/types" {
       alias?: string;
       puesto?: string;
       acepta_tickets?: boolean;
+      tckt_csh?: boolean;
+      tckt_mkt?: boolean;
       atiende_csh?: boolean;
       atiende_mkt?: boolean;
       permisos?: string[];
