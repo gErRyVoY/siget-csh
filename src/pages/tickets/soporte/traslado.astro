@@ -24,6 +24,7 @@ const session = await getSession(Astro.request);
 const userId = session?.user?.id ? parseInt(String(session.user.id), 10) : null;
 let preloadedCampus = "";
 let preloadedReadOnly = false;
+let allowedOriginCampus = ""; // campus propio habilitado como opción cuando tiene Virtual
 if (userId) {
     const usuario = await prisma.usuario.findUnique({
         where: { id: userId },
@@ -35,9 +36,13 @@ if (userId) {
         const isMagnoEjecutivo = ["Magno", "Ejecutivo"].includes(empresa.tipo);
 
         if (isMagnoEjecutivo && allowVirtual) {
-            // Opción A: pre-cargar con "Virtual" pero no bloquear
-            preloadedCampus = "Virtual";
+            // Campo vacío al inicio; el usuario elige entre su campus o Virtual
+            preloadedCampus = "";
             preloadedReadOnly = false;
+            const campusMatch = campusOptions.find(
+                (c) => c.toLowerCase() === empresa.nombre.toLowerCase()
+            );
+            allowedOriginCampus = campusMatch || empresa.nombre;
         } else if (isMagnoEjecutivo) {
             // Solo Magno/Ejecutivo sin Virtual: bloquear con su campus
             const campusMatch = campusOptions.find(
@@ -87,6 +92,7 @@ if (userId) {
                     data-google-app-id={GOOGLE_APP_ID}
                     data-preloaded-campus={preloadedCampus}
                     data-preloaded-readonly={preloadedReadOnly ? "true" : "false"}
+                    data-allowed-origin-campus={allowedOriginCampus}
                 >
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <!-- Campus origen -->
@@ -495,6 +501,7 @@ if (userId) {
         const GOOGLE_APP_ID = form.dataset.googleAppId;
         const preloadedCampus = form.dataset.preloadedCampus || "";
         const preloadedReadOnly = form.dataset.preloadedReadonly === "true";
+        const allowedOriginCampus = form.dataset.allowedOriginCampus || "";
 
         // --- FIELD REFS ---
         const matriculaInput = document.getElementById(
@@ -1158,8 +1165,18 @@ if (userId) {
         };
 
         // --- LISTENERS ---
-        // Solo registrar autocompletado para campus-origen si no está precargado (readOnly)
-        if (!preloadedCampus) {
+        // Registrar autocompletado para campus-origen
+        if (preloadedReadOnly) {
+            // Campo bloqueado: no se necesita autocomplete
+        } else if (allowedOriginCampus) {
+            // Usuario con campus propio + Virtual: opciones restringidas
+            const restrictedOptions = [allowedOriginCampus, "Virtual"];
+            setupAutocomplete(
+                "campus-origen",
+                "campus-origen-suggestions",
+                restrictedOptions,
+            );
+        } else if (!preloadedCampus) {
             setupAutocomplete(
                 "campus-origen",
                 "campus-origen-suggestions",
