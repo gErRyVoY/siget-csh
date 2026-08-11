@@ -245,8 +245,12 @@ if (isPrivileged) {
         agents = [ticket.atiende];
     }
 
-    // Regular users cannot see/select 'Duplicado', and cannot select 'Nuevo' unless it's the current status
-    statuses = statuses.filter((s) => s.nombre !== "Duplicado" && (s.nombre !== "Nuevo" || ticket.estatus.nombre === "Nuevo"));
+    // Regular users can only see 'Duplicado' or 'Nuevo' if it's currently the ticket's status
+    statuses = statuses.filter(
+        (s) =>
+            (s.nombre !== "Duplicado" || ticket.estatus.nombre === "Duplicado") &&
+            (s.nombre !== "Nuevo" || ticket.estatus.nombre === "Nuevo")
+    );
 }
 
 const parseFileName = (key: string) => {
