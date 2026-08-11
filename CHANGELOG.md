@@ -11,6 +11,7 @@ y este proyecto adhiere a [Versionado Semántico](https://semver.org/lang/es/).
 ## 2026-08-10 (Invalidación de Sesión por Cambio de Rol y Restricción de Combos Select)
 
 ### Security & UX: Configuración de Combos Select para Rol Usuario (`/tickets/view/[id]`)
+*   **Fix Navegación Indeseada en Detalle de Ticket**: Corregido un conflicto en el manejo del evento `astro:page-load` en los listados de tickets (`/tickets/soporte`, `/tickets/soporte/usuario`, `/tickets/marketing`, `/tickets/marketing/usuario`) donde `document.querySelectorAll("select")` capturaba globalmente cualquier desplegable de la página (incluyendo los de la vista de detalle en navegaciones client-side), provocando que al cambiar un combo como *Estatus* en la vista de detalle se recargara la página con parámetros de filtro `?assignee=...&page=1`. Se acotó la consulta exclusivamente a los elementos de filtro (`#estatus-select`, `#categoria-select`, `#empresa-select`, `#assignee-select`) con validación estricta de ID.
 *   **Permiso de Estatus para Solicitante**: El usuario solicitante (`!isPrivileged`) conserva la capacidad de cambiar el **Estatus** de sus tickets (permitiendo cancelar o reabrir tickets a estados como *En progreso*, *En espera*, *Solucionado* o *Cancelado*).
 *   **Exclusión de Estatus Sensibles**: Se omiten los estatus **Nuevo** y **Duplicado** del listado de opciones desplegables para usuarios sin privilegio (`!isPrivileged`).
 *   **Combos Restringidos**: El desplegable de **Prioridad** queda deshabilitado para rol `user` (`disabled={!isPrivileged}`).

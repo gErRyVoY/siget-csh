@@ -568,9 +568,10 @@ const getTicketDateColor = (date: Date, status: string) => {
         dateFromInput?.addEventListener("change", handleDateChange);
         dateToInput?.addEventListener("change", handleDateChange);
 
-        const selects = document.querySelectorAll("select");
+        const selects = document.querySelectorAll("#estatus-select, #subcategory-select, #empresa-select, #assignee-select");
         selects.forEach((select) => {
             select.addEventListener("change", () => {
+                if (!select.id || !select.id.endsWith("-select")) return;
                 const url = new URL(window.location.href);
                 // Mapeo de ID a param
                 let paramName = "";
@@ -580,7 +581,9 @@ const getTicketDateColor = (date: Date, status: string) => {
                 else if (select.id === "empresa-select") paramName = "company";
                 else if (select.id === "assignee-select") paramName = "assignee";
 
-                const value = select.value;
+                if (!paramName) return;
+
+                const value = (select as HTMLSelectElement).value;
                 if (value === "all") {
                     url.searchParams.delete(paramName);
                 } else {

@@ -588,34 +588,26 @@ const getTicketDateColor = (date: Date, status: string) => {
         dateToInput?.addEventListener("change", handleDateChange);
 
         // Manejo de filtros
-        const selects = document.querySelectorAll("select");
+        const selects = document.querySelectorAll("#estatus-select, #categoria-select, #empresa-select, #assignee-select");
         selects.forEach((select) => {
             select.addEventListener("change", () => {
+                if (!select.id || !select.id.endsWith("-select")) return;
                 const url = new URL(window.location.href);
                 const paramName = select.id.replace("-select", "");
-                const value = select.value;
+                const value = (select as HTMLSelectElement).value;
+
+                let queryKey = "";
+                if (paramName === "estatus") queryKey = "status";
+                else if (paramName === "categoria") queryKey = "category";
+                else if (paramName === "empresa") queryKey = "company";
+                else if (paramName === "assignee") queryKey = "assignee";
+
+                if (!queryKey) return;
 
                 if (value === "all") {
-                    url.searchParams.delete(
-                        paramName === "estatus"
-                            ? "status"
-                            : paramName === "categoria"
-                              ? "category"
-                              : paramName === "empresa"
-                                ? "company"
-                                : "assignee",
-                    );
+                    url.searchParams.delete(queryKey);
                 } else {
-                    url.searchParams.set(
-                        paramName === "estatus"
-                            ? "status"
-                            : paramName === "categoria"
-                              ? "category"
-                              : paramName === "empresa"
-                                ? "company"
-                                : "assignee",
-                        value,
-                    );
+                    url.searchParams.set(queryKey, value);
                 }
                 // Resetear a página 1 al filtrar
                 url.searchParams.set("page", "1");
