@@ -5,7 +5,7 @@
 >
 > **⚠️ REGLA CRÍTICA PARA EL ASISTENTE:** El asistente **NO debe ejecutar `git push`** en ninguna circunstancia a menos que el usuario lo solicite **de forma explícita**. Se permiten `git add` y `git commit` para preparar los cambios, pero el push queda **reservado exclusivamente para cuando el usuario lo indique**.
 
-**Tarea Actual:** Completada — Restricción de Edición de Datos de Traslado para Rol Usuario (2026-08-08) ✅
+**Tarea Actual:** Completada — Invalidación de Sesión por Cambio de Rol/Desactivación (2026-08-10) ✅
 
 **Estado:** Completado.
 1. **Campos Deshabilitados para Rol Usuario:** En la vista de detalle de ticket `/tickets/view/[id]`, para usuarios con rol `user` (`rolId: 1`), los campos principales del alumno en tickets de traslado (Matrícula, Nombre del alumno, Campus Origen, Campus Destino y Carrera) quedan estrictamente deshabilitados (`disabled={!isPrivileged}`).
@@ -23,6 +23,7 @@
 3. **[PENDIENTE]** Optimización de consultas de sesión duplicadas (N+1 por request). Plan detallado en `implementation_plan.md`.
 
 **Pasos Completados:**
+- ✅ **Invalidación de Sesión por Cambio de Rol/Desactivación (2026-08-10):** Se añadió la columna `session_version` al modelo `Usuario` en la BD (db push). El callback `jwt` de Auth.js compara la versión del token con la BD; si difieren, devuelve `null` destruyendo la cookie. El middleware detecta la cookie huérfana y redirige a `/login?error=SesionRevocada`. El PATCH de `/api/admin/usuarios` incrementa `session_version` cuando se degrada el rol (Superadmin→Admin, Admin→Usuario, etc.) o se desactiva al usuario. La página de login muestra un alert ámbar con el mensaje "Tus permisos han sido modificados. Por favor inicia sesión nuevamente para continuar." `npx astro check` pasó con 0 errores en 149 archivos.
 - ✅ **Despliegue a Repositorio (2026-08-08):** `git push` completado exitosamente a la rama `siget-apprunner-new` (commit `e382725`). AWS App Runner iniciando compilación y despliegue automático.
 - ✅ **Restricción de Edición de Datos de Traslado para Rol Usuario (2026-08-08):** Deshabilitada edición de matrícula, alumno, campus origen/destino y carrera para rol usuario, manteniendo editables únicamente nuevo ingreso, descuento, bloque sugerido, comentarios y adjuntos. `npx astro check` pasó con 0 errores.
 - ✅ **Rediseño y Atajo de Teclado (Ctrl+B) en Buscador de Categorías (2026-08-08):** Dimensiones 1280px x 42px, atajo `CTRL+B`, esquema de colores guinda/dorado en hover/active y scroll automático corregido en navegación con flechas. `npx astro check` pasó con 0 errores.

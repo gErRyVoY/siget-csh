@@ -8,6 +8,19 @@ Todos los cambios notables en este proyecto serán documentados en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Versionado Semántico](https://semver.org/lang/es/).
 
+## 2026-08-10 (Invalidación de Sesión por Cambio de Rol o Desactivación)
+
+### Security: Cierre Forzado de Sesión ante Cambios Administrativos
+
+*   **`prisma/schema.prisma`**: Se añadió la columna `session_version Int @default(1)` al modelo `Usuario`. Este campo actúa como un sello de versión que permite detectar cuándo la sesión activa de un usuario ha quedado invalidada por una acción administrativa.
+*   **`auth.config.ts` (Callback `jwt`)**: Al refrescar el token JWT, se compara el campo `session_version` almacenado en el token con el valor actual en la base de datos. Si los valores difieren, el callback devuelve `null`, lo que provoca que Auth.js destruya automáticamente la cookie de sesión del usuario afectado en su siguiente petición.
+*   **`src/middleware.ts`**: Se añadió detección de "cookie huérfana": si una petición llega sin sesión válida pero con una cookie de sesión presente, el middleware redirige a `/login?error=SesionRevocada` en lugar de al `/login` genérico.
+*   **`src/pages/api/admin/usuarios.ts` (Handler `PATCH`)**: Cuando un administrador guarda cambios sobre un usuario y se detecta un **downgrade de rol** (cualquier reducción de `rolId`, por ejemplo Superadmin→Admin o Admin→Usuario) o una **desactivación** (`activo: false`), se incrementa automáticamente el `session_version` del usuario afectado en la misma transacción. Esto invalida su sesión activa al instante en su siguiente petición.
+*   **`src/pages/login.astro`**: Se añadió el caso `SesionRevocada` al switch de errores. Se muestra un alert con fondo **ámbar** (distinto al rojo de errores genéricos y al guinda de acceso denegado) con el mensaje: *"Tus permisos han sido modificados. Por favor inicia sesión nuevamente para continuar."*
+*   **Casos que disparan el cierre de sesión**: Superadmin→Admin ✅ | Superadmin→Usuario ✅ | Admin→Usuario ✅ | Cualquier rol→Inactivo ✅
+*   **Casos que NO afectan la sesión**: Edición de horario, alias, flags de tickets u otros campos que no impactan permisos de acceso.
+*   **`npx astro check`**: 149 archivos verificados — 0 errores — 0 warnings.
+
 ## 2026-07-27 (Gestión de Secciones, Permisos de Usuario y Seguridad de Acceso)
 
 ### Feature: Módulo de Gestión de Secciones Globales (`/admin/secciones`)

@@ -51,6 +51,13 @@ export const onRequest = defineMiddleware(async (context, next) => {
         headers: { "Content-Type": "application/json" }
       });
     }
+    // Si hay cookie de sesión pero getSession() devolvió null, la sesión fue revocada por un admin
+    const hasSessionCookie =
+      context.cookies.has("authjs.session-token") ||
+      context.cookies.has("__Secure-authjs.session-token");
+    if (hasSessionCookie) {
+      return context.redirect("/login?error=SesionRevocada");
+    }
     return context.redirect("/login");
   }
 

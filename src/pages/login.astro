@@ -12,6 +12,7 @@ const error = searchParams.get("error");
 
 let errorMessage: { title: string; message: string } | null = null;
 let isAccessDeniedError = false;
+let isWarningError = false;
 
 if (error) {
     switch (error) {
@@ -42,6 +43,14 @@ if (error) {
                 title: "Cuenta Inactiva",
                 message:
                     "Tu usuario se encuentra inactivo en SiGeT. Por favor, contacta con el administrador.",
+            };
+            break;
+        case "SesionRevocada":
+            isWarningError = true;
+            errorMessage = {
+                title: "Sesión cerrada por un administrador",
+                message:
+                    "Tus permisos han sido modificados. Por favor inicia sesión nuevamente para continuar.",
             };
             break;
         case "AccesoNoPermitido":
@@ -114,7 +123,9 @@ if (error) {
                                     "border-l-4 p-4 rounded-md",
                                     isAccessDeniedError
                                         ? "bg-secondary/10 border-secondary text-secondary"
-                                        : "bg-red-100 border-red-500 text-red-700",
+                                        : isWarningError
+                                          ? "bg-amber-50 border-amber-500 text-amber-800"
+                                          : "bg-red-100 border-red-500 text-red-700",
                                 ]}
                                 role="alert"
                             >

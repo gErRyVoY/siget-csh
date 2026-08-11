@@ -179,6 +179,18 @@ export const PATCH: APIRoute = async ({ request }) => {
       updateData.horario_disponibilidad = updateDataInput.horario_disponibilidad;
     }
 
+    // --- Invalidación de sesión ---
+    // Si el rol baja de nivel (cualquier downgrade) o el usuario se desactiva,
+    // se incrementa session_version para que el JWT callback detecte la discrepancia
+    // y destruya la cookie de sesión del usuario afectado en su siguiente petición.
+    const newRolId = updateDataInput.rolId !== undefined ? parseInt(updateDataInput.rolId, 10) : undefined;
+    const isRoleDowngrade = newRolId !== undefined && newRolId < userBeforeUpdate.rolId;
+    const isDeactivation = updateData.activo === false && userBeforeUpdate.activo === true;
+
+    if ((isRoleDowngrade || isDeactivation) && !isSelfEditSuperAdmin) {
+      (updateData as any).session_version = { increment: 1 };
+    }
+
     // Use a transaction to guarantee atomicity
     const updatedUser = await prisma.$transaction(async (tx) => {
       // Reseteo de permisos: Si el rol cambia, purgar todas las excepciones del usuario (tanto secciones como categorías)

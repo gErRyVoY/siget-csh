@@ -284,6 +284,16 @@ export default defineConfig({
         });
 
         if (fullUser) {
+          // --- Validación de versión de sesión ---
+          // Si la session_version del token no coincide con la de la BD, un admin invalidó
+          // esta sesión (cambio de rol o desactivación). Se devuelve null para destruir la cookie.
+          const dbVersion = (fullUser as any).session_version ?? 1;
+          if (token.sessionVersion !== undefined && token.sessionVersion !== dbVersion) {
+            return null; // Auth.js destruye la cookie automáticamente al recibir null
+          }
+          // Guardar la versión actual en el token para comparaciones futuras
+          token.sessionVersion = dbVersion;
+
           token.userId = fullUser.id;
           token.image = fullUser.image;
           token.alias = fullUser.alias ?? undefined;
@@ -370,6 +380,7 @@ declare module "@auth/core/jwt" {
   interface JWT {
     accessToken?: string;
     userId?: number;
+    sessionVersion?: number;
     rol?: Rol;
     empresa?: Empresa;
     image?: string | null;

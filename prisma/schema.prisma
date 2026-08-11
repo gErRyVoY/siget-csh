@@ -76,6 +76,7 @@ model Usuario {
   rolId                   Int
   activo                  Boolean                  @default(true)
   acepta_tickets          Boolean                  @default(true)
+  session_version         Int                      @default(1)
   ultimo_login            DateTime                 @default(now()) @db.Timestamp(6)
   horario_disponibilidad  Json?
   carga_actual            Int                      @default(0)
