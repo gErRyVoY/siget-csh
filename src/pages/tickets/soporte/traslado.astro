@@ -198,8 +198,9 @@ if (userId) {
                                 type="text"
                                 id="nombre-completo"
                                 name="nombre-completo"
-                                class="w-full rounded-md border-border bg-input px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                                placeholder="Nombre completo del alumno"
+                                readonly
+                                class="w-full rounded-md border-border bg-muted px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 cursor-not-allowed opacity-80"
+                                placeholder="Se autocompletará al buscar..."
                                 required
                             />
                             <p
@@ -241,8 +242,9 @@ if (userId) {
                             id="carrera"
                             name="carrera"
                             autocomplete="off"
-                            class="w-full rounded-md border-border bg-input px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                            placeholder="Buscar carrera..."
+                            readonly
+                            class="w-full rounded-md border-border bg-muted px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 cursor-not-allowed opacity-80"
+                            placeholder="Se autocompletará al buscar..."
                             required
                         />
                         <div
@@ -816,7 +818,7 @@ if (userId) {
             const suggestions = document.getElementById(
                 suggestionsId,
             ) as HTMLElement;
-            if (!input || !suggestions) return;
+            if (!input || !suggestions || input.readOnly) return;
 
             // Helper to normalize text (remove accents and lowercase)
             const normalizeText = (text: string) => {
@@ -1265,6 +1267,8 @@ if (userId) {
 
                         if (data.Alumno) {
                             nombreInput.value = formatName(data.Alumno);
+                            nombreInput.readOnly = true;
+                            nombreInput.classList.add("bg-muted", "cursor-not-allowed", "opacity-80");
                             validate(["nombre-completo"]);
                         }
                         if (data.carrera) {
@@ -1278,10 +1282,16 @@ if (userId) {
                                 rawCarrera = rawCarrera.replace(/\s*bloques/gi, '').replace(/  +/g, ' ').trim();
                             }
                             carreraInput.value = formatCarrera(rawCarrera);
+                            carreraInput.readOnly = true;
+                            carreraInput.classList.add("bg-muted", "cursor-not-allowed", "opacity-80");
                             validate(["carrera"]);
                             handleEscolarizadaLogic();
                             handleBloqueOptions();
                         }
+
+                        // Bloquear también matrícula tras la búsqueda exitosa
+                        matriculaInput.readOnly = true;
+                        matriculaInput.classList.add("bg-muted", "cursor-not-allowed", "opacity-80");
 
                         mailInput.value = data.mail || "";
                         mailEscuelaInput.value = data.mail_escuela || "";
