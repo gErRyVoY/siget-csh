@@ -8,13 +8,10 @@
 **Tarea Actual:** Completada — Invalidación de Sesión por Cambio de Rol/Desactivación (2026-08-10) ✅
 
 **Estado:** Completado.
-1. **Campos y Combos Select Deshabilitados para Rol Usuario:** En la vista de detalle de ticket `/tickets/view/[id]`, para usuarios con rol `user` (`rolId: 1`), los desplegables de **Prioridad**, **Estatus** y **Bloque sugerido**, así como los datos principales del alumno en traslados (Matrícula, Nombre del alumno, Campus Origen, Campus Destino y Carrera) quedan estrictamente deshabilitados (`disabled={!isPrivileged}`).
-2. **Campo Atiende como Texto:** Para rol `user`, el campo **Atiende** en la vista normal de tickets se muestra como texto plano en lugar de un combo `<select>` (exclusivo para `admin` y `superadmin`), manteniendo paridad con la vista de traslados.
-3. **Campos Permitidos para el Solicitante:** El usuario solicitante conserva habilitada la edición únicamente de:
-   - ¿Es nuevo ingreso?
-   - ¿Tiene descuento? / Tipo de Descuento
-   - Añadir nuevos comentarios y adjuntar archivos por comentario.
-4. **Protección en Backend:** Endpoint `PATCH /api/tickets/update` valida `isPrivileged` ignorando modificaciones no autorizadas en `estatusId`, `prioridad`, `archivado`, `matricula`, `alumno`, `origenId`, `destinoId` y `carreraId` provenientes de usuarios sin privilegio.
+1. **Edición de Estatus Habilitada para Solicitante:** El rol `user` (`!isPrivileged`) conserva habilitado el combo de **Estatus** (`disabled={!isPrivileged && !isOwner}`) para poder cancelar o reabrir tickets (cambiando a *En progreso*, *En espera*, *Solucionado* o *Cancelado*), excluyendo de sus opciones los estatus **Nuevo** y **Duplicado**.
+2. **Prioridad y Atiende Restringidos:** El desplegable de **Prioridad** queda deshabilitado para rol `user` (`disabled={!isPrivileged}`), y el campo **Atiende** se muestra como texto plano en lugar de un combo `<select>` (reservado para `admin` y `superadmin`).
+3. **Campos Permitidos para el Solicitante:** El usuario solicitante conserva habilitada la edición únicamente de: Estatus (excepto Nuevo y Duplicado), ¿Es nuevo ingreso?, ¿Tiene descuento? / Tipo de Descuento, Bloque sugerido, añadir nuevos comentarios y adjuntar archivos por comentario.
+4. **Protección en Backend:** Endpoint `PATCH /api/tickets/update` permite al solicitante cambiar de estatus validando que no intente establecer *Nuevo* o *Duplicado*, manteniendo bloqueados `prioridad`, `archivado`, `matricula`, `alumno`, `origenId`, `destinoId` y `carreraId` para usuarios no privilegiados.
 5. **`npx astro check` validó la aplicación con 0 errores en 149 archivos.**
 
 **Pasos Siguientes:**

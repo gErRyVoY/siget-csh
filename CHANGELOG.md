@@ -10,10 +10,12 @@ y este proyecto adhiere a [Versionado Semántico](https://semver.org/lang/es/).
 
 ## 2026-08-10 (Invalidación de Sesión por Cambio de Rol y Restricción de Combos Select)
 
-### Security & UX: Deshabilitación de Combos Select para Rol Usuario (`/tickets/view/[id]`)
-*   **Combos Select Deshabilitados**: En la vista de detalle del ticket (`/tickets/view/[id]`), para usuarios con rol `user` (`rolId: 1`), los desplegables de **Prioridad**, **Estatus** y **Bloque sugerido** quedan deshabilitados (`disabled={!isPrivileged}`).
+### Security & UX: Configuración de Combos Select para Rol Usuario (`/tickets/view/[id]`)
+*   **Permiso de Estatus para Solicitante**: El usuario solicitante (`!isPrivileged`) conserva la capacidad de cambiar el **Estatus** de sus tickets (permitiendo cancelar o reabrir tickets a estados como *En progreso*, *En espera*, *Solucionado* o *Cancelado*).
+*   **Exclusión de Estatus Sensibles**: Se omiten los estatus **Nuevo** y **Duplicado** del listado de opciones desplegables para usuarios sin privilegio (`!isPrivileged`).
+*   **Combos Restringidos**: El desplegable de **Prioridad** queda deshabilitado para rol `user` (`disabled={!isPrivileged}`).
 *   **Campo "Atiende" en Vista Normal**: Reemplazado el combo `<select>` de "Atiende" por texto plano en la vista normal de tickets cuando el usuario no tiene permisos privilegiados (`!isPrivileged`), logrando paridad de diseño con la vista de traslados.
-*   **Protección en Backend**: Endpoint `PATCH /api/tickets/update` valida `isPrivileged` ignorando cualquier intento de modificación no autorizada de `estatusId`, `prioridad` y `archivado`.
+*   **Protección en Backend**: Endpoint `PATCH /api/tickets/update` permite al solicitante actualizar el estatus validando que no intente conectarlo a *Nuevo* o *Duplicado*, mientras que `prioridad` y `archivado` requieren estrictamente `isPrivileged`.
 
 ### Security: Cierre Forzado de Sesión ante Cambios Administrativos
 

@@ -245,10 +245,8 @@ if (isPrivileged) {
         agents = [ticket.atiende];
     }
 
-    // Regular users cannot select 'Nuevo' if it's not currently 'Nuevo'
-    if (ticket.estatus.nombre !== "Nuevo") {
-        statuses = statuses.filter((s) => s.nombre !== "Nuevo");
-    }
+    // Regular users cannot see/select 'Duplicado', and cannot select 'Nuevo' unless it's the current status
+    statuses = statuses.filter((s) => s.nombre !== "Duplicado" && (s.nombre !== "Nuevo" || ticket.estatus.nombre === "Nuevo"));
 }
 
 const parseFileName = (key: string) => {
@@ -427,7 +425,7 @@ console.log("CAREER DEBUG:", { ofertaDesc, carreraOriginal: traslado?.carrera?.d
                                         name="estatusId"
                                         class="block w-40 rounded-md border-border p-2 text-sm font-medium"
                                         style={`background-color: ${(ticket.estatus.nombre === "Nuevo" && !ticket.atiendeId) ? "var(--primary)" : (statusColors[ticket.estatus.nombre] || "#a1a1aa")}; color: white;`}
-                                        disabled={!isPrivileged}
+                                        disabled={!isPrivileged && !isOwner}
                                     >
                                         {statuses.map((s) => {
                                             let label = s.nombre;
@@ -822,7 +820,7 @@ console.log("CAREER DEBUG:", { ofertaDesc, carreraOriginal: traslado?.carrera?.d
                                         name="estatusId" 
                                         class="mt-1 block w-full rounded-md border-border p-2 text-sm"
                                         style={`background-color: ${(ticket.estatus.nombre === "Nuevo" && !ticket.atiendeId) ? "var(--primary)" : (statusColors[ticket.estatus.nombre] || "#a1a1aa")}; color: white;`}
-                                        disabled={!isPrivileged}
+                                        disabled={!isPrivileged && !isOwner}
                                     >
                                         {statuses.map((s) => {
                                             let label = s.nombre;

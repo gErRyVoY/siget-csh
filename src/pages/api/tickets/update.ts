@@ -45,7 +45,16 @@ export const PATCH: APIRoute = async ({ request, locals }) => {
         }
 
         const updateData: Prisma.TicketUpdateInput = {};
-        if (updateDataInput.estatusId && isPrivileged) updateData.estatus = { connect: { id: Number(updateDataInput.estatusId) } };
+        if (updateDataInput.estatusId) {
+            const newEstatusId = Number(updateDataInput.estatusId);
+            if (!isPrivileged) {
+                const targetEstatus = await prisma.estatus.findUnique({ where: { id: newEstatusId } });
+                if (targetEstatus && (targetEstatus.nombre === 'Nuevo' || targetEstatus.nombre === 'Duplicado')) {
+                    return new Response(JSON.stringify({ message: 'No tienes permiso para cambiar a este estatus' }), { status: 403 });
+                }
+            }
+            updateData.estatus = { connect: { id: newEstatusId } };
+        }
         if (updateDataInput.solicitanteId && isPrivileged) updateData.solicitante = { connect: { id: Number(updateDataInput.solicitanteId) } };
         
         const isSuperAdmin = userRoleId === 3;
