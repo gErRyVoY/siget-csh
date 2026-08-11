@@ -1289,10 +1289,6 @@ if (userId) {
                             handleBloqueOptions();
                         }
 
-                        // Bloquear también matrícula tras la búsqueda exitosa
-                        matriculaInput.readOnly = true;
-                        matriculaInput.classList.add("bg-muted", "cursor-not-allowed", "opacity-80");
-
                         mailInput.value = data.mail || "";
                         mailEscuelaInput.value = data.mail_escuela || "";
                         telefonoInput.value = data.telefono || "";
