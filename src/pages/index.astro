@@ -161,6 +161,8 @@ let userSolicitanteStats = {
     total: 0,
     solucionados: 0,
     cancelados: 0,
+    duplicados: 0,
+    sinAsignar: 0,
     traslados: 0,
 };
 let recentUserTickets: any[] = [];
@@ -214,6 +216,8 @@ if (rolId === 1 && !isNaN(currentUserId)) {
         total: solCounts.reduce((acc, curr) => acc + curr._count.id, 0),
         solucionados: getSolCount("Solucionado"),
         cancelados: getSolCount("Cancelado"),
+        duplicados: getSolCount("Duplicado"),
+        sinAsignar: getSolCount("Sin asignar"),
         traslados: userTrasladosCount,
     };
     recentUserTickets = solRecent;
@@ -447,6 +451,16 @@ if (rolId === 1 && !isNaN(currentUserId)) {
                     {userSolicitanteStats.cancelados > 0 && (
                         <a href={`/tickets/soporte/usuario?status=${getStatusId("Cancelado")}`} class="block transition-transform hover:scale-105">
                             <StatCard title="Cancelados" value={userSolicitanteStats.cancelados.toString()} description="Tickets que no procedieron" color={statusColors["Tickets Cancelados"]} statKey="u-cancelados" />
+                        </a>
+                    )}
+                    {userSolicitanteStats.sinAsignar > 0 && (
+                        <a href={`/tickets/soporte/usuario?status=${getStatusId("Sin asignar")}`} class="block transition-transform hover:scale-105">
+                            <StatCard title="Sin asignar" value={userSolicitanteStats.sinAsignar.toString()} description="Pendientes de asignación" color={statusColors["Sin asignar"]} statKey="u-sinAsignar" />
+                        </a>
+                    )}
+                    {userSolicitanteStats.duplicados > 0 && (
+                        <a href={`/tickets/soporte/usuario?status=${getStatusId("Duplicado")}`} class="block transition-transform hover:scale-105">
+                            <StatCard title="Duplicados" value={userSolicitanteStats.duplicados.toString()} description="Solicitudes duplicadas" color={statusColors["Tickets Duplicados"]} statKey="u-duplicados" />
                         </a>
                     )}
                     {userSolicitanteStats.traslados > 0 && (

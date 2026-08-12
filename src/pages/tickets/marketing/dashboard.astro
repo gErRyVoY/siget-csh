@@ -115,6 +115,8 @@ let userMktStats = {
     total: 0,
     solucionados: 0,
     cancelados: 0,
+    duplicados: 0,
+    sinAsignar: 0,
 };
 let recentUserMktTickets: any[] = [];
 
@@ -154,6 +156,8 @@ if (rolId === 1 && !isNaN(currentUserId)) {
         total: mktSolCounts.reduce((acc, curr) => acc + curr._count.id, 0),
         solucionados: getMktSolCount("Solucionado"),
         cancelados: getMktSolCount("Cancelado"),
+        duplicados: getMktSolCount("Duplicado"),
+        sinAsignar: getMktSolCount("Sin asignar"),
     };
     recentUserMktTickets = mktSolRecent;
 }
@@ -319,6 +323,16 @@ if (rolId === 1 && !isNaN(currentUserId)) {
                     {userMktStats.cancelados > 0 && (
                         <a href={`/tickets/marketing/usuario?status=${getStatusId("Cancelado")}`} class="block transition-transform hover:scale-105">
                             <StatCard title="Cancelados" value={userMktStats.cancelados.toString()} description="Tickets que no procedieron" color={statusColors["Tickets Cancelados"]} statKey="u-mkt-cancelados" />
+                        </a>
+                    )}
+                    {userMktStats.sinAsignar > 0 && (
+                        <a href={`/tickets/marketing/usuario?status=${getStatusId("Sin asignar")}`} class="block transition-transform hover:scale-105">
+                            <StatCard title="Sin asignar" value={userMktStats.sinAsignar.toString()} description="Pendientes de asignación" color={statusColors["Sin asignar"]} statKey="u-mkt-sinAsignar" />
+                        </a>
+                    )}
+                    {userMktStats.duplicados > 0 && (
+                        <a href={`/tickets/marketing/usuario?status=${getStatusId("Duplicado")}`} class="block transition-transform hover:scale-105">
+                            <StatCard title="Duplicados" value={userMktStats.duplicados.toString()} description="Solicitudes duplicadas" color={statusColors["Tickets Duplicados"]} statKey="u-mkt-duplicados" />
                         </a>
                     )}
 
