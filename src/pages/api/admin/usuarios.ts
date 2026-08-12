@@ -208,6 +208,50 @@ export const PATCH: APIRoute = async ({ request }) => {
         data: updateData,
       });
 
+      // --- Cascada automática de secciones para rol Usuario (rolId=1) ---
+      // Si tckt_csh o tckt_mkt cambia, sincronizar las secciones correspondientes
+      // Funciona desde cualquier vista (campus, editar, etc.)
+      const effectiveRolId = newRolId ?? userBeforeUpdate.rolId;
+      if (effectiveRolId === 1) {
+        // IDs de secciones (deben coincidir con el seed)
+        const SEC_CREAR_CSH      = 1;
+        const SEC_CREAR_MKT      = 3;
+        const SEC_SOPORTE_MIS    = 4;
+        const SEC_SOPORTE_DASH   = 5;
+        const SEC_MKT_MIS        = 7;
+        const SEC_MKT_DASH       = 8;
+
+        type UpsertArgs = { usuarioId: number; seccionId: number; activo: boolean };
+        const upserts: UpsertArgs[] = [];
+
+        if (typeof updateDataInput.tckt_csh === 'boolean') {
+          const val = updateDataInput.tckt_csh;
+          upserts.push(
+            { usuarioId: userIdToUpdate, seccionId: SEC_CREAR_CSH,    activo: val },
+            { usuarioId: userIdToUpdate, seccionId: SEC_SOPORTE_DASH, activo: val },
+            { usuarioId: userIdToUpdate, seccionId: SEC_SOPORTE_MIS,  activo: val },
+          );
+        }
+
+        if (typeof updateDataInput.tckt_mkt === 'boolean') {
+          const val = updateDataInput.tckt_mkt;
+          upserts.push(
+            { usuarioId: userIdToUpdate, seccionId: SEC_CREAR_MKT, activo: val },
+            { usuarioId: userIdToUpdate, seccionId: SEC_MKT_DASH,  activo: val },
+            { usuarioId: userIdToUpdate, seccionId: SEC_MKT_MIS,   activo: val },
+          );
+        }
+
+        for (const u of upserts) {
+          await tx.permisoUsuarioSeccion.upsert({
+            where: { usuarioId_seccionId: { usuarioId: u.usuarioId, seccionId: u.seccionId } },
+            update: { activo: u.activo },
+            create: { usuarioId: u.usuarioId, seccionId: u.seccionId, activo: u.activo },
+          });
+        }
+      }
+      // --- Fin cascada ---
+
       const changes: { field: string, oldValue: any, newValue: any }[] = [];
       // Iterate over the keys of the validated updateData object for safe comparison
       for (const key of Object.keys(updateData)) {

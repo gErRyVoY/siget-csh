@@ -161,11 +161,14 @@ let userSolicitanteStats = {
     total: 0,
     solucionados: 0,
     cancelados: 0,
+    traslados: 0,
 };
 let recentUserTickets: any[] = [];
+const userTcktCsh = (session.user as any)?.tckt_csh ?? false;
+const userTcktMkt = (session.user as any)?.tckt_mkt ?? false;
 
 if (rolId === 1 && !isNaN(currentUserId)) {
-    const [solCounts, solRecent] = await Promise.all([
+    const [solCounts, solRecent, userTrasladosCount] = await Promise.all([
         prisma.ticket.groupBy({
             by: ["estatusId"],
             where: { solicitanteId: currentUserId },
@@ -184,6 +187,18 @@ if (rolId === 1 && !isNaN(currentUserId)) {
                 categoria: { select: { nombre: true } },
             },
         }),
+        activeCycle
+            ? prisma.ticket.count({
+                  where: {
+                      solicitanteId: currentUserId,
+                      subcategoriaId: 58,
+                      fechaalta: {
+                          gte: activeCycle.fecha_inicio,
+                          lte: activeCycle.fecha_fin,
+                      },
+                  },
+              })
+            : Promise.resolve(0),
     ]);
 
     const getSolCount = (name: string) => {
@@ -199,6 +214,7 @@ if (rolId === 1 && !isNaN(currentUserId)) {
         total: solCounts.reduce((acc, curr) => acc + curr._count.id, 0),
         solucionados: getSolCount("Solucionado"),
         cancelados: getSolCount("Cancelado"),
+        traslados: userTrasladosCount,
     };
     recentUserTickets = solRecent;
 }
@@ -406,30 +422,71 @@ if (rolId === 1 && !isNaN(currentUserId)) {
         ) : rolId === 1 ? (
             <!-- Dashboard del Rol Usuario: solo MIS tickets levantados -->
             <div>
-                <!-- Fila 1: Nuevos, En progreso, En espera, Total -->
+                <!-- Grid dinámico: solo tarjetas con count > 0 -->
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                    <a href={`/tickets/soporte/usuario?status=${getStatusId("Nuevo")}`} class="block transition-transform hover:scale-105">
-                        <StatCard title="Mis nuevos" value={userSolicitanteStats.nuevos.toString()} description="Mis tickets sin respuesta" color={statusColors["Tickets Nuevos"]} statKey="u-nuevos" />
-                    </a>
-                    <a href={`/tickets/soporte/usuario?status=${getStatusId("En progreso")}`} class="block transition-transform hover:scale-105">
-                        <StatCard title="En progreso" value={userSolicitanteStats.enProgreso.toString()} description="Siendo atendidos activamente" color={statusColors["Tickets En progreso"]} statKey="u-enProgreso" />
-                    </a>
-                    <a href={`/tickets/soporte/usuario?status=${getStatusId("En espera")}`} class="block transition-transform hover:scale-105">
-                        <StatCard title="En espera" value={userSolicitanteStats.enEspera.toString()} description="Esperando respuesta" color={statusColors["Tickets En espera"]} statKey="u-enEspera" />
-                    </a>
-                    <a href="/tickets/soporte/usuario" class="block transition-transform hover:scale-105">
-                        <StatCard title="Total mis tickets" value={userSolicitanteStats.total.toString()} description="Todos mis tickets registrados" color={statusColors["Total de Tickets"]} statKey="u-total" />
-                    </a>
-                </div>
+                    {userSolicitanteStats.nuevos > 0 && (
+                        <a href={`/tickets/soporte/usuario?status=${getStatusId("Nuevo")}`} class="block transition-transform hover:scale-105">
+                            <StatCard title="Mis nuevos" value={userSolicitanteStats.nuevos.toString()} description="Mis tickets sin respuesta" color={statusColors["Tickets Nuevos"]} statKey="u-nuevos" />
+                        </a>
+                    )}
+                    {userSolicitanteStats.enProgreso > 0 && (
+                        <a href={`/tickets/soporte/usuario?status=${getStatusId("En progreso")}`} class="block transition-transform hover:scale-105">
+                            <StatCard title="En progreso" value={userSolicitanteStats.enProgreso.toString()} description="Siendo atendidos activamente" color={statusColors["Tickets En progreso"]} statKey="u-enProgreso" />
+                        </a>
+                    )}
+                    {userSolicitanteStats.enEspera > 0 && (
+                        <a href={`/tickets/soporte/usuario?status=${getStatusId("En espera")}`} class="block transition-transform hover:scale-105">
+                            <StatCard title="En espera" value={userSolicitanteStats.enEspera.toString()} description="Esperando respuesta" color={statusColors["Tickets En espera"]} statKey="u-enEspera" />
+                        </a>
+                    )}
+                    {userSolicitanteStats.solucionados > 0 && (
+                        <a href={`/tickets/soporte/usuario?status=${getStatusId("Solucionado")}`} class="block transition-transform hover:scale-105">
+                            <StatCard title="Solucionados" value={userSolicitanteStats.solucionados.toString()} description="Mis tickets resueltos" color={statusColors["Tickets Solucionados"]} statKey="u-solucionados" />
+                        </a>
+                    )}
+                    {userSolicitanteStats.cancelados > 0 && (
+                        <a href={`/tickets/soporte/usuario?status=${getStatusId("Cancelado")}`} class="block transition-transform hover:scale-105">
+                            <StatCard title="Cancelados" value={userSolicitanteStats.cancelados.toString()} description="Tickets que no procedieron" color={statusColors["Tickets Cancelados"]} statKey="u-cancelados" />
+                        </a>
+                    )}
+                    {userSolicitanteStats.traslados > 0 && (
+                        <a href="/tickets/soporte/usuario" class="block transition-transform hover:scale-105">
+                            <StatCard title="Traslados" value={userSolicitanteStats.traslados.toString()} description="Traslados en el ciclo actual" color={statusColors["Traslados"]} statKey="u-traslados" />
+                        </a>
+                    )}
+                    {userSolicitanteStats.total > 0 && (
+                        <a href="/tickets/soporte/usuario" class="block transition-transform hover:scale-105">
+                            <StatCard title="Total" value={userSolicitanteStats.total.toString()} description="Todos mis tickets registrados" color={statusColors["Total de Tickets"]} statKey="u-total" />
+                        </a>
+                    )}
 
-                <!-- Fila 2: Solucionados, Cancelados -->
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-6">
-                    <a href={`/tickets/soporte/usuario?status=${getStatusId("Solucionado")}`} class="block transition-transform hover:scale-105">
-                        <StatCard title="Solucionados" value={userSolicitanteStats.solucionados.toString()} description="Mis tickets resueltos" color={statusColors["Tickets Solucionados"]} statKey="u-solucionados" />
-                    </a>
-                    <a href={`/tickets/soporte/usuario?status=${getStatusId("Cancelado")}`} class="block transition-transform hover:scale-105">
-                        <StatCard title="Cancelados" value={userSolicitanteStats.cancelados.toString()} description="Tickets que no procedieron" color={statusColors["Tickets Cancelados"]} statKey="u-cancelados" />
-                    </a>
+                    <!-- Tarjeta(s) CTA dorada para levantar nuevo ticket -->
+                    {userTcktCsh && (
+                        <a href="/tickets/soporte/nuevo-ticket-csh" class="block transition-transform hover:scale-105">
+                            <div class="relative flex flex-col items-center justify-center gap-3 p-6 rounded-xl border-2 border-primary bg-primary/10 hover:bg-primary/20 transition-colors shadow-sm min-h-[120px] group">
+                                <div class="flex items-center justify-center w-10 h-10 rounded-full bg-primary/20 group-hover:bg-primary/30 transition-colors">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-primary"><path d="M9 12h6"/><path d="M12 9v6"/><path d="M3 12a9 9 0 1 0 18 0 9 9 0 0 0-18 0"/></svg>
+                                </div>
+                                <div class="text-center">
+                                    <p class="text-sm font-bold text-primary">Levantar ticket</p>
+                                    <p class="text-xs text-primary/70 mt-0.5">CSH</p>
+                                </div>
+                            </div>
+                        </a>
+                    )}
+                    {userTcktMkt && (
+                        <a href="/tickets/marketing/nuevo-ticket-marketing" class="block transition-transform hover:scale-105">
+                            <div class="relative flex flex-col items-center justify-center gap-3 p-6 rounded-xl border-2 border-primary bg-primary/10 hover:bg-primary/20 transition-colors shadow-sm min-h-[120px] group">
+                                <div class="flex items-center justify-center w-10 h-10 rounded-full bg-primary/20 group-hover:bg-primary/30 transition-colors">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-primary"><path d="M9 12h6"/><path d="M12 9v6"/><path d="M3 12a9 9 0 1 0 18 0 9 9 0 0 0-18 0"/></svg>
+                                </div>
+                                <div class="text-center">
+                                    <p class="text-sm font-bold text-primary">Levantar ticket</p>
+                                    <p class="text-xs text-primary/70 mt-0.5">Marketing</p>
+                                </div>
+                            </div>
+                        </a>
+                    )}
                 </div>
 
                 <!-- Tickets activos recientes del usuario -->
