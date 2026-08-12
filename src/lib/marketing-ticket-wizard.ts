@@ -718,7 +718,7 @@ export function initMarketingTicketWizard(marketingCategory: CategoriaNode) {
             const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
             return text.replace(
                 new RegExp(`(${escaped})`, 'gi'),
-                '<mark class="match-mark bg-secondary/15 text-secondary font-bold px-1 rounded-sm transition-colors group-hover:bg-primary group-hover:text-black group-[.search-result-active]:bg-primary group-[.search-result-active]:text-black">$1</mark>'
+                '<mark class="match-mark bg-secondary/20 text-secondary font-bold px-1 rounded-sm">$1</mark>'
             );
         }
 
@@ -728,10 +728,10 @@ export function initMarketingTicketWizard(marketingCategory: CategoriaNode) {
 
             items.forEach((item, idx) => {
                 if (idx === newIndex) {
-                    item.classList.add('search-result-active', 'bg-secondary', 'text-white');
+                    item.classList.add('search-result-active', 'bg-accent');
                     item.scrollIntoView({ block: 'nearest' });
                 } else {
-                    item.classList.remove('search-result-active', 'bg-secondary', 'text-white');
+                    item.classList.remove('search-result-active', 'bg-accent');
                 }
             });
             activeIndex = newIndex;
@@ -762,12 +762,12 @@ export function initMarketingTicketWizard(marketingCategory: CategoriaNode) {
                     .map((part, pi) => {
                         const isLast = pi === r.pathParts.length - 1;
                         const hl = highlightQuery(part, query);
-                        if (isLast) return `<span class="font-semibold text-foreground group-hover:text-white group-[.search-result-active]:text-white">${hl}</span>`;
-                        return `<span class="text-muted-foreground group-hover:text-white/80 group-[.search-result-active]:text-white/80 text-xs">${hl}</span>`;
+                        if (isLast) return `<span class="font-semibold text-foreground text-sm">${hl}</span>`;
+                        return `<span class="text-muted-foreground text-xs">${hl}</span>`;
                     })
-                    .join('<span class="text-muted-foreground group-hover:text-white/70 group-[.search-result-active]:text-white/70 mx-1 text-xs">&rsaquo;</span>');
+                    .join('<span class="text-muted-foreground/60 mx-1 text-xs">&rsaquo;</span>');
 
-                return `<button type="button" data-result-index="${i}" class="search-result-item group w-full text-left px-4 py-2.5 text-sm text-foreground hover:bg-secondary hover:text-white focus:outline-none flex flex-col gap-0.5 transition-colors border-b border-border/30 last:border-none">
+                return `<button type="button" data-result-index="${i}" class="search-result-item group w-full text-left px-4 py-2.5 text-sm text-foreground hover:bg-accent focus:outline-none flex flex-col gap-0.5 transition-colors border-b border-border/30 last:border-none">
                     <span class="flex items-center flex-wrap gap-1">${highlighted}</span>
                 </button>`;
             }).join('');

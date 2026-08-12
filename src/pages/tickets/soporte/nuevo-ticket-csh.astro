@@ -9,60 +9,78 @@ const session = await getSession(Astro.request);
 const [dbCategories, dbSubcategories, dbSubcatRelations] = await Promise.all([
     prisma.categoria.findMany({
         where: { activo: true },
-        orderBy: { nombre: "asc" }
+        orderBy: { nombre: "asc" },
     }),
     prisma.subcategoria.findMany({
         where: { activo: true },
-        orderBy: { nombre: "asc" }
+        orderBy: { nombre: "asc" },
     }),
     prisma.subcategoriaCategorias.findMany({
-        where: { activo: true }
-    })
+        where: { activo: true },
+    }),
 ]);
 
 // Build subcategory tree nodes recursively (only active ones)
 function buildSubcategoryTree(
-    parentSubId: number | null, 
-    catId: number, 
-    allSubs: typeof dbSubcategories, 
-    relations: typeof dbSubcatRelations
+    parentSubId: number | null,
+    catId: number,
+    allSubs: typeof dbSubcategories,
+    relations: typeof dbSubcatRelations,
 ): any[] {
-    const levelSubs = allSubs.filter(sub => {
+    const levelSubs = allSubs.filter((sub) => {
         if (parentSubId === null) {
-            const isLinked = relations.some(r => r.categoriaId === catId && r.subcategoriaId === sub.id);
+            const isLinked = relations.some(
+                (r) => r.categoriaId === catId && r.subcategoriaId === sub.id,
+            );
             return isLinked && sub.parent_subcategoriaId === null;
         } else {
             return sub.parent_subcategoriaId === parentSubId;
         }
     });
 
-    return levelSubs.map(sub => {
-        const children = buildSubcategoryTree(sub.id, catId, allSubs, relations);
-        return {
-            id: sub.id,
-            nombre: sub.nombre,
-            parent_subcategoriaId: sub.parent_subcategoriaId,
-            nivel_soporte_requerido: sub.nivel_soporte_requerido,
-            activo: sub.activo,
-            children: children.sort((a, b) => a.nombre.localeCompare(b.nombre))
-        };
-    }).sort((a, b) => a.nombre.localeCompare(b.nombre));
+    return levelSubs
+        .map((sub) => {
+            const children = buildSubcategoryTree(
+                sub.id,
+                catId,
+                allSubs,
+                relations,
+            );
+            return {
+                id: sub.id,
+                nombre: sub.nombre,
+                parent_subcategoriaId: sub.parent_subcategoriaId,
+                nivel_soporte_requerido: sub.nivel_soporte_requerido,
+                activo: sub.activo,
+                children: children.sort((a, b) =>
+                    a.nombre.localeCompare(b.nombre),
+                ),
+            };
+        })
+        .sort((a, b) => a.nombre.localeCompare(b.nombre));
 }
 
-const activeCategoriesTree = dbCategories.map(cat => {
-    const subTree = buildSubcategoryTree(null, cat.id, dbSubcategories, dbSubcatRelations);
-    return {
-        id: cat.id,
-        nombre: cat.nombre,
-        nivel_soporte_requerido: cat.nivel_soporte_requerido,
-        activo: cat.activo,
-        subcategorias: subTree
-    };
-}).sort((a, b) => a.nombre.localeCompare(b.nombre));
+const activeCategoriesTree = dbCategories
+    .map((cat) => {
+        const subTree = buildSubcategoryTree(
+            null,
+            cat.id,
+            dbSubcategories,
+            dbSubcatRelations,
+        );
+        return {
+            id: cat.id,
+            nombre: cat.nombre,
+            nivel_soporte_requerido: cat.nivel_soporte_requerido,
+            activo: cat.activo,
+            subcategorias: subTree,
+        };
+    })
+    .sort((a, b) => a.nombre.localeCompare(b.nombre));
 
-const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY || '';
-const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
-const GOOGLE_APP_ID = process.env.GOOGLE_APP_ID || '';
+const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY || "";
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || "";
+const GOOGLE_APP_ID = process.env.GOOGLE_APP_ID || "";
 ---
 
 <MainLayout title="Nuevo ticket para CSH">
@@ -115,7 +133,11 @@ const GOOGLE_APP_ID = process.env.GOOGLE_APP_ID || '';
                 data-google-api-key={GOOGLE_API_KEY}
                 data-google-client-id={GOOGLE_CLIENT_ID}
                 data-google-app-id={GOOGLE_APP_ID}
-                data-redirect-url={session?.user?.secciones?.includes("soporte_dashboard") ? "/tickets/soporte" : "/tickets/soporte/usuario"}
+                data-redirect-url={session?.user?.secciones?.includes(
+                    "soporte_dashboard",
+                )
+                    ? "/tickets/soporte"
+                    : "/tickets/soporte/usuario"}
             >
                 <!-- Campos dinámicos para datos del afectado -->
                 <div
