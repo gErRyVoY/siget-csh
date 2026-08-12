@@ -14,7 +14,7 @@ const rolId = session.user.rol?.id ?? 1;
 const isAdminOrSuper = rolId === 2 || rolId === 3;
 const currentUserId = parseInt(session.user.id as string, 10);
 
-const statusColors = {
+const statusColors: Record<string, string> = {
     "Total de Tickets": "#6b7280",
     "Tickets Nuevos": "#a1a1aa",
     "Tickets En progreso": "#3b82f6",
@@ -22,6 +22,7 @@ const statusColors = {
     "Tickets Solucionados": "#84cc16",
     "Tickets Duplicados": "#171717",
     "Tickets Cancelados": "#dc2626",
+    "Sin asignar": "#475569",
 };
 
 // ── Stats Generales ──────────────────────────────────────────────
