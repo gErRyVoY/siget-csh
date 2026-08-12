@@ -976,6 +976,8 @@ sinAccesoCats.sort((a, b) => a.nombre.localeCompare(b.nombre));
         const seccionId = input.dataset.seccionId;
         const usuarioId = input.dataset.usuarioId;
         const activo = input.checked;
+        // Si fue disparado en modo silencioso por la cascada de toggles, no mostrar toast
+        const isSilent = (e as CustomEvent).detail?.silent === true;
 
         try {
           // Optimistic UI change is natural to the checkbox, so we just run the query
@@ -991,7 +993,9 @@ sinAccesoCats.sort((a, b) => a.nombre.localeCompare(b.nombre));
             );
           }
 
-          toast.success("Permiso actualizado correctamente");
+          if (!isSilent) {
+            toast.success("Permiso actualizado correctamente");
+          }
         } catch (error: any) {
           console.error(error);
           input.checked = !activo; // revert UI

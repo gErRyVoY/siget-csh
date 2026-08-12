@@ -152,6 +152,56 @@ if (isAdminOrSuper && !isNaN(currentUserId)) {
     };
     recentPersonalTickets = personalRecent;
 }
+
+// ── Stats del Solicitante (solo rol Usuario = 1) ─────────────────
+let userSolicitanteStats = {
+    nuevos: 0,
+    enProgreso: 0,
+    enEspera: 0,
+    total: 0,
+    solucionados: 0,
+    cancelados: 0,
+};
+let recentUserTickets: any[] = [];
+
+if (rolId === 1 && !isNaN(currentUserId)) {
+    const [solCounts, solRecent] = await Promise.all([
+        prisma.ticket.groupBy({
+            by: ["estatusId"],
+            where: { solicitanteId: currentUserId },
+            _count: { id: true },
+        }),
+        prisma.ticket.findMany({
+            where: {
+                solicitanteId: currentUserId,
+                estatus: { nombre: { in: ["Nuevo", "En progreso", "En espera"] } },
+            },
+            orderBy: { fechaalta: "desc" },
+            take: 5,
+            include: {
+                estatus: { select: { nombre: true } },
+                empresa: { select: { nombre: true } },
+                categoria: { select: { nombre: true } },
+            },
+        }),
+    ]);
+
+    const getSolCount = (name: string) => {
+        const status = statuses.find((s) => s.nombre === name);
+        if (!status) return 0;
+        return solCounts.find((c) => c.estatusId === status.id)?._count.id || 0;
+    };
+
+    userSolicitanteStats = {
+        nuevos: getSolCount("Nuevo"),
+        enProgreso: getSolCount("En progreso"),
+        enEspera: getSolCount("En espera"),
+        total: solCounts.reduce((acc, curr) => acc + curr._count.id, 0),
+        solucionados: getSolCount("Solucionado"),
+        cancelados: getSolCount("Cancelado"),
+    };
+    recentUserTickets = solRecent;
+}
 ---
 
 <MainLayout title="Dashboard">
@@ -353,8 +403,78 @@ if (isAdminOrSuper && !isNaN(currentUserId)) {
                     </div>
                 </div>
             </div>
+        ) : rolId === 1 ? (
+            <!-- Dashboard del Rol Usuario: solo MIS tickets levantados -->
+            <div>
+                <!-- Fila 1: Nuevos, En progreso, En espera, Total -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <a href={`/tickets/soporte/usuario?status=${getStatusId("Nuevo")}`} class="block transition-transform hover:scale-105">
+                        <StatCard title="Mis nuevos" value={userSolicitanteStats.nuevos.toString()} description="Mis tickets sin respuesta" color={statusColors["Tickets Nuevos"]} statKey="u-nuevos" />
+                    </a>
+                    <a href={`/tickets/soporte/usuario?status=${getStatusId("En progreso")}`} class="block transition-transform hover:scale-105">
+                        <StatCard title="En progreso" value={userSolicitanteStats.enProgreso.toString()} description="Siendo atendidos activamente" color={statusColors["Tickets En progreso"]} statKey="u-enProgreso" />
+                    </a>
+                    <a href={`/tickets/soporte/usuario?status=${getStatusId("En espera")}`} class="block transition-transform hover:scale-105">
+                        <StatCard title="En espera" value={userSolicitanteStats.enEspera.toString()} description="Esperando respuesta" color={statusColors["Tickets En espera"]} statKey="u-enEspera" />
+                    </a>
+                    <a href="/tickets/soporte/usuario" class="block transition-transform hover:scale-105">
+                        <StatCard title="Total mis tickets" value={userSolicitanteStats.total.toString()} description="Todos mis tickets registrados" color={statusColors["Total de Tickets"]} statKey="u-total" />
+                    </a>
+                </div>
+
+                <!-- Fila 2: Solucionados, Cancelados -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-6">
+                    <a href={`/tickets/soporte/usuario?status=${getStatusId("Solucionado")}`} class="block transition-transform hover:scale-105">
+                        <StatCard title="Solucionados" value={userSolicitanteStats.solucionados.toString()} description="Mis tickets resueltos" color={statusColors["Tickets Solucionados"]} statKey="u-solucionados" />
+                    </a>
+                    <a href={`/tickets/soporte/usuario?status=${getStatusId("Cancelado")}`} class="block transition-transform hover:scale-105">
+                        <StatCard title="Cancelados" value={userSolicitanteStats.cancelados.toString()} description="Tickets que no procedieron" color={statusColors["Tickets Cancelados"]} statKey="u-cancelados" />
+                    </a>
+                </div>
+
+                <!-- Tickets activos recientes del usuario -->
+                {recentUserTickets.length > 0 ? (
+                    <div class="mt-8 bg-card border border-border rounded-xl shadow-sm overflow-hidden">
+                        <div class="px-5 py-4 border-b border-border flex items-center justify-between">
+                            <h2 class="text-sm font-semibold text-foreground flex items-center gap-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-primary"><path d="M9 12h6"/><path d="M12 9v6"/><path d="M3 12a9 9 0 1 0 18 0 9 9 0 0 0-18 0"/></svg>
+                                Mis tickets activos recientes
+                            </h2>
+                            <a href="/tickets/soporte/usuario" class="text-xs text-primary hover:underline font-medium">Ver todos →</a>
+                        </div>
+                        <div class="divide-y divide-border">
+                            {recentUserTickets.map((ticket) => (
+                                <a
+                                    href={`/tickets/view/${ticket.id}`}
+                                    class="flex items-center justify-between px-5 py-3 hover:bg-muted/40 transition-colors group"
+                                >
+                                    <div class="flex items-center gap-3 min-w-0">
+                                        <span class="text-xs font-mono text-muted-foreground shrink-0">#{ticket.id}</span>
+                                        <div class="min-w-0">
+                                            <p class="text-sm font-medium text-foreground truncate group-hover:text-primary transition-colors">
+                                                {ticket.empresa?.nombre} · {ticket.categoria?.nombre}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <span
+                                        class="ml-3 shrink-0 px-2.5 py-0.5 rounded-full text-[11px] font-bold text-white shadow-sm"
+                                        style={`background-color: ${getStatusColor(ticket.estatus?.nombre ?? "")}`}
+                                    >
+                                        {ticket.estatus?.nombre}
+                                    </span>
+                                </a>
+                            ))}
+                        </div>
+                    </div>
+                ) : (
+                    <div class="mt-8 bg-card border border-border rounded-xl p-8 text-center text-muted-foreground text-sm">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="mx-auto mb-3 text-muted-foreground/40"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5z"/><polyline points="14 2 14 8 20 8"/></svg>
+                        No tienes tickets activos en este momento.
+                    </div>
+                )}
+            </div>
         ) : (
-            <!-- Vista normal para usuarios sin tabs -->
+            <!-- Vista general para usuarios sin tabs (fallback) -->
             <div>
                 <!-- Fila 1 -->
                 <div id="main-stats" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">

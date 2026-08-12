@@ -125,11 +125,11 @@ export function initializeUserEditForm() {
         const SEC_MKT_DASHBOARD = 8;
         const SEC_MKT_TODOS = 9;
 
-        function setSectionChecked(secId: number, checked: boolean) {
+        function setSectionChecked(secId: number, checked: boolean, silent = false) {
             const input = document.getElementById(`sec-${secId}`) as HTMLInputElement | null;
             if (input && input.checked !== checked) {
                 input.checked = checked;
-                input.dispatchEvent(new Event('change', { bubbles: true }));
+                input.dispatchEvent(new CustomEvent('change', { bubbles: true, detail: { silent } }));
             }
         }
 
@@ -144,13 +144,16 @@ export function initializeUserEditForm() {
             if (roleId === 1) {
                 // ROL USUARIO
                 if (changedSource === 'tckt_csh') {
-                    setSectionChecked(SEC_CREAR_CSH, tcktCsh);
-                    setSectionChecked(SEC_SOPORTE_DASHBOARD, tcktCsh);
-                    setSectionChecked(SEC_SOPORTE_MIS_TKTS, tcktCsh);
+                    setSectionChecked(SEC_CREAR_CSH, tcktCsh, true);
+                    setSectionChecked(SEC_SOPORTE_DASHBOARD, tcktCsh, true);
+                    setSectionChecked(SEC_SOPORTE_MIS_TKTS, tcktCsh, true);
+                    toast.success(tcktCsh ? 'Levanta CSH activado: secciones CSH habilitadas' : 'Levanta CSH desactivado: secciones CSH deshabilitadas');
                 }
                 if (changedSource === 'tckt_mkt') {
-                    setSectionChecked(SEC_CREAR_MKT, tcktMkt);
-                    setSectionChecked(SEC_MKT_DASHBOARD, tcktMkt);
+                    setSectionChecked(SEC_CREAR_MKT, tcktMkt, true);
+                    setSectionChecked(SEC_MKT_DASHBOARD, tcktMkt, true);
+                    setSectionChecked(SEC_MKT_MIS_TKTS, tcktMkt, true);
+                    toast.success(tcktMkt ? 'Levanta Mkt activado: secciones Marketing habilitadas' : 'Levanta Mkt desactivado: secciones Marketing deshabilitadas');
                 }
             } else if (roleId === 2 || roleId === 3) {
                 // ROL ADMIN / SUPERADMIN
@@ -160,30 +163,30 @@ export function initializeUserEditForm() {
 
                 if (changedSource === 'atiende_csh') {
                     if (atiendeCsh) {
-                        setSectionChecked(SEC_TRASLADO, true);
-                        setSectionChecked(SEC_SOPORTE_DASHBOARD, true);
-                        setSectionChecked(SEC_SOPORTE_MIS_TKTS, true);
-                        setSectionChecked(SEC_SOPORTE_TODOS, true);
+                        setSectionChecked(SEC_TRASLADO, true, true);
+                        setSectionChecked(SEC_SOPORTE_DASHBOARD, true, true);
+                        setSectionChecked(SEC_SOPORTE_MIS_TKTS, true, true);
+                        setSectionChecked(SEC_SOPORTE_TODOS, true, true);
                         if (atiendeMkt) {
-                            setSectionChecked(SEC_MKT_TODOS, true);
+                            setSectionChecked(SEC_MKT_TODOS, true, true);
                         }
                     } else {
-                        setSectionChecked(SEC_SOPORTE_TODOS, false);
+                        setSectionChecked(SEC_SOPORTE_TODOS, false, true);
                         if (!effectiveLevantaCsh) {
-                            setSectionChecked(SEC_SOPORTE_DASHBOARD, false);
-                            setSectionChecked(SEC_SOPORTE_MIS_TKTS, false);
+                            setSectionChecked(SEC_SOPORTE_DASHBOARD, false, true);
+                            setSectionChecked(SEC_SOPORTE_MIS_TKTS, false, true);
                         }
                     }
                 }
 
                 if (changedSource === 'atiende_mkt') {
                     if (atiendeMkt) {
-                        setSectionChecked(SEC_TRASLADO, true);
-                        setSectionChecked(SEC_MKT_DASHBOARD, true);
-                        setSectionChecked(SEC_MKT_MIS_TKTS, true);
-                        setSectionChecked(SEC_MKT_TODOS, true);
+                        setSectionChecked(SEC_TRASLADO, true, true);
+                        setSectionChecked(SEC_MKT_DASHBOARD, true, true);
+                        setSectionChecked(SEC_MKT_MIS_TKTS, true, true);
+                        setSectionChecked(SEC_MKT_TODOS, true, true);
                         if (atiendeCsh) {
-                            setSectionChecked(SEC_SOPORTE_TODOS, true);
+                            setSectionChecked(SEC_SOPORTE_TODOS, true, true);
                         }
 
                         // Sincronizar categoría Marketing (id=12)
@@ -193,10 +196,10 @@ export function initializeUserEditForm() {
                             catMktInput.dispatchEvent(new Event('change', { bubbles: true }));
                         }
                     } else {
-                        setSectionChecked(SEC_MKT_TODOS, false);
+                        setSectionChecked(SEC_MKT_TODOS, false, true);
                         if (!effectiveLevantaMkt) {
-                            setSectionChecked(SEC_MKT_DASHBOARD, false);
-                            setSectionChecked(SEC_MKT_MIS_TKTS, false);
+                            setSectionChecked(SEC_MKT_DASHBOARD, false, true);
+                            setSectionChecked(SEC_MKT_MIS_TKTS, false, true);
                         }
 
                         // Desactivar categoría Marketing (id=12)
@@ -209,18 +212,18 @@ export function initializeUserEditForm() {
                 }
 
                 if (changedSource === 'tckt_csh') {
-                    setSectionChecked(SEC_SOPORTE_DASHBOARD, effectiveLevantaCsh || atiendeCsh);
-                    setSectionChecked(SEC_SOPORTE_MIS_TKTS, effectiveLevantaCsh || atiendeCsh);
+                    setSectionChecked(SEC_SOPORTE_DASHBOARD, effectiveLevantaCsh || atiendeCsh, true);
+                    setSectionChecked(SEC_SOPORTE_MIS_TKTS, effectiveLevantaCsh || atiendeCsh, true);
                 }
 
                 if (changedSource === 'tckt_mkt') {
-                    setSectionChecked(SEC_MKT_DASHBOARD, effectiveLevantaMkt || atiendeMkt);
-                    setSectionChecked(SEC_MKT_MIS_TKTS, effectiveLevantaMkt || atiendeMkt);
+                    setSectionChecked(SEC_MKT_DASHBOARD, effectiveLevantaMkt || atiendeMkt, true);
+                    setSectionChecked(SEC_MKT_MIS_TKTS, effectiveLevantaMkt || atiendeMkt, true);
                 }
 
                 // Evaluación unificada para "Abrir ticket > CSH" y "Abrir ticket > Marketing"
-                setSectionChecked(SEC_CREAR_CSH, effectiveLevantaCsh || atiendeCsh);
-                setSectionChecked(SEC_CREAR_MKT, effectiveLevantaMkt || atiendeMkt);
+                setSectionChecked(SEC_CREAR_CSH, effectiveLevantaCsh || atiendeCsh, true);
+                setSectionChecked(SEC_CREAR_MKT, effectiveLevantaMkt || atiendeMkt, true);
             }
         }
 
