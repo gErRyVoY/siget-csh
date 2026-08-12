@@ -106,6 +106,57 @@ if (isAdminOrSuper && !isNaN(currentUserId)) {
     };
     recentPersonalTickets = personalRecent;
 }
+
+// ── Stats del Solicitante Marketing (solo rol Usuario = 1) ──────────────
+let userMktStats = {
+    nuevos: 0,
+    enProgreso: 0,
+    enEspera: 0,
+    total: 0,
+    solucionados: 0,
+    cancelados: 0,
+};
+let recentUserMktTickets: any[] = [];
+
+if (rolId === 1 && !isNaN(currentUserId)) {
+    const [mktSolCounts, mktSolRecent] = await Promise.all([
+        prisma.ticket.groupBy({
+            by: ["estatusId"],
+            where: { solicitanteId: currentUserId, categoriaId: MARKETING_CATEGORY_ID },
+            _count: { id: true },
+        }),
+        prisma.ticket.findMany({
+            where: {
+                solicitanteId: currentUserId,
+                categoriaId: MARKETING_CATEGORY_ID,
+                estatus: { nombre: { in: ["Nuevo", "En progreso", "En espera"] } },
+            },
+            orderBy: { fechaalta: "desc" },
+            take: 5,
+            include: {
+                estatus: { select: { nombre: true } },
+                empresa: { select: { nombre: true } },
+                subcategoria: { select: { nombre: true } },
+            },
+        }),
+    ]);
+
+    const getMktSolCount = (name: string) => {
+        const status = statuses.find((s) => s.nombre === name);
+        if (!status) return 0;
+        return mktSolCounts.find((c) => c.estatusId === status.id)?._count.id || 0;
+    };
+
+    userMktStats = {
+        nuevos: getMktSolCount("Nuevo"),
+        enProgreso: getMktSolCount("En progreso"),
+        enEspera: getMktSolCount("En espera"),
+        total: mktSolCounts.reduce((acc, curr) => acc + curr._count.id, 0),
+        solucionados: getMktSolCount("Solucionado"),
+        cancelados: getMktSolCount("Cancelado"),
+    };
+    recentUserMktTickets = mktSolRecent;
+}
 ---
 
 <MainLayout title="Dashboard Marketing">
@@ -234,6 +285,97 @@ if (isAdminOrSuper && !isNaN(currentUserId)) {
                         <button id="toggle-stats-btn" class="text-sm font-semibold text-primary hover:underline">Ver todo</button>
                     </div>
                 </div>
+            </div>
+        ) : rolId === 1 ? (
+            <!-- Dashboard Marketing: Rol Usuario - solo MIS tickets levantados -->
+            <div>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <!-- Total: siempre visible aunque sea 0 -->
+                    <a href="/tickets/marketing/usuario" class="block transition-transform hover:scale-105">
+                        <StatCard title="Total" value={userMktStats.total.toString()} description="Todos mis tickets de Marketing" color={statusColors["Total de Tickets"]} statKey="u-mkt-total" />
+                    </a>
+
+                    <!-- Tarjetas dinámicas: solo si count > 0 -->
+                    {userMktStats.nuevos > 0 && (
+                        <a href={`/tickets/marketing/usuario?status=${getStatusId("Nuevo")}`} class="block transition-transform hover:scale-105">
+                            <StatCard title="Mis nuevos" value={userMktStats.nuevos.toString()} description="Mis tickets sin respuesta" color={statusColors["Tickets Nuevos"]} statKey="u-mkt-nuevos" />
+                        </a>
+                    )}
+                    {userMktStats.enProgreso > 0 && (
+                        <a href={`/tickets/marketing/usuario?status=${getStatusId("En progreso")}`} class="block transition-transform hover:scale-105">
+                            <StatCard title="En progreso" value={userMktStats.enProgreso.toString()} description="Siendo atendidos activamente" color={statusColors["Tickets En progreso"]} statKey="u-mkt-enProgreso" />
+                        </a>
+                    )}
+                    {userMktStats.enEspera > 0 && (
+                        <a href={`/tickets/marketing/usuario?status=${getStatusId("En espera")}`} class="block transition-transform hover:scale-105">
+                            <StatCard title="En espera" value={userMktStats.enEspera.toString()} description="Esperando respuesta" color={statusColors["Tickets En espera"]} statKey="u-mkt-enEspera" />
+                        </a>
+                    )}
+                    {userMktStats.solucionados > 0 && (
+                        <a href={`/tickets/marketing/usuario?status=${getStatusId("Solucionado")}`} class="block transition-transform hover:scale-105">
+                            <StatCard title="Solucionados" value={userMktStats.solucionados.toString()} description="Mis tickets resueltos" color={statusColors["Tickets Solucionados"]} statKey="u-mkt-solucionados" />
+                        </a>
+                    )}
+                    {userMktStats.cancelados > 0 && (
+                        <a href={`/tickets/marketing/usuario?status=${getStatusId("Cancelado")}`} class="block transition-transform hover:scale-105">
+                            <StatCard title="Cancelados" value={userMktStats.cancelados.toString()} description="Tickets que no procedieron" color={statusColors["Tickets Cancelados"]} statKey="u-mkt-cancelados" />
+                        </a>
+                    )}
+
+                    <!-- CTA dorada para levantar ticket Marketing -->
+                    <a href="/tickets/marketing/nuevo-ticket-marketing" class="block transition-transform hover:scale-105">
+                        <div class="relative flex flex-col items-center justify-center gap-3 p-6 rounded-xl border-2 border-primary bg-primary/10 hover:bg-primary/20 transition-colors shadow-sm min-h-[120px] group">
+                            <div class="flex items-center justify-center w-10 h-10 rounded-full bg-primary/20 group-hover:bg-primary/30 transition-colors">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-primary"><path d="M9 12h6"/><path d="M12 9v6"/><path d="M3 12a9 9 0 1 0 18 0 9 9 0 0 0-18 0"/></svg>
+                            </div>
+                            <div class="text-center">
+                                <p class="text-sm font-bold text-primary">Levantar ticket</p>
+                                <p class="text-xs text-primary/70 mt-0.5">Marketing</p>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+
+                <!-- Tickets activos recientes -->
+                {recentUserMktTickets.length > 0 ? (
+                    <div class="mt-8 bg-card border border-border rounded-xl shadow-sm overflow-hidden">
+                        <div class="px-5 py-4 border-b border-border flex items-center justify-between">
+                            <h2 class="text-sm font-semibold text-foreground flex items-center gap-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-primary"><path d="M9 12h6"/><path d="M12 9v6"/><path d="M3 12a9 9 0 1 0 18 0 9 9 0 0 0-18 0"/></svg>
+                                Mis tickets activos recientes
+                            </h2>
+                            <a href="/tickets/marketing/usuario" class="text-xs text-primary hover:underline font-medium">Ver todos →</a>
+                        </div>
+                        <div class="divide-y divide-border">
+                            {recentUserMktTickets.map((ticket) => (
+                                <a
+                                    href={`/tickets/view/${ticket.id}?source=marketing_todos`}
+                                    class="flex items-center justify-between px-5 py-3 hover:bg-muted/40 transition-colors group"
+                                >
+                                    <div class="flex items-center gap-3 min-w-0">
+                                        <span class="text-xs font-mono text-muted-foreground shrink-0">#{ticket.id}</span>
+                                        <div class="min-w-0">
+                                            <p class="text-sm font-medium text-foreground truncate group-hover:text-primary transition-colors">
+                                                {ticket.empresa?.nombre} · {ticket.subcategoria?.nombre || "Marketing"}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <span
+                                        class="ml-3 shrink-0 px-2.5 py-0.5 rounded-full text-[11px] font-bold text-white shadow-sm"
+                                        style={`background-color: ${ticket.estatus?.nombre === "Nuevo" ? "#a1a1aa" : ticket.estatus?.nombre === "En progreso" ? "#3b82f6" : "#38bdf8"}`}
+                                    >
+                                        {ticket.estatus?.nombre}
+                                    </span>
+                                </a>
+                            ))}
+                        </div>
+                    </div>
+                ) : (
+                    <div class="mt-8 bg-card border border-border rounded-xl p-8 text-center text-muted-foreground text-sm">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="mx-auto mb-3 text-muted-foreground/40"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5z"/><polyline points="14 2 14 8 20 8"/></svg>
+                        No tienes tickets de Marketing activos en este momento.
+                    </div>
+                )}
             </div>
         ) : (
             <!-- Vista simple para Marketing agents (no admin) -->

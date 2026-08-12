@@ -96,7 +96,7 @@ const mainNavItems = [
 ];
 
 const mktItems = [
-    ...(secciones.includes("marketing_dashboard") && userRolId !== 1 ? [{
+    ...(secciones.includes("marketing_dashboard") ? [{
         href: `/tickets/marketing/dashboard`,
         label: "Dashboard",
         icon: DashboardIcon,
