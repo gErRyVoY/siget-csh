@@ -5,14 +5,13 @@
 >
 > **⚠️ REGLA CRÍTICA PARA EL ASISTENTE:** El asistente **NO debe ejecutar `git push`** en ninguna circunstancia a menos que el usuario lo solicite **de forma explícita**. Se permiten `git add` y `git commit` para preparar los cambios, pero el push queda **reservado exclusivamente para cuando el usuario lo indique**.
 
-**Tarea Actual:** Completada — Invalidación de Sesión por Cambio de Rol/Desactivación (2026-08-10) ✅
+**Tarea Actual:** Completada — Eliminación Completa de Ticket #24 y Ajustes de Menú / Dashboard (2026-08-12) ✅
 
 **Estado:** Completado.
-1. **Edición de Estatus Habilitada para Solicitante:** El rol `user` (`!isPrivileged`) conserva habilitado el combo de **Estatus** (`disabled={!isPrivileged && !isOwner}`) para poder cancelar o reabrir tickets (cambiando a *En progreso*, *En espera*, *Solucionado* o *Cancelado*), excluyendo de sus opciones los estatus **Nuevo** y **Duplicado**.
-2. **Prioridad y Atiende Restringidos:** El desplegable de **Prioridad** queda deshabilitado para rol `user` (`disabled={!isPrivileged}`), y el campo **Atiende** se muestra como texto plano en lugar de un combo `<select>` (reservado para `admin` y `superadmin`).
-3. **Campos Permitidos para el Solicitante:** El usuario solicitante conserva habilitada la edición únicamente de: Estatus (excepto Nuevo y Duplicado), ¿Es nuevo ingreso?, ¿Tiene descuento? / Tipo de Descuento, Bloque sugerido, añadir nuevos comentarios y adjuntar archivos por comentario.
-4. **Protección en Backend:** Endpoint `PATCH /api/tickets/update` permite al solicitante cambiar de estatus validando que no intente establecer *Nuevo* o *Duplicado*, manteniendo bloqueados `prioridad`, `archivado`, `matricula`, `alumno`, `origenId`, `destinoId` y `carreraId` para usuarios no privilegiados.
-5. **`npx astro check` validó la aplicación con 0 errores en 149 archivos.**
+1. **Eliminación del Ticket #24:** Se eliminó permanentemente el ticket `#24` ("Realizar un tiktok de prueba. Ticket de prueba.") junto con sus 2 registros de `notificaciones_correo` asociados en una transacción segura de Prisma.
+2. **Dashboard de Inicio Universal:** Se ajustó `src/pages/index.astro` para que todos los roles accedan al Dashboard (`/`) como su pantalla de inicio por defecto.
+3. **Visibilidad de Marketing en Sidebar:** Se propagaron los flags `tckt_csh` y `tckt_mkt` en la sesión y se condicionó la visualización del botón "Marketing" bajo *Abrir ticket* a `tckt_mkt === true`. El acordeón *Tickets marketing* para usuarios normales ahora solo muestra *Mis tickets* si tienen `tckt_mkt` activo o si poseen tickets de marketing creados.
+4. **`npx astro check` validó la aplicación con 0 errores en 149 archivos.**
 
 **Pasos Siguientes:**
 1. Monitoreo general y feedback del usuario.
@@ -20,6 +19,7 @@
 3. **[PENDIENTE]** Optimización de consultas de sesión duplicadas (N+1 por request). Plan detallado en `implementation_plan.md`.
 
 **Pasos Completados:**
+- ✅ **Eliminación de Ticket #24 y Correcciones de Visibilidad de Menú/Dashboard (2026-08-12):** Se ejecutó la eliminación limpia del ticket 24 y sus notificaciones. Se ajustó el inicio al Dashboard para todos los roles y se corrigió la consistencia del toggle `Levanta Mkt` en el menú lateral. `npx astro check` 0 errores.
 - ✅ **Invalidación de Sesión por Cambio de Rol/Desactivación (2026-08-10):** Se añadió la columna `session_version` al modelo `Usuario` en la BD (db push). El callback `jwt` de Auth.js compara la versión del token con la BD; si difieren, devuelve `null` destruyendo la cookie. El middleware detecta la cookie huérfana y redirige a `/login?error=SesionRevocada`. El PATCH de `/api/admin/usuarios` incrementa `session_version` cuando se degrada el rol (Superadmin→Admin, Admin→Usuario, etc.) o se desactiva al usuario. La página de login muestra un alert ámbar con el mensaje "Tus permisos han sido modificados. Por favor inicia sesión nuevamente para continuar." `npx astro check` pasó con 0 errores en 149 archivos.
 - ✅ **Despliegue a Repositorio (2026-08-08):** `git push` completado exitosamente a la rama `siget-apprunner-new` (commit `e382725`). AWS App Runner iniciando compilación y despliegue automático.
 - ✅ **Restricción de Edición de Datos de Traslado para Rol Usuario (2026-08-08):** Deshabilitada edición de matrícula, alumno, campus origen/destino y carrera para rol usuario, manteniendo editables únicamente nuevo ingreso, descuento, bloque sugerido, comentarios y adjuntos. `npx astro check` pasó con 0 errores.
