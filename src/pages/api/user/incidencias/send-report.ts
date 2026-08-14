@@ -431,9 +431,13 @@ export const POST: APIRoute = async ({ request }) => {
 
       if (isAllNull && !specialLabel) {
         // Sin registro y sin tipo especial → verificar si hay alguna incidencia guardada
-        const obsVal = saved ? saved.observaciones : null;
-        const isInasistLabel = !obsVal || obsVal === "Inasistencia";
-        const label = isInasistLabel ? "Inasistencia" : "Sin incidencias";
+        const obsRaw = saved ? saved.observaciones : null;
+        // Si hay un motivo real (no es la etiqueta "Inasistencia" literalmente), mostrarlo
+        const hasRealObs = obsRaw && obsRaw !== "Inasistencia";
+        if (hasRealObs) {
+          return `${dayLabel} Inasistencia. <strong style="color:#111827;">Motivo:</strong> ${obsRaw}.`;
+        }
+        const label = saved ? "Inasistencia" : "Sin incidencias";
         return `${dayLabel} ${label}.`;
       }
 

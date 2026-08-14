@@ -5,13 +5,13 @@
 >
 > **⚠️ REGLA CRÍTICA PARA EL ASISTENTE:** El asistente **NO debe ejecutar `git push`** en ninguna circunstancia a menos que el usuario lo solicite **de forma explícita**. Se permiten `git add` y `git commit` para preparar los cambios, pero el push queda **reservado exclusivamente para cuando el usuario lo indique**.
 
-**Tarea Actual:** Completada — Eliminación Completa de Ticket #24 y Ajustes de Menú / Dashboard (2026-08-12) ✅
+**Tarea Actual:** Completada — Correcciones en Vista de Incidencias (2026-08-14) ✅
 
 **Estado:** Completado.
-1. **Eliminación del Ticket #24:** Se eliminó permanentemente el ticket `#24` ("Realizar un tiktok de prueba. Ticket de prueba.") junto con sus 2 registros de `notificaciones_correo` asociados en una transacción segura de Prisma.
-2. **Dashboard de Inicio Universal:** Se ajustó `src/pages/index.astro` para que todos los roles accedan al Dashboard (`/`) como su pantalla de inicio por defecto.
-3. **Visibilidad de Marketing en Sidebar:** Se propagaron los flags `tckt_csh` y `tckt_mkt` en la sesión y se condicionó la visualización del botón "Marketing" bajo *Abrir ticket* a `tckt_mkt === true`. El acordeón *Tickets marketing* para usuarios normales ahora solo muestra *Mis tickets* si tienen `tckt_mkt` activo o si poseen tickets de marketing creados.
-4. **`npx astro check` validó la aplicación con 0 errores en 149 archivos.**
+1. **Fix validación de motivos al guardar (tipo especial):** El handler del botón "Guardar incidencias" buscaba checkboxes inexistentes (`homeoffice-N`, `vacaciones-N`) en lugar del `<select id="tipo-inasistencia-N">` real del DOM. Corregido para leer el select igual que el handler de "Enviar reporte". Ahora Homeoffice/Vacaciones/Evento/Asueto no exigen motivo al guardar.
+2. **Fix SVG `<path>` lucide-eye con arc flag inválido:** Los dos botones de previsualización en `incidencias.astro` tenían el path del ícono de ojo con un arc flag faltante (`1 0 0 1` en lugar de `1 1 0 0 1`), causando errores en la consola de Chrome. Corregidas ambas instancias.
+3. **Motivo de Inasistencia en preview y correo:** Al tener tipo "Inasistencia" con un motivo escrito, la previsualización y el correo mostraban "Sin incidencias." en lugar del motivo real. Corregido en `incidencias.astro` (preview) y `send-report.ts` (correo) para mostrar "Inasistencia. **Motivo:** [texto]."
+4. **`npx astro check` validó la aplicación con 0 errores.**
 
 **Pasos Siguientes:**
 1. Monitoreo general y feedback del usuario.
@@ -19,7 +19,8 @@
 3. **[PENDIENTE]** Optimización de consultas de sesión duplicadas (N+1 por request). Plan detallado en `implementation_plan.md`.
 
 **Pasos Completados:**
-- ✅ **Eliminación de Ticket #24 y Correcciones de Visibilidad de Menú/Dashboard (2026-08-12):** Se ejecutó la eliminación limpia del ticket 24 y sus notificaciones. Se ajustó el inicio al Dashboard para todos los roles y se corrigió la consistencia del toggle `Levanta Mkt` en el menú lateral. `npx astro check` 0 errores.
+- ✅ **Correcciones en Vista de Incidencias (2026-08-14):** (1) Fix del handler "Guardar" que buscaba checkboxes inexistentes en lugar del `<select tipo-inasistencia>`, permitiendo ahora guardar con tipos especiales sin exigir motivo. (2) Corregido arc flag inválido en el path SVG del ícono de ojo en 2 instancias. (3) Corregida la previsualización y el correo del reporte para mostrar el motivo de Inasistencia cuando existe, en lugar de "Sin incidencias.". `npx astro check` 0 errores.
+- ✅ **Corrección de Toggles Levanta CSH/Mkt y Dashboard de Rol Usuario (2026-08-12):** Fix `tckt_mkt` faltante en cascada de secciones, toast único en cascada CSH/Mkt, cascada universal en backend del PATCH de usuarios, y dashboard personalizado para rol Usuario mostrando solo tarjetas con tickets activos. `npx astro check` 0 errores en 149 archivos. Se ejecutó la eliminación limpia del ticket 24 y sus notificaciones. Se ajustó el inicio al Dashboard para todos los roles y se corrigió la consistencia del toggle `Levanta Mkt` en el menú lateral. `npx astro check` 0 errores.
 - ✅ **Invalidación de Sesión por Cambio de Rol/Desactivación (2026-08-10):** Se añadió la columna `session_version` al modelo `Usuario` en la BD (db push). El callback `jwt` de Auth.js compara la versión del token con la BD; si difieren, devuelve `null` destruyendo la cookie. El middleware detecta la cookie huérfana y redirige a `/login?error=SesionRevocada`. El PATCH de `/api/admin/usuarios` incrementa `session_version` cuando se degrada el rol (Superadmin→Admin, Admin→Usuario, etc.) o se desactiva al usuario. La página de login muestra un alert ámbar con el mensaje "Tus permisos han sido modificados. Por favor inicia sesión nuevamente para continuar." `npx astro check` pasó con 0 errores en 149 archivos.
 - ✅ **Despliegue a Repositorio (2026-08-08):** `git push` completado exitosamente a la rama `siget-apprunner-new` (commit `e382725`). AWS App Runner iniciando compilación y despliegue automático.
 - ✅ **Restricción de Edición de Datos de Traslado para Rol Usuario (2026-08-08):** Deshabilitada edición de matrícula, alumno, campus origen/destino y carrera para rol usuario, manteniendo editables únicamente nuevo ingreso, descuento, bloque sugerido, comentarios y adjuntos. `npx astro check` pasó con 0 errores.

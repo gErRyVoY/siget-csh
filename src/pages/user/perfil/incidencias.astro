@@ -135,7 +135,7 @@ const GOOGLE_APP_ID = import.meta.env.GOOGLE_APP_ID || process.env.GOOGLE_APP_ID
               class="bg-blue-600 hover:bg-blue-600/90 text-white p-2.5 rounded-md transition-colors btn-preview-reporte flex items-center justify-center cursor-pointer"
               title="Previsualizar correo del reporte"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-eye"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0z"/><circle cx="12" cy="12" r="3"/></svg>
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-eye"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0z"/><circle cx="12" cy="12" r="3"/></svg>
             </button>
             <button
               type="button"
@@ -174,7 +174,7 @@ const GOOGLE_APP_ID = import.meta.env.GOOGLE_APP_ID || process.env.GOOGLE_APP_ID
               class="bg-blue-600 hover:bg-blue-600/90 text-white p-2.5 rounded-md transition-colors btn-preview-reporte flex items-center justify-center cursor-pointer"
               title="Previsualizar correo del reporte"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-eye"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0z"/><circle cx="12" cy="12" r="3"/></svg>
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-eye"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0z"/><circle cx="12" cy="12" r="3"/></svg>
             </button>
             <button
               type="button"
@@ -1410,8 +1410,13 @@ const GOOGLE_APP_ID = import.meta.env.GOOGLE_APP_ID || process.env.GOOGLE_APP_ID
           lineText = `${dayLabel} <span style="color:${spColor};font-weight:700;">${specialLabel}.</span>`;
         } else if (isAllNull) {
           // Inasistencia real (sin select o select = Inasistencia)
-          const inasistLabel = (activeInc && activeInc.specialLabel === null && activeInc.observaciones === null) ? "Inasistencia" : "Sin incidencias";
-          lineText = `${dayLabel} ${inasistLabel}.`;
+          const inasistLabel = (activeInc && activeInc.specialLabel === null && !activeInc.observaciones) ? "Inasistencia" : "Sin incidencias";
+          const inasistMotivo = activeInc && activeInc.observaciones ? activeInc.observaciones : null;
+          if (inasistMotivo) {
+            lineText = `${dayLabel} Inasistencia. <strong>Motivo:</strong> ${inasistMotivo}.`;
+          } else {
+            lineText = `${dayLabel} ${inasistLabel}.`;
+          }
         } else {
           // Hay datos – evaluar retardo y tiempo adicional
           const rEnt = parseTime(r.entrada_turno);
@@ -1825,12 +1830,10 @@ const GOOGLE_APP_ID = import.meta.env.GOOGLE_APP_ID || process.env.GOOGLE_APP_ID
           const obsEl = document.getElementById(`obs-${inc.index}`) as HTMLTextAreaElement;
           const obsComidaEl = document.getElementById(`obs-comida-${inc.index}`) as HTMLTextAreaElement;
 
-          // Verificar toggles especiales Homeoffice / Vacaciones
-          const hoEl = document.getElementById(`homeoffice-${inc.index}`) as HTMLInputElement;
-          const vacEl = document.getElementById(`vacaciones-${inc.index}`) as HTMLInputElement;
-          const isHomeoffice = hoEl ? hoEl.checked : false;
-          const isVacaciones = vacEl ? vacEl.checked : false;
-          const specialLabel = isHomeoffice ? "Homeoffice" : isVacaciones ? "Vacaciones" : null;
+          // Leer el select de tipo de inasistencia (igual que en el handler de enviar)
+          const selEl = document.getElementById(`tipo-inasistencia-${inc.index}`) as HTMLSelectElement;
+          const tipoInasistencia = selEl ? selEl.value : "Inasistencia";
+          const specialLabel = tipoInasistencia !== "Inasistencia" ? tipoInasistencia : null;
 
           let valTurno = specialLabel || (obsEl ? obsEl.value.trim() : "");
           let valComida = obsComidaEl ? obsComidaEl.value.trim() : "";
