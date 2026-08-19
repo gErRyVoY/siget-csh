@@ -113,6 +113,132 @@ export function initMarketingTicketWizard(marketingCategory: CategoriaNode) {
     const SCOPES = "https://www.googleapis.com/auth/drive.readonly";
     const allowedMimeTypes = ALLOWED_FORMATS.join(",");
 
+    // --- Dirty Tracking (Datos no guardados) & Modal de Confirmación ---
+    let isSubmitting = false;
+    let unsavedDataToast: { dismiss: () => void } | null = null;
+    let pendingNavigationUrl: string | null = null;
+    let pendingNavigationIsBack = false;
+
+    function hasUnsavedData(): boolean {
+        if (isSubmitting) return false;
+        const hasDesc = (descripcionInput?.value.trim().length || 0) > 0;
+        const hasFiles = stagedFiles.length > 0;
+
+        return hasDesc || hasFiles;
+    }
+
+    function evaluateUnsavedDataState() {
+        if (isSubmitting) {
+            if (unsavedDataToast) {
+                unsavedDataToast.dismiss();
+                unsavedDataToast = null;
+            }
+            return;
+        }
+
+        const isDirty = hasUnsavedData();
+        if (isDirty) {
+            if (!unsavedDataToast) {
+                unsavedDataToast = toast.info('Tienes información sin enviar en tu solicitud.', {
+                    duration: 0,
+                    closeable: true,
+                });
+            }
+        } else {
+            if (unsavedDataToast) {
+                unsavedDataToast.dismiss();
+                unsavedDataToast = null;
+            }
+        }
+    }
+
+    const unsavedModal = document.getElementById('unsaved-ticket-modal');
+    const unsavedOverlay = document.getElementById('unsaved-ticket-overlay');
+    const btnCancelTicketLeave = document.getElementById('cancel-ticket-leave');
+    const btnConfirmDiscardTicket = document.getElementById('confirm-discard-ticket');
+
+    function showUnsavedTicketModal(url?: string | null, isBack: boolean = false) {
+        pendingNavigationUrl = url || null;
+        pendingNavigationIsBack = isBack;
+        if (unsavedModal) {
+            unsavedModal.classList.remove('hidden');
+            unsavedModal.classList.add('flex');
+        }
+    }
+
+    function hideUnsavedTicketModal() {
+        pendingNavigationUrl = null;
+        pendingNavigationIsBack = false;
+        if (unsavedModal) {
+            unsavedModal.classList.add('hidden');
+            unsavedModal.classList.remove('flex');
+        }
+    }
+
+    if (btnCancelTicketLeave) {
+        btnCancelTicketLeave.addEventListener('click', hideUnsavedTicketModal);
+    }
+    if (unsavedOverlay) {
+        unsavedOverlay.addEventListener('click', hideUnsavedTicketModal);
+    }
+
+    if (btnConfirmDiscardTicket) {
+        btnConfirmDiscardTicket.addEventListener('click', () => {
+            isSubmitting = true;
+            if (unsavedDataToast) {
+                unsavedDataToast.dismiss();
+                unsavedDataToast = null;
+            }
+            const navUrl = pendingNavigationUrl;
+            const isBack = pendingNavigationIsBack;
+            hideUnsavedTicketModal();
+
+            if (isBack) {
+                window.history.back();
+            } else if (navUrl) {
+                window.location.assign(navUrl);
+            }
+        });
+    }
+
+    window.addEventListener('beforeunload', (e) => {
+        if (hasUnsavedData()) {
+            e.preventDefault();
+            e.returnValue = '';
+        }
+    });
+
+    document.addEventListener('click', (e) => {
+        if (!hasUnsavedData()) return;
+
+        const target = e.target as HTMLElement;
+        const link = target.closest('a') as HTMLAnchorElement | null;
+
+        if (link && link.href) {
+            if (link.target === '_blank' || link.href.startsWith('javascript:') || link.getAttribute('href') === '#') {
+                return;
+            }
+
+            e.preventDefault();
+            e.stopPropagation();
+            showUnsavedTicketModal(link.href, false);
+        }
+    }, true);
+
+    document.addEventListener('astro:before-preparation', (ev: any) => {
+        if (hasUnsavedData()) {
+            ev.cancel();
+            showUnsavedTicketModal(ev.to?.href, false);
+        }
+    });
+
+    window.addEventListener('popstate', () => {
+        if (hasUnsavedData()) {
+            window.history.pushState(null, '', window.location.href);
+            showUnsavedTicketModal(null, true);
+        }
+    });
+
     // --- Core Functions ---
 
     function removeColumns(fromIndex: number) {
@@ -180,6 +306,14 @@ export function initMarketingTicketWizard(marketingCategory: CategoriaNode) {
         allListItems.forEach(li => {
             li.classList.remove('hidden');
         });
+
+        if (descripcionInput) descripcionInput.value = '';
+        if (afectadoClave) afectadoClave.value = '';
+        if (afectadoNombre) afectadoNombre.value = '';
+        stagedFiles = [];
+        if (attachmentArea) attachmentArea.innerHTML = '';
+        evaluateUnsavedDataState();
+        validateForm();
     }
 
     function showDescriptionArea() {
@@ -440,6 +574,7 @@ export function initMarketingTicketWizard(marketingCategory: CategoriaNode) {
                 const id = parseInt((e.target as HTMLElement).dataset.id || "0");
                 stagedFiles = stagedFiles.filter((f) => f.id !== id);
                 renderStagedFiles();
+                evaluateUnsavedDataState();
             });
         });
     };
@@ -457,11 +592,17 @@ export function initMarketingTicketWizard(marketingCategory: CategoriaNode) {
 
         stagedFiles = [...stagedFiles, ...newStaged];
         renderStagedFiles();
+        evaluateUnsavedDataState();
     };
 
 
     async function handleSubmit(e: SubmitEvent) {
         e.preventDefault();
+        isSubmitting = true;
+        if (unsavedDataToast) {
+            unsavedDataToast.dismiss();
+            unsavedDataToast = null;
+        }
         submitButton.disabled = true;
         submitButton.textContent = 'Enviando...';
 
@@ -546,6 +687,8 @@ export function initMarketingTicketWizard(marketingCategory: CategoriaNode) {
             }, 1500);
 
         } catch (error) {
+            isSubmitting = false;
+            evaluateUnsavedDataState();
             const errorMessage = error instanceof Error ? error.message : 'No se pudo crear el ticket.';
             toast.error(errorMessage);
             submitButton.disabled = false;
@@ -631,7 +774,10 @@ export function initMarketingTicketWizard(marketingCategory: CategoriaNode) {
         }
     });
 
-    descripcionInput.addEventListener('input', validateForm);
+    descripcionInput.addEventListener('input', () => {
+        validateForm();
+        evaluateUnsavedDataState();
+    });
     ticketForm.addEventListener('submit', handleSubmit);
 
     // --- File Listeners ---
@@ -748,8 +894,7 @@ export function initMarketingTicketWizard(marketingCategory: CategoriaNode) {
             }
 
             currentResults = flatResults
-                .filter(r => r.path.toLowerCase().includes(q))
-                .slice(0, 10);
+                .filter(r => r.path.toLowerCase().includes(q));
 
             if (currentResults.length === 0) {
                 dropdown!.innerHTML = `<div class="px-4 py-3 text-sm text-muted-foreground">Sin resultados para "${query}".</div>`;

@@ -89,11 +89,11 @@ const empresas = await prisma.empresa.findMany({
                     {empresa.nombre}
                   </td>
                   <td class="p-4">
-                    <span class={`px-2 py-1 rounded-full text-xs font-semibold ${
-                      empresa.tipo === 'Magno' ? 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300' :
-                      empresa.tipo === 'Ejecutivo' ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300' :
-                      empresa.tipo === 'Oficina' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300' :
-                      'bg-slate-100 text-slate-800 dark:bg-slate-900/30 dark:text-slate-300'
+                    <span class={`px-2.5 py-1 rounded-full text-xs font-semibold ${
+                      empresa.tipo === 'Magno' ? 'bg-primary text-white' :
+                      empresa.tipo === 'Ejecutivo' ? 'bg-secondary text-white' :
+                      empresa.tipo === 'Oficina' ? 'bg-muted-foreground text-white' :
+                      'bg-black text-white'
                     }`}>
                       {empresa.tipo}
                     </span>
@@ -110,7 +110,7 @@ const empresas = await prisma.empresa.findMany({
                           data-company-slug={empresa.slug}
                           checked={empresa.tckt_virtual}
                         />
-                        <div class="w-9 h-5 bg-muted peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary"></div>
+                        <div class="w-9 h-5 bg-muted-foreground peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary"></div>
                       </label>
                     </div>
                   </td>

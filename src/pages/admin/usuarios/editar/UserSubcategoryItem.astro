@@ -11,20 +11,15 @@ interface UserSubcatTreeNode {
 interface Props {
     node: UserSubcatTreeNode;
     catId: number;
-    inheritedCategories: Record<string, boolean>;
     assignedUserCategories: Record<string, boolean>;
     userId: number;
     canEdit: boolean;
-    isInheritedCat: boolean;
-    explicitStateCat?: boolean;
 }
 
-const { node, catId, inheritedCategories, assignedUserCategories, userId, canEdit, isInheritedCat, explicitStateCat } = Astro.props;
+const { node, catId, assignedUserCategories, userId, canEdit } = Astro.props;
 
 const subKey = `${catId}-${node.id}`;
-const explicitStateSub = assignedUserCategories[subKey];
-const isInheritedSub = (inheritedCategories[subKey] === true || isInheritedCat || explicitStateCat === true) && explicitStateSub !== false;
-const isCheckedSub = explicitStateSub !== undefined ? explicitStateSub : isInheritedSub;
+const isCheckedSub = assignedUserCategories[subKey] === true;
 const hasChildren = node.children && node.children.length > 0;
 
 // Determinar si el encendido es TOTAL (Guinda / secondary) o PARCIAL (Dorado / primary)
@@ -33,9 +28,7 @@ if (hasChildren) {
     function areAllDescendantsChecked(n: UserSubcatTreeNode): boolean {
         return n.children.every(child => {
             const sKey = `${catId}-${child.id}`;
-            const expSub = assignedUserCategories[sKey];
-            const inhSub = (inheritedCategories[sKey] === true || isInheritedCat || explicitStateCat === true) && expSub !== false;
-            const isAct = expSub !== undefined ? expSub : inhSub;
+            const isAct = assignedUserCategories[sKey] === true;
             if (!isAct) return false;
             if (child.children && child.children.length > 0) {
                 return areAllDescendantsChecked(child);
@@ -43,7 +36,7 @@ if (hasChildren) {
             return true;
         });
     }
-    isFullSub = areAllDescendantsChecked(node);
+    isFullSub = isCheckedSub && areAllDescendantsChecked(node);
 } else {
     isFullSub = isCheckedSub;
 }
@@ -71,12 +64,9 @@ if (hasChildren) {
         <Self
           node={child}
           catId={catId}
-          inheritedCategories={inheritedCategories}
           assignedUserCategories={assignedUserCategories}
           userId={userId}
           canEdit={canEdit}
-          isInheritedCat={isInheritedCat}
-          explicitStateCat={explicitStateCat}
         />
       ))}
     </div>

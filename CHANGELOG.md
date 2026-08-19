@@ -8,6 +8,35 @@ Todos los cambios notables en este proyecto serán documentados en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Versionado Semántico](https://semver.org/lang/es/).
 
+## 2026-08-19 (Consulta de Aspirantes vía API y Asignación Individual de Categorías)
+
+### Feature & Integration: Consulta y Autocompletado de Aspirante (`/tickets/soporte/nuevo-ticket-csh`)
+*   **Integración con API de Aspirantes**: En `src/lib/ticket-wizard.ts`, se implementó la función `consultarAspirante()` para consultar `https://pz3bmmqsty.us-east-1.awsapprunner.com/api/aspirantes/consultar-detalle?campus={campus}&folio={folio}` con autenticación `x-api-key: CHURRUMAIS-1979`.
+*   **Autocompletado y Bloqueo de Input**: Al ingresar el folio y disparar evento `blur`, presionar `Enter` o cambiar el campus seleccionado, se concatena y capitaliza el nombre completo (`nombre`, `ap_paterno`, `ap_materno`), asignándolo al campo `#afectado_nombre` y bloqueándolo en modo solo lectura (`readOnly: true`, `bg-muted`, `cursor-not-allowed`, `opacity-80`).
+*   **Manejo de Errores y Validaciones**: Validación alfanumérica previa, feedback con toasts interactivos de éxito/error y desbloqueo automático del campo de nombre si no se localiza el folio o la búsqueda arroja error.
+
+### Refactor & Security: Asignación Individual de Categorías y Exclusividad CSH
+*   **Eliminación de Herencia Obsoleta de Rol**: Se removió completamente la lógica de `inheritedCategories` y herencia por rol (`permisos_categoria`) en `editar/[id].astro` y `UserSubcategoryItem.astro`. La visualización y clasificación entre *"Habilitadas"* y *"Sin acceso"* ahora depende 100% de la tabla `asignaciones_categorias`.
+*   **Población Masiva Individual**: Se poblaron 197 categorías/subcategorías individuales activas en `asignaciones_categorias` para cada usuario con rol `Admin` y `Superadmin`.
+*   **Exclusividad para Victor Barrera (ID: 3)**: Se aseguraron y aislaron como exclusivas las 9 subcategorías especiales para el Director del CSH (Alumno: *Colaboradores*, *Docentes*, *Notas aclaratorias*; Colaborador: *Bajas*, *Redireccionar correo institucional*, *Redireccionar*; Docente: *Actualizar*, *Correo personal*, *Lista negra*), desactivándolas en todos los demás administradores.
+*   **Depuración de BD**: Se desactivaron 92 registros obsoletos en la tabla `permiso_categoria`.
+
+## 2026-08-18 (Protección de Datos Sin Guardar, Búsqueda de Categorías y Ajustes de Edición)
+
+### UX & Security: Prevención de Pérdida de Información Sin Guardar
+*   **Wizards de Creación de Tickets (`nuevo-ticket-csh.astro` y `nuevo-ticket-marketing.astro`)**:
+    *   Toast informativo persistente (`duration: 0`) ante cambios en descripción, campos de afectado o archivos adjuntos (locales o Google Drive).
+    *   Modal interactivo de confirmación `#unsaved-ticket-modal` con opciones *"Descartar y salir"* y *"Permanecer aquí"*.
+    *   Intercepción de navegación en enlaces del sidebar/breadcrumbs, botón atrás del navegador (`popstate`), transiciones Astro (`astro:before-preparation`) y cierre de pestaña/ventana (`beforeunload`).
+*   **Edición de Usuario (`editar/[id].astro`)**:
+    *   Snapshot inicial de valores del formulario y modales de confirmación con opciones *"Guardar y salir"*, *"Descartar y salir"* y *"Permanecer aquí"*.
+
+### Fixes & Refinements: Edición de Usuarios y Catálogos
+*   **Toggle "Otro"**: Corregido movimiento de perilla CSS (`peer-checked:translate-x-[16px]`) y visualización de color guinda en categorías sin subcategorías.
+*   **Flags de Superadmin**: Refactorizado `performSave()` en `user-edit-form-logic.ts` para no enviar flags ausentes en el DOM y prevenir que el Superadmin pierda `tckt_csh` / `tckt_mkt`.
+*   **Buscador de Categorías**: Eliminado el límite de 10 resultados para desplegar todas las coincidencias encontradas en wizards CSH y Marketing.
+*   **Tipos de Empresa (`/admin/empresas`)**: Personalización de badges por tipo de empresa (Magno, Ejecutivo, Oficina, Social) y toggle de Campus Virtual Origen.
+
 ## 2026-08-10 (Invalidación de Sesión por Cambio de Rol y Restricción de Combos Select)
 
 ### Security & UX: Configuración de Combos Select para Rol Usuario (`/tickets/view/[id]`)

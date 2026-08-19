@@ -167,19 +167,11 @@ const explicitPermissions = user.permisos_seccion.reduce(
 );
 
 // Permisos Híbridos (Categorías) por Asignación Explícita
+// Permisos de Categorías por Asignación Explícita Individual
 const assignedUserCategories: Record<string, boolean> = {};
 user.asignaciones_categorias?.forEach((ac) => {
   const catKey = ac.subcategoriaId ? `${ac.categoriaId}-${ac.subcategoriaId}` : `${ac.categoriaId}-null`;
   assignedUserCategories[catKey] = ac.activo;
-});
-
-// Permisos (Categorías) Heredados por Rol
-const inheritedCategories: Record<string, boolean> = {};
-user.rol?.permisos_categoria?.forEach((pc) => {
-  const catKey = pc.subcategoriaId ? `${pc.categoriaId}-${pc.subcategoriaId}` : `${pc.categoriaId}-null`;
-  if (pc.activo) {
-      inheritedCategories[catKey] = true;
-  }
 });
 
 // Agrupar secciones para UI
@@ -270,28 +262,6 @@ function buildUserSubcategoryTree(
     }).sort((a, b) => a.nombre.localeCompare(b.nombre));
 }
 
-function isSubtreeActive(
-  node: UserSubcatTreeNode, 
-  catId: number, 
-  inheritedCategoriesMap: Record<string, boolean>, 
-  assignedUserCategoriesMap: Record<string, boolean>
-): boolean {
-  const catKey = `${catId}-null`;
-  const isInheritedCat = inheritedCategoriesMap[catKey] === true;
-  const explicitStateCat = assignedUserCategoriesMap[catKey];
-
-  const subKey = `${catId}-${node.id}`;
-  const isInheritedSub = inheritedCategoriesMap[subKey] === true || isInheritedCat || explicitStateCat === true;
-  const explicitStateSub = assignedUserCategoriesMap[subKey];
-  const isCheckedSub = explicitStateSub !== undefined ? explicitStateSub : isInheritedSub;
-
-  if (isCheckedSub) return true;
-  if (node.children && node.children.length > 0) {
-    return node.children.some(child => isSubtreeActive(child, catId, inheritedCategoriesMap, assignedUserCategoriesMap));
-  }
-  return false;
-}
-
 interface UserCatNode {
     id: number;
     nombre: string;
@@ -304,20 +274,14 @@ interface UserCatNode {
 function filterActiveSubtree(
     node: UserSubcatTreeNode,
     catId: number,
-    inheritedCategoriesMap: Record<string, boolean>,
     assignedUserCategoriesMap: Record<string, boolean>
 ): UserSubcatTreeNode | null {
     const subKey = `${catId}-${node.id}`;
-    const explicitSub = assignedUserCategoriesMap[subKey];
-    const catKey = `${catId}-null`;
-    const explicitCat = assignedUserCategoriesMap[catKey];
-    const inheritedCat = inheritedCategoriesMap[catKey] === true;
-    const isInherited = (inheritedCategoriesMap[subKey] === true || inheritedCat || explicitCat === true) && explicitSub !== false;
-    const isActive = explicitSub !== undefined ? explicitSub : isInherited;
+    const isActive = assignedUserCategoriesMap[subKey] === true;
 
     // Filtrar los hijos activos
     const activeChildren = node.children
-        .map(c => filterActiveSubtree(c, catId, inheritedCategoriesMap, assignedUserCategoriesMap))
+        .map(c => filterActiveSubtree(c, catId, assignedUserCategoriesMap))
         .filter((c): c is UserSubcatTreeNode => c !== null);
 
     if (isActive || activeChildren.length > 0) {
@@ -329,20 +293,14 @@ function filterActiveSubtree(
 function filterInactiveSubtree(
     node: UserSubcatTreeNode,
     catId: number,
-    inheritedCategoriesMap: Record<string, boolean>,
     assignedUserCategoriesMap: Record<string, boolean>
 ): UserSubcatTreeNode | null {
     const subKey = `${catId}-${node.id}`;
-    const explicitSub = assignedUserCategoriesMap[subKey];
-    const catKey = `${catId}-null`;
-    const explicitCat = assignedUserCategoriesMap[catKey];
-    const inheritedCat = inheritedCategoriesMap[catKey] === true;
-    const isInherited = (inheritedCategoriesMap[subKey] === true || inheritedCat || explicitCat === true) && explicitSub !== false;
-    const isActive = explicitSub !== undefined ? explicitSub : isInherited;
+    const isActive = assignedUserCategoriesMap[subKey] === true;
 
     // Filtrar los hijos inactivos
     const inactiveChildren = node.children
-        .map(c => filterInactiveSubtree(c, catId, inheritedCategoriesMap, assignedUserCategoriesMap))
+        .map(c => filterInactiveSubtree(c, catId, assignedUserCategoriesMap))
         .filter((c): c is UserSubcatTreeNode => c !== null);
 
     if (!isActive || inactiveChildren.length > 0) {
@@ -357,16 +315,14 @@ const sinAccesoCats: UserCatNode[] = [];
 categories.forEach((cat) => {
     const subTree = buildUserSubcategoryTree(null, cat.id, subcategories, subcatRelations);
     const catKey = `${cat.id}-null`;
-    const isInheritedCat = inheritedCategories[catKey] === true;
-    const explicitStateCat = assignedUserCategories[catKey];
-    const isCheckedCat = explicitStateCat !== undefined ? explicitStateCat : isInheritedCat;
+    const isCheckedCat = assignedUserCategories[catKey] === true;
 
     const enabledSubcategorias = subTree
-        .map(n => filterActiveSubtree(n, cat.id, inheritedCategories, assignedUserCategories))
+        .map(n => filterActiveSubtree(n, cat.id, assignedUserCategories))
         .filter((n): n is UserSubcatTreeNode => n !== null);
 
     const disabledSubcategorias = subTree
-        .map(n => filterInactiveSubtree(n, cat.id, inheritedCategories, assignedUserCategories))
+        .map(n => filterInactiveSubtree(n, cat.id, assignedUserCategories))
         .filter((n): n is UserSubcatTreeNode => n !== null);
 
     const hasActiveSub = enabledSubcategorias.length > 0;
@@ -775,9 +731,7 @@ sinAccesoCats.sort((a, b) => a.nombre.localeCompare(b.nombre));
                     {
                       habilitadasCats.map(cat => {
                         const catKey = `${cat.id}-null`;
-                        const isInheritedCat = inheritedCategories[catKey] === true;
-                        const explicitStateCat = assignedUserCategories[catKey];
-                        const isCheckedCat = explicitStateCat !== undefined ? explicitStateCat : isInheritedCat;
+                        const isCheckedCat = assignedUserCategories[catKey] === true;
 
                         const enabledSubs = cat.enabledSubcategorias;
                         const disabledSubs = cat.disabledSubcategorias;
@@ -800,7 +754,7 @@ sinAccesoCats.sort((a, b) => a.nombre.localeCompare(b.nombre));
                                 <label class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full toggle-wrapper group/catbtn" data-full={isFullCategory ? "true" : "false"} title={showCheckedUiCat ? "Revocar categoría entera" : "Permitir categoría entera"}>
                                   <input type="checkbox" id={`cat-${cat.id}`} class="sr-only peer category-toggle main-category-toggle" data-categoria-id={cat.id} data-usuario-id={user.id} checked={showCheckedUiCat} disabled={!canEditCategorias}/>
                                   <div class="toggle-bg h-5 w-9 absolute rounded-full transition-all peer-focus:outline-none opacity-50 peer-checked:opacity-100 disabled:opacity-30 peer-disabled:cursor-not-allowed bg-muted-foreground border border-white group-data-[full=false]/catbtn:peer-checked:bg-primary group-data-[full=true]/catbtn:peer-checked:bg-secondary" />
-                                  <div class="toggle-knob absolute top-[2px] left-[2px] bg-white border border-gray-300 rounded-full h-4 w-4 transition-transform z-10" class:list={[{'translate-x-[16px] border-white': showCheckedUiCat}]} />
+                                  <div class="toggle-knob absolute top-[2px] left-[2px] bg-white border border-gray-300 rounded-full h-4 w-4 transition-transform z-10 peer-checked:translate-x-[16px] peer-checked:border-white" class:list={[{'translate-x-[16px] border-white': showCheckedUiCat}]} />
                                 </label>
                               </div>
                             </summary>
@@ -810,12 +764,9 @@ sinAccesoCats.sort((a, b) => a.nombre.localeCompare(b.nombre));
                                 <UserSubcategoryItem
                                   node={subNode}
                                   catId={cat.id}
-                                  inheritedCategories={inheritedCategories}
                                   assignedUserCategories={assignedUserCategories}
                                   userId={user.id}
                                   canEdit={canEditCategorias}
-                                  isInheritedCat={isInheritedCat}
-                                  explicitStateCat={explicitStateCat}
                                 />
                               ))}
                               {/* Sub-acordeón "Sin acceso" interno si hay subcategorías inactivas */}
@@ -833,12 +784,9 @@ sinAccesoCats.sort((a, b) => a.nombre.localeCompare(b.nombre));
                                       <UserSubcategoryItem
                                         node={subNode}
                                         catId={cat.id}
-                                        inheritedCategories={inheritedCategories}
                                         assignedUserCategories={assignedUserCategories}
                                         userId={user.id}
                                         canEdit={canEditCategorias}
-                                        isInheritedCat={isInheritedCat}
-                                        explicitStateCat={explicitStateCat}
                                       />
                                     ))}
                                   </div>
@@ -868,10 +816,6 @@ sinAccesoCats.sort((a, b) => a.nombre.localeCompare(b.nombre));
                   <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
                     {
                       sinAccesoCats.map(cat => {
-                        const catKey = `${cat.id}-null`;
-                        const isInheritedCat = inheritedCategories[catKey] === true;
-                        const explicitStateCat = assignedUserCategories[catKey];
-                        const isCheckedCat = explicitStateCat !== undefined ? explicitStateCat : isInheritedCat;
                         const showCheckedUiCat = false; // Siempre apagado en "Sin acceso"
 
                         return (
@@ -884,10 +828,10 @@ sinAccesoCats.sort((a, b) => a.nombre.localeCompare(b.nombre));
                                 <span class="text-[13px] font-bold uppercase truncate text-primary group-hover/catsum:text-white transition-colors">{cat.nombre}</span>
                               </div>
                               <div class="shrink-0" onclick="event.stopPropagation();">
-                                <label class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full toggle-wrapper group/catbtn" data-full="false" title="Permitir categoría entera">
+                                <label class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full toggle-wrapper group/catbtn" data-full="true" title="Permitir categoría entera">
                                   <input type="checkbox" id={`cat-${cat.id}`} class="sr-only peer category-toggle main-category-toggle" data-categoria-id={cat.id} data-usuario-id={user.id} checked={false} disabled={!canEditCategorias}/>
                                   <div class="toggle-bg h-5 w-9 absolute rounded-full transition-all peer-focus:outline-none opacity-50 peer-checked:opacity-100 disabled:opacity-30 peer-disabled:cursor-not-allowed bg-muted-foreground border border-white group-data-[full=false]/catbtn:peer-checked:bg-primary group-data-[full=true]/catbtn:peer-checked:bg-secondary" />
-                                  <div class="toggle-knob absolute top-[2px] left-[2px] bg-white border border-gray-300 rounded-full h-4 w-4 transition-transform z-10" />
+                                  <div class="toggle-knob absolute top-[2px] left-[2px] bg-white border border-gray-300 rounded-full h-4 w-4 transition-transform z-10 peer-checked:translate-x-[16px] peer-checked:border-white" />
                                 </label>
                               </div>
                             </summary>
@@ -897,12 +841,9 @@ sinAccesoCats.sort((a, b) => a.nombre.localeCompare(b.nombre));
                                   <UserSubcategoryItem
                                     node={subNode}
                                     catId={cat.id}
-                                    inheritedCategories={inheritedCategories}
                                     assignedUserCategories={assignedUserCategories}
                                     userId={user.id}
                                     canEdit={canEditCategorias}
-                                    isInheritedCat={isInheritedCat}
-                                    explicitStateCat={explicitStateCat}
                                   />
                                 ))}
                               </div>
@@ -958,6 +899,65 @@ sinAccesoCats.sort((a, b) => a.nombre.localeCompare(b.nombre));
         )
       }
     </form>
+  </div>
+
+  <!-- Unsaved Changes Confirmation Modal -->
+  <div
+    id="unsaved-changes-modal"
+    class="fixed inset-0 z-50 items-center justify-center hidden"
+    role="dialog"
+    aria-modal="true"
+  >
+    <div
+      class="absolute inset-0 bg-black/60 backdrop-blur-sm"
+      id="unsaved-modal-overlay"
+    >
+    </div>
+    <div
+      class="relative bg-card border border-border rounded-lg shadow-xl p-6 w-full max-w-md mx-4 transition-all"
+    >
+      <div class="flex items-center gap-3 mb-3">
+        <div class="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center flex-shrink-0">
+          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="8" x2="12" y2="12"></line>
+            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+          </svg>
+        </div>
+        <div>
+          <h3 class="text-lg font-bold text-foreground">Cambios sin guardar</h3>
+          <p class="text-xs text-muted-foreground">Hay modificaciones pendientes en el formulario</p>
+        </div>
+      </div>
+      
+      <p class="text-sm text-foreground/80 mb-6">
+        ¿Deseas guardar los cambios antes de salir o prefieres descartarlos?
+      </p>
+
+      <div class="flex flex-col sm:flex-row justify-end gap-2">
+        <button
+          type="button"
+          id="cancel-leave-modal"
+          class="bg-muted text-muted-foreground hover:bg-muted/80 px-4 py-2 rounded-md text-sm font-semibold transition-colors cursor-pointer"
+        >
+          Permanecer aquí
+        </button>
+        <button
+          type="button"
+          id="confirm-discard-and-leave"
+          class="bg-input border border-border text-foreground hover:bg-muted px-4 py-2 rounded-md text-sm font-semibold transition-colors cursor-pointer"
+        >
+          Descartar y salir
+        </button>
+        <button
+          type="button"
+          id="confirm-save-and-leave"
+          class="bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-2 rounded-md text-sm font-semibold transition-colors flex items-center justify-center gap-2 cursor-pointer"
+        >
+          Guardar y salir
+        </button>
+      </div>
+    </div>
   </div>
 </MainLayout>
 

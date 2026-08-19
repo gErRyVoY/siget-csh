@@ -85,9 +85,15 @@ export function initTicketWizard(treeData: CategoriesTreeData) {
 
     // Afectado fields
     const afectadoFields = document.getElementById('afectado-fields');
+    const afectadoCampus = document.getElementById('afectado_campus') as HTMLSelectElement | HTMLInputElement | null;
+    const containerAfectadoClave = document.getElementById('container-afectado-clave');
+    const containerAfectadoEmail = document.getElementById('container-afectado-email');
     const afectadoClave = document.getElementById('afectado_clave') as HTMLInputElement;
+    const afectadoEmailUser = document.getElementById('afectado_email_user') as HTMLInputElement | null;
     const afectadoNombre = document.getElementById('afectado_nombre') as HTMLInputElement;
     const lblClave = document.getElementById('lbl-clave');
+    const claveSearchSpinner = document.getElementById('clave-search-spinner');
+    const emailSearchSpinner = document.getElementById('email-search-spinner');
 
     const submitButton = document.getElementById('submit-ticket') as HTMLButtonElement;
     const ticketForm = document.getElementById('ticket-form') as HTMLElement | null;
@@ -118,7 +124,6 @@ export function initTicketWizard(treeData: CategoriesTreeData) {
         'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     ];
     let stagedFiles: Array<{ file: File; id: number; isValid: boolean; reason: string | null }> = [];
-
     // Google API Credentials
     const GOOGLE_API_KEY = ticketForm.dataset.googleApiKey;
     const GOOGLE_CLIENT_ID = ticketForm.dataset.googleClientId;
@@ -130,6 +135,135 @@ export function initTicketWizard(treeData: CategoriesTreeData) {
     let gisInited = false;
     const SCOPES = "https://www.googleapis.com/auth/drive.readonly";
     const allowedMimeTypes = ALLOWED_FORMATS.join(",");
+
+    // --- Dirty Tracking (Datos no guardados) & Modal de Confirmación ---
+    let isSubmitting = false;
+    let unsavedDataToast: { dismiss: () => void } | null = null;
+    let pendingNavigationUrl: string | null = null;
+    let pendingNavigationIsBack = false;
+
+    function hasUnsavedData(): boolean {
+        if (isSubmitting) return false;
+        const hasDesc = (descripcionInput?.value.trim().length || 0) > 0;
+        const hasClave = (afectadoClave?.value.trim().length || 0) > 0;
+        const hasEmail = (afectadoEmailUser?.value.trim().length || 0) > 0;
+        const hasNombre = (afectadoNombre?.value.trim().length || 0) > 0;
+        const hasFiles = stagedFiles.length > 0;
+
+        return hasDesc || hasClave || hasEmail || hasNombre || hasFiles;
+    }
+
+    function evaluateUnsavedDataState() {
+        if (isSubmitting) {
+            if (unsavedDataToast) {
+                unsavedDataToast.dismiss();
+                unsavedDataToast = null;
+            }
+            return;
+        }
+
+        const isDirty = hasUnsavedData();
+        if (isDirty) {
+            if (!unsavedDataToast) {
+                unsavedDataToast = toast.info('Tienes información sin enviar en tu solicitud.', {
+                    duration: 0,
+                    closeable: true,
+                });
+            }
+        } else {
+            if (unsavedDataToast) {
+                unsavedDataToast.dismiss();
+                unsavedDataToast = null;
+            }
+        }
+    }
+
+    const unsavedModal = document.getElementById('unsaved-ticket-modal');
+    const unsavedOverlay = document.getElementById('unsaved-ticket-overlay');
+    const btnCancelTicketLeave = document.getElementById('cancel-ticket-leave');
+    const btnConfirmDiscardTicket = document.getElementById('confirm-discard-ticket');
+
+    function showUnsavedTicketModal(url?: string | null, isBack: boolean = false) {
+        pendingNavigationUrl = url || null;
+        pendingNavigationIsBack = isBack;
+        if (unsavedModal) {
+            unsavedModal.classList.remove('hidden');
+            unsavedModal.classList.add('flex');
+        }
+    }
+
+    function hideUnsavedTicketModal() {
+        pendingNavigationUrl = null;
+        pendingNavigationIsBack = false;
+        if (unsavedModal) {
+            unsavedModal.classList.add('hidden');
+            unsavedModal.classList.remove('flex');
+        }
+    }
+
+    if (btnCancelTicketLeave) {
+        btnCancelTicketLeave.addEventListener('click', hideUnsavedTicketModal);
+    }
+    if (unsavedOverlay) {
+        unsavedOverlay.addEventListener('click', hideUnsavedTicketModal);
+    }
+
+    if (btnConfirmDiscardTicket) {
+        btnConfirmDiscardTicket.addEventListener('click', () => {
+            isSubmitting = true;
+            if (unsavedDataToast) {
+                unsavedDataToast.dismiss();
+                unsavedDataToast = null;
+            }
+            const navUrl = pendingNavigationUrl;
+            const isBack = pendingNavigationIsBack;
+            hideUnsavedTicketModal();
+
+            if (isBack) {
+                window.history.back();
+            } else if (navUrl) {
+                window.location.assign(navUrl);
+            }
+        });
+    }
+
+    window.addEventListener('beforeunload', (e) => {
+        if (hasUnsavedData()) {
+            e.preventDefault();
+            e.returnValue = '';
+        }
+    });
+
+    document.addEventListener('click', (e) => {
+        if (!hasUnsavedData()) return;
+
+        const target = e.target as HTMLElement;
+        const link = target.closest('a') as HTMLAnchorElement | null;
+
+        if (link && link.href) {
+            if (link.target === '_blank' || link.href.startsWith('javascript:') || link.getAttribute('href') === '#') {
+                return;
+            }
+
+            e.preventDefault();
+            e.stopPropagation();
+            showUnsavedTicketModal(link.href, false);
+        }
+    }, true);
+
+    document.addEventListener('astro:before-preparation', (ev: any) => {
+        if (hasUnsavedData()) {
+            ev.cancel();
+            showUnsavedTicketModal(ev.to?.href, false);
+        }
+    });
+
+    window.addEventListener('popstate', () => {
+        if (hasUnsavedData()) {
+            window.history.pushState(null, '', window.location.href);
+            showUnsavedTicketModal(null, true);
+        }
+    });
 
     // --- Core Functions ---
 
@@ -153,31 +287,45 @@ export function initTicketWizard(treeData: CategoriesTreeData) {
         const header = document.createElement('div');
         header.className = 'flex justify-between items-center mb-2';
 
-        const h3 = document.createElement('h3');
-        h3.className = 'font-semibold text-card-foreground truncate';
-        h3.textContent = title;
-        h3.title = title;
-        header.appendChild(h3);
+        const titleSpan = document.createElement('span');
+        titleSpan.className = 'font-semibold text-card-foreground text-sm truncate';
+        titleSpan.textContent = title;
+        header.appendChild(titleSpan);
 
         if (colIndex > 0) {
-            const closeButton = document.createElement('button');
-            closeButton.className = 'p-1 rounded-md hover:bg-accent text-muted-foreground';
-            closeButton.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>';
-            closeButton.setAttribute('data-close-col', String(colIndex));
-            header.appendChild(closeButton);
+            const closeBtn = document.createElement('button');
+            closeBtn.setAttribute('type', 'button');
+            closeBtn.setAttribute('data-close-col', String(colIndex));
+            closeBtn.className = 'text-muted-foreground hover:text-foreground text-sm leading-none p-1 rounded hover:bg-muted transition-colors';
+            closeBtn.innerHTML = '&times;';
+            header.appendChild(closeBtn);
         }
 
         const list = document.createElement('ul');
-        list.className = 'space-y-2 overflow-y-auto';
+        list.className = 'space-y-2';
 
         items.forEach(item => {
             const li = document.createElement('li');
             const button = document.createElement('button');
-            button.dataset.id = String(item.id);
-            button.dataset.type = type;
-            button.dataset.colIndex = String(colIndex);
-            button.className = "w-full text-left p-2 rounded-md text-sm transition-colors focus:outline-none focus:ring-1 focus:ring-secondary hover:bg-secondary hover:text-secondary-foreground";
-            button.textContent = item.nombre;
+            button.setAttribute('type', 'button');
+            button.setAttribute('data-id', String(item.id));
+            button.setAttribute('data-col-index', String(colIndex));
+            button.setAttribute('data-type', type);
+            button.className = 'w-full text-left p-2 rounded-md hover:bg-muted text-card-foreground text-sm transition-colors flex justify-between items-center';
+
+            const nameSpan = document.createElement('span');
+            nameSpan.className = 'truncate';
+            nameSpan.textContent = item.nombre;
+            button.appendChild(nameSpan);
+
+            const hasChildren = 'subcategorias' in item ? item.subcategorias.length > 0 : (item.children && item.children.length > 0);
+            if (hasChildren) {
+                const arrow = document.createElement('span');
+                arrow.className = 'text-muted-foreground text-xs ml-1 flex-shrink-0';
+                arrow.textContent = '>';
+                button.appendChild(arrow);
+            }
+
             li.appendChild(button);
             list.appendChild(li);
         });
@@ -199,6 +347,28 @@ export function initTicketWizard(treeData: CategoriesTreeData) {
         allListItems.forEach(li => {
             li.classList.remove('hidden');
         });
+
+        // Limpiar inputs del formulario y resetear estados
+        if (descripcionInput) descripcionInput.value = '';
+        if (afectadoClave) {
+            afectadoClave.value = '';
+            afectadoClave.placeholder = 'Ingresa matrícula...';
+        }
+        if (afectadoEmailUser) afectadoEmailUser.value = '';
+        if (afectadoNombre) {
+            afectadoNombre.value = '';
+            afectadoNombre.readOnly = false;
+            afectadoNombre.classList.remove('bg-muted', 'cursor-not-allowed', 'opacity-80');
+        }
+        if (claveSearchSpinner) claveSearchSpinner.classList.add('hidden');
+        if (emailSearchSpinner) emailSearchSpinner.classList.add('hidden');
+
+        // Limpiar adjuntos
+        stagedFiles = [];
+        if (attachmentArea) attachmentArea.innerHTML = '';
+
+        evaluateUnsavedDataState();
+        validateForm();
     }
 
     function showDescriptionArea() {
@@ -222,16 +392,57 @@ export function initTicketWizard(treeData: CategoriesTreeData) {
                 afectadoFields!.classList.remove('hidden');
                 afectadoFields!.classList.add('grid');
 
-                let labelText = 'Clave';
-                if (catId === 1) labelText = 'Matrícula';
-                else if (catId === 2) labelText = 'Folio';
-
-                lblClave!.textContent = labelText;
+                if (catId === 1) {
+                    // Alumno
+                    containerAfectadoClave?.classList.remove('hidden');
+                    containerAfectadoEmail?.classList.add('hidden');
+                    lblClave!.innerHTML = 'Matrícula <span class="text-destructive">*</span>';
+                    afectadoClave.placeholder = 'Ingresa matrícula...';
+                    afectadoNombre.readOnly = afectadoNombre.value.trim().length > 0;
+                    if (afectadoNombre.readOnly) {
+                        afectadoNombre.classList.add('bg-muted', 'cursor-not-allowed', 'opacity-80');
+                    } else {
+                        afectadoNombre.classList.remove('bg-muted', 'cursor-not-allowed', 'opacity-80');
+                    }
+                } else if (catId === 2) {
+                    // Aspirante
+                    containerAfectadoClave?.classList.remove('hidden');
+                    containerAfectadoEmail?.classList.add('hidden');
+                    lblClave!.innerHTML = 'Folio <span class="text-destructive">*</span>';
+                    afectadoClave.placeholder = 'Ingresa folio...';
+                    afectadoNombre.readOnly = afectadoNombre.value.trim().length > 0;
+                    if (afectadoNombre.readOnly) {
+                        afectadoNombre.classList.add('bg-muted', 'cursor-not-allowed', 'opacity-80');
+                    } else {
+                        afectadoNombre.classList.remove('bg-muted', 'cursor-not-allowed', 'opacity-80');
+                    }
+                } else if (catId === 3) {
+                    // Colaborador
+                    containerAfectadoClave?.classList.add('hidden');
+                    containerAfectadoEmail?.classList.remove('hidden');
+                    afectadoNombre.readOnly = afectadoNombre.value.trim().length > 0;
+                    if (afectadoNombre.readOnly) {
+                        afectadoNombre.classList.add('bg-muted', 'cursor-not-allowed', 'opacity-80');
+                    } else {
+                        afectadoNombre.classList.remove('bg-muted', 'cursor-not-allowed', 'opacity-80');
+                    }
+                } else if (catId === 4) {
+                    // Docente
+                    containerAfectadoClave?.classList.remove('hidden');
+                    containerAfectadoEmail?.classList.add('hidden');
+                    lblClave!.innerHTML = 'Clave <span class="text-destructive">*</span>';
+                    afectadoClave.placeholder = 'Ingresa clave docente...';
+                    afectadoNombre.readOnly = false;
+                    afectadoNombre.classList.remove('bg-muted', 'cursor-not-allowed', 'opacity-80');
+                }
             } else {
                 afectadoFields!.classList.add('hidden');
                 afectadoFields!.classList.remove('grid');
                 afectadoClave.value = '';
+                if (afectadoEmailUser) afectadoEmailUser.value = '';
                 afectadoNombre.value = '';
+                afectadoNombre.readOnly = false;
+                afectadoNombre.classList.remove('bg-muted', 'cursor-not-allowed', 'opacity-80');
             }
         }
 
@@ -292,6 +503,190 @@ export function initTicketWizard(treeData: CategoriesTreeData) {
         validateForm();
     }
 
+    function formatCapitalizedName(str: string): string {
+        if (!str) return '';
+        return str.toLowerCase().split(' ').map(w => {
+            if (!w) return '';
+            return w.charAt(0).toUpperCase() + w.slice(1);
+        }).join(' ').trim();
+    }
+
+    async function consultarAlumno() {
+        if (!selection.categoria || selection.categoria.id !== 1) return;
+        const campus = afectadoCampus?.value?.trim() || '';
+        const matricula = afectadoClave?.value?.trim() || '';
+
+        if (!matricula) return;
+
+        if (!campus) {
+            toast.warning('Por favor selecciona un Campus primero.');
+            return;
+        }
+
+        // Validar solo letras y números
+        if (!/^[a-zA-Z0-9]+$/.test(matricula)) {
+            toast.error('La matrícula solo debe contener letras y números.');
+            return;
+        }
+
+        if (claveSearchSpinner) claveSearchSpinner.classList.remove('hidden');
+
+        try {
+            const url = `https://pz3bmmqsty.us-east-1.awsapprunner.com/api/alumnos/consultar-detalle?campus=${encodeURIComponent(campus)}&matricula=${encodeURIComponent(matricula)}`;
+            const res = await fetch(url, {
+                headers: {
+                    'x-api-key': 'CHURRUMAIS-1979',
+                },
+            });
+
+            let json: any = null;
+            try {
+                json = await res.json();
+            } catch (_) {}
+
+            if (res.ok && json?.status === 'success' && json?.data?.Alumno) {
+                const nombreFormatted = formatCapitalizedName(json.data.Alumno);
+                afectadoNombre.value = nombreFormatted;
+                afectadoNombre.readOnly = true;
+                afectadoNombre.classList.add('bg-muted', 'cursor-not-allowed', 'opacity-80');
+                toast.success(`Alumno encontrado: ${nombreFormatted}`);
+            } else if (json?.detail) {
+                toast.error(json.detail);
+                afectadoNombre.value = '';
+                afectadoNombre.readOnly = false;
+                afectadoNombre.classList.remove('bg-muted', 'cursor-not-allowed', 'opacity-80');
+            } else {
+                toast.error('No se encontró al alumno con la matrícula especificada.');
+                afectadoNombre.value = '';
+                afectadoNombre.readOnly = false;
+                afectadoNombre.classList.remove('bg-muted', 'cursor-not-allowed', 'opacity-80');
+            }
+        } catch (err) {
+            console.error('Error al consultar alumno:', err);
+            toast.error('Error de conexión al consultar el alumno.');
+        } finally {
+            if (claveSearchSpinner) claveSearchSpinner.classList.add('hidden');
+            validateForm();
+        }
+    }
+
+    async function consultarAspirante() {
+        if (!selection.categoria || selection.categoria.id !== 2) return;
+        const campus = afectadoCampus?.value?.trim() || '';
+        const folio = afectadoClave?.value?.trim() || '';
+
+        if (!folio) return;
+
+        if (!campus) {
+            toast.warning('Por favor selecciona un Campus primero.');
+            return;
+        }
+
+        // Validar solo letras y números
+        if (!/^[a-zA-Z0-9]+$/.test(folio)) {
+            toast.error('El folio solo debe contener letras y números.');
+            return;
+        }
+
+        if (claveSearchSpinner) claveSearchSpinner.classList.remove('hidden');
+
+        try {
+            const url = `https://pz3bmmqsty.us-east-1.awsapprunner.com/api/aspirantes/consultar-detalle?campus=${encodeURIComponent(campus)}&folio=${encodeURIComponent(folio)}`;
+            const res = await fetch(url, {
+                headers: {
+                    'accept': 'application/json',
+                    'x-api-key': 'CHURRUMAIS-1979',
+                },
+            });
+
+            let json: any = null;
+            try {
+                json = await res.json();
+            } catch (_) {}
+
+            if (res.ok && json?.status === 'success' && json?.data) {
+                const nombreParts = [
+                    json.data.nombre,
+                    json.data.ap_paterno,
+                    json.data.ap_materno
+                ].filter(Boolean).join(' ');
+
+                const nombreFormatted = formatCapitalizedName(nombreParts);
+                afectadoNombre.value = nombreFormatted;
+                afectadoNombre.readOnly = true;
+                afectadoNombre.classList.add('bg-muted', 'cursor-not-allowed', 'opacity-80');
+                toast.success(`Aspirante encontrado: ${nombreFormatted}`);
+            } else if (json?.detail) {
+                const msg = typeof json.detail === 'string' ? json.detail : (Array.isArray(json.detail) ? json.detail.map((d: any) => d.msg).join(', ') : 'Error de validación');
+                toast.error(msg);
+                afectadoNombre.value = '';
+                afectadoNombre.readOnly = false;
+                afectadoNombre.classList.remove('bg-muted', 'cursor-not-allowed', 'opacity-80');
+            } else {
+                toast.error('No se encontró al aspirante con el folio especificado.');
+                afectadoNombre.value = '';
+                afectadoNombre.readOnly = false;
+                afectadoNombre.classList.remove('bg-muted', 'cursor-not-allowed', 'opacity-80');
+            }
+        } catch (err) {
+            console.error('Error al consultar aspirante:', err);
+            toast.error('Error de conexión al consultar el aspirante.');
+        } finally {
+            if (claveSearchSpinner) claveSearchSpinner.classList.add('hidden');
+            validateForm();
+        }
+    }
+
+    async function consultarColaborador() {
+        if (!selection.categoria || selection.categoria.id !== 3) return;
+        const emailUser = afectadoEmailUser?.value?.trim() || '';
+
+        if (!emailUser) return;
+
+        // Validar formato de la parte previa al dominio: solo letras, números, punto y guión medio
+        if (!/^[a-zA-Z0-9.-]+$/.test(emailUser)) {
+            toast.error('El usuario de correo solo debe contener letras, números, puntos y guiones.');
+            return;
+        }
+
+        const fullEmail = `${emailUser}@humanitas.edu.mx`;
+        if (emailSearchSpinner) emailSearchSpinner.classList.remove('hidden');
+
+        try {
+            const url = `https://pz3bmmqsty.us-east-1.awsapprunner.com/api/rh/consultar-trabajador?email=${encodeURIComponent(fullEmail)}`;
+            const res = await fetch(url, {
+                headers: {
+                    'accept': 'application/json',
+                    'x-api-key': 'CHURRUMAIS-1979',
+                },
+            });
+
+            let json: any = null;
+            try {
+                json = await res.json();
+            } catch (_) {}
+
+            if (res.ok && json?.status === 'success' && json?.data?.Nombre) {
+                const nombreFormatted = formatCapitalizedName(json.data.Nombre);
+                afectadoNombre.value = nombreFormatted;
+                afectadoNombre.readOnly = true;
+                afectadoNombre.classList.add('bg-muted', 'cursor-not-allowed', 'opacity-80');
+                toast.success(`Colaborador encontrado: ${nombreFormatted}`);
+            } else {
+                toast.error('No se encontró al colaborador o no se encuentra activo.');
+                afectadoNombre.value = '';
+                afectadoNombre.readOnly = false;
+                afectadoNombre.classList.remove('bg-muted', 'cursor-not-allowed', 'opacity-80');
+            }
+        } catch (err) {
+            console.error('Error al consultar trabajador:', err);
+            toast.error('Error de conexión al consultar colaborador.');
+        } finally {
+            if (emailSearchSpinner) emailSearchSpinner.classList.add('hidden');
+            validateForm();
+        }
+    }
+
     function validateForm() {
         const hasDescription = descripcionInput.value.trim().length > 0;
         const lastSelectedNode = selection.nodes[selection.nodes.length - 1];
@@ -300,10 +695,20 @@ export function initTicketWizard(treeData: CategoriesTreeData) {
             (lastSelectedNode && lastSelectedNode.children.length === 0);
 
         let areAfectadoFieldsValid = true;
-        if (afectadoFields && !afectadoFields.classList.contains('hidden')) {
-            areAfectadoFieldsValid =
-                afectadoClave.value.trim().length > 0 &&
-                afectadoNombre.value.trim().length > 0;
+        if (afectadoFields && !afectadoFields.classList.contains('hidden') && selection.categoria) {
+            const catId = selection.categoria.id;
+            const hasCampus = afectadoCampus ? afectadoCampus.value.trim().length > 0 : true;
+            const hasNombre = afectadoNombre.value.trim().length > 0;
+
+            if (catId === 3) {
+                // Colaborador
+                const hasEmail = afectadoEmailUser ? afectadoEmailUser.value.trim().length > 0 : false;
+                areAfectadoFieldsValid = hasCampus && hasEmail && hasNombre;
+            } else if ([1, 2, 4].includes(catId)) {
+                // Alumno, Aspirante, Docente
+                const hasClave = afectadoClave.value.trim().length > 0;
+                areAfectadoFieldsValid = hasCampus && hasClave && hasNombre;
+            }
         }
 
         submitButton.disabled = !(isSelectionFinal && hasDescription && areAfectadoFieldsValid);
@@ -498,6 +903,7 @@ export function initTicketWizard(treeData: CategoriesTreeData) {
                 const id = parseInt((e.target as HTMLElement).dataset.id || "0");
                 stagedFiles = stagedFiles.filter((f) => f.id !== id);
                 renderStagedFiles();
+                evaluateUnsavedDataState();
             });
         });
     };
@@ -515,16 +921,33 @@ export function initTicketWizard(treeData: CategoriesTreeData) {
 
         stagedFiles = [...stagedFiles, ...newStaged];
         renderStagedFiles();
+        evaluateUnsavedDataState();
     };
 
     async function handleSubmit(e: SubmitEvent) {
         e.preventDefault();
+        isSubmitting = true;
+        if (unsavedDataToast) {
+            unsavedDataToast.dismiss();
+            unsavedDataToast = null;
+        }
         submitButton.disabled = true;
         submitButton.textContent = 'Enviando...';
 
         const lastSelectedNode = selection.nodes[selection.nodes.length - 1];
 
         const isAfectadoVisible = !afectadoFields!.classList.contains('hidden');
+        let claveValue: string | null = null;
+        let campusValue: string | null = null;
+
+        if (isAfectadoVisible && selection.categoria) {
+            campusValue = afectadoCampus?.value.trim() || null;
+            if (selection.categoria.id === 3) {
+                claveValue = afectadoEmailUser?.value.trim() ? `${afectadoEmailUser.value.trim()}@humanitas.edu.mx` : null;
+            } else {
+                claveValue = afectadoClave.value.trim() || null;
+            }
+        }
 
         try {
             const response = await fetch('/api/tickets/create', {
@@ -534,8 +957,9 @@ export function initTicketWizard(treeData: CategoriesTreeData) {
                     categoriaId: selection.categoria?.id,
                     subcategoriaId: lastSelectedNode?.id || null,
                     descripcion: descripcionInput.value,
-                    afectado_clave: isAfectadoVisible ? afectadoClave.value : null,
-                    afectado_nombre: isAfectadoVisible ? afectadoNombre.value : null,
+                    afectado_campus: campusValue,
+                    afectado_clave: claveValue,
+                    afectado_nombre: isAfectadoVisible ? afectadoNombre.value.trim() : null,
                 }),
             });
 
@@ -604,6 +1028,8 @@ export function initTicketWizard(treeData: CategoriesTreeData) {
             }, 1500);
 
         } catch (error) {
+            isSubmitting = false;
+            evaluateUnsavedDataState();
             const errorMessage = error instanceof Error ? error.message : 'No se pudo crear el ticket.';
             toast.error(errorMessage);
             submitButton.disabled = false;
@@ -628,9 +1054,70 @@ export function initTicketWizard(treeData: CategoriesTreeData) {
         }
     });
 
-    descripcionInput.addEventListener('input', validateForm);
-    afectadoClave.addEventListener('input', validateForm);
-    afectadoNombre.addEventListener('input', validateForm);
+    descripcionInput.addEventListener('input', () => {
+        validateForm();
+        evaluateUnsavedDataState();
+    });
+    afectadoNombre.addEventListener('input', () => {
+        validateForm();
+        evaluateUnsavedDataState();
+    });
+
+    if (afectadoClave) {
+        afectadoClave.addEventListener('input', () => {
+            validateForm();
+            evaluateUnsavedDataState();
+        });
+        afectadoClave.addEventListener('blur', () => {
+            if (selection.categoria?.id === 1) {
+                consultarAlumno();
+            } else if (selection.categoria?.id === 2) {
+                consultarAspirante();
+            }
+        });
+        afectadoClave.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                if (selection.categoria?.id === 1) {
+                    consultarAlumno();
+                } else if (selection.categoria?.id === 2) {
+                    consultarAspirante();
+                }
+            }
+        });
+    }
+
+    if (afectadoEmailUser) {
+        afectadoEmailUser.addEventListener('input', () => {
+            validateForm();
+            evaluateUnsavedDataState();
+        });
+        afectadoEmailUser.addEventListener('blur', () => {
+            if (selection.categoria?.id === 3) {
+                consultarColaborador();
+            }
+        });
+        afectadoEmailUser.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                if (selection.categoria?.id === 3) {
+                    consultarColaborador();
+                }
+            }
+        });
+    }
+
+    if (afectadoCampus) {
+        afectadoCampus.addEventListener('change', () => {
+            validateForm();
+            evaluateUnsavedDataState();
+            if (selection.categoria?.id === 1 && afectadoClave?.value.trim()) {
+                consultarAlumno();
+            } else if (selection.categoria?.id === 2 && afectadoClave?.value.trim()) {
+                consultarAspirante();
+            }
+        });
+    }
 
     // --- File Listeners ---
     if (uploadButton && fileInput) {
@@ -780,8 +1267,7 @@ export function initTicketWizard(treeData: CategoriesTreeData) {
             }
 
             currentResults = flatResults
-                .filter(r => r.path.toLowerCase().includes(q))
-                .slice(0, 10);
+                .filter(r => r.path.toLowerCase().includes(q));
 
             if (currentResults.length === 0) {
                 dropdown!.innerHTML = `<div class="px-4 py-3 text-sm text-muted-foreground">Sin resultados para "${query}".</div>`;

@@ -5,8 +5,7 @@ import { getSession } from "auth-astro/server";
 
 const session = await getSession(Astro.request);
 
-// Fetch all active categories and active subcategories
-const [dbCategories, dbSubcategories, dbSubcatRelations] = await Promise.all([
+const [dbCategories, dbSubcategories, dbSubcatRelations, dbEmpresas] = await Promise.all([
     prisma.categoria.findMany({
         where: { activo: true },
         orderBy: { nombre: "asc" },
@@ -18,7 +17,53 @@ const [dbCategories, dbSubcategories, dbSubcatRelations] = await Promise.all([
     prisma.subcategoriaCategorias.findMany({
         where: { activo: true },
     }),
+    prisma.empresa.findMany({
+        where: { activa: true },
+        orderBy: { nombre: "asc" },
+        select: { id: true, nombre: true, tipo: true, tckt_virtual: true },
+    }),
 ]);
+
+// Fetch user's company
+const userId = session?.user?.id ? parseInt(String(session.user.id), 10) : null;
+let userEmpresa: { id: number; nombre: string; tipo: string; tckt_virtual: boolean } | null = null;
+if (userId) {
+    const u = await prisma.usuario.findUnique({
+        where: { id: userId },
+        select: { empresa: { select: { id: true, nombre: true, tipo: true, tckt_virtual: true } } },
+    });
+    userEmpresa = u?.empresa ?? null;
+}
+
+// Calculate campus options for current user
+const isMagnoEjecutivo = userEmpresa ? ["Magno", "Ejecutivo"].includes(userEmpresa.tipo) : false;
+const allowVirtual = userEmpresa?.tckt_virtual ?? false;
+
+let availableCampuses: string[] = [];
+let isCampusReadOnly = false;
+let defaultCampus = "";
+
+if (isMagnoEjecutivo) {
+    if (allowVirtual) {
+        // Puede elegir entre su campus y Campus Virtual
+        availableCampuses = [userEmpresa!.nombre];
+        if (userEmpresa!.nombre.toLowerCase() !== "virtual") {
+            availableCampuses.push("Virtual");
+        }
+        isCampusReadOnly = false;
+        defaultCampus = userEmpresa!.nombre;
+    } else {
+        // Solo su campus bloqueado
+        availableCampuses = [userEmpresa!.nombre];
+        isCampusReadOnly = true;
+        defaultCampus = userEmpresa!.nombre;
+    }
+} else {
+    // Para Oficina / Social (Corporativo, CSH, etc.) puede buscar entre todas las empresas activas
+    availableCampuses = dbEmpresas.map((e) => e.nombre);
+    isCampusReadOnly = false;
+    defaultCampus = "";
+}
 
 // Build subcategory tree nodes recursively (only active ones)
 function buildSubcategoryTree(
@@ -142,33 +187,158 @@ const GOOGLE_APP_ID = process.env.GOOGLE_APP_ID || "";
                 <!-- Campos dinámicos para datos del afectado -->
                 <div
                     id="afectado-fields"
-                    class="hidden grid-cols-1 md:grid-cols-2 gap-4 mb-4"
+                    class="hidden grid-cols-1 md:grid-cols-3 gap-4 mb-4"
                 >
-                    <div>
+                    <!-- Campo Campus -->
+                    <div id="container-afectado-campus">
+                        <label
+                            for="afectado_campus"
+                            class="block text-sm font-medium text-foreground mb-1"
+                        >
+                            Campus <span class="text-destructive">*</span>
+                        </label>
+                        {
+                            isCampusReadOnly ? (
+                                <div>
+                                    <input
+                                        type="text"
+                                        id="afectado_campus_display"
+                                        value={defaultCampus}
+                                        disabled
+                                        class="w-full rounded-md border border-border bg-muted p-2 text-sm text-foreground cursor-not-allowed opacity-90"
+                                    />
+                                    <input
+                                        type="hidden"
+                                        id="afectado_campus"
+                                        name="afectado_campus"
+                                        value={defaultCampus}
+                                    />
+                                </div>
+                            ) : (
+                                <select
+                                    id="afectado_campus"
+                                    name="afectado_campus"
+                                    class="w-full rounded-md border border-border bg-input p-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-secondary focus:border-secondary"
+                                >
+                                    <option value="" disabled selected={!defaultCampus}>
+                                        Selecciona un campus
+                                    </option>
+                                    {availableCampuses.map((c) => (
+                                        <option value={c} selected={c === defaultCampus}>
+                                            {c}
+                                        </option>
+                                    ))}
+                                </select>
+                            )
+                        }
+                    </div>
+
+                    <!-- Campo Identificador: Clave / Matrícula / Folio -->
+                    <div id="container-afectado-clave">
                         <label
                             id="lbl-clave"
                             for="afectado_clave"
                             class="block text-sm font-medium text-foreground mb-1"
-                            >Clave / Matrícula</label
                         >
-                        <input
-                            type="text"
-                            id="afectado_clave"
-                            name="afectado_clave"
-                            class="w-full rounded-md border-border bg-input p-2 text-sm focus:outline-none focus:ring-1 focus:ring-secondary focus:border-secondary"
-                        />
+                            Matrícula <span class="text-destructive">*</span>
+                        </label>
+                        <div class="relative">
+                            <input
+                                type="text"
+                                id="afectado_clave"
+                                name="afectado_clave"
+                                class="w-full rounded-md border border-border bg-input p-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-secondary focus:border-secondary pr-8"
+                                placeholder="Ingresa matrícula..."
+                            />
+                            <div
+                                id="clave-search-spinner"
+                                class="hidden absolute right-2.5 top-1/2 -translate-y-1/2"
+                            >
+                                <svg
+                                    class="animate-spin h-4 w-4 text-primary"
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                >
+                                    <circle
+                                        class="opacity-25"
+                                        cx="12"
+                                        cy="12"
+                                        r="10"
+                                        stroke="currentColor"
+                                        stroke-width="4"
+                                    ></circle>
+                                    <path
+                                        class="opacity-75"
+                                        fill="currentColor"
+                                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                                    ></path>
+                                </svg>
+                            </div>
+                        </div>
                     </div>
-                    <div>
+
+                    <!-- Campo Email (Solo Colaborador) -->
+                    <div id="container-afectado-email" class="hidden">
+                        <label
+                            for="afectado_email_user"
+                            class="block text-sm font-medium text-foreground mb-1"
+                        >
+                            Email <span class="text-destructive">*</span>
+                        </label>
+                        <div class="relative flex rounded-md border border-border bg-input overflow-hidden focus-within:ring-1 focus-within:ring-secondary focus-within:border-secondary">
+                            <input
+                                type="text"
+                                id="afectado_email_user"
+                                name="afectado_email_user"
+                                class="flex-1 min-w-0 bg-transparent p-2 text-sm text-foreground focus:outline-none border-none pr-8"
+                                placeholder="nombre.apellido"
+                            />
+                            <div
+                                id="email-search-spinner"
+                                class="hidden absolute right-36 top-1/2 -translate-y-1/2"
+                            >
+                                <svg
+                                    class="animate-spin h-4 w-4 text-primary"
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                >
+                                    <circle
+                                        class="opacity-25"
+                                        cx="12"
+                                        cy="12"
+                                        r="10"
+                                        stroke="currentColor"
+                                        stroke-width="4"
+                                    ></circle>
+                                    <path
+                                        class="opacity-75"
+                                        fill="currentColor"
+                                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                                    ></path>
+                                </svg>
+                            </div>
+                            <span class="inline-flex items-center px-3 bg-muted text-muted-foreground text-xs font-semibold select-none border-l border-border">
+                                @humanitas.edu.mx
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Campo Nombre Completo -->
+                    <div id="container-afectado-nombre">
                         <label
                             for="afectado_nombre"
                             class="block text-sm font-medium text-foreground mb-1"
-                            >Nombre Completo</label
                         >
+                            Nombre Completo <span class="text-destructive">*</span>
+                        </label>
                         <input
                             type="text"
                             id="afectado_nombre"
                             name="afectado_nombre"
-                            class="w-full rounded-md border-border bg-input p-2 text-sm focus:outline-none focus:ring-1 focus:ring-secondary focus:border-secondary"
+                            class="w-full rounded-md border border-border bg-input p-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-secondary focus:border-secondary"
+                            placeholder="Nombre del afectado..."
                         />
                     </div>
                 </div>
@@ -261,6 +431,58 @@ const GOOGLE_APP_ID = process.env.GOOGLE_APP_ID || "";
         is:inline
         set:html={JSON.stringify(activeCategoriesTree)}
     />
+
+    <!-- Unsaved Ticket Data Confirmation Modal -->
+    <div
+        id="unsaved-ticket-modal"
+        class="fixed inset-0 z-50 items-center justify-center hidden"
+        role="dialog"
+        aria-modal="true"
+    >
+        <div
+            class="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            id="unsaved-ticket-overlay"
+        >
+        </div>
+        <div
+            class="relative bg-card border border-border rounded-lg shadow-xl p-6 w-full max-w-md mx-4 transition-all"
+        >
+            <div class="flex items-center gap-3 mb-3">
+                <div class="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center flex-shrink-0">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="8" x2="12" y2="12"></line>
+                        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                    </svg>
+                </div>
+                <div>
+                    <h3 class="text-lg font-bold text-foreground">Información sin enviar</h3>
+                    <p class="text-xs text-muted-foreground">Hay datos o archivos en tu solicitud</p>
+                </div>
+            </div>
+            
+            <p class="text-sm text-foreground/80 mb-6">
+                Has ingresado información para este ticket. Si sales ahora, los datos y archivos adjuntos se perderán. ¿Deseas descartar los cambios y salir?
+            </p>
+
+            <div class="flex flex-col sm:flex-row justify-end gap-2">
+                <button
+                    type="button"
+                    id="cancel-ticket-leave"
+                    class="bg-muted text-muted-foreground hover:bg-muted/80 px-4 py-2 rounded-md text-sm font-semibold transition-colors cursor-pointer"
+                >
+                    Permanecer aquí
+                </button>
+                <button
+                    type="button"
+                    id="confirm-discard-ticket"
+                    class="bg-destructive text-destructive-foreground hover:bg-destructive/90 px-4 py-2 rounded-md text-sm font-semibold transition-colors cursor-pointer"
+                >
+                    Descartar y salir
+                </button>
+            </div>
+        </div>
+    </div>
 </MainLayout>
 
 <script src="../../../scripts/init-nuevo-ticket-wizard.ts"></script>

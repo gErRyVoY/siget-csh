@@ -37,7 +37,6 @@ export function initializeUserEditForm() {
     function initHorarios() {
         const container = document.getElementById('horarios-container');
         if (!container) {
-            // La sección de horario no está disponible para este rol (ej. Superadmin). Es normal.
             return;
         }
 
@@ -61,13 +60,12 @@ export function initializeUserEditForm() {
             `;
         }).join('');
 
-        // Añadir botón para resetear horario al final en una fila sola y centrada
         html += `
             <div class="col-span-full flex justify-center mt-4">
                 <button
                     type="button"
                     id="reset-horario-btn"
-                    class="bg-muted text-muted-foreground hover:bg-muted/80 px-6 py-2 rounded-md text-sm font-semibold transition-colors"
+                    class="bg-muted text-muted-foreground hover:bg-muted/80 px-6 py-2 rounded-md text-sm font-semibold transition-colors cursor-pointer"
                 >
                     Resetear horario
                 </button>
@@ -85,14 +83,12 @@ export function initializeUserEditForm() {
             if (finSelect) finSelect.value = horarioDia.fin;
         });
 
-        // Si es de solo consulta (Admin), deshabilitar selects y ocultar botón reset
         if (container.dataset.readonly === 'true') {
             const selects = container.querySelectorAll('select');
             selects.forEach(s => (s as HTMLSelectElement).disabled = true);
             const resetBtn = document.getElementById('reset-horario-btn');
             if (resetBtn) resetBtn.style.display = 'none';
         } else {
-            // Event listener para el botón de resetear horario
             const resetBtn = document.getElementById('reset-horario-btn');
             if (resetBtn) {
                 resetBtn.addEventListener('click', () => {
@@ -104,6 +100,7 @@ export function initializeUserEditForm() {
                         if (finSelect) finSelect.value = 'No disponible';
                     });
                     toast.success('Horario reseteado en la vista. Recuerda guardar los cambios.');
+                    evaluateDirtyState();
                 });
             }
         }
@@ -114,7 +111,6 @@ export function initializeUserEditForm() {
         const rolSelect = document.getElementById('rolId') as HTMLSelectElement | null;
         const getSelectedRoleId = () => rolSelect ? parseInt(rolSelect.value, 10) : parseInt(form.dataset.originalRolId || '0', 10);
 
-        // Mapeo de IDs de sección
         const SEC_CREAR_CSH = 1;
         const SEC_TRASLADO = 2;
         const SEC_CREAR_MKT = 3;
@@ -133,7 +129,6 @@ export function initializeUserEditForm() {
             }
         }
 
-        // Sincronización principal según el rol seleccionado
         function syncTogglesAndSections(changedSource: string) {
             const roleId = getSelectedRoleId();
             const tcktCsh = (document.getElementById('tckt_csh') as HTMLInputElement | null)?.checked ?? false;
@@ -189,7 +184,6 @@ export function initializeUserEditForm() {
                             setSectionChecked(SEC_SOPORTE_TODOS, true, true);
                         }
 
-                        // Sincronizar categoría Marketing (id=12)
                         const catMktInput = document.getElementById('cat-12') as HTMLInputElement | null;
                         if (catMktInput && !catMktInput.checked) {
                             catMktInput.checked = true;
@@ -202,7 +196,6 @@ export function initializeUserEditForm() {
                             setSectionChecked(SEC_MKT_MIS_TKTS, false, true);
                         }
 
-                        // Desactivar categoría Marketing (id=12)
                         const catMktInput = document.getElementById('cat-12') as HTMLInputElement | null;
                         if (catMktInput && catMktInput.checked) {
                             catMktInput.checked = false;
@@ -221,13 +214,13 @@ export function initializeUserEditForm() {
                     setSectionChecked(SEC_MKT_MIS_TKTS, effectiveLevantaMkt || atiendeMkt, true);
                 }
 
-                // Evaluación unificada para "Abrir ticket > CSH" y "Abrir ticket > Marketing"
                 setSectionChecked(SEC_CREAR_CSH, effectiveLevantaCsh || atiendeCsh, true);
                 setSectionChecked(SEC_CREAR_MKT, effectiveLevantaMkt || atiendeMkt, true);
             }
+
+            evaluateDirtyState();
         }
 
-        // Toggle: Activo -> Apagar los demás al desmarcar
         const activoInput = document.getElementById('activo') as HTMLInputElement | null;
         if (activoInput) {
             activoInput.addEventListener('change', () => {
@@ -248,11 +241,11 @@ export function initializeUserEditForm() {
                         }
                     });
                 }
+                evaluateDirtyState();
             });
         }
 
-        // Listeners para toggles
-        ['tckt_csh', 'tckt_mkt', 'atiende_csh', 'atiende_mkt'].forEach(toggleId => {
+        ['tckt_csh', 'tckt_mkt', 'atiende_csh', 'atiende_mkt', 'acepta_tickets', 'auditor_docs', 'auditor_req'].forEach(toggleId => {
             const input = document.getElementById(toggleId) as HTMLInputElement | null;
             if (input) {
                 input.addEventListener('change', () => {
@@ -260,7 +253,262 @@ export function initializeUserEditForm() {
                 });
             }
         });
+
+        if (rolSelect) {
+            rolSelect.addEventListener('change', () => {
+                syncTogglesAndSections('rolId');
+            });
+        }
     }
+
+    // --- DIRTY TRACKING (ESTADO DE CAMBIOS) & MODAL DE CONFIRMACIÓN ---
+    let isDirty = false;
+    let activeInfoToast: { dismiss: () => void } | null = null;
+    let pendingNavigationUrl: string | null = null;
+    let pendingNavigationIsBack = false;
+
+    function getFormSnapshot(): string {
+        const snapshot: Record<string, any> = {};
+
+        ['activo', 'acepta_tickets', 'tckt_csh', 'tckt_mkt', 'atiende_csh', 'atiende_mkt', 'auditor_docs', 'auditor_req'].forEach(name => {
+            const input = document.getElementById(name) as HTMLInputElement | null;
+            if (input) {
+                snapshot[name] = input.checked;
+            }
+        });
+
+        const empresaSelect = document.getElementById('empresaId') as HTMLSelectElement | null;
+        if (empresaSelect) snapshot['empresaId'] = empresaSelect.value;
+
+        const rolSelect = document.getElementById('rolId') as HTMLSelectElement | null;
+        if (rolSelect) snapshot['rolId'] = rolSelect.value;
+
+        dias.forEach(dia => {
+            const normalizedDia = dia.normalize("NFD").replace(/[̀-ͯ]/g, "");
+            const inicio = (document.getElementById(`${normalizedDia}-inicio`) as HTMLSelectElement | null)?.value;
+            const fin = (document.getElementById(`${normalizedDia}-fin`) as HTMLSelectElement | null)?.value;
+            if (inicio !== undefined) snapshot[`${normalizedDia}-inicio`] = inicio;
+            if (fin !== undefined) snapshot[`${normalizedDia}-fin`] = fin;
+        });
+
+        return JSON.stringify(snapshot);
+    }
+
+    let initialSnapshot = getFormSnapshot();
+
+    function evaluateDirtyState() {
+        const currentSnapshot = getFormSnapshot();
+        const nowDirty = currentSnapshot !== initialSnapshot;
+
+        if (nowDirty !== isDirty) {
+            isDirty = nowDirty;
+            if (isDirty) {
+                if (!activeInfoToast) {
+                    activeInfoToast = toast.info('Tienes cambios pendientes por guardar.', {
+                        duration: 0,
+                        closeable: true,
+                    });
+                }
+            } else {
+                if (activeInfoToast) {
+                    activeInfoToast.dismiss();
+                    activeInfoToast = null;
+                }
+            }
+        }
+    }
+
+    form.addEventListener('input', evaluateDirtyState);
+    form.addEventListener('change', evaluateDirtyState);
+
+    // Modal de confirmación
+    const modal = document.getElementById('unsaved-changes-modal');
+    const modalOverlay = document.getElementById('unsaved-modal-overlay');
+    const btnCancelLeave = document.getElementById('cancel-leave-modal');
+    const btnDiscardAndLeave = document.getElementById('confirm-discard-and-leave');
+    const btnSaveAndLeave = document.getElementById('confirm-save-and-leave');
+
+    function showUnsavedModal(url?: string | null, isBack: boolean = false) {
+        pendingNavigationUrl = url || null;
+        pendingNavigationIsBack = isBack;
+        if (modal) {
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+    }
+
+    function hideUnsavedModal() {
+        pendingNavigationUrl = null;
+        pendingNavigationIsBack = false;
+        if (modal) {
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+    }
+
+    if (btnCancelLeave) {
+        btnCancelLeave.addEventListener('click', hideUnsavedModal);
+    }
+    if (modalOverlay) {
+        modalOverlay.addEventListener('click', hideUnsavedModal);
+    }
+
+    if (btnDiscardAndLeave) {
+        btnDiscardAndLeave.addEventListener('click', () => {
+            isDirty = false;
+            if (activeInfoToast) {
+                activeInfoToast.dismiss();
+                activeInfoToast = null;
+            }
+            const navUrl = pendingNavigationUrl;
+            const isBack = pendingNavigationIsBack;
+            hideUnsavedModal();
+
+            if (isBack) {
+                window.history.back();
+            } else if (navUrl) {
+                window.location.assign(navUrl);
+            }
+        });
+    }
+
+    async function performSave(): Promise<boolean> {
+        const formData = new FormData(form);
+        const horarioData: Record<string, { inicio: FormDataEntryValue | null, fin: FormDataEntryValue | null }> = {};
+
+        dias.forEach(dia => {
+            const normalizedDia = dia.normalize("NFD").replace(/[̀-ͯ]/g, "");
+            const inicio = formData.get(`${normalizedDia}-inicio`);
+            const fin = formData.get(`${normalizedDia}-fin`);
+            if (inicio !== 'No disponible' && fin !== 'No disponible') {
+                horarioData[normalizedDia] = { inicio, fin };
+            }
+        });
+
+        const rawEmpresaId = formData.get('empresaId');
+        const rawRolId = formData.get('rolId');
+
+        const data: Record<string, any> = {
+            id: userId,
+            horario_disponibilidad: Object.keys(horarioData).length > 0 ? horarioData : null,
+        };
+
+        // Solo incluir flags booleanos si el elemento existe en el DOM.
+        // Si el toggle está oculto (ej: Levanta CSH/MKT para Superadmin), no se envía
+        // para evitar sobrescribir la BD con false.
+        const boolFields = [
+            'activo', 'acepta_tickets', 'tckt_csh', 'tckt_mkt',
+            'atiende_csh', 'atiende_mkt', 'auditor_docs', 'auditor_req'
+        ] as const;
+        boolFields.forEach(field => {
+            const el = form.elements.namedItem(field) as HTMLInputElement | null;
+            if (el !== null) {
+                data[field] = el.checked;
+            }
+        });
+
+        if (rawEmpresaId && !isNaN(parseInt(rawEmpresaId as string, 10))) {
+            data.empresaId = parseInt(rawEmpresaId as string, 10);
+        }
+        if (rawRolId && !isNaN(parseInt(rawRolId as string, 10))) {
+            data.rolId = parseInt(rawRolId as string, 10);
+        }
+
+        const response = await fetch(`/api/admin/usuarios`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data),
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.message || 'Error al actualizar el usuario');
+        }
+
+        initialSnapshot = getFormSnapshot();
+        isDirty = false;
+        if (activeInfoToast) {
+            activeInfoToast.dismiss();
+            activeInfoToast = null;
+        }
+
+        return true;
+    }
+
+    if (btnSaveAndLeave) {
+        btnSaveAndLeave.addEventListener('click', async () => {
+            const originalText = btnSaveAndLeave.innerHTML;
+            btnSaveAndLeave.innerHTML = 'Guardando...';
+            (btnSaveAndLeave as HTMLButtonElement).disabled = true;
+
+            const overlay = document.getElementById('page-loading-overlay');
+            if (overlay) overlay.style.display = 'flex';
+
+            try {
+                await performSave();
+                toast.success('Usuario actualizado correctamente');
+                const navUrl = pendingNavigationUrl;
+                const isBack = pendingNavigationIsBack;
+                hideUnsavedModal();
+
+                setTimeout(() => {
+                    if (isBack) {
+                        window.history.back();
+                    } else if (navUrl) {
+                        window.location.assign(navUrl);
+                    } else {
+                        window.location.assign(window.location.pathname);
+                    }
+                }, 500);
+            } catch (error: any) {
+                console.error('Save & leave error:', error);
+                toast.error(error.message || 'Error al guardar los cambios');
+                btnSaveAndLeave.innerHTML = originalText;
+                (btnSaveAndLeave as HTMLButtonElement).disabled = false;
+                if (overlay) overlay.style.display = 'none';
+                hideUnsavedModal();
+            }
+        });
+    }
+
+    // Intercepción de navegación y salidas
+    window.addEventListener('beforeunload', (e) => {
+        if (isDirty) {
+            e.preventDefault();
+            e.returnValue = '';
+        }
+    });
+
+    document.addEventListener('click', (e) => {
+        if (!isDirty) return;
+
+        const target = e.target as HTMLElement;
+        const link = target.closest('a') as HTMLAnchorElement | null;
+
+        if (link && link.href) {
+            if (link.target === '_blank' || link.href.startsWith('javascript:') || link.getAttribute('href') === '#') {
+                return;
+            }
+
+            e.preventDefault();
+            e.stopPropagation();
+            showUnsavedModal(link.href, false);
+        }
+    }, true);
+
+    document.addEventListener('astro:before-preparation', (ev: any) => {
+        if (isDirty) {
+            ev.cancel();
+            showUnsavedModal(ev.to?.href, false);
+        }
+    });
+
+    window.addEventListener('popstate', () => {
+        if (isDirty) {
+            window.history.pushState(null, '', window.location.href);
+            showUnsavedModal(null, true);
+        }
+    });
 
     function initFormSubmit() {
         form.addEventListener('submit', async (e) => {
@@ -279,53 +527,8 @@ export function initializeUserEditForm() {
                 overlay.style.display = 'flex';
             }
 
-            const formData = new FormData(form);
-            const horarioData: Record<string, { inicio: FormDataEntryValue | null, fin: FormDataEntryValue | null }> = {};
-
-            dias.forEach(dia => {
-                const normalizedDia = dia.normalize("NFD").replace(/[̀-ͯ]/g, "");
-                const inicio = formData.get(`${normalizedDia}-inicio`);
-                const fin = formData.get(`${normalizedDia}-fin`);
-                if (inicio !== 'No disponible' && fin !== 'No disponible') {
-                    horarioData[normalizedDia] = { inicio, fin };
-                }
-            });
-
-            const rawEmpresaId = formData.get('empresaId');
-            const rawRolId = formData.get('rolId');
-
-            const data: Record<string, any> = {
-                id: userId,
-                activo: (form.elements.namedItem('activo') as HTMLInputElement)?.checked ?? false,
-                acepta_tickets: (form.elements.namedItem('acepta_tickets') as HTMLInputElement)?.checked ?? false,
-                tckt_csh: (form.elements.namedItem('tckt_csh') as HTMLInputElement)?.checked ?? false,
-                tckt_mkt: (form.elements.namedItem('tckt_mkt') as HTMLInputElement)?.checked ?? false,
-                atiende_csh: (form.elements.namedItem('atiende_csh') as HTMLInputElement)?.checked ?? false,
-                atiende_mkt: (form.elements.namedItem('atiende_mkt') as HTMLInputElement)?.checked ?? false,
-                auditor_docs: (form.elements.namedItem('auditor_docs') as HTMLInputElement)?.checked ?? false,
-                auditor_req: (form.elements.namedItem('auditor_req') as HTMLInputElement)?.checked ?? false,
-                horario_disponibilidad: Object.keys(horarioData).length > 0 ? horarioData : null,
-            };
-
-            if (rawEmpresaId && !isNaN(parseInt(rawEmpresaId as string, 10))) {
-                data.empresaId = parseInt(rawEmpresaId as string, 10);
-            }
-            if (rawRolId && !isNaN(parseInt(rawRolId as string, 10))) {
-                data.rolId = parseInt(rawRolId as string, 10);
-            }
-
             try {
-                const response = await fetch(`/api/admin/usuarios`, {
-                    method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(data),
-                });
-
-                if (!response.ok) {
-                    const errorData = await response.json().catch(() => ({}))
-                    throw new Error(errorData.message || 'Error al actualizar el usuario');
-                }
-
+                await performSave();
                 toast.success('Usuario actualizado correctamente');
                 setTimeout(() => {
                     window.location.assign(window.location.pathname);
@@ -348,8 +551,14 @@ export function initializeUserEditForm() {
     function initBackButton() {
         const backButton = document.getElementById('back-button');
         if (backButton) {
-            backButton.addEventListener('click', () => {
-                window.history.back();
+            backButton.addEventListener('click', (e) => {
+                if (isDirty) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    showUnsavedModal(null, true);
+                } else {
+                    window.history.back();
+                }
             });
         }
     }

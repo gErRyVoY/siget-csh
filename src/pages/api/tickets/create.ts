@@ -17,7 +17,7 @@ export const POST: APIRoute = async ({ request }) => {
     await ensureActiveCycle();
     
     const data = await request.json();
-    const { categoriaId, subcategoriaId, descripcion, afectado_clave, afectado_nombre } = data;
+    const { categoriaId, subcategoriaId, descripcion, afectado_clave, afectado_nombre, afectado_campus } = data;
     const parsedCategoriaId = parseInt(categoriaId, 10);
     const parsedSubcategoriaId = subcategoriaId ? parseInt(subcategoriaId, 10) : null;
 
@@ -34,6 +34,79 @@ export const POST: APIRoute = async ({ request }) => {
       return new Response(JSON.stringify({ message: 'ID de usuario inválido en la sesión.' }), { status: 400 });
     }
 
+    let targetEmpresaId = session.user.empresa?.id || 1;
+
+    // Validación para categorías especiales (1: Alumno, 2: Aspirante, 3: Colaborador, 4: Docente)
+    if ([1, 2, 3, 4].includes(parsedCategoriaId)) {
+      // 1. Campus: requerido y solo letras/números/espacios
+      if (!afectado_campus || typeof afectado_campus !== 'string' || !afectado_campus.trim()) {
+        return new Response(
+          JSON.stringify({ message: 'El campo Campus es requerido.' }),
+          { status: 400 }
+        );
+      }
+
+      const campusTrimmed = afectado_campus.trim();
+      // Solo letras (sin signos diacríticos), números y espacios
+      if (!/^[a-zA-Z0-9\s]+$/.test(campusTrimmed)) {
+        return new Response(
+          JSON.stringify({ message: 'El campo Campus contiene caracteres inválidos. Solo se permiten letras y números.' }),
+          { status: 400 }
+        );
+      }
+
+      // Buscar si la empresa existe para asociar su empresaId
+      const matchedEmpresa = await prisma.empresa.findFirst({
+        where: {
+          nombre: { equals: campusTrimmed, mode: 'insensitive' },
+          activa: true,
+        },
+        select: { id: true }
+      });
+      if (matchedEmpresa) {
+        targetEmpresaId = matchedEmpresa.id;
+      }
+
+      // 2. Nombre completo: requerido
+      if (!afectado_nombre || typeof afectado_nombre !== 'string' || !afectado_nombre.trim()) {
+        return new Response(
+          JSON.stringify({ message: 'El campo Nombre completo es requerido.' }),
+          { status: 400 }
+        );
+      }
+
+      // 3. Identificador según categoría
+      if (!afectado_clave || typeof afectado_clave !== 'string' || !afectado_clave.trim()) {
+        const fieldName = parsedCategoriaId === 1 ? 'Matrícula' : parsedCategoriaId === 2 ? 'Folio' : parsedCategoriaId === 3 ? 'Email' : 'Clave';
+        return new Response(
+          JSON.stringify({ message: `El campo ${fieldName} es requerido.` }),
+          { status: 400 }
+        );
+      }
+
+      const claveTrimmed = afectado_clave.trim();
+
+      if (parsedCategoriaId === 1) {
+        // Alumno: Matrícula solo letras y números (sin diacríticos)
+        if (!/^[a-zA-Z0-9]+$/.test(claveTrimmed)) {
+          return new Response(
+            JSON.stringify({ message: 'La Matrícula solo debe contener letras y números sin signos diacríticos.' }),
+            { status: 400 }
+          );
+        }
+      } else if (parsedCategoriaId === 3) {
+        // Colaborador: Email institucional
+        const emailParts = claveTrimmed.split('@');
+        const localPart = emailParts[0];
+        if (!/^[a-zA-Z0-9.-]+$/.test(localPart)) {
+          return new Response(
+            JSON.stringify({ message: 'El correo del colaborador contiene caracteres no permitidos. Solo se permiten letras, números, punto y guión medio.' }),
+            { status: 400 }
+          );
+        }
+      }
+    }
+
     // --- NUEVA LÓGICA DE ASIGNACIÓN HÍBRIDA ---
     const assignmentResult = await findBestAgentHybrid({
       solicitanteId,
@@ -42,7 +115,7 @@ export const POST: APIRoute = async ({ request }) => {
     });
 
     const atiendeId = assignmentResult.agentId;
-    const empresaId = session.user.empresa!.id;
+    const empresaId = targetEmpresaId;
 
     // Determinar prioridad basada en el rol del usuario
     let prioridad: 'Baja' | 'Media' | 'Alta' = 'Baja';
@@ -86,8 +159,8 @@ export const POST: APIRoute = async ({ request }) => {
             categoriaId: parsedCategoriaId,
             subcategoriaId: parsedSubcategoriaId,
             descripcion: descripcion,
-            afectado_clave: afectado_clave || null,
-            afectado_nombre: afectado_nombre || null,
+            afectado_clave: afectado_clave ? String(afectado_clave).trim() : null,
+            afectado_nombre: afectado_nombre ? String(afectado_nombre).trim() : null,
           },
         }),
         prisma.usuario.update({
@@ -110,8 +183,8 @@ export const POST: APIRoute = async ({ request }) => {
           categoriaId: parsedCategoriaId,
           subcategoriaId: parsedSubcategoriaId,
           descripcion: descripcion,
-          afectado_clave: afectado_clave || null,
-          afectado_nombre: afectado_nombre || null,
+          afectado_clave: afectado_clave ? String(afectado_clave).trim() : null,
+          afectado_nombre: afectado_nombre ? String(afectado_nombre).trim() : null,
         },
       });
 
