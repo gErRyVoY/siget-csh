@@ -1,9 +1,9 @@
 ---
 import MainLayout from "@/layouts/MainLayout.astro";
-import { getSession } from "auth-astro/server";
 import { prisma } from "@/lib/db";
 
-const session = await getSession(Astro.request);
+// Reutilizar sesión resuelta por middleware.ts (evita N+1 a la BD por navegación)
+const session = Astro.locals.session;
 if (!session || !session.user) {
   return Astro.redirect("/login");
 }

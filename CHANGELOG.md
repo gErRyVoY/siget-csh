@@ -8,6 +8,37 @@ Todos los cambios notables en este proyecto serán documentados en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Versionado Semántico](https://semver.org/lang/es/).
 
+## 2026-08-20 (Optimización SSE Global y Eliminación de Consultas N+1 de Sesión)
+
+### Performance: Un Solo EventSource Global (Elimina Bloqueo de UI al Navegar)
+*   **Causa Raíz Identificada**: Al navegar entre vistas, la UI se congelaba por agotamiento del límite de 6 conexiones HTTP/dominio del navegador. `MainLayout.astro`, `index.astro` y `marketing/dashboard.astro` abrían cada uno una conexión `EventSource` independiente hacia `/api/notifications/sse`, saturando el pool de sockets y bloqueando cualquier petición nueva.
+*   **Bus de Eventos Global (`siget:sse-event`)**: Se añadió en `MainLayout.astro` un `window.dispatchEvent(new CustomEvent('siget:sse-event', { detail: data }))` que emite todos los eventos SSE recibidos al bus nativo del navegador, antes de filtrar por `originatorId`.
+*   **Eliminación de `EventSource` Redundantes**: En `src/pages/index.astro` y `src/pages/tickets/marketing/dashboard.astro` se eliminó el `dashboardEventSource = new EventSource(...)`. Ambas páginas ahora escuchan el `CustomEvent` local `'siget:sse-event'` para actualizar sus tarjetas estadísticas en tiempo real sin consumir ningún socket HTTP adicional.
+*   **Limpieza Estricta de Listeners**: Se usan referencias nombradas (`dashboardSseHandler`, `mktDashboardSseHandler`) para remover los listeners correctamente en `astro:before-preparation`, evitando duplicados en View Transitions.
+
+### Performance: Reutilización de Sesión de Middleware (Elimina N+1 a BD)
+*   **Causa Raíz Identificada**: En cada navegación, `middleware.ts` ejecutaba `getSession()` disparando 6–7 queries SQL (joins de rol, secciones, empresa, permisos). La página destino volvía a ejecutar `getSession()` de forma independiente, duplicando todas esas consultas.
+*   **Reutilización de `Astro.locals.session`**: En 12 páginas Astro se reemplazó `await getSession(Astro.request)` por `Astro.locals.session`, que ya fue resuelto por `middleware.ts` en la misma request. Páginas actualizadas:
+    *   `src/pages/index.astro`
+    *   `src/pages/tickets/soporte/index.astro`
+    *   `src/pages/tickets/soporte/usuario/index.astro`
+    *   `src/pages/tickets/soporte/nuevo-ticket-csh.astro`
+    *   `src/pages/tickets/soporte/traslado.astro`
+    *   `src/pages/tickets/marketing/index.astro`
+    *   `src/pages/tickets/marketing/usuario/index.astro`
+    *   `src/pages/tickets/marketing/dashboard.astro`
+    *   `src/pages/tickets/marketing/nuevo-ticket-marketing.astro`
+    *   `src/pages/tickets/view/[id].astro`
+    *   `src/pages/user/perfil.astro`
+    *   `src/pages/user/perfil/incidencias.astro`
+*   **Reducción estimada de carga en BD**: ~50–70% menos queries SQL por evento de navegación en páginas protegidas.
+*   **Verificación**: `npx astro check` 0 errores en 157 archivos.
+
+### Fix: Reordenamiento y Condición de Tarjetas en Dashboards Admin/Superadmin
+*   **Tablero Personal**: Primera tarjeta siempre "Total asignados" (sin enlace, solo informativa). Las demás tarjetas de estatus solo se renderizan si `count >= 1`. Los enlaces filtran por `assignee=${currentUserId}`.
+*   **Tablero General**: Reordenamiento estricto en 9 posiciones: Total (sin enlace) → Solucionados → Cancelados → Duplicados → Sin asignar → Nuevos → En progreso → En espera → Traslados activos.
+*   **Soporte de alias de filtros**: `assignee` y `atiende` aceptados indistintamente en `soporte/index.astro`, `soporte/usuario/index.astro`, `marketing/index.astro` y `marketing/usuario/index.astro`.
+
 ## 2026-08-19 (Consulta de Aspirantes vía API y Asignación Individual de Categorías)
 
 ### Feature & Integration: Consulta y Autocompletado de Aspirante (`/tickets/soporte/nuevo-ticket-csh`)

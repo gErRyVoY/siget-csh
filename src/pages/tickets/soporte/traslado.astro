@@ -2,7 +2,6 @@
 import MainLayout from "@/layouts/MainLayout.astro";
 import UserTransferIcon from "@/components/icons/UserTransferIcon.astro";
 import { prisma } from "@/lib/db";
-import { getSession } from "auth-astro/server";
 import {
     campusOptions,
     carreraOptions,
@@ -20,7 +19,8 @@ const descuentos = await prisma.descuento.findMany({
 const descuentoOptions = descuentos.map((d) => d.descripcion);
 
 // Precargar campus origen si el usuario pertenece a un campus Magno o Ejecutivo, o si tiene habilitado tckt_virtual
-const session = await getSession(Astro.request);
+// Reutilizar sesión resuelta por middleware.ts (evita N+1 a la BD por navegación)
+const session = Astro.locals.session;
 const userId = session?.user?.id ? parseInt(String(session.user.id), 10) : null;
 let preloadedCampus = "";
 let preloadedReadOnly = false;

@@ -1,6 +1,5 @@
 ---
 import MainLayout from "@/layouts/MainLayout.astro";
-import { getSession } from "auth-astro/server";
 import { prisma } from "@/lib/db";
 import {
     type Ticket,
@@ -120,7 +119,8 @@ if (!ticket) {
     return Astro.redirect("/404");
 }
 
-const session = await getSession(Astro.request);
+// Reutilizar sesión resuelta por middleware.ts (evita N+1 a la BD por navegación)
+const session = Astro.locals.session;
 const PRIVILEGED_ROLES = [2, 3]; // admin y superadmin
 const MARKETING_CATEGORY_ID = 12;
 

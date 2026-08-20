@@ -1,12 +1,12 @@
 ---
 import MainLayout from "@/layouts/MainLayout.astro";
 import { prisma } from "@/lib/db";
-import { getSession } from "auth-astro/server";
 import { format, differenceInDays } from "date-fns";
 import { es } from "date-fns/locale";
 import StatusBadge from "@/components/ui/StatusBadge.astro";
 
-const session = await getSession(Astro.request);
+// Reutilizar sesión resuelta por middleware.ts (evita N+1 a la BD por navegación)
+const session = Astro.locals.session;
 const user = session?.user;
 
 if (!user) {
@@ -20,7 +20,7 @@ const url = new URL(Astro.request.url);
 const statusFilter = url.searchParams.get("status") || "all";
 const subcategoryFilter = url.searchParams.get("subcategory") || "all";
 const companyFilter = url.searchParams.get("company") || "all";
-const assigneeFilter = url.searchParams.get("assignee") || "all";
+const assigneeFilter = url.searchParams.get("assignee") || url.searchParams.get("atiende") || "all";
 const dateFromFilter = url.searchParams.get("dateFrom") || "";
 const dateToFilter = url.searchParams.get("dateTo") || "";
 const page = parseInt(url.searchParams.get("page") || "1");

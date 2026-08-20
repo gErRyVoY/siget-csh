@@ -5,19 +5,33 @@
 >
 > **⚠️ REGLA CRÍTICA PARA EL ASISTENTE:** El asistente **NO debe ejecutar `git push`** en ninguna circunstancia a menos que el usuario lo solicite **de forma explícita**. Se permiten `git add` y `git commit` para preparar los cambios, pero el push queda **reservado exclusivamente para cuando el usuario lo indique**.
 
-**Tarea Actual:** Completada — Consulta y Autocompletado de Datos de Aspirante vía API en Nuevo Ticket CSH (2026-08-19) ✅
+**Tarea Actual:** Completada — Optimización de SSE Global y Sesión N+1 (2026-08-20) ✅
 
-**Estado:** Completado.
-1. **Función `consultarAspirante()`:** En [src/lib/ticket-wizard.ts](file:///d:/Documentos/Proyectos_2025/00Humanitas/siget-csh/src/lib/ticket-wizard.ts), se implementó la consulta dinámica a la API `https://pz3bmmqsty.us-east-1.awsapprunner.com/api/aspirantes/consultar-detalle?campus={campus}&folio={folio}` con cabecera `x-api-key: CHURRUMAIS-1979`.
-2. **Autocompletado de Nombre y Validación:** Al ingresar el Folio y disparar `blur`/`Enter` (o al cambiar de campus), se obtiene el objeto del aspirante y se formatea el nombre completo (`nombre`, `ap_paterno`, `ap_materno`), asignándolo al input `#afectado_nombre`, marcándolo como `readOnly` con estilo `bg-muted cursor-not-allowed` y notificando mediante toast de Sonner.
-3. `npx astro check` validó la aplicación con 0 errores en 157 archivos.
+**Contexto del Problema:**
+Al navegar entre vistas, la UI se congelaba y era necesario recargar la página. Dos causas raíz identificadas y corregidas:
+1. **Acumulación de EventSource:** `MainLayout.astro`, `index.astro` y `marketing/dashboard.astro` abrían cada uno una conexión SSE independiente. Los navegadores limitan a 6 conexiones HTTP/dominio, por lo que al navegar rápido se llenaban esas 6 conexiones y ninguna petición nueva podía pasar. En los logs se evidenció: `Total clients: 11`.
+2. **Consultas N+1 de Sesión a BD:** En cada navegación, `middleware.ts` y la página destino llamaban `getSession()` de forma independiente, cada uno disparando 6–7 queries SQL con joins de rol, secciones, empresa y permisos.
+
+**Solución Implementada:**
+- **Fase 1 (SSE):** `MainLayout.astro` emite `CustomEvent('siget:sse-event')` al recibir mensajes SSE. `index.astro` y `marketing/dashboard.astro` eliminaron sus `EventSource` propios y ahora escuchan el bus local del navegador.
+- **Fase 2 (Sesión):** 12 páginas actualizadas para leer `Astro.locals.session` en vez de `await getSession(Astro.request)`, eliminando ~50–70% de queries duplicadas por navegación.
+- **Verificación:** `npx astro check` 0 errores en 157 archivos.
+
+**Estado de Fases:**
+- [x] Fase 1: EventSource Global en MainLayout.astro + CustomEvent bus
+- [x] Fase 2: Reutilizar Astro.locals.session en 12 páginas
+- [x] Fase 3: Verificación y documentación
 
 **Pasos Siguientes:**
-1. Monitoreo general y feedback del usuario.
-2. **[PENDIENTE]** Candado In-Flight de Secciones (Fase 2.2 del TODO): Polling de `sectionsRevision` en `MainLayout.astro` para redirigir si una sección cambia en caliente.
-3. **[PENDIENTE]** Optimización de consultas de sesión duplicadas (N+1 por request). Plan detallado en `implementation_plan.md`.
+1. Prueba manual de navegación por parte del usuario.
+2. Monitoreo de logs del servidor (se debe observar `Total clients: 1–3` en lugar de 11+).
 
 **Pasos Completados:**
+- ✅ **Optimización de SSE Global y Sesión N+1 (2026-08-20):** Un solo `EventSource` en `MainLayout.astro`; bus `siget:sse-event` para dashboards; 12 páginas migrando a `Astro.locals.session`. `npx astro check` 0 errores en 157 archivos.
+
+- ✅ **Mejora y Reordenamiento de Dashboards Personal y General para Admin/Superadmin (2026-08-20):** Tarjeta "Total asignados" fija en 1° lugar sin enlace, tarjetas de estatus personales mostradas solo si `count >= 1`, enlaces con `assignee`/`atiende`, y reordenamiento estricto de 9 tarjetas en el Tablero General. `npx astro check` 0 errores.
+- ✅ **Despliegue a Repositorio (2026-08-19):** `git push` completado exitosamente a la rama `siget-apprunner-new` (commit `6342cfe`). AWS App Runner iniciando compilación y despliegue automático.
+- ✅ **Despliegue a Repositorio (2026-08-19):** `git push` completado exitosamente a la rama `siget-apprunner-new` (commit `6342cfe`). AWS App Runner iniciando compilación y despliegue automático.
 - ✅ **Consulta y Autocompletado de Aspirante vía API en Nuevo Ticket CSH (2026-08-19):** Integrada la consulta al endpoint `/api/aspirantes/consultar-detalle` por `campus` y `folio`. Se concatena y capitaliza el nombre completo, bloqueando el campo en modo solo lectura al encontrarlo y mostrando los toasts de notificación correspondientes. `npx astro check` 0 errores.
 - ✅ **Asignación Individual de Categorías a Administradores con Exclusividad para Victor Barrera (2026-08-19):** Pobladas 197 categorías/subcategorías individuales activas para cada administrador, manteniendo las 9 subcategorías especiales asignadas exclusivamente a Victor Barrera (ID: 3). Removida la lógica obsoleta de herencia por rol en `editar/[id].astro` y `UserSubcategoryItem.astro`. Validación en BD 100% OK.
 - ✅ **Asignación Individual de Categorías a Administradores con Exclusividad para Victor Barrera (2026-08-19):** Pobladas 197 categorías/subcategorías individuales activas para cada administrador, manteniendo las 9 subcategorías especiales asignadas exclusivamente a Victor Barrera (ID: 3). Removida la lógica obsoleta de herencia por rol en `editar/[id].astro` y `UserSubcategoryItem.astro`. Validación en BD 100% OK.

@@ -1,9 +1,9 @@
 ---
 import MainLayout from "@/layouts/MainLayout.astro";
 import { prisma } from "@/lib/db";
-import { getSession } from "auth-astro/server";
 
-const session = await getSession(Astro.request);
+// Reutilizar sesión resuelta por middleware.ts (evita N+1 a la BD por navegación)
+const session = Astro.locals.session;
 
 const [dbCategories, dbSubcategories, dbSubcatRelations, dbEmpresas] = await Promise.all([
     prisma.categoria.findMany({

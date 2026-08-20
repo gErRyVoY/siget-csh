@@ -616,6 +616,13 @@ const NOTIFICATION_FULL_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="24
                         const data = JSON.parse(event.data);
                         if (data.type === "connected") return;
 
+                        // Emitir siempre el evento global para que los dashboards
+                        // puedan actualizarse sin abrir un EventSource propio.
+                        // Incluye eventos del propio usuario (los filtros se hacen en cada listener).
+                        window.dispatchEvent(
+                            new CustomEvent("siget:sse-event", { detail: data }),
+                        );
+
                         if (
                             data.originatorId &&
                             data.originatorId.toString() === currentUserId
