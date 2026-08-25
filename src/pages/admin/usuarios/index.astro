@@ -6,6 +6,8 @@ const GOOGLE_API_KEY = import.meta.env.GOOGLE_API_KEY || process.env.GOOGLE_API_
 const GOOGLE_CLIENT_ID = import.meta.env.GOOGLE_CLIENT_ID || process.env.GOOGLE_CLIENT_ID || '';
 const GOOGLE_APP_ID = import.meta.env.GOOGLE_APP_ID || process.env.GOOGLE_APP_ID || '';
 
+const session = Astro.locals.session;
+
 const empresas = await prisma.empresa.findMany({
   orderBy: { nombre: "asc" },
   include: {
@@ -66,7 +68,7 @@ const empresas = await prisma.empresa.findMany({
         >
       </p>
 
-      <form id="bulk-upload-form" class="space-y-4" data-google-api-key={GOOGLE_API_KEY} data-google-client-id={GOOGLE_CLIENT_ID} data-google-app-id={GOOGLE_APP_ID}>
+      <form id="bulk-upload-form" class="space-y-4" data-google-api-key={GOOGLE_API_KEY} data-google-client-id={GOOGLE_CLIENT_ID} data-google-app-id={GOOGLE_APP_ID} data-access-token={session?.accessToken || ""}>
         <div
           id="drop-zone"
           class="border-2 border-dashed border-muted-foreground/25 rounded-lg p-8 text-center hover:bg-muted/50 transition-colors cursor-pointer relative"
@@ -212,10 +214,10 @@ const empresas = await prisma.empresa.findMany({
 
   // --- GOOGLE DRIVE LOGIC ---
   let tokenClient: any;
-  let accessToken: string | null = null;
+  let accessToken: string | null = form?.dataset.accessToken || null;
   let pickerInited = false;
   let gisInited = false;
-  const SCOPES = "https://www.googleapis.com/auth/drive.readonly";
+  const SCOPES = "https://www.googleapis.com/auth/drive";
 
   const initGoogleDrive = () => {
     const script1 = document.createElement("script");
@@ -248,34 +250,8 @@ const empresas = await prisma.empresa.findMany({
     document.body.appendChild(script2);
   };
 
-  const handleAuthClick = () => {
-    if (!GOOGLE_API_KEY || !GOOGLE_CLIENT_ID || !GOOGLE_APP_ID) {
-      toast.error("Faltan credenciales de Google Drive.");
-      return;
-    }
-
-    if (accessToken) {
-      createPicker();
-      return;
-    }
-
-    tokenClient.callback = async (response: any) => {
-      if (response.error !== undefined) {
-        throw response;
-      }
-      accessToken = response.access_token;
-      createPicker();
-    };
-
-    if (accessToken === null) {
-      tokenClient.requestAccessToken({ prompt: "consent" });
-    } else {
-      tokenClient.requestAccessToken({ prompt: "" });
-    }
-  };
-
-  const createPicker = () => {
-    if (!pickerInited || (!accessToken && !gisInited)) {
+  function createPicker() {
+    if (!pickerInited || !accessToken) {
       toast.error("Google API no está lista aún.");
       return;
     }
@@ -286,14 +262,52 @@ const empresas = await prisma.empresa.findMany({
     view.setSelectFolderEnabled(false);
     view.setMode(window.google.picker.DocsViewMode.LIST);
 
+    const width = Math.max(320, Math.min(Math.floor(window.innerWidth * 0.9), 1050));
+    const height = Math.max(300, Math.min(Math.floor(window.innerHeight * 0.85), 650));
+    const origin = window.location.protocol + "//" + window.location.host;
+
     const picker = new window.google.picker.PickerBuilder()
       .enableFeature(window.google.picker.Feature.NAV_HIDDEN)
       .setAppId(GOOGLE_APP_ID)
       .setOAuthToken(accessToken!)
+      .setOrigin(origin)
       .addView(view)
+      .setSize(width, height)
       .setCallback(pickerCallback)
       .build();
     picker.setVisible(true);
+  }
+
+  const handleAuthClick = () => {
+    if (!GOOGLE_CLIENT_ID || !GOOGLE_APP_ID) {
+      toast.error("Faltan credenciales de Google Drive.");
+      return;
+    }
+
+    if (!tokenClient) {
+      if (accessToken && pickerInited) {
+        createPicker();
+        return;
+      }
+      toast.error("Google API no está lista aún. Intenta en un momento.");
+      return;
+    }
+
+    tokenClient.callback = async (response: any) => {
+      if (response.error !== undefined) {
+        console.error("GIS Error:", response);
+        if (accessToken) {
+          createPicker();
+        } else {
+          toast.error("No se pudo obtener acceso a Google Drive.");
+        }
+        return;
+      }
+      accessToken = response.access_token;
+      createPicker();
+    };
+
+    tokenClient.requestAccessToken({ prompt: "" });
   };
 
   const pickerCallback = async (data: any) => {

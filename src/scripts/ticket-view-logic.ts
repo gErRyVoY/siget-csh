@@ -22,9 +22,172 @@ const ALLOWED_FORMATS = [
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
 ];
+const DRIVE_ALLOWED_MIME_TYPES = [
+    ...ALLOWED_FORMATS,
+    'video/mp4',
+    'video/x-msvideo',
+    'video/avi',
+    'video/quicktime',
+    'video/hevc',
+    'video/3gpp',
+    'video/3gpp2',
+    'video/x-matroska',
+    'application/vnd.google-apps.video',
+].join(',');
 
 let stagedFiles: { file: File; id: number; isValid: boolean; reason: string | null; }[] = [];
 let isDeleteSelectionMode = false;
+
+interface DriveResource {
+    id: string;
+    name: string;
+    url: string;
+    type: 'folder' | 'video';
+}
+let stagedDriveFolders: DriveResource[] = [];
+let stagedDriveVideos: DriveResource[] = [];
+
+function escapeHtml(str: string): string {
+    return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function isVideoMimeType(mimeType: string, fileName: string): boolean {
+    const lowerMime = (mimeType || '').toLowerCase();
+    const lowerName = (fileName || '').toLowerCase();
+    return lowerMime.startsWith('video/') || lowerMime === 'application/vnd.google-apps.video' || /\.(mp4|avi|mov|hevc|3gp|m4v|mkv)$/i.test(lowerName);
+}
+
+async function grantDrivePermissions(fileId: string, agentEmails: string[], token: string | null) {
+    if (!token || agentEmails.length === 0) return;
+    try {
+        await Promise.all(agentEmails.map(email =>
+            fetch(`https://www.googleapis.com/drive/v3/files/${fileId}/permissions`, {
+                method: 'POST',
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    role: 'reader',
+                    type: 'user',
+                    emailAddress: email,
+                }),
+            }).catch(e => console.warn(`Permiso fallido para ${email}:`, e))
+        ));
+    } catch (permErr) {
+        console.warn('No se pudo otorgar permisos en Drive:', permErr);
+    }
+}
+
+function renderDriveResources() {
+    const section = document.getElementById('drive-resources-section');
+    const foldersContainer = document.getElementById('drive-folders-list');
+    const videosContainer = document.getElementById('drive-videos-list');
+
+    if (!section || !foldersContainer || !videosContainer) return;
+
+    if (stagedDriveFolders.length === 0 && stagedDriveVideos.length === 0) {
+        section.classList.add('hidden');
+        foldersContainer.innerHTML = '';
+        videosContainer.innerHTML = '';
+        return;
+    }
+
+    section.classList.remove('hidden');
+
+    // Render folders
+    foldersContainer.innerHTML = stagedDriveFolders.map((item, idx) => `
+        <div class="space-y-1">
+            <label class="block text-xs font-medium text-foreground">
+                📁 Carpeta en Google Drive (${idx + 1}/5): <span class="font-semibold text-secondary">${escapeHtml(item.name)}</span>
+            </label>
+            <div class="relative flex items-center">
+                <input
+                    type="url"
+                    disabled
+                    value="${item.url}"
+                    class="w-full rounded-md border border-border bg-muted p-2 pr-9 text-xs text-foreground cursor-not-allowed opacity-90 truncate"
+                />
+                <button
+                    type="button"
+                    data-remove-drive="folder-${idx}"
+                    class="absolute right-2 p-1 text-muted-foreground hover:text-destructive transition-colors cursor-pointer"
+                    title="Eliminar carpeta"
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    `).join('');
+
+    // Render videos
+    videosContainer.innerHTML = stagedDriveVideos.map((item, idx) => `
+        <div class="space-y-1">
+            <label class="block text-xs font-medium text-foreground">
+                🎥 Video en Google Drive (${idx + 1}/5): <span class="font-semibold text-secondary">${escapeHtml(item.name)}</span>
+            </label>
+            <div class="relative flex items-center">
+                <input
+                    type="url"
+                    disabled
+                    value="${item.url}"
+                    class="w-full rounded-md border border-border bg-muted p-2 pr-9 text-xs text-foreground cursor-not-allowed opacity-90 truncate"
+                />
+                <button
+                    type="button"
+                    data-remove-drive="video-${idx}"
+                    class="absolute right-2 p-1 text-muted-foreground hover:text-destructive transition-colors cursor-pointer"
+                    title="Eliminar video"
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    `).join('');
+
+    // Event listeners for remove buttons
+    section.querySelectorAll('button[data-remove-drive]').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const target = (e.currentTarget as HTMLElement).dataset.removeDrive;
+            if (!target) return;
+            const [type, idxStr] = target.split('-');
+            const index = parseInt(idxStr, 10);
+            if (type === 'folder') {
+                stagedDriveFolders.splice(index, 1);
+            } else if (type === 'video') {
+                stagedDriveVideos.splice(index, 1);
+            }
+            renderDriveResources();
+        });
+    });
+}
+
+function buildDriveLinksHtml(): string {
+    const parts: string[] = [];
+
+    if (stagedDriveFolders.length === 1) {
+        parts.push(`📁 Carpeta en Google Drive: <a href="${stagedDriveFolders[0].url}" target="_blank" rel="noopener">${stagedDriveFolders[0].name}</a>`);
+    } else if (stagedDriveFolders.length > 1) {
+        const folderLinks = stagedDriveFolders.map(f => `• <a href="${f.url}" target="_blank" rel="noopener">${f.name}</a>`).join('\n');
+        parts.push(`📁 Carpetas en Google Drive:\n${folderLinks}`);
+    }
+
+    if (stagedDriveVideos.length === 1) {
+        parts.push(`🎥 Video en Google Drive: <a href="${stagedDriveVideos[0].url}" target="_blank" rel="noopener">${stagedDriveVideos[0].name}</a>`);
+    } else if (stagedDriveVideos.length > 1) {
+        const videoLinks = stagedDriveVideos.map(v => `• <a href="${v.url}" target="_blank" rel="noopener">${v.name}</a>`).join('\n');
+        parts.push(`🎥 Videos en Google Drive:\n${videoLinks}`);
+    }
+
+    return parts.join('\n\n');
+}
 
 function validateFile(file: File) {
     if (file.size > MAX_FILE_SIZE_BYTES) {
@@ -144,7 +307,12 @@ export function initEditForm() {
         const estatusSelect = document.getElementById('estatusId') as HTMLSelectElement;
 
         const validFilesToUpload = stagedFiles.filter(fw => fw.isValid);
-        const newComment = newCommentElement ? newCommentElement.value.trim() : '';
+        
+        const driveLinksHtml = buildDriveLinksHtml();
+        let baseComment = newCommentElement ? newCommentElement.value.trim() : '';
+        const newComment = driveLinksHtml
+            ? (baseComment ? `${baseComment}\n\n${driveLinksHtml}` : driveLinksHtml)
+            : baseComment;
 
         if (validFilesToUpload.length > 0 && newComment.length < 10) {
             toast.warning('Si desea adjuntar archivos, por favor inserte un comentario descriptivo (mínimo 10 caracteres).');
@@ -507,7 +675,7 @@ let GOOGLE_APP_ID: string | undefined;
 // drive.readonly allows reading all files, which is needed if we want to pick any file.
 // drive.file only allows accessing files created by this app or opened with it.
 // Since we want to pick ANY file, we might need drive.readonly.
-const SCOPES = 'https://www.googleapis.com/auth/drive.readonly';
+const SCOPES = 'https://www.googleapis.com/auth/drive';
 
 export function initGoogleDrive() {
     const form = document.getElementById('edit-ticket-form') as HTMLFormElement;
@@ -566,38 +734,39 @@ export function initGoogleDrive() {
 }
 
 function handleAuthClick() {
-    if (!GOOGLE_API_KEY || !GOOGLE_CLIENT_ID || !GOOGLE_APP_ID) {
+    if (!GOOGLE_CLIENT_ID || !GOOGLE_APP_ID) {
         toast.error('Faltan credenciales de Google Drive.');
         return;
     }
 
-    if (accessToken) {
-        createPicker();
+    if (!tokenClient) {
+        if (accessToken && pickerInited) {
+            createPicker();
+            return;
+        }
+        toast.error('Google API no está lista aún. Intenta en un momento.');
         return;
     }
 
     tokenClient.callback = async (response: any) => {
         if (response.error !== undefined) {
-            throw (response);
+            console.error('GIS Error:', response);
+            if (accessToken) {
+                createPicker();
+            } else {
+                toast.error('No se pudo obtener acceso a Google Drive.');
+            }
+            return;
         }
         accessToken = response.access_token;
         createPicker();
     };
 
-    if (accessToken === null) {
-        // Prompt the user to select a Google Account and ask for consent to share their data
-        // when establishing a new session.
-        tokenClient.requestAccessToken({ prompt: 'consent' });
-    } else {
-        // Skip display of account chooser and consent dialog for an existing session.
-        tokenClient.requestAccessToken({ prompt: '' });
-    }
+    tokenClient.requestAccessToken({ prompt: '' });
 }
 
 function createPicker() {
-    // If we have an access token, we only need the picker lib to be ready.
-    // If we don't have a token, we need GIS to be ready to get one.
-    if (!pickerInited || (!accessToken && !gisInited)) {
+    if (!pickerInited || !accessToken) {
         toast.error('Google API no está lista aún. Intente de nuevo en unos segundos.');
         return;
     }
@@ -605,19 +774,23 @@ function createPicker() {
     // Use DocsView to allow folder navigation and better structure
     const view = new google.picker.DocsView();
     view.setIncludeFolders(true);
-    view.setMimeTypes(ALLOWED_FORMATS.join(','));
-    view.setSelectFolderEnabled(false);
+    view.setMimeTypes(DRIVE_ALLOWED_MIME_TYPES);
+    view.setSelectFolderEnabled(true);
     view.setParent('root'); // Start at root to show "My Drive" structure
 
     const origin = window.location.protocol + '//' + window.location.host;
+    const width = Math.max(320, Math.min(Math.floor(window.innerWidth * 0.9), 1050));
+    const height = Math.max(300, Math.min(Math.floor(window.innerHeight * 0.85), 650));
+
     const picker = new google.picker.PickerBuilder()
         .enableFeature(google.picker.Feature.NAV_HIDDEN)
         .enableFeature(google.picker.Feature.MULTISELECT_ENABLED)
-        .setAppId(GOOGLE_APP_ID)
+        .setAppId(GOOGLE_APP_ID!)
         .setOAuthToken(accessToken!)
         .addView(view)
         .addView(new google.picker.DocsUploadView())
         .setOrigin(origin)
+        .setSize(width, height)
         .setCallback(pickerCallback)
         .build();
     picker.setVisible(true);
@@ -627,14 +800,69 @@ async function pickerCallback(data: any) {
     if (data.action === google.picker.Action.PICKED) {
         const documents = data[google.picker.Response.DOCUMENTS];
         const newFiles: File[] = [];
+        const editForm = document.getElementById('edit-ticket-form') as HTMLElement | null;
+        const agentEmailsRaw = editForm?.dataset.agentEmails || '';
+        const agentEmails = agentEmailsRaw.split(',').map((e: string) => e.trim()).filter(Boolean);
 
-        toast.info('Procesando archivos de Drive... espere un momento.');
+        toast.info('Procesando selección de Drive... espere un momento.');
 
         try {
             for (const doc of documents) {
                 const fileId = doc[google.picker.Document.ID];
                 const name = doc[google.picker.Document.NAME];
                 const mimeType = doc[google.picker.Document.MIME_TYPE];
+
+                // 1. Si es carpeta
+                if (mimeType === 'application/vnd.google-apps.folder' || doc.type === 'folder') {
+                    const folderUrl = `https://drive.google.com/drive/folders/${fileId}`;
+
+                    if (stagedDriveFolders.some(f => f.id === fileId || f.url === folderUrl)) {
+                        toast.warning(`La carpeta "${name}" ya fue agregada.`);
+                        continue;
+                    }
+
+                    if (stagedDriveFolders.length >= 5) {
+                        toast.error(`Máximo 5 carpetas permitidas.`);
+                        continue;
+                    }
+
+                    await grantDrivePermissions(fileId, agentEmails, accessToken);
+
+                    stagedDriveFolders.push({
+                        id: fileId,
+                        name,
+                        url: folderUrl,
+                        type: 'folder',
+                    });
+                    toast.success(`Carpeta "${name}" agregada.`);
+                    continue;
+                }
+
+                // 2. Si es video
+                if (isVideoMimeType(mimeType, name)) {
+                    const videoUrl = `https://drive.google.com/file/d/${fileId}/view`;
+
+                    if (stagedDriveVideos.some(v => v.id === fileId || v.url === videoUrl)) {
+                        toast.warning(`El video "${name}" ya fue agregado.`);
+                        continue;
+                    }
+
+                    if (stagedDriveVideos.length >= 5) {
+                        toast.error(`Máximo 5 videos permitidos.`);
+                        continue;
+                    }
+
+                    await grantDrivePermissions(fileId, agentEmails, accessToken);
+
+                    stagedDriveVideos.push({
+                        id: fileId,
+                        name,
+                        url: videoUrl,
+                        type: 'video',
+                    });
+                    toast.success(`Video "${name}" agregado.`);
+                    continue;
+                }
 
                 // We need to fetch the file content.
                 // Using gapi.client.drive.files.get with alt=media
@@ -657,10 +885,6 @@ async function pickerCallback(data: any) {
 
             if (newFiles.length > 0) {
                 // Add to staged files using existing logic
-                const fileInput = document.getElementById('file-input') as HTMLInputElement;
-                // We can't set fileInput.files directly with File objects created manually easily without DataTransfer
-                // But our logic uses stagedFiles array. We just need to push to it and call render.
-
                 if (stagedFiles.length + newFiles.length > 10) {
                     toast.error('No puede seleccionar más de 10 archivos en total.');
                 } else {
@@ -686,12 +910,10 @@ async function pickerCallback(data: any) {
                     renderStagedFiles();
                 }
             }
+            renderDriveResources();
         } catch (e) {
             console.error(e);
-            toast.error('Error al procesar archivos de Drive.');
-        } finally {
-            // Dismiss loading toast (if toast library supports it, otherwise just ignore)
-            // Assuming toast.dismiss or similar exists, or just let it be replaced by success/error
+            toast.error('Error al procesar elementos de Google Drive.');
         }
     }
 }

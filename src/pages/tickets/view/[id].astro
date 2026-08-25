@@ -99,6 +99,23 @@ const ticket = await prisma.ticket.findUnique({
         },
     },
 });
+
+const MARKETING_CATEGORY_ID = 12;
+
+// Emails de agentes para permisos de Drive
+const isMktTicket = ticket ? ticket.categoriaId === MARKETING_CATEGORY_ID : false;
+const targetAgents = await prisma.usuario.findMany({
+    where: {
+        activo: true,
+        mail: { not: '' },
+        ...(isMktTicket ? { atiende_mkt: true } : { atiende_csh: true }),
+    },
+    select: { mail: true },
+});
+const targetAgentEmails = targetAgents
+    .map((u) => u.mail)
+    .filter(Boolean) as string[];
+
 const ticketHistory = await prisma.historialSolicitud.findMany({
     where: { ticketId: ticketId },
     include: {
@@ -122,7 +139,6 @@ if (!ticket) {
 // Reutilizar sesión resuelta por middleware.ts (evita N+1 a la BD por navegación)
 const session = Astro.locals.session;
 const PRIVILEGED_ROLES = [2, 3]; // admin y superadmin
-const MARKETING_CATEGORY_ID = 12;
 
 const userRoleId = session?.user?.rol?.id ?? -1;
 const userId = session?.user?.id ? parseInt(String(session.user.id), 10) : -1;
@@ -379,6 +395,7 @@ console.log("CAREER DEBUG:", { ofertaDesc, carreraOriginal: traslado?.carrera?.d
             data-api-key={GOOGLE_API_KEY_SERVER}
             data-client-id={GOOGLE_CLIENT_ID_SERVER}
             data-app-id={GOOGLE_APP_ID_SERVER}
+            data-agent-emails={targetAgentEmails.join(',')}
         >
             <div class="bg-card border border-secondary rounded-lg p-4 mb-4">
                 {isTraslado && traslado ? (
@@ -983,6 +1000,12 @@ console.log("CAREER DEBUG:", { ofertaDesc, carreraOriginal: traslado?.carrera?.d
                     rows="3"
                     class="w-full rounded-md border-border bg-input p-2 text-sm"
                     placeholder="Escribe un comentario..."></textarea>
+
+                <!-- Recursos de Google Drive (Carpetas y Videos) -->
+                <div id="drive-resources-section" class="hidden mt-3 space-y-3">
+                    <div id="drive-folders-list" class="space-y-2"></div>
+                    <div id="drive-videos-list" class="space-y-2"></div>
+                </div>
             </div>
             <ul class="space-y-6">
                 {

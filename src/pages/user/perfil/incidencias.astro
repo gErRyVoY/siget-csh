@@ -392,8 +392,21 @@ const GOOGLE_APP_ID = import.meta.env.GOOGLE_APP_ID || process.env.GOOGLE_APP_ID
         return;
       }
 
-      if (Object.keys(horario).length === 0) {
-        toast.error("Debe actualizar su horario antes.");
+      if (!horario || Object.keys(horario).length === 0) {
+        toast.error("Debes configurar tu horario de disponibilidad en tu perfil antes de consultar.");
+        return;
+      }
+
+      const diasConHorarioValido = Object.values(horario).filter(
+        (h: any) => h && typeof h.inicio === "string" && typeof h.fin === "string" && h.inicio.trim() !== "" && h.fin.trim() !== ""
+      );
+
+      const tieneValoresNull = Object.values(horario).some(
+        (h: any) => !h || h.inicio === null || h.fin === null || h.inicio === undefined || h.fin === undefined
+      );
+
+      if (diasConHorarioValido.length === 0 || tieneValoresNull) {
+        toast.error("Tu horario contiene datos incompletos o no configurados. Por favor, actualiza tu horario de disponibilidad en tu perfil antes de consultar.");
         return;
       }
 
@@ -487,6 +500,8 @@ const GOOGLE_APP_ID = import.meta.env.GOOGLE_APP_ID || process.env.GOOGLE_APP_ID
 
         if (
           !horarioDia ||
+          !horarioDia.inicio ||
+          !horarioDia.fin ||
           horarioDia.inicio === "No disponible" ||
           horarioDia.fin === "No disponible"
         ) {
@@ -673,7 +688,18 @@ const GOOGLE_APP_ID = import.meta.env.GOOGLE_APP_ID || process.env.GOOGLE_APP_ID
           // Estado inicial del select de tipo de inasistencia
           const savedObsValue = savedRecord ? (savedRecord.observaciones || "") : "";
           const specialOpciones = ["Homeoffice", "Vacaciones", "Evento", "Asueto"];
-          const savedSpecialObs = isAllNull && specialOpciones.includes(savedObsValue) ? savedObsValue : "Inasistencia";
+          let savedSpecialObs = "Inasistencia";
+          let savedObsText = savedObs;
+
+          if (isAllNull && savedObsValue) {
+            if (specialOpciones.includes(savedObsValue)) {
+              savedSpecialObs = savedObsValue;
+              savedObsText = savedObsValue === "Evento" ? "" : "";
+            } else if (savedObsValue.startsWith("Evento:") || savedObsValue.startsWith("Evento -")) {
+              savedSpecialObs = "Evento";
+              savedObsText = savedObsValue.replace(/^Evento[:\-]\s*/, "");
+            }
+          }
 
           const dayInt = parseInt(dayNum, 10);
           if (dayInt >= 16) {
@@ -727,6 +753,11 @@ const GOOGLE_APP_ID = import.meta.env.GOOGLE_APP_ID || process.env.GOOGLE_APP_ID
             }
           }
 
+          const isSpecialNoObs = ["Homeoffice", "Vacaciones", "Asueto"].includes(savedSpecialObs);
+          const isHiddenObs = (isSpecialNoObs || !toggleChecked);
+          const obsLabelText = savedSpecialObs === "Evento" ? "Motivo (Evento):" : (reqObsText ? "Motivo (Turno):" : "Motivo:");
+          const obsPlaceholderText = savedSpecialObs === "Evento" ? "Describe el evento o actividad..." : reqObsText;
+
           html += `
             <div class="border rounded-md overflow-hidden bg-card mb-4 relative pb-10 sm:pb-0 incidencia-card-row" id="row-${index}" data-day="${parseInt(dayNum, 10)}" data-is-inasistencia="${isAllNull ? '1' : '0'}">
                 <div class="bg-muted-foreground/80 text-white flex justify-between items-center px-4 py-2">
@@ -760,39 +791,48 @@ const GOOGLE_APP_ID = import.meta.env.GOOGLE_APP_ID || process.env.GOOGLE_APP_ID
                         `}
                     </div>
                     <div class="p-4 border-b sm:border-b-0 sm:border-r space-y-2 sm:w-[250px] flex-shrink-0 text-sm">
+                        <!-- Bloque 1: Entrada laboral y Registro -->
                         <div class="flex justify-between items-center font-bold">
                             <span>Entrada laboral:</span>
                             <span>${horarioDia.inicio}</span>
                         </div>
-                        <div class="flex justify-between items-center text-muted-foreground mb-2">
+                        <div class="flex justify-between items-center text-muted-foreground">
                             <span>Registro entrada:</span>
                             <span class="${entradaClass}">${formatT(r.entrada_turno)}</span>
                         </div>
-                        <div class="flex justify-between items-center font-bold pt-2 border-t">
-                            <span>Salida laboral:</span>
-                            <span>${horarioDia.fin}</span>
+
+                        <!-- Bloque 2: Comida -->
+                        <div class="pt-2 border-t mt-2 space-y-2">
+                            <div class="flex justify-between items-center text-muted-foreground">
+                                <span>Entrada comida:</span>
+                                <span class="${comidaClass}">${formatT(r.entrada_comida)}</span>
+                            </div>
+                            <div class="flex justify-between items-center text-muted-foreground">
+                                <span>Salida comida:</span>
+                                <span class="${comidaClass}">${formatT(r.salida_comida)}</span>
+                            </div>
+                            ${requiresObsComida ? '<div class="text-red-600 font-bold mt-1 text-xs">Horario excedido</div>' : ''}
                         </div>
-                        <div class="flex justify-between items-center text-muted-foreground">
-                            <span>Registro salida:</span>
-                            <span class="${salidaClass}">${formatT(r.salida_turno)}</span>
+
+                        <!-- Bloque 3: Salida laboral y Registro -->
+                        <div class="pt-2 border-t mt-2 space-y-2">
+                            <div class="flex justify-between items-center font-bold">
+                                <span>Salida laboral:</span>
+                                <span>${horarioDia.fin}</span>
+                            </div>
+                            <div class="flex justify-between items-center text-muted-foreground">
+                                <span>Registro salida:</span>
+                                <span class="${salidaClass}">${formatT(r.salida_turno)}</span>
+                            </div>
                         </div>
-                        <div class="flex justify-between items-center text-muted-foreground pt-2 border-t mt-2">
-                            <span>Entrada comida:</span>
-                            <span class="${comidaClass}">${formatT(r.entrada_comida)}</span>
-                        </div>
-                        <div class="flex justify-between items-center text-muted-foreground">
-                            <span>Salida comida:</span>
-                            <span class="${comidaClass}">${formatT(r.salida_comida)}</span>
-                        </div>
-                        ${requiresObsComida ? '<div class="text-red-600 font-bold mt-2">Horario excedido</div>' : ''}
                     </div>
                     <div class="p-4 space-y-4 flex-1">
                         ${
                           requiresObs
                             ? `
-                            <div id="obs-turno-wrapper-${index}" ${(['Homeoffice','Vacaciones','Evento','Asueto'].includes(savedSpecialObs) || !toggleChecked) ? 'class="hidden"' : ''}>
-                                <label class="block font-bold text-sm mb-1">Motivo (Turno):</label>
-                                <textarea id="${obsId}" class="w-full text-sm border-border bg-input p-2 rounded-md ${isSaved ? "opacity-60 cursor-not-allowed" : ""}" rows="2" placeholder="${reqObsText}" ${isSaved ? "disabled" : ""}>${savedObs || ""}</textarea>
+                            <div id="obs-turno-wrapper-${index}" ${isHiddenObs ? 'class="hidden"' : ''}>
+                                <label id="obs-turno-label-${index}" class="block font-bold text-sm mb-1">${obsLabelText}</label>
+                                <textarea id="${obsId}" class="w-full text-sm border-border bg-input p-2 rounded-md ${isSaved ? "opacity-60 cursor-not-allowed" : ""}" rows="2" placeholder="${obsPlaceholderText}" ${isSaved ? "disabled" : ""}>${savedObsText || ""}</textarea>
                             </div>
                         `
                             : ""
@@ -888,11 +928,10 @@ const GOOGLE_APP_ID = import.meta.env.GOOGLE_APP_ID || process.env.GOOGLE_APP_ID
             const obsComidaWrapper = document.getElementById(`obs-comida-wrapper-${idx}`);
 
             if (t.checked) {
-              // Si es Enviar, mostrar Motivo (Turno) solo si no es un tipo especial
               const selEl = document.getElementById(`tipo-inasistencia-${idx}`) as HTMLSelectElement;
-              const isSpecial = selEl && selEl.value !== "Inasistencia";
+              const isSpecialNoObs = selEl && ["Homeoffice", "Vacaciones", "Asueto"].includes(selEl.value);
 
-              if (obsTurnoWrapper && !isSpecial) {
+              if (obsTurnoWrapper && !isSpecialNoObs) {
                 obsTurnoWrapper.classList.remove("hidden");
               }
               if (obsComidaWrapper) {
@@ -923,6 +962,7 @@ const GOOGLE_APP_ID = import.meta.env.GOOGLE_APP_ID || process.env.GOOGLE_APP_ID
             const val = s.value;
             const statusEl = document.getElementById(`status-text-${idx}`);
             const obsWrapper = document.getElementById(`obs-turno-wrapper-${idx}`);
+            const obsLabel = document.getElementById(`obs-turno-label-${idx}`);
             const obsEl = document.getElementById(`obs-${idx}`) as HTMLTextAreaElement;
 
             // Actualizar texto y color del status
@@ -940,10 +980,16 @@ const GOOGLE_APP_ID = import.meta.env.GOOGLE_APP_ID || process.env.GOOGLE_APP_ID
               }
             }
 
-            // Mostrar/ocultar campo Motivo: solo aparece en Inasistencia
+            // Mostrar/ocultar campo Motivo: se muestra para Inasistencia y Evento
             if (obsWrapper) {
-              if (val === "Inasistencia") {
+              if (val === "Inasistencia" || val === "Evento") {
                 obsWrapper.classList.remove("hidden");
+                if (obsLabel) {
+                  obsLabel.textContent = val === "Evento" ? "Motivo (Evento):" : "Motivo (Turno):";
+                }
+                if (obsEl) {
+                  obsEl.placeholder = val === "Evento" ? "Describe el evento o actividad..." : "Motivo:";
+                }
               } else {
                 obsWrapper.classList.add("hidden");
                 if (obsEl) obsEl.value = "";
@@ -1166,13 +1212,23 @@ const GOOGLE_APP_ID = import.meta.env.GOOGLE_APP_ID || process.env.GOOGLE_APP_ID
 
         // Leer el select de tipo de inasistencia
         const selEl = document.getElementById(`tipo-inasistencia-${inc.index}`) as HTMLSelectElement;
-        const specialLabel = selEl ? selEl.value : null;
-        // Solo aplica como specialLabel si NO es Inasistencia
-        const resolvedSpecial = (specialLabel && specialLabel !== "Inasistencia") ? specialLabel : null;
+        const tipoInasistencia = selEl ? selEl.value : null;
 
-        const isAllNull = !inc.entrada_turno && !inc.salida_turno && !inc.entrada_comida && !inc.salida_comida;
-        // Si hay select de tipo, el valor del turno es el specialLabel
-        let valTurno = resolvedSpecial || (obsEl ? obsEl.value.trim() : "");
+        let resolvedSpecial = null;
+        let valTurno = "";
+
+        if (tipoInasistencia === "Evento") {
+          const obsText = obsEl ? obsEl.value.trim() : "";
+          valTurno = obsText ? (obsText.startsWith("Evento") ? obsText : `Evento: ${obsText}`) : "Evento";
+          resolvedSpecial = "Evento";
+        } else if (tipoInasistencia && ["Homeoffice", "Vacaciones", "Asueto"].includes(tipoInasistencia)) {
+          valTurno = tipoInasistencia;
+          resolvedSpecial = tipoInasistencia;
+        } else {
+          valTurno = obsEl ? obsEl.value.trim() : "";
+          resolvedSpecial = null;
+        }
+
         let valComida = obsComidaEl ? obsComidaEl.value.trim() : "";
 
         const dateObj = new Date(inc.fecha);
@@ -1393,7 +1449,6 @@ const GOOGLE_APP_ID = import.meta.env.GOOGLE_APP_ID || process.env.GOOGLE_APP_ID
 
         const activeInc = activeMap.get(dateStr);
         const isOmitida = activeInc ? activeInc.omitida : false;
-        // Usar el specialLabel resuelto (nunca "Inasistencia")
         const specialLabel = activeInc ? activeInc.specialLabel : null;
         const isAllNull = !r.entrada_turno && !r.salida_turno && !r.entrada_comida && !r.salida_comida;
         const dayLabel = `<strong>${dayName} ${dayNum}.</strong>`;
@@ -1405,9 +1460,19 @@ const GOOGLE_APP_ID = import.meta.env.GOOGLE_APP_ID || process.env.GOOGLE_APP_ID
           lineText = `${dayLabel} <span style="color:#16a34a;">Sin incidencias.</span>`;
         } else if (specialLabel && specialLabel !== "Inasistencia") {
           // Homeoffice / Vacaciones / Evento / Asueto
-          const isGrey = specialLabel === "Evento" || specialLabel === "Asueto";
-          const spColor = isGrey ? "#6b7280" : "#7c3aed";
-          lineText = `${dayLabel} <span style="color:${spColor};font-weight:700;">${specialLabel}.</span>`;
+          if (specialLabel === "Evento") {
+            const obsVal = activeInc ? activeInc.observaciones : null;
+            const motivoEvento = obsVal && obsVal.startsWith("Evento:") ? obsVal.replace(/^Evento:\s*/, "").trim() : (obsVal && obsVal !== "Evento" ? obsVal : null);
+            if (motivoEvento) {
+              lineText = `${dayLabel} <span style="color:#6b7280;font-weight:700;">Evento.</span> <strong>Motivo:</strong> ${motivoEvento}.`;
+            } else {
+              lineText = `${dayLabel} <span style="color:#6b7280;font-weight:700;">Evento.</span>`;
+            }
+          } else {
+            const isGrey = specialLabel === "Asueto";
+            const spColor = isGrey ? "#6b7280" : "#7c3aed";
+            lineText = `${dayLabel} <span style="color:${spColor};font-weight:700;">${specialLabel}.</span>`;
+          }
         } else if (isAllNull) {
           // Inasistencia real (sin select o select = Inasistencia)
           const inasistLabel = (activeInc && activeInc.specialLabel === null && !activeInc.observaciones) ? "Inasistencia" : "Sin incidencias";
@@ -1715,17 +1780,25 @@ const GOOGLE_APP_ID = import.meta.env.GOOGLE_APP_ID || process.env.GOOGLE_APP_ID
 
         // Leer el select de tipo de inasistencia
         const selEl = document.getElementById(`tipo-inasistencia-${inc.index}`) as HTMLSelectElement;
-        const tipoInasistencia = selEl ? selEl.value : "Inasistencia";
-        // specialLabel = valor del select cuando NO es Inasistencia
-        const specialLabel = tipoInasistencia !== "Inasistencia" ? tipoInasistencia : null;
+        const tipoInasistencia = selEl ? selEl.value : null;
 
-        let valTurno = specialLabel || (obsEl ? obsEl.value.trim() : "");
+        let valTurno = "";
+        if (tipoInasistencia === "Evento") {
+          const obsText = obsEl ? obsEl.value.trim() : "";
+          valTurno = obsText ? (obsText.startsWith("Evento") ? obsText : `Evento: ${obsText}`) : "Evento";
+        } else if (tipoInasistencia && ["Homeoffice", "Vacaciones", "Asueto"].includes(tipoInasistencia)) {
+          valTurno = tipoInasistencia;
+        } else {
+          valTurno = obsEl ? obsEl.value.trim() : "";
+        }
+
         let valComida = obsComidaEl ? obsComidaEl.value.trim() : "";
 
         if (!isOmitida) {
-          // Solo Inasistencia requiere motivo; los demás tipos lo omiten
-          if (inc.requiresObs && !specialLabel) {
-            if (valTurno.length < 5) {
+          const isSpecialNoObs = tipoInasistencia && ["Homeoffice", "Vacaciones", "Asueto"].includes(tipoInasistencia);
+          if (inc.requiresObs && !isSpecialNoObs) {
+            const rawInput = obsEl ? obsEl.value.trim() : "";
+            if (rawInput.length < 5) {
               if (obsEl) obsEl.classList.add("border-red-500");
               valid = false;
             } else {
@@ -1832,15 +1905,25 @@ const GOOGLE_APP_ID = import.meta.env.GOOGLE_APP_ID || process.env.GOOGLE_APP_ID
 
           // Leer el select de tipo de inasistencia (igual que en el handler de enviar)
           const selEl = document.getElementById(`tipo-inasistencia-${inc.index}`) as HTMLSelectElement;
-          const tipoInasistencia = selEl ? selEl.value : "Inasistencia";
-          const specialLabel = tipoInasistencia !== "Inasistencia" ? tipoInasistencia : null;
+          const tipoInasistencia = selEl ? selEl.value : null;
 
-          let valTurno = specialLabel || (obsEl ? obsEl.value.trim() : "");
+          let valTurno = "";
+          if (tipoInasistencia === "Evento") {
+            const obsText = obsEl ? obsEl.value.trim() : "";
+            valTurno = obsText ? (obsText.startsWith("Evento") ? obsText : `Evento: ${obsText}`) : "Evento";
+          } else if (tipoInasistencia && ["Homeoffice", "Vacaciones", "Asueto"].includes(tipoInasistencia)) {
+            valTurno = tipoInasistencia;
+          } else {
+            valTurno = obsEl ? obsEl.value.trim() : "";
+          }
+
           let valComida = obsComidaEl ? obsComidaEl.value.trim() : "";
 
           if (!isOmitida) {
-            if (inc.requiresObs && !specialLabel) {
-              if (valTurno.length < 5) {
+            const isSpecialNoObs = tipoInasistencia && ["Homeoffice", "Vacaciones", "Asueto"].includes(tipoInasistencia);
+            if (inc.requiresObs && !isSpecialNoObs) {
+              const rawInput = obsEl ? obsEl.value.trim() : "";
+              if (rawInput.length < 5) {
                 if (obsEl) obsEl.classList.add("border-red-500");
                 valid = false;
               } else {

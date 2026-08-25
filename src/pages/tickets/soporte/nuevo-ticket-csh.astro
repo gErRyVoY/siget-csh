@@ -5,38 +5,55 @@ import { prisma } from "@/lib/db";
 // Reutilizar sesión resuelta por middleware.ts (evita N+1 a la BD por navegación)
 const session = Astro.locals.session;
 
-const [dbCategories, dbSubcategories, dbSubcatRelations, dbEmpresas] = await Promise.all([
-    prisma.categoria.findMany({
-        where: { activo: true },
-        orderBy: { nombre: "asc" },
-    }),
-    prisma.subcategoria.findMany({
-        where: { activo: true },
-        orderBy: { nombre: "asc" },
-    }),
-    prisma.subcategoriaCategorias.findMany({
-        where: { activo: true },
-    }),
-    prisma.empresa.findMany({
-        where: { activa: true },
-        orderBy: { nombre: "asc" },
-        select: { id: true, nombre: true, tipo: true, tckt_virtual: true },
-    }),
-]);
+const [dbCategories, dbSubcategories, dbSubcatRelations, dbEmpresas] =
+    await Promise.all([
+        prisma.categoria.findMany({
+            where: { activo: true },
+            orderBy: { nombre: "asc" },
+        }),
+        prisma.subcategoria.findMany({
+            where: { activo: true },
+            orderBy: { nombre: "asc" },
+        }),
+        prisma.subcategoriaCategorias.findMany({
+            where: { activo: true },
+        }),
+        prisma.empresa.findMany({
+            where: { activa: true },
+            orderBy: { nombre: "asc" },
+            select: { id: true, nombre: true, tipo: true, tckt_virtual: true },
+        }),
+    ]);
 
 // Fetch user's company
 const userId = session?.user?.id ? parseInt(String(session.user.id), 10) : null;
-let userEmpresa: { id: number; nombre: string; tipo: string; tckt_virtual: boolean } | null = null;
+let userEmpresa: {
+    id: number;
+    nombre: string;
+    tipo: string;
+    tckt_virtual: boolean;
+} | null = null;
 if (userId) {
     const u = await prisma.usuario.findUnique({
         where: { id: userId },
-        select: { empresa: { select: { id: true, nombre: true, tipo: true, tckt_virtual: true } } },
+        select: {
+            empresa: {
+                select: {
+                    id: true,
+                    nombre: true,
+                    tipo: true,
+                    tckt_virtual: true,
+                },
+            },
+        },
     });
     userEmpresa = u?.empresa ?? null;
 }
 
 // Calculate campus options for current user
-const isMagnoEjecutivo = userEmpresa ? ["Magno", "Ejecutivo"].includes(userEmpresa.tipo) : false;
+const isMagnoEjecutivo = userEmpresa
+    ? ["Magno", "Ejecutivo"].includes(userEmpresa.tipo)
+    : false;
 const allowVirtual = userEmpresa?.tckt_virtual ?? false;
 
 let availableCampuses: string[] = [];
@@ -126,6 +143,15 @@ const activeCategoriesTree = dbCategories
 const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY || "";
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || "";
 const GOOGLE_APP_ID = process.env.GOOGLE_APP_ID || "";
+
+// Emails de agentes que atienden tickets CSH (para permisos de carpeta Drive)
+const agentsCsh = await prisma.usuario.findMany({
+    where: { activo: true, atiende_csh: true, mail: { not: '' } },
+    select: { mail: true },
+});
+const agentCshEmails = agentsCsh
+    .map((u) => u.mail)
+    .filter(Boolean) as string[];
 ---
 
 <MainLayout title="Nuevo ticket para CSH">
@@ -178,6 +204,8 @@ const GOOGLE_APP_ID = process.env.GOOGLE_APP_ID || "";
                 data-google-api-key={GOOGLE_API_KEY}
                 data-google-client-id={GOOGLE_CLIENT_ID}
                 data-google-app-id={GOOGLE_APP_ID}
+                data-access-token={session?.accessToken || ""}
+                data-agent-emails={agentCshEmails.join(',')}
                 data-redirect-url={session?.user?.secciones?.includes(
                     "soporte_dashboard",
                 )
@@ -220,11 +248,18 @@ const GOOGLE_APP_ID = process.env.GOOGLE_APP_ID || "";
                                     name="afectado_campus"
                                     class="w-full rounded-md border border-border bg-input p-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-secondary focus:border-secondary"
                                 >
-                                    <option value="" disabled selected={!defaultCampus}>
+                                    <option
+                                        value=""
+                                        disabled
+                                        selected={!defaultCampus}
+                                    >
                                         Selecciona un campus
                                     </option>
                                     {availableCampuses.map((c) => (
-                                        <option value={c} selected={c === defaultCampus}>
+                                        <option
+                                            value={c}
+                                            selected={c === defaultCampus}
+                                        >
                                             {c}
                                         </option>
                                     ))}
@@ -266,8 +301,7 @@ const GOOGLE_APP_ID = process.env.GOOGLE_APP_ID || "";
                                         cy="12"
                                         r="10"
                                         stroke="currentColor"
-                                        stroke-width="4"
-                                    ></circle>
+                                        stroke-width="4"></circle>
                                     <path
                                         class="opacity-75"
                                         fill="currentColor"
@@ -286,7 +320,9 @@ const GOOGLE_APP_ID = process.env.GOOGLE_APP_ID || "";
                         >
                             Email <span class="text-destructive">*</span>
                         </label>
-                        <div class="relative flex rounded-md border border-border bg-input overflow-hidden focus-within:ring-1 focus-within:ring-secondary focus-within:border-secondary">
+                        <div
+                            class="relative flex rounded-md border border-border bg-input overflow-hidden focus-within:ring-1 focus-within:ring-secondary focus-within:border-secondary"
+                        >
                             <input
                                 type="text"
                                 id="afectado_email_user"
@@ -310,8 +346,7 @@ const GOOGLE_APP_ID = process.env.GOOGLE_APP_ID || "";
                                         cy="12"
                                         r="10"
                                         stroke="currentColor"
-                                        stroke-width="4"
-                                    ></circle>
+                                        stroke-width="4"></circle>
                                     <path
                                         class="opacity-75"
                                         fill="currentColor"
@@ -319,7 +354,9 @@ const GOOGLE_APP_ID = process.env.GOOGLE_APP_ID || "";
                                     ></path>
                                 </svg>
                             </div>
-                            <span class="inline-flex items-center px-3 bg-muted text-muted-foreground text-xs font-semibold select-none border-l border-border">
+                            <span
+                                class="inline-flex items-center px-3 bg-muted text-muted-foreground text-xs font-semibold select-none border-l border-border"
+                            >
                                 @humanitas.edu.mx
                             </span>
                         </div>
@@ -331,7 +368,9 @@ const GOOGLE_APP_ID = process.env.GOOGLE_APP_ID || "";
                             for="afectado_nombre"
                             class="block text-sm font-medium text-foreground mb-1"
                         >
-                            Nombre Completo <span class="text-destructive">*</span>
+                            Nombre Completo <span class="text-destructive"
+                                >*</span
+                            >
                         </label>
                         <input
                             type="text"
@@ -348,8 +387,14 @@ const GOOGLE_APP_ID = process.env.GOOGLE_APP_ID || "";
                     name="descripcion"
                     rows="4"
                     class="mt-1 block w-full rounded-md border-border bg-input p-2 accent-secondary focus:outline-none focus:ring-1 focus:ring-secondary focus:border-secondary"
-                    placeholder="Proporciona todos los detalles posibles..."
+                    placeholder="Proporciona todos los detalles posibles para continuar..."
                 ></textarea>
+
+                <!-- Recursos de Google Drive (Carpetas y Videos) -->
+                <div id="drive-resources-section" class="hidden mt-3 space-y-3">
+                    <div id="drive-folders-list" class="space-y-2"></div>
+                    <div id="drive-videos-list" class="space-y-2"></div>
+                </div>
 
                 <!-- File upload section -->
                 <div class="space-y-4 pt-4">
@@ -448,21 +493,39 @@ const GOOGLE_APP_ID = process.env.GOOGLE_APP_ID || "";
             class="relative bg-card border border-border rounded-lg shadow-xl p-6 w-full max-w-md mx-4 transition-all"
         >
             <div class="flex items-center gap-3 mb-3">
-                <div class="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center flex-shrink-0">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <div
+                    class="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center flex-shrink-0"
+                >
+                    <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="22"
+                        height="22"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                    >
                         <circle cx="12" cy="12" r="10"></circle>
                         <line x1="12" y1="8" x2="12" y2="12"></line>
                         <line x1="12" y1="16" x2="12.01" y2="16"></line>
                     </svg>
                 </div>
                 <div>
-                    <h3 class="text-lg font-bold text-foreground">Información sin enviar</h3>
-                    <p class="text-xs text-muted-foreground">Hay datos o archivos en tu solicitud</p>
+                    <h3 class="text-lg font-bold text-foreground">
+                        Información sin enviar
+                    </h3>
+                    <p class="text-xs text-muted-foreground">
+                        Hay datos o archivos en tu solicitud
+                    </p>
                 </div>
             </div>
-            
+
             <p class="text-sm text-foreground/80 mb-6">
-                Has ingresado información para este ticket. Si sales ahora, los datos y archivos adjuntos se perderán. ¿Deseas descartar los cambios y salir?
+                Has ingresado información para este ticket. Si sales ahora, los
+                datos y archivos adjuntos se perderán. ¿Deseas descartar los
+                cambios y salir?
             </p>
 
             <div class="flex flex-col sm:flex-row justify-end gap-2">

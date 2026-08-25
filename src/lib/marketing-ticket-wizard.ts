@@ -97,9 +97,31 @@ export function initMarketingTicketWizard(marketingCategory: CategoriaNode) {
         'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
         'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         'application/zip',
-        'video/mp4' // Usualmente Marketing manda videos o zips
     ];
+    const DRIVE_ALLOWED_MIME_TYPES = [
+        ...ALLOWED_FORMATS,
+        'video/mp4',
+        'video/x-msvideo',
+        'video/avi',
+        'video/quicktime',
+        'video/hevc',
+        'video/3gpp',
+        'video/3gpp2',
+        'video/x-matroska',
+        'application/vnd.google-apps.video',
+    ].join(',');
+
     let stagedFiles: Array<{ file: File; id: number; isValid: boolean; reason: string | null }> = [];
+
+    // Google Drive Staged Resources (Folders and Videos)
+    interface DriveResource {
+        id: string;
+        name: string;
+        url: string;
+        type: 'folder' | 'video';
+    }
+    let stagedDriveFolders: DriveResource[] = [];
+    let stagedDriveVideos: DriveResource[] = [];
 
     // Google API Credentials
     const GOOGLE_API_KEY = ticketForm.dataset.googleApiKey;
@@ -107,11 +129,10 @@ export function initMarketingTicketWizard(marketingCategory: CategoriaNode) {
     const GOOGLE_APP_ID = ticketForm.dataset.googleAppId;
 
     let tokenClient: any;
-    let accessToken: string | null = null;
+    let accessToken: string | null = ticketForm.dataset.accessToken || null;
     let pickerInited = false;
     let gisInited = false;
-    const SCOPES = "https://www.googleapis.com/auth/drive.readonly";
-    const allowedMimeTypes = ALLOWED_FORMATS.join(",");
+    const SCOPES = "https://www.googleapis.com/auth/drive";
 
     // --- Dirty Tracking (Datos no guardados) & Modal de Confirmación ---
     let isSubmitting = false;
@@ -119,12 +140,156 @@ export function initMarketingTicketWizard(marketingCategory: CategoriaNode) {
     let pendingNavigationUrl: string | null = null;
     let pendingNavigationIsBack = false;
 
+    function escapeHtml(str: string): string {
+        return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    function isVideoMimeType(mimeType: string, fileName: string): boolean {
+        const lowerMime = (mimeType || '').toLowerCase();
+        const lowerName = (fileName || '').toLowerCase();
+        return lowerMime.startsWith('video/') || lowerMime === 'application/vnd.google-apps.video' || /\.(mp4|avi|mov|hevc|3gp|m4v|mkv)$/i.test(lowerName);
+    }
+
+    async function grantDrivePermissions(fileId: string, agentEmails: string[], token: string | null) {
+        if (!token || agentEmails.length === 0) return;
+        try {
+            await Promise.all(agentEmails.map(email =>
+                fetch(`https://www.googleapis.com/drive/v3/files/${fileId}/permissions`, {
+                    method: 'POST',
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        role: 'reader',
+                        type: 'user',
+                        emailAddress: email,
+                    }),
+                }).catch(e => console.warn(`Permiso fallido para ${email}:`, e))
+            ));
+        } catch (permErr) {
+            console.warn('No se pudo otorgar permisos en Drive:', permErr);
+        }
+    }
+
+    function renderDriveResources() {
+        const section = document.getElementById('drive-resources-section');
+        const foldersContainer = document.getElementById('drive-folders-list');
+        const videosContainer = document.getElementById('drive-videos-list');
+
+        if (!section || !foldersContainer || !videosContainer) return;
+
+        if (stagedDriveFolders.length === 0 && stagedDriveVideos.length === 0) {
+            section.classList.add('hidden');
+            foldersContainer.innerHTML = '';
+            videosContainer.innerHTML = '';
+            return;
+        }
+
+        section.classList.remove('hidden');
+
+        // Render folders
+        foldersContainer.innerHTML = stagedDriveFolders.map((item, idx) => `
+            <div class="space-y-1">
+                <label class="block text-xs font-medium text-foreground">
+                    📁 Carpeta en Google Drive (${idx + 1}/5): <span class="font-semibold text-secondary">${escapeHtml(item.name)}</span>
+                </label>
+                <div class="relative flex items-center">
+                    <input
+                        type="url"
+                        disabled
+                        value="${item.url}"
+                        class="w-full rounded-md border border-border bg-muted p-2 pr-9 text-xs text-foreground cursor-not-allowed opacity-90 truncate"
+                    />
+                    <button
+                        type="button"
+                        data-remove-drive="folder-${idx}"
+                        class="absolute right-2 p-1 text-muted-foreground hover:text-destructive transition-colors cursor-pointer"
+                        title="Eliminar carpeta"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        `).join('');
+
+        // Render videos
+        videosContainer.innerHTML = stagedDriveVideos.map((item, idx) => `
+            <div class="space-y-1">
+                <label class="block text-xs font-medium text-foreground">
+                    🎥 Video en Google Drive (${idx + 1}/5): <span class="font-semibold text-secondary">${escapeHtml(item.name)}</span>
+                </label>
+                <div class="relative flex items-center">
+                    <input
+                        type="url"
+                        disabled
+                        value="${item.url}"
+                        class="w-full rounded-md border border-border bg-muted p-2 pr-9 text-xs text-foreground cursor-not-allowed opacity-90 truncate"
+                    />
+                    <button
+                        type="button"
+                        data-remove-drive="video-${idx}"
+                        class="absolute right-2 p-1 text-muted-foreground hover:text-destructive transition-colors cursor-pointer"
+                        title="Eliminar video"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        `).join('');
+
+        // Event listeners for remove buttons
+        section.querySelectorAll('button[data-remove-drive]').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const target = (e.currentTarget as HTMLElement).dataset.removeDrive;
+                if (!target) return;
+                const [type, idxStr] = target.split('-');
+                const index = parseInt(idxStr, 10);
+                if (type === 'folder') {
+                    stagedDriveFolders.splice(index, 1);
+                } else if (type === 'video') {
+                    stagedDriveVideos.splice(index, 1);
+                }
+                renderDriveResources();
+                evaluateUnsavedDataState();
+            });
+        });
+    }
+
+    function buildDriveLinksHtml(): string {
+        const parts: string[] = [];
+
+        if (stagedDriveFolders.length === 1) {
+            parts.push(`📁 Carpeta en Google Drive: <a href="${stagedDriveFolders[0].url}" target="_blank" rel="noopener">${stagedDriveFolders[0].name}</a>`);
+        } else if (stagedDriveFolders.length > 1) {
+            const folderLinks = stagedDriveFolders.map(f => `• <a href="${f.url}" target="_blank" rel="noopener">${f.name}</a>`).join('\n');
+            parts.push(`📁 Carpetas en Google Drive:\n${folderLinks}`);
+        }
+
+        if (stagedDriveVideos.length === 1) {
+            parts.push(`🎥 Video en Google Drive: <a href="${stagedDriveVideos[0].url}" target="_blank" rel="noopener">${stagedDriveVideos[0].name}</a>`);
+        } else if (stagedDriveVideos.length > 1) {
+            const videoLinks = stagedDriveVideos.map(v => `• <a href="${v.url}" target="_blank" rel="noopener">${v.name}</a>`).join('\n');
+            parts.push(`🎥 Videos en Google Drive:\n${videoLinks}`);
+        }
+
+        return parts.join('\n\n');
+    }
+
     function hasUnsavedData(): boolean {
         if (isSubmitting) return false;
         const hasDesc = (descripcionInput?.value.trim().length || 0) > 0;
         const hasFiles = stagedFiles.length > 0;
+        const hasDrive = stagedDriveFolders.length > 0 || stagedDriveVideos.length > 0;
 
-        return hasDesc || hasFiles;
+        return hasDesc || hasFiles || hasDrive;
     }
 
     function evaluateUnsavedDataState() {
@@ -310,6 +475,9 @@ export function initMarketingTicketWizard(marketingCategory: CategoriaNode) {
         if (descripcionInput) descripcionInput.value = '';
         if (afectadoClave) afectadoClave.value = '';
         if (afectadoNombre) afectadoNombre.value = '';
+        stagedDriveFolders = [];
+        stagedDriveVideos = [];
+        renderDriveResources();
         stagedFiles = [];
         if (attachmentArea) attachmentArea.innerHTML = '';
         evaluateUnsavedDataState();
@@ -431,50 +599,62 @@ export function initMarketingTicketWizard(marketingCategory: CategoriaNode) {
     };
 
     const handleAuthClick = () => {
-        if (!GOOGLE_API_KEY || !GOOGLE_CLIENT_ID || !GOOGLE_APP_ID) {
+        if (!GOOGLE_CLIENT_ID || !GOOGLE_APP_ID) {
             toast.error("Faltan credenciales de Google Drive.");
             return;
         }
 
-        if (accessToken) {
-            createPicker();
+        if (!tokenClient) {
+            if (accessToken && pickerInited) {
+                createPicker();
+                return;
+            }
+            toast.error("Google API no está lista aún. Intenta en un momento.");
             return;
         }
 
         tokenClient.callback = async (response: any) => {
             if (response.error !== undefined) {
-                throw response;
+                console.error("GIS Error:", response);
+                if (accessToken) {
+                    createPicker();
+                } else {
+                    toast.error("No se pudo obtener acceso a Google Drive.");
+                }
+                return;
             }
             accessToken = response.access_token;
             createPicker();
         };
 
-        if (accessToken === null) {
-            tokenClient.requestAccessToken({ prompt: "consent" });
-        } else {
-            tokenClient.requestAccessToken({ prompt: "" });
-        }
+        tokenClient.requestAccessToken({ prompt: "" });
     };
 
     const createPicker = () => {
-        if (!pickerInited || (!accessToken && !gisInited)) {
+        if (!pickerInited || !accessToken) {
             toast.error("Google API no está lista aún.");
             return;
         }
 
         const view = new (window as any).google.picker.DocsView();
         view.setIncludeFolders(true);
-        view.setMimeTypes(allowedMimeTypes);
-        view.setSelectFolderEnabled(false);
+        view.setMimeTypes(DRIVE_ALLOWED_MIME_TYPES);
+        view.setSelectFolderEnabled(true);
         view.setParent("root");
+
+        const width = Math.max(320, Math.min(Math.floor(window.innerWidth * 0.9), 1050));
+        const height = Math.max(300, Math.min(Math.floor(window.innerHeight * 0.85), 650));
+        const origin = window.location.protocol + "//" + window.location.host;
 
         const picker = new (window as any).google.picker.PickerBuilder()
             .enableFeature((window as any).google.picker.Feature.NAV_HIDDEN)
             .enableFeature((window as any).google.picker.Feature.MULTISELECT_ENABLED)
             .setAppId(GOOGLE_APP_ID)
             .setOAuthToken(accessToken!)
+            .setOrigin(origin)
             .addView(view)
             .addView(new (window as any).google.picker.DocsUploadView())
+            .setSize(width, height)
             .setCallback(pickerCallback)
             .build();
         picker.setVisible(true);
@@ -484,8 +664,10 @@ export function initMarketingTicketWizard(marketingCategory: CategoriaNode) {
         if (data.action === (window as any).google.picker.Action.PICKED) {
             const documents = data[(window as any).google.picker.Response.DOCUMENTS];
             const newFiles: File[] = [];
+            const agentEmailsRaw = (ticketForm as HTMLElement)?.dataset.agentEmails || '';
+            const agentEmails = agentEmailsRaw.split(',').map((e: string) => e.trim()).filter(Boolean);
 
-            toast.info("Procesando archivos de Drive...");
+            toast.info("Procesando selección de Drive...");
 
             try {
                 for (const doc of documents) {
@@ -493,6 +675,59 @@ export function initMarketingTicketWizard(marketingCategory: CategoriaNode) {
                     const name = doc[(window as any).google.picker.Document.NAME];
                     const mimeType = doc[(window as any).google.picker.Document.MIME_TYPE];
 
+                    // 1. Si se seleccionó una carpeta
+                    if (mimeType === 'application/vnd.google-apps.folder' || doc.type === 'folder') {
+                        const folderUrl = `https://drive.google.com/drive/folders/${fileId}`;
+
+                        if (stagedDriveFolders.some(f => f.id === fileId || f.url === folderUrl)) {
+                            toast.warning(`La carpeta "${name}" ya fue agregada.`);
+                            continue;
+                        }
+
+                        if (stagedDriveFolders.length >= 5) {
+                            toast.error(`Máximo 5 carpetas permitidas.`);
+                            continue;
+                        }
+
+                        await grantDrivePermissions(fileId, agentEmails, accessToken);
+
+                        stagedDriveFolders.push({
+                            id: fileId,
+                            name,
+                            url: folderUrl,
+                            type: 'folder',
+                        });
+                        toast.success(`Carpeta "${name}" agregada.`);
+                        continue;
+                    }
+
+                    // 2. Si se seleccionó un video (mp4, avi, mov, hevc, 3gp, etc.)
+                    if (isVideoMimeType(mimeType, name)) {
+                        const videoUrl = `https://drive.google.com/file/d/${fileId}/view`;
+
+                        if (stagedDriveVideos.some(v => v.id === fileId || v.url === videoUrl)) {
+                            toast.warning(`El video "${name}" ya fue agregado.`);
+                            continue;
+                        }
+
+                        if (stagedDriveVideos.length >= 5) {
+                            toast.error(`Máximo 5 videos permitidos.`);
+                            continue;
+                        }
+
+                        await grantDrivePermissions(fileId, agentEmails, accessToken);
+
+                        stagedDriveVideos.push({
+                            id: fileId,
+                            name,
+                            url: videoUrl,
+                            type: 'video',
+                        });
+                        toast.success(`Video "${name}" agregado.`);
+                        continue;
+                    }
+
+                    // 3. Descarga de archivo individual
                     const response = await fetch(
                         `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
                         {
@@ -515,9 +750,11 @@ export function initMarketingTicketWizard(marketingCategory: CategoriaNode) {
                 if (newFiles.length > 0) {
                     processNewFiles(newFiles);
                 }
+                renderDriveResources();
+                evaluateUnsavedDataState();
             } catch (e) {
                 console.error(e);
-                toast.error("Error al procesar archivos de Drive.");
+                toast.error("Error al procesar elementos de Drive.");
             }
         }
     };
@@ -609,6 +846,13 @@ export function initMarketingTicketWizard(marketingCategory: CategoriaNode) {
         const lastSelectedNode = selection.nodes[selection.nodes.length - 1];
 
         try {
+            // Construir descripción final con enlaces de carpetas y videos de Drive
+            const driveLinksHtml = buildDriveLinksHtml();
+            let finalDescription = descripcionInput.value;
+            if (driveLinksHtml) {
+                finalDescription += `\n\n${driveLinksHtml}`;
+            }
+
             // 1. Create Ticket
             const response = await fetch('/api/tickets/create', {
                 method: 'POST',
@@ -616,7 +860,7 @@ export function initMarketingTicketWizard(marketingCategory: CategoriaNode) {
                 body: JSON.stringify({
                     categoriaId: selection.categoria.id,
                     subcategoriaId: lastSelectedNode?.id || null,
-                    descripcion: descripcionInput.value,
+                    descripcion: finalDescription,
                     afectado_clave: null,
                     afectado_nombre: null,
                 }),

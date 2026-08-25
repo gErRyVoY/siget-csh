@@ -5,28 +5,37 @@
 >
 > **⚠️ REGLA CRÍTICA PARA EL ASISTENTE:** El asistente **NO debe ejecutar `git push`** en ninguna circunstancia a menos que el usuario lo solicite **de forma explícita**. Se permiten `git add` y `git commit` para preparar los cambios, pero el push queda **reservado exclusivamente para cuando el usuario lo indique**.
 
-**Tarea Actual:** Completada — Optimización de SSE Global y Sesión N+1 (2026-08-20) ✅
+**Tarea Actual:** Completada — Deshabilitación de Checkbox Escolarizada y Popover Informativo "Consulta lo que puedes añadir" en Formulario de Traslados (2026-08-24) ✅
 
 **Contexto del Problema:**
-Al navegar entre vistas, la UI se congelaba y era necesario recargar la página. Dos causas raíz identificadas y corregidas:
-1. **Acumulación de EventSource:** `MainLayout.astro`, `index.astro` y `marketing/dashboard.astro` abrían cada uno una conexión SSE independiente. Los navegadores limitan a 6 conexiones HTTP/dominio, por lo que al navegar rápido se llenaban esas 6 conexiones y ninguna petición nueva podía pasar. En los logs se evidenció: `Total clients: 11`.
-2. **Consultas N+1 de Sesión a BD:** En cada navegación, `middleware.ts` y la página destino llamaban `getSession()` de forma independiente, cada uno disparando 6–7 queries SQL con joins de rol, secciones, empresa y permisos.
+1. En la vista `/tickets/soporte/traslado`, se requería bloquear/deshabilitar la edición manual del checkbox "Escolarizada" para que no pueda ser alterado por el usuario, ya que este dato se determina exclusivamente a partir de la carrera y los datos oficiales del alumno.
+2. Se solicitó sustituir la leyenda estática de formatos de archivo por un enlace interactivo `"Consulta lo que puedes añadir ?"`, el cual despliega un popover/ventana emergente informativa flotante sobre el texto detallando:
+   - Archivos adjuntos (jpg, png, webp, pdf, docx, xlsx - máx 5MB).
+   - Google Workspace (Docs, Sheets, Slides).
+   - Videos de Google Drive (.mp4, .avi, .mov, .hevc, .3gp, video/* - máx 5).
+   - Carpetas de Google Drive (máx 5).
 
 **Solución Implementada:**
-- **Fase 1 (SSE):** `MainLayout.astro` emite `CustomEvent('siget:sse-event')` al recibir mensajes SSE. `index.astro` y `marketing/dashboard.astro` eliminaron sus `EventSource` propios y ahora escuchan el bus local del navegador.
-- **Fase 2 (Sesión):** 12 páginas actualizadas para leer `Astro.locals.session` en vez de `await getSession(Astro.request)`, eliminando ~50–70% de queries duplicadas por navegación.
-- **Verificación:** `npx astro check` 0 errores en 157 archivos.
-
-**Estado de Fases:**
-- [x] Fase 1: EventSource Global en MainLayout.astro + CustomEvent bus
-- [x] Fase 2: Reutilizar Astro.locals.session en 12 páginas
-- [x] Fase 3: Verificación y documentación
+- **Fase 1 (Bloqueo de Checkbox Escolarizada):**
+  - Se configuró el checkbox con `disabled` y estilos acordes (`cursor-not-allowed opacity-80`).
+  - En `handleEscolarizadaLogic()`, se preserva `escolarizadaCheckbox.disabled = true` en todas las ramas.
+  - En el submit del formulario, se extrae el valor booleano directamente de `escolarizadaCheckbox.checked` para asegurar que el dato no se pierda al estar deshabilitado.
+- **Fase 2 (Popover Informativo de Formatos Permitidos):**
+  - Se implementó `#format-help-btn` con el texto `"Consulta lo que puedes añadir"` e ícono de interrogación `?`.
+  - Se añadió la tarjeta flotante `#format-help-popover` con diseño responsivo, íconos temáticos y botón de cierre `✖️`.
+  - Se integró el control de interacción: toggle al hacer clic en el botón, cierre al pulsar la `✖️`, cierre automático al hacer clic afuera y con la tecla `Escape`.
+- **Fase 3 (Verificación):** `npx astro check` 0 errores en 157 archivos.
 
 **Pasos Siguientes:**
-1. Prueba manual de navegación por parte del usuario.
-2. Monitoreo de logs del servidor (se debe observar `Total clients: 1–3` en lugar de 11+).
+1. Pruebas funcionales en navegador por parte del usuario.
 
 **Pasos Completados:**
+- ✅ **Deshabilitación de Checkbox Escolarizada y Popover Informativo "Consulta lo que puedes añadir" en Formulario de Traslados (2026-08-24):** Checkbox escolarizada bloqueado en UI con persistencia en submit; popover flotante interactivo con detalle de archivos, Google Workspace, videos y carpetas de Drive. `npx astro check` 0 errores en 157 archivos.
+- ✅ **Mejoras en Formulario de Traslados: Validación y Filtro de Campus Destino y Limpieza de "Escolarizada" al Consultar Alumno (2026-08-24):** Exclusión de campus origen en el dropdown de destino; validación obligatoria de campus diferentes; limpieza automática de sufijo "Escolarizada" en licenciaturas y activación de checkbox `escolarizada`. `npx astro check` 0 errores en 157 archivos.
+- ✅ **Google Drive: Múltiples Carpetas (máx 5) y Videos (mp4, avi, mov, hevc, 3gp - máx 5) con Botón de Eliminar X y Detección de Duplicados (2026-08-24):** Soporte hasta 5 carpetas y 5 videos compartidos sin descarga; toast por duplicados; botón de eliminación X inline; inyección estructurada de hipervínculos HTML al enviar. `npx astro check` 0 errores en 157 archivos.
+- ✅ **Google Drive: Compartición Restringida a Agentes, Input Dedicado para Carpeta y Enlace HTML en Descripción/Comentarios (2026-08-24):** Permisos específicos por email de agentes CSH/Marketing; campo input disabled independiente; inyección de enlace HTML `<a href="...">` en envío de tickets y comentarios. `npx astro check` 0 errores en 157 archivos.
+- ✅ **Integración Global de Google Drive: Sesión Única, Dimensiones Responsivas, Soporte de Carpetas y Permisos Institucionales (2026-08-24):** Token de sesión directo en las 5 vistas; eliminación de prompt de consentimiento; popup responsivo; selección de carpetas con permisos a `@humanitas.edu.mx` e inserción en descripción/comentarios. `npx astro check` 0 errores en 157 archivos.
+- ✅ **Mejoras en Reporte de Incidencias: Validación de Horario, Reordenamiento de Horas y Motivo en Evento (2026-08-24):** Validación previa de horario incompleto/null con toast en submit; reordenamiento de tarjeta de incidencia (Entrada → Comida → Salida); textarea interactivo para opción "Evento" con persistencia en BD, preview y envío de correo. `npx astro check` 0 errores en 157 archivos.
 - ✅ **Optimización de SSE Global y Sesión N+1 (2026-08-20):** Un solo `EventSource` en `MainLayout.astro`; bus `siget:sse-event` para dashboards; 12 páginas migrando a `Astro.locals.session`. `npx astro check` 0 errores en 157 archivos.
 
 - ✅ **Mejora y Reordenamiento de Dashboards Personal y General para Admin/Superadmin (2026-08-20):** Tarjeta "Total asignados" fija en 1° lugar sin enlace, tarjetas de estatus personales mostradas solo si `count >= 1`, enlaces con `assignee`/`atiende`, y reordenamiento estricto de 9 tarjetas en el Tablero General. `npx astro check` 0 errores.

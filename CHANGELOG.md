@@ -8,6 +8,26 @@ Todos los cambios notables en este proyecto serán documentados en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Versionado Semántico](https://semver.org/lang/es/).
 
+## 2026-08-24 (Integración Global de Google Drive, Múltiples Recursos y Mejoras en Traslados e Incidencias)
+
+### Feature & Storage: Integración Google Drive (Múltiples Carpetas y Videos sin Descarga)
+*   **Soporte de Múltiples Carpetas y Videos**: Se amplió la integración con Google Drive para permitir adjuntar hasta 5 carpetas y 5 videos (`.mp4`, `.avi`, `.mov`, `.hevc`, `.3gp`, `video/*`) en `nuevo-ticket-csh.astro`, `nuevo-ticket-marketing.astro`, `traslado.astro` y la vista de detalle `[id].astro`.
+*   **Compartición Restringida a Agentes Asignados**: Los recursos de Drive no se comparten de forma global ni se descargan al servidor; se otorgan permisos de lectura individuales vía Google Drive API únicamente a los correos institucionales de los agentes (`Usuario.mail`) con privilegios `atiende_csh` o `atiende_mkt`.
+*   **Detección de Duplicados y Límites**: Alerta interactiva mediante toasts si un elemento ya fue añadido o si se rebasa el límite de 5 recursos por tipo.
+*   **UI con Botón de Eliminación Inline (`✖️`)**: Cada carpeta o video añadido se renderiza en un contenedor independiente con su botón `✖️` superpuesto para retirarlo y liberar cupo antes del envío.
+*   **Hipervínculos Estructurados**: Al enviar el formulario o guardar un comentario, los recursos se concatenan automáticamente en la descripción como enlaces HTML (`<a href="..." target="_blank" rel="noopener">`).
+
+### UX & Validation: Mejoras en Formulario de Solicitud de Traslados (`/tickets/soporte/traslado`)
+*   **Filtro y Validación de Campus Destino**: El dropdown de `Campus destino` excluye de forma reactiva el campus seleccionado en `Campus origen`. La validación de formulario rechaza el submit con mensaje de error si ambos campus coinciden.
+*   **Limpieza de Carrera y Checkbox Escolarizada**: Al consultar un alumno vía API, se limpia automáticamente el sufijo `" Escolarizada"` o `" Escolarizado"` en licenciaturas para empatar con `carreraOptions`, activando el checkbox `escolarizada` automáticamente.
+*   **Bloqueo de Checkbox Escolarizada**: Se deshabilitó la edición manual del checkbox para evitar alteraciones indebidas, preservando el valor en el payload de envío.
+*   **Popover Informativo de Formatos Permitidos**: Se reemplazó el texto estático de formatos por el botón `"Consulta lo que puedes añadir ❓"` con ventana emergente flotante responsiva detallando archivos, Google Workspace, videos y carpetas de Drive.
+
+### Feature & Validation: Reporte de Incidencias (`/user/perfil/incidencias`)
+*   **Validación de Horario**: Validación previa ante horarios incompletos/nulos en días laborables al intentar guardar incidencias con toast de advertencia.
+*   **Reordenamiento de Tarjeta**: Se reorganizó la vista de la jornada a orden cronológico estándar (Entrada → Comida → Salida).
+*   **Captura de Motivo para "Evento"**: Textarea interactivo para capturar el motivo en inasistencias por evento especial, persistido en base de datos, reporte y correo.
+
 ## 2026-08-20 (Optimización SSE Global y Eliminación de Consultas N+1 de Sesión)
 
 ### Performance: Un Solo EventSource Global (Elimina Bloqueo de UI al Navegar)

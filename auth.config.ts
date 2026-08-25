@@ -13,7 +13,7 @@ export default defineConfig({
       authorization: {
         params: {
           scope:
-            "openid email profile https://www.googleapis.com/auth/admin.directory.user.readonly https://www.googleapis.com/auth/drive.readonly",
+            "openid email profile https://www.googleapis.com/auth/admin.directory.user.readonly https://www.googleapis.com/auth/drive",
           access_type: "offline",
           response_type: "code"
         },

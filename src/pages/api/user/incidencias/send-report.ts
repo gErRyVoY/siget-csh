@@ -131,9 +131,10 @@ function buildCalendarTable(sortedTodos: any[], schedule: any, activeMap: Map<st
             !inc.entrada_turno && !inc.salida_turno && !inc.entrada_comida && !inc.salida_comida;
 
           const obsVal = activeInc ? activeInc.observaciones : null;
+          const isSpecialStr = obsVal && (["Homeoffice", "Vacaciones", "Asueto"].includes(obsVal) || obsVal.startsWith("Evento"));
           const specialLabel =
-            isAllNull && obsVal && ["Homeoffice", "Vacaciones", "Evento", "Asueto"].includes(obsVal)
-              ? (obsVal as string)
+            isAllNull && isSpecialStr
+              ? (obsVal.startsWith("Evento") ? "Evento" : (obsVal as string))
               : null;
 
           let bgColor = colorMap.ok;
@@ -413,8 +414,9 @@ export const POST: APIRoute = async ({ request }) => {
       const isAllNull = !r.entrada_turno && !r.salida_turno && !r.entrada_comida && !r.salida_comida;
 
       const obsVal = saved ? saved.observaciones : null;
-      const specialLabel = (isAllNull && obsVal && ["Homeoffice", "Vacaciones", "Evento", "Asueto"].includes(obsVal))
-        ? obsVal as string
+      const isSpecialStr = obsVal && (["Homeoffice", "Vacaciones", "Asueto"].includes(obsVal) || obsVal.startsWith("Evento"));
+      const specialLabel = (isAllNull && isSpecialStr)
+        ? (obsVal.startsWith("Evento") ? "Evento" : (obsVal as string))
         : null;
 
       const dayLabel = `<strong>${dayName} ${dayNum}.</strong>`;
@@ -424,7 +426,14 @@ export const POST: APIRoute = async ({ request }) => {
       }
 
       if (specialLabel) {
-        const isGrey = specialLabel === "Evento" || specialLabel === "Asueto";
+        if (specialLabel === "Evento") {
+          const motivoEvento = obsVal && obsVal.startsWith("Evento:") ? obsVal.replace(/^Evento:\s*/, "").trim() : (obsVal && obsVal !== "Evento" ? obsVal : null);
+          if (motivoEvento) {
+            return `${dayLabel} <strong style="color:#6b7280;">Evento.</strong> <strong style="color:#111827;">Motivo:</strong> ${motivoEvento}.`;
+          }
+          return `${dayLabel} <strong style="color:#6b7280;">Evento.</strong>`;
+        }
+        const isGrey = specialLabel === "Asueto";
         const spColor = isGrey ? "#6b7280" : "#7c3aed";
         return `${dayLabel} <strong style="color:${spColor};">${specialLabel}.</strong>`;
       }
