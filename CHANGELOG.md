@@ -8,6 +8,24 @@ Todos los cambios notables en este proyecto serán documentados en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Versionado Semántico](https://semver.org/lang/es/).
 
+## 2026-08-25 (Permisos Granulares en Traslados, Autoguardado de Incidencias y Replicación Global de Google Drive)
+
+### UX & Security: Permisos Granulares de Edición en Detalle de Traslados (`/tickets/view/[id]`)
+*   **Restricción de Edición en Campo "Atiende"**: Select bloqueado para administradores cuando el ticket no está asignado a ellos mismos; Superadministrador conserva permisos totales de reasignación.
+*   **Campus Origen Dinámico**: Lógica condicional según `tckt_virtual` y si el origen es Campus Físico o Virtual (dropdown restringido con opciones permitidas).
+*   **Campos de Alumno y Carrera Protegidos**: `Nombre del alumno`, `Carrera` y `Escolarizada` (checkbox) bloqueados contra modificaciones manuales arbitrarias.
+*   **Matrícula Reactiva con Consulta en Tiempo Real**: Al tipear se limpian los datos asociados y al perder foco (`blur`) o presionar `Enter` se consulta la API de alumnos para autocompletar nombre, carrera, estatus escolarizado y filtrar bloques.
+*   **Corrección de Historial Fantasma & Detección de Cambios**: Normalización de valor `bloque_nombre` (`null` vs `"0"`) en backend (`/api/tickets/update.ts`). Se retorna `hasNewHistoryEntry` para mostrar `toast.info("No se detectaron cambios para guardar.")` y evitar añadir `&new_entry=true` cuando no se registraron modificaciones reales.
+
+### Feature & Storage: Replicación de Google Drive y Popover "Consulta lo que puedes añadir"
+*   **Popover Informativo Estandarizado**: Se incorporó el botón flotante `"Consulta lo que puedes añadir"` con modal emergente responsivo detallando límites y formatos (Archivos hasta 5MB, Google Workspace, hasta 5 videos de Drive y hasta 5 carpetas de Drive) en `nuevo-ticket-csh.astro`, `nuevo-ticket-marketing.astro` y la sección de comentarios de `view/[id].astro`.
+*   **Normalización de Inicialización de Drive**: Unificada la carga de librerías mediante `gapi.load('picker', ...)` en `traslado.astro`.
+
+### UX & Data Protection: Autoguardado de Borrador en Reporte de Incidencias (`/user/perfil/incidencias`)
+*   **Persistencia en `localStorage`**: Guardado reactivo en tiempo real de toggles de asistencia, tipo de inasistencia y comentarios por día bajo la clave `siget_incidencias_draft_{userId}_{mes}_{anio}`.
+*   **Modal de Recuperación al Ingresar**: Modal flotante "¿Deseas recuperar los datos insertados anteriormente?" con opciones para restaurar la captura previa o descartarla.
+*   **Limpieza Automática y Alerta de Salida**: Borrador eliminado al guardar/enviar satisfactoriamente y activación de confirmación de salida nativa (`window.beforeunload`).
+
 ## 2026-08-24 (Integración Global de Google Drive, Múltiples Recursos y Mejoras en Traslados e Incidencias)
 
 ### Feature & Storage: Integración Google Drive (Múltiples Carpetas y Videos sin Descarga)

@@ -413,6 +413,15 @@ export function initEditForm() {
             newComment: newComment,
             newFiles: uploadedFileKeys,
             ...Object.fromEntries(formData),
+            // Extract potentially disabled or specific DOM inputs
+            matricula: (document.getElementById('matricula') as HTMLInputElement)?.value?.trim(),
+            alumno: (document.getElementById('alumno') as HTMLInputElement)?.value?.trim(),
+            origenId: (document.getElementById('origenId') as HTMLInputElement)?.value,
+            destinoId: (document.getElementById('destinoId') as HTMLInputElement)?.value,
+            carreraId: (document.getElementById('carreraId') as HTMLInputElement)?.value,
+            bloque_nombre: (() => { const v = (document.getElementById('bloque-sugerido') as HTMLSelectElement)?.value; return (!v || v === '0' || v === 'null') ? null : v; })(),
+            descuentoId: (document.getElementById('descuentoId') as HTMLInputElement)?.value,
+            descuento_nombre: (document.getElementById('descuento-valor') as HTMLInputElement)?.value?.trim(),
             // Checkboxes needing explicit boolean handling
             archivado: (form.elements.namedItem('archivado') as HTMLInputElement)?.checked ?? false,
             nuevo_ingreso: (document.getElementById('nuevo_ingreso') as HTMLInputElement)?.checked ?? false,
@@ -428,12 +437,23 @@ export function initEditForm() {
                 const errorData = await response.json();
                 throw new Error(errorData.message || 'Error al actualizar el ticket');
             }
-            toast.success('Los cambios han sido guardados.');
-            setTimeout(() => {
-                const params = new URLSearchParams(window.location.search);
-                params.set('new_entry', 'true');
-                window.location.assign(`${window.location.pathname}?${params.toString()}`);
-            }, 800);
+            const responseData = await response.json();
+            if (responseData?.hasNewHistoryEntry) {
+                toast.success('Los cambios han sido guardados.');
+                setTimeout(() => {
+                    const params = new URLSearchParams(window.location.search);
+                    params.set('new_entry', 'true');
+                    window.location.assign(`${window.location.pathname}?${params.toString()}`);
+                }, 800);
+            } else {
+                toast.info('No se detectaron cambios para guardar.');
+                setTimeout(() => {
+                    const params = new URLSearchParams(window.location.search);
+                    params.delete('new_entry');
+                    const searchStr = params.toString() ? `?${params.toString()}` : '';
+                    window.location.assign(`${window.location.pathname}${searchStr}`);
+                }, 800);
+            }
         } catch (error) {
             const message = error instanceof Error ? error.message : 'Ocurrió un error desconocido.';
             toast.error(message);
@@ -580,6 +600,38 @@ export function initFileUploads() {
             modal?.classList.add('flex');
         }
     });
+
+    // Popover "Consulta lo que puedes añadir"
+    const formatHelpBtn = document.getElementById('format-help-btn');
+    const formatHelpPopover = document.getElementById('format-help-popover');
+    const formatHelpClose = document.getElementById('format-help-close');
+    if (formatHelpBtn && formatHelpPopover) {
+        formatHelpBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const isHidden = formatHelpPopover.classList.contains('hidden');
+            formatHelpPopover.classList.toggle('hidden', !isHidden);
+            formatHelpBtn.setAttribute('aria-expanded', isHidden ? 'true' : 'false');
+        });
+        if (formatHelpClose) {
+            formatHelpClose.addEventListener('click', (e) => {
+                e.stopPropagation();
+                formatHelpPopover.classList.add('hidden');
+                formatHelpBtn.setAttribute('aria-expanded', 'false');
+            });
+        }
+        document.addEventListener('click', (e) => {
+            if (!formatHelpPopover.contains(e.target as Node) && e.target !== formatHelpBtn) {
+                formatHelpPopover.classList.add('hidden');
+                formatHelpBtn.setAttribute('aria-expanded', 'false');
+            }
+        });
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && !formatHelpPopover.classList.contains('hidden')) {
+                formatHelpPopover.classList.add('hidden');
+                formatHelpBtn.setAttribute('aria-expanded', 'false');
+            }
+        });
+    }
 }
 
 export function initHistoryToggles() {

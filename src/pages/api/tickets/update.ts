@@ -161,7 +161,12 @@ export const PATCH: APIRoute = async ({ request, locals }) => {
             if (carreraId) trasladoUpdateData.carreraId = Number(carreraId);
         }
         if (typeof nuevo_ingreso === 'boolean') trasladoUpdateData.nuevo_ingreso = nuevo_ingreso;
-        if (bloque_nombre !== undefined) trasladoUpdateData.bloque_nombre = (bloque_nombre === null || bloque_nombre === '0') ? null : bloque_nombre;
+        if (bloque_nombre !== undefined) {
+            const normalizedBloque = (bloque_nombre === null || bloque_nombre === '0' || bloque_nombre === 'null' || bloque_nombre === '') ? null : bloque_nombre;
+            if (normalizedBloque !== (oldTraslado?.bloque_nombre ?? null)) {
+                trasladoUpdateData.bloque_nombre = normalizedBloque;
+            }
+        }
         if (bloqueId) trasladoUpdateData.bloqueId = bloqueId === 'null' ? null : Number(bloqueId);
         
         if (descuentoId) {
@@ -212,6 +217,8 @@ export const PATCH: APIRoute = async ({ request, locals }) => {
             (updateData as any).archivos = [...existingArchivos, ...newFiles];
         }
 
+        let hasNewHistory = false;
+
         const updatedTicket = await prisma.$transaction(async (tx) => {
             const ticketAfterUpdate = await tx.ticket.update({
                 where: { id: ticketId },
@@ -258,8 +265,13 @@ export const PATCH: APIRoute = async ({ request, locals }) => {
                 if (nuevo_ingreso !== undefined && nuevo_ingreso !== oldTraslado.nuevo_ingreso)
                     fieldChanges.push({ field: 'nuevo_ingreso', oldValue: oldTraslado.nuevo_ingreso ? 'Si' : 'No', newValue: nuevo_ingreso ? 'Si' : 'No' });
 
-                if (bloque_nombre !== undefined && bloque_nombre !== oldTraslado.bloque_nombre)
-                    fieldChanges.push({ field: 'bloque_nombre', oldValue: oldTraslado.bloque_nombre, newValue: bloque_nombre });
+                if (bloque_nombre !== undefined) {
+                    const normalizedBloque = (bloque_nombre === null || bloque_nombre === '0' || bloque_nombre === 'null' || bloque_nombre === '') ? null : bloque_nombre;
+                    const oldBloque = oldTraslado.bloque_nombre ?? null;
+                    if (normalizedBloque !== oldBloque) {
+                        fieldChanges.push({ field: 'bloque_nombre', oldValue: oldBloque || 'Ninguno', newValue: normalizedBloque || 'Ninguno' });
+                    }
+                }
 
                 // Relations (IDs to Names)
                 if (origenId !== undefined && Number(origenId) !== oldTraslado.origenId) {
@@ -379,6 +391,7 @@ export const PATCH: APIRoute = async ({ request, locals }) => {
             }
 
             if (fieldChanges.length > 0 || newComment || (newFiles && newFiles.length > 0)) {
+                hasNewHistory = true;
                 await tx.historialSolicitud.create({
                     data: {
                         ticketId: ticketId,
@@ -526,7 +539,7 @@ export const PATCH: APIRoute = async ({ request, locals }) => {
             }
         })();
 
-        return new Response(JSON.stringify(updatedTicket), { status: 200 });
+        return new Response(JSON.stringify({ ...updatedTicket, hasNewHistoryEntry: hasNewHistory }), { status: 200 });
 
     } catch (error: any) {
         console.error('Error updating ticket:', error.message, error.stack);

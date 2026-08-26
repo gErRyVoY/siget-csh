@@ -261,13 +261,77 @@ const agentMktEmails = agentsMkt
                                     Crear Ticket
                                 </button>
                             </div>
-                            <p
-                                id="help-text"
-                                class="text-xs text-secondary text-right w-full mt-1"
-                            >
-                                * Máximo 5MB cada uno. Formatos permitidos: jpg,
-                                png, pdf, docx, xlsx, zip, mp4
-                            </p>
+                            <div class="relative flex items-center justify-end w-full mt-1">
+                                <button
+                                    type="button"
+                                    id="format-help-btn"
+                                    class="text-xs text-primary hover:text-primary/80 font-medium underline underline-offset-2 flex items-center gap-1 cursor-pointer transition-colors"
+                                    aria-haspopup="dialog"
+                                    aria-expanded="false"
+                                >
+                                    <span>Consulta lo que puedes añadir</span>
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 inline-block text-secondary shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <circle cx="12" cy="12" r="10"></circle>
+                                        <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+                                        <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                                    </svg>
+                                </button>
+
+                                <!-- Popover informativo flotante -->
+                                <div
+                                    id="format-help-popover"
+                                    class="hidden absolute bottom-full right-0 mb-2 w-80 max-w-[90vw] p-4 bg-popover text-popover-foreground rounded-lg border border-border shadow-xl z-50 text-xs animate-in fade-in zoom-in-95 duration-150"
+                                >
+                                    <div class="flex items-center justify-between pb-2 mb-2 border-b border-border font-semibold text-foreground">
+                                        <div class="flex items-center gap-1.5">
+                                            <span class="text-base">📎</span>
+                                            <span>Elementos permitidos</span>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            id="format-help-close"
+                                            class="text-muted-foreground hover:text-foreground p-0.5 rounded transition-colors cursor-pointer"
+                                            title="Cerrar"
+                                        >
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                <line x1="18" y1="6" x2="6" y2="18"></line>
+                                                <line x1="6" y1="6" x2="18" y2="18"></line>
+                                            </svg>
+                                        </button>
+                                    </div>
+
+                                    <ul class="space-y-2.5 text-muted-foreground">
+                                        <li class="flex items-start gap-2">
+                                            <span class="text-primary font-bold">📄</span>
+                                            <div>
+                                                <strong class="text-foreground">Archivos adjuntos:</strong>
+                                                <p class="text-[11px] leading-tight mt-0.5">JPG, PNG, WEBP, PDF, DOCX, XLSX (máximo 5MB por archivo).</p>
+                                            </div>
+                                        </li>
+                                        <li class="flex items-start gap-2">
+                                            <span class="text-primary font-bold">📑</span>
+                                            <div>
+                                                <strong class="text-foreground">Google Workspace:</strong>
+                                                <p class="text-[11px] leading-tight mt-0.5">Documentos, Hojas de cálculo y Presentaciones de Google Drive.</p>
+                                            </div>
+                                        </li>
+                                        <li class="flex items-start gap-2">
+                                            <span class="text-primary font-bold">🎥</span>
+                                            <div>
+                                                <strong class="text-foreground">Videos (Google Drive):</strong>
+                                                <p class="text-[11px] leading-tight mt-0.5">.mp4, .avi, .mov, .hevc, .3gp y video/* (compartición hasta 5 videos).</p>
+                                            </div>
+                                        </li>
+                                        <li class="flex items-start gap-2">
+                                            <span class="text-primary font-bold">📁</span>
+                                            <div>
+                                                <strong class="text-foreground">Carpetas (Google Drive):</strong>
+                                                <p class="text-[11px] leading-tight mt-0.5">Selección y compartición directa de hasta 5 carpetas de Drive.</p>
+                                            </div>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -338,3 +402,39 @@ const agentMktEmails = agentsMkt
 </MainLayout>
 
 <script src="../../../scripts/init-nuevo-ticket-marketing.ts"></script>
+
+<script is:inline>
+  // Popover "Consulta lo que puedes añadir"
+  document.addEventListener('astro:page-load', () => {
+    const formatHelpBtn = document.getElementById('format-help-btn');
+    const formatHelpPopover = document.getElementById('format-help-popover');
+    const formatHelpClose = document.getElementById('format-help-close');
+    if (formatHelpBtn && formatHelpPopover) {
+      formatHelpBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const isHidden = formatHelpPopover.classList.contains('hidden');
+        formatHelpPopover.classList.toggle('hidden', !isHidden);
+        formatHelpBtn.setAttribute('aria-expanded', isHidden ? 'true' : 'false');
+      });
+      if (formatHelpClose) {
+        formatHelpClose.addEventListener('click', (e) => {
+          e.stopPropagation();
+          formatHelpPopover.classList.add('hidden');
+          formatHelpBtn.setAttribute('aria-expanded', 'false');
+        });
+      }
+      document.addEventListener('click', (e) => {
+        if (!formatHelpPopover.contains(e.target) && e.target !== formatHelpBtn) {
+          formatHelpPopover.classList.add('hidden');
+          formatHelpBtn.setAttribute('aria-expanded', 'false');
+        }
+      });
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && !formatHelpPopover.classList.contains('hidden')) {
+          formatHelpPopover.classList.add('hidden');
+          formatHelpBtn.setAttribute('aria-expanded', 'false');
+        }
+      });
+    }
+  });
+</script>

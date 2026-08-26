@@ -1215,10 +1215,7 @@ const agentCshTraslEmail = agentsCshTraslado
                 script1.async = true;
                 script1.defer = true;
                 script1.onload = () => {
-                    window.gapi.load("client:picker", async () => {
-                        await window.gapi.client.load(
-                            "https://www.googleapis.com/discovery/v1/apis/drive/v3/rest",
-                        );
+                    window.gapi.load("picker", () => {
                         pickerInited = true;
                     });
                 };

@@ -5,31 +5,47 @@
 >
 > **⚠️ REGLA CRÍTICA PARA EL ASISTENTE:** El asistente **NO debe ejecutar `git push`** en ninguna circunstancia a menos que el usuario lo solicite **de forma explícita**. Se permiten `git add` y `git commit` para preparar los cambios, pero el push queda **reservado exclusivamente para cuando el usuario lo indique**.
 
-**Tarea Actual:** Completada — Deshabilitación de Checkbox Escolarizada y Popover Informativo "Consulta lo que puedes añadir" en Formulario de Traslados (2026-08-24) ✅
-
-**Contexto del Problema:**
-1. En la vista `/tickets/soporte/traslado`, se requería bloquear/deshabilitar la edición manual del checkbox "Escolarizada" para que no pueda ser alterado por el usuario, ya que este dato se determina exclusivamente a partir de la carrera y los datos oficiales del alumno.
-2. Se solicitó sustituir la leyenda estática de formatos de archivo por un enlace interactivo `"Consulta lo que puedes añadir ?"`, el cual despliega un popover/ventana emergente informativa flotante sobre el texto detallando:
-   - Archivos adjuntos (jpg, png, webp, pdf, docx, xlsx - máx 5MB).
-   - Google Workspace (Docs, Sheets, Slides).
-   - Videos de Google Drive (.mp4, .avi, .mov, .hevc, .3gp, video/* - máx 5).
-   - Carpetas de Google Drive (máx 5).
-
-**Solución Implementada:**
-- **Fase 1 (Bloqueo de Checkbox Escolarizada):**
-  - Se configuró el checkbox con `disabled` y estilos acordes (`cursor-not-allowed opacity-80`).
-  - En `handleEscolarizadaLogic()`, se preserva `escolarizadaCheckbox.disabled = true` en todas las ramas.
-  - En el submit del formulario, se extrae el valor booleano directamente de `escolarizadaCheckbox.checked` para asegurar que el dato no se pierda al estar deshabilitado.
-- **Fase 2 (Popover Informativo de Formatos Permitidos):**
-  - Se implementó `#format-help-btn` con el texto `"Consulta lo que puedes añadir"` e ícono de interrogación `?`.
-  - Se añadió la tarjeta flotante `#format-help-popover` con diseño responsivo, íconos temáticos y botón de cierre `✖️`.
-  - Se integró el control de interacción: toggle al hacer clic en el botón, cierre al pulsar la `✖️`, cierre automático al hacer clic afuera y con la tecla `Escape`.
-- **Fase 3 (Verificación):** `npx astro check` 0 errores en 157 archivos.
+**Tarea Actual:** Completada — Replicación de Google Drive y Popover "Consulta lo que puedes añadir" en todas las vistas de tickets (2026-08-25) ✅
 
 **Pasos Siguientes:**
 1. Pruebas funcionales en navegador por parte del usuario.
 
 **Pasos Completados:**
+- ✅ **Replicación de Google Drive y Popover "Consulta lo que puedes añadir" (2026-08-25):** Estandarizada la integración de Google Drive (token de sesión directo, carpetas hasta 5, videos hasta 5, permisos automáticos por área de ticket) y agregado el popover informativo interactivo "Consulta lo que puedes añadir" en `nuevo-ticket-csh.astro`, `nuevo-ticket-marketing.astro` y `view/[id].astro` (comentarios). Normalizada la inicialización de Google Drive en `traslado.astro` (`gapi.load('picker')`). `npx astro check` 0 errores en 157 archivos.
+- ✅ **Autoguardado de Borrador y Modal de Recuperación en `/user/perfil/incidencias` (2026-08-25):** Sistema `localStorage` con clave `siget_incidencias_draft_{userId}_{mes}_{anio}`. Guarda toggles, selects de tipo de inasistencia y textareas en tiempo real. Al entrar a la vista, si existe borrador, se muestra modal "Borrador sin guardar encontrado" con el periodo guardado y botones "Sí, recuperar" / "No, descartar". Al recuperar: se consulta el periodo automáticamente y se restauran todos los campos. Al guardar o enviar exitosamente: se limpia el borrador y `clearDirty()`. `window.beforeunload` activa alerta nativa si hay cambios sin guardar. `npx astro check` 0 errores en 157 archivos.
+- ✅ **Permisos Granulares de Edición en Detalle de Traslados, Autocompletado de Alumno por Matrícula y Corrección de Historial Fantasma (2026-08-25):** Atiende deshabilitado para admins no asignados; campus origen dinámico según `tckt_virtual`; alumno, carrera y escolarizada deshabilitados; matrícula reactiva con consulta a la API de alumnos; normalización de bloque y respuesta limpia con `hasNewHistoryEntry`. `npx astro check` 0 errores en 157 archivos.
+
+1. Al intentar modificar un ticket no asignado desde `/tickets/view/[id]`, se registraban cambios fantasma en el historial (`Bloque : 'null' → '0'`), se emitía un toast de éxito indebido y se agregaba `&new_entry=true` en la URL sin haber cambios reales.
+2. Faltaban reglas de edición granular para Administradores y Superadministradores en los campos de Traslado:
+   - Restricción de edición del campo "Atiende" para administradores que no tienen asignado el ticket.
+   - Restricciones dinámicas en Campus Origen según `tckt_virtual` y si el origen es Virtual o Campus Físico.
+   - Campos `Nombre del alumno`, `Carrera` y `Escolarizada` (checkbox) bloqueados/deshabilitados.
+   - Campo `Matrícula` editable con autocompletado en tiempo real vía API de alumnos (`blur`/`Enter`) y limpieza reactiva al tipear (`input`).
+3. Detección precisa de cambios reales en el backend para emitir `toast.info("No se detectaron cambios para guardar.")` o `toast.success("Ticket actualizado correctamente")` y omitir `&new_entry=true` cuando no se generó nueva entrada de historial.
+
+**Solución Implementada:**
+- **Fase 1 (Backend - `src/pages/api/tickets/update.ts`):**
+  - Normalización estricta de `bloque_nombre`: valores como `""`, `"0"`, `"null"` se traducen a `null`, evitando discrepancias falsas contra `oldTraslado.bloque_nombre`.
+  - Bandera `hasNewHistoryEntry`: el backend retorna un flag booleano indicando si efectivamente se creó una entrada en `HistorialSolicitud`.
+- **Fase 2 (Frontend Global - `src/scripts/ticket-view-logic.ts`):**
+  - En `initEditForm()`, extracción y envío explícito de campos (incluyendo deshabilitados en el DOM).
+  - Manejo condicional de toasts y URL: si `hasNewHistoryEntry === true` se muestra `toast.success` y se incluye `&new_entry=true`; si es `false` se muestra `toast.info` y se limpia `new_entry`.
+- **Fase 3 (Detalle de Traslados - `src/pages/tickets/view/[id].astro`):**
+  - **Campus Origen Dinámico:**
+    - Si origen $\neq$ Virtual y `!tckt_virtual`: input de solo lectura deshabilitado.
+    - Si origen $\neq$ Virtual y `tckt_virtual`: `<select>` con opciones `[Campus actual, "Virtual"]`.
+    - Si origen $=$ Virtual: `<select>` con `"Virtual"` y todos los campus con `tckt_virtual: true`.
+  - **Atiende Bloqueado:** `<select id="atiendeId">` condicionado con `disabled={!canEditAtiende}`.
+  - **Alumno, Carrera y Escolarizada Bloqueados:** Inputs `disabled` con estilos muted/cursor-not-allowed.
+  - **Matrícula Reactiva y Autocompletado:** Al tipear (`input`), se limpian los campos del alumno, carrera y checkbox escolarizado. Al perder foco (`blur`) o presionar `Enter`, se consulta la API de alumnos para rellenar nombre, carrera oficial, resolver `carreraId`, activar/desactivar `escolarizada` y filtrar bloques permitidos.
+  - **Guardado y Persistencia:** Envío de payload completo con `hasNewHistoryEntry` verificado para feedback inmediato al usuario.
+- **Fase 4 (Verificación):** `npx astro check` 0 errores en 157 archivos.
+
+**Pasos Siguientes:**
+1. Pruebas funcionales en navegador por parte del usuario.
+
+**Pasos Completados:**
+- ✅ **Permisos Granulares de Edición en Detalle de Traslados, Autocompletado de Alumno por Matrícula y Corrección de Historial Fantasma (2026-08-25):** Atiende deshabilitado para admins no asignados; campus origen dinámico según `tckt_virtual`; alumno, carrera y escolarizada deshabilitados; matrícula reactiva con consulta a la API de alumnos; normalización de bloque y respuesta limpia con `hasNewHistoryEntry`. `npx astro check` 0 errores en 157 archivos.
 - ✅ **Deshabilitación de Checkbox Escolarizada y Popover Informativo "Consulta lo que puedes añadir" en Formulario de Traslados (2026-08-24):** Checkbox escolarizada bloqueado en UI con persistencia en submit; popover flotante interactivo con detalle de archivos, Google Workspace, videos y carpetas de Drive. `npx astro check` 0 errores en 157 archivos.
 - ✅ **Mejoras en Formulario de Traslados: Validación y Filtro de Campus Destino y Limpieza de "Escolarizada" al Consultar Alumno (2026-08-24):** Exclusión de campus origen en el dropdown de destino; validación obligatoria de campus diferentes; limpieza automática de sufijo "Escolarizada" en licenciaturas y activación de checkbox `escolarizada`. `npx astro check` 0 errores en 157 archivos.
 - ✅ **Google Drive: Múltiples Carpetas (máx 5) y Videos (mp4, avi, mov, hevc, 3gp - máx 5) con Botón de Eliminar X y Detección de Duplicados (2026-08-24):** Soporte hasta 5 carpetas y 5 videos compartidos sin descarga; toast por duplicados; botón de eliminación X inline; inyección estructurada de hipervínculos HTML al enviar. `npx astro check` 0 errores en 157 archivos.

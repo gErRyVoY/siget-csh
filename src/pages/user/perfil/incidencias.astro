@@ -76,6 +76,7 @@ const GOOGLE_APP_ID = import.meta.env.GOOGLE_APP_ID || process.env.GOOGLE_APP_ID
       data-google-api-key={GOOGLE_API_KEY}
       data-google-client-id={GOOGLE_CLIENT_ID}
       data-google-app-id={GOOGLE_APP_ID}
+      data-user-id={userId}
     >
       <form
         id="consultar-form"
@@ -268,6 +269,42 @@ const GOOGLE_APP_ID = import.meta.env.GOOGLE_APP_ID || process.env.GOOGLE_APP_ID
       </div>
     </div>
   </div>
+
+  <!-- Modal de Recuperación de Borrador -->
+  <div id="restore-draft-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] items-center justify-center p-4 hidden">
+    <div class="bg-card text-card-foreground border border-muted-foreground/30 rounded-lg max-w-md w-full shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+      <!-- Header -->
+      <div class="px-6 py-4 border-b border-border flex items-center gap-3">
+        <div class="flex items-center justify-center w-10 h-10 rounded-full bg-secondary/20 text-secondary shrink-0">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        </div>
+        <div>
+          <h3 class="text-base font-bold text-foreground">Borrador sin guardar encontrado</h3>
+          <p class="text-xs text-muted-foreground mt-0.5" id="restore-draft-subtitle">Se encontraron datos no guardados del periodo anterior.</p>
+        </div>
+      </div>
+      <!-- Body -->
+      <div class="p-6 space-y-3">
+        <p class="text-sm text-foreground">
+          ¿Deseas recuperar los datos insertados anteriormente?
+        </p>
+        <p class="text-xs text-muted-foreground">
+          Si recuperas el borrador, se consultará automáticamente el periodo guardado y se restaurarán los campos que habías llenado.
+        </p>
+      </div>
+      <!-- Footer -->
+      <div class="px-6 py-4 border-t border-border bg-muted/30 flex justify-end gap-3">
+        <button type="button" id="restore-draft-discard" class="bg-input border border-border hover:bg-muted text-foreground py-2 px-4 rounded-md text-sm font-semibold transition-colors cursor-pointer">
+          No, descartar
+        </button>
+        <button type="button" id="restore-draft-confirm" class="bg-secondary text-secondary-foreground hover:bg-secondary/90 py-2 px-4 rounded-md text-sm font-semibold transition-colors cursor-pointer">
+          Sí, recuperar datos
+        </button>
+      </div>
+    </div>
+  </div>
 </MainLayout>
 
 <script>
@@ -294,6 +331,186 @@ const GOOGLE_APP_ID = import.meta.env.GOOGLE_APP_ID || process.env.GOOGLE_APP_ID
       "guardar-container-top",
     );
     const btnsGuardar = document.querySelectorAll(".btn-guardar-incidencias");
+
+    // --- DRAFT AUTOSAVE SYSTEM ---
+    const userId = container.dataset.userId || "unknown";
+    const DRAFT_KEY_PREFIX = `siget_incidencias_draft_${userId}`;
+
+    function getDraftKey(mes: string | number, anio: string | number) {
+      return `${DRAFT_KEY_PREFIX}_${mes}_${anio}`;
+    }
+
+    function saveDraft() {
+      const mesEl = document.getElementById("mes") as HTMLSelectElement;
+      const anioEl = document.getElementById("anio") as HTMLSelectElement;
+      if (!mesEl || !anioEl) return;
+      const mes = mesEl.value;
+      const anio = anioEl.value;
+      if (!mes || !anio) return;
+
+      const fields: Record<string, any> = {};
+
+      document.querySelectorAll(".incidencia-toggle").forEach((el) => {
+        const t = el as HTMLInputElement;
+        const idx = t.dataset.index;
+        if (idx === undefined) return;
+        if (!fields[idx]) fields[idx] = {};
+        fields[idx].toggleChecked = t.checked;
+      });
+
+      document.querySelectorAll(".incidencia-tipo-select").forEach((el) => {
+        const s = el as HTMLSelectElement;
+        const idx = s.dataset.index;
+        if (idx === undefined) return;
+        if (!fields[idx]) fields[idx] = {};
+        fields[idx].tipoInasistencia = s.value;
+      });
+
+      document.querySelectorAll("textarea[id^='obs-']").forEach((el) => {
+        const ta = el as HTMLTextAreaElement;
+        const rawId = ta.id;
+        const comidaMatch = rawId.match(/^obs-comida-(\d+)$/);
+        const turnoMatch = rawId.match(/^obs-(\d+)$/);
+        if (comidaMatch) {
+          const idx = comidaMatch[1];
+          if (!fields[idx]) fields[idx] = {};
+          fields[idx].obsComida = ta.value;
+        } else if (turnoMatch) {
+          const idx = turnoMatch[1];
+          if (!fields[idx]) fields[idx] = {};
+          fields[idx].obs = ta.value;
+        }
+      });
+
+      if (Object.keys(fields).length === 0) return;
+
+      const draft = { mes, anio, fields, savedAt: Date.now() };
+      try {
+        localStorage.setItem(getDraftKey(mes, anio), JSON.stringify(draft));
+      } catch (e) {
+        // localStorage not available
+      }
+    }
+
+    function clearDraft(mes?: string, anio?: string) {
+      if (mes && anio) {
+        localStorage.removeItem(getDraftKey(mes, anio));
+      } else {
+        // Clear all drafts for this user
+        Object.keys(localStorage).filter(k => k.startsWith(DRAFT_KEY_PREFIX)).forEach(k => localStorage.removeItem(k));
+      }
+    }
+
+    function findLatestDraft() {
+      let latest: any = null;
+      Object.keys(localStorage).filter(k => k.startsWith(DRAFT_KEY_PREFIX)).forEach(k => {
+        try {
+          const d = JSON.parse(localStorage.getItem(k) || "");
+          if (!latest || d.savedAt > latest.savedAt) latest = d;
+        } catch (e) {}
+      });
+      return latest;
+    }
+
+    function attachDraftListeners() {
+      document.querySelectorAll(".incidencia-toggle, .incidencia-tipo-select").forEach(el => {
+        el.addEventListener("change", saveDraft);
+      });
+      document.querySelectorAll("textarea[id^='obs-']").forEach(el => {
+        el.addEventListener("input", saveDraft);
+      });
+    }
+
+    function applyDraft(draft: any) {
+      const { fields } = draft;
+      Object.keys(fields).forEach(idx => {
+        const f = fields[idx];
+
+        const toggleEl = document.getElementById(`toggle-${idx}`) as HTMLInputElement;
+        if (toggleEl && f.toggleChecked !== undefined) {
+          toggleEl.checked = f.toggleChecked;
+          toggleEl.dispatchEvent(new Event("change"));
+        }
+
+        const selEl = document.getElementById(`tipo-inasistencia-${idx}`) as HTMLSelectElement;
+        if (selEl && f.tipoInasistencia !== undefined) {
+          selEl.value = f.tipoInasistencia;
+          selEl.dispatchEvent(new Event("change"));
+        }
+
+        const obsEl = document.getElementById(`obs-${idx}`) as HTMLTextAreaElement;
+        if (obsEl && f.obs !== undefined) {
+          obsEl.value = f.obs;
+        }
+
+        const obsComidaEl = document.getElementById(`obs-comida-${idx}`) as HTMLTextAreaElement;
+        if (obsComidaEl && f.obsComida !== undefined) {
+          obsComidaEl.value = f.obsComida;
+        }
+      });
+    }
+
+    // Check for existing draft on page load
+    const existingDraft = findLatestDraft();
+    const restoreModal = document.getElementById("restore-draft-modal");
+    const restoreSubtitle = document.getElementById("restore-draft-subtitle");
+    const restoreConfirmBtn = document.getElementById("restore-draft-confirm") as HTMLButtonElement;
+    const restoreDiscardBtn = document.getElementById("restore-draft-discard") as HTMLButtonElement;
+
+    if (existingDraft && restoreModal) {
+      const mesesNombres = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+      const mesName = mesesNombres[parseInt(existingDraft.mes, 10) - 1] || existingDraft.mes;
+      if (restoreSubtitle) restoreSubtitle.textContent = `Datos no guardados del periodo: ${mesName} ${existingDraft.anio}.`;
+
+      restoreModal.classList.remove("hidden");
+      restoreModal.classList.add("flex");
+
+      restoreConfirmBtn?.addEventListener("click", async () => {
+        restoreModal.classList.add("hidden");
+        restoreModal.classList.remove("flex");
+
+        // Pre-select mes/anio in the form
+        const mesEl = document.getElementById("mes") as HTMLSelectElement;
+        const anioEl = document.getElementById("anio") as HTMLSelectElement;
+        if (mesEl) mesEl.value = existingDraft.mes;
+        if (anioEl) anioEl.value = existingDraft.anio;
+
+        // Trigger consultation
+        form?.dispatchEvent(new Event("submit", { cancelable: true, bubbles: true }));
+
+        // After render, apply draft fields
+        await new Promise(r => setTimeout(r, 1500));
+        applyDraft(existingDraft);
+        attachDraftListeners();
+        toast.info("Borrador recuperado. Revisa los campos y guarda cuando estés listo.");
+      });
+
+      restoreDiscardBtn?.addEventListener("click", () => {
+        clearDraft();
+        restoreModal.classList.add("hidden");
+        restoreModal.classList.remove("flex");
+      });
+    }
+
+    // Prevención de pérdida al navegar (Astro + browser)
+    let hasDraftChanges = false;
+
+    function markDirty() {
+      hasDraftChanges = true;
+      saveDraft();
+    }
+
+    function clearDirty() {
+      hasDraftChanges = false;
+    }
+
+    window.addEventListener("beforeunload", (e) => {
+      if (hasDraftChanges) {
+        e.preventDefault();
+      }
+    });
+
+    // END DRAFT AUTOSAVE SYSTEM ---
     const btnsEnviarReporte = document.querySelectorAll(".btn-enviar-reporte");
     const btnsVerTabla = document.querySelectorAll(".btn-ver-tabla");
     const btnsPreviewReporte = document.querySelectorAll(".btn-preview-reporte");
@@ -1036,6 +1253,15 @@ const GOOGLE_APP_ID = import.meta.env.GOOGLE_APP_ID || process.env.GOOGLE_APP_ID
 
             b.style.display = "none";
           });
+        });
+
+        // Attach draft autosave listeners after render
+        attachDraftListeners();
+        document.querySelectorAll(".incidencia-toggle, .incidencia-tipo-select").forEach(el => {
+          el.addEventListener("change", markDirty);
+        });
+        document.querySelectorAll("textarea[id^='obs-']").forEach(el => {
+          el.addEventListener("input", markDirty);
         });
       }
     }
@@ -1867,6 +2093,10 @@ const GOOGLE_APP_ID = import.meta.env.GOOGLE_APP_ID || process.env.GOOGLE_APP_ID
         }
 
         toast.success("Reporte enviado exitosamente.");
+        const _sendMes = (document.getElementById("mes") as HTMLSelectElement)?.value;
+        const _sendAnio = (document.getElementById("anio") as HTMLSelectElement)?.value;
+        if (_sendMes && _sendAnio) clearDraft(_sendMes, _sendAnio);
+        clearDirty();
         closeModal();
         setTimeout(() => {
           window.location.reload();
@@ -1990,6 +2220,10 @@ const GOOGLE_APP_ID = import.meta.env.GOOGLE_APP_ID || process.env.GOOGLE_APP_ID
           }
 
           toast.success("Incidencias guardadas correctamente.");
+          const _savedMes = (document.getElementById("mes") as HTMLSelectElement)?.value;
+          const _savedAnio = (document.getElementById("anio") as HTMLSelectElement)?.value;
+          if (_savedMes && _savedAnio) clearDraft(_savedMes, _savedAnio);
+          clearDirty();
           setTimeout(() => {
             window.location.reload();
           }, 1500);
