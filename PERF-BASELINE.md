@@ -17,6 +17,52 @@ Medido con `pnpm perf:baseline` contra `astro dev` y la BD de desarrollo
 | `/api/notifications/count` | 200 | 16 | 994 | 1028 |
 | `/tickets/view/23` | 200 | 29 | 1804 | 1874 |
 
+## Fase 1 — después de los quick wins (1.1 – 1.8)
+
+| Ruta | Fase 0 | Fase 1 | Δ |
+|---|---|---|---|
+| `/health` (con cookie) | 7 | 1 | −86 % |
+| `/health` (sin cookie) | 0 | 0 | — |
+| `/` | 17 | 10 | −41 % |
+| `/tickets/soporte` | 20 | 13 | −35 % |
+| `/tickets/soporte/usuario` | 14 | 7 | −50 % |
+| `/tickets/marketing` | 19 | 12 | −37 % |
+| `/api/notifications/count` | 16 | 3 | **−81 %** |
+| `/tickets/view/23` | 29 | 22 | −24 % |
+
+De dónde sale cada reducción:
+
+- **−6 sentencias en toda petición** (1.2): el micro-caché de 15 s de la
+  consulta de usuario de la sesión. En caché sólo queda el `select
+  session_version`, que no se cachea nunca para no romper la revocación de
+  sesiones.
+- **−1 sentencia adicional en las rutas de API** (1.3): desaparece la segunda
+  resolución completa de la sesión. Es donde el conteo de SQL infravalora la
+  mejora: lo que también se ahorra en cada llamada es el descifrado del JWE,
+  los callbacks `jwt`/`session` y un round-trip JSON, que no son SQL.
+- **−1 sentencia en toda página** (1.7): el flag `feature_dark_mode` cacheado
+  60 s.
+- Sin efecto en el conteo, sí en el coste: 1.8 (`count` → `findFirst` en el
+  Sidebar) y 1.1 (log de Prisma sólo fuera de producción).
+
+Las rutas POST (`/api/tickets/create`, `/update`, `/transfer`) no aparecen en
+la tabla porque el arnés sólo hace GET, pero son las que más ganan con 1.3:
+antes pagaban la resolución de sesión **dos** veces.
+
+### Arranque en frío (1.6)
+
+`import { google } from "googleapis"` → `@googleapis/admin`, medido con
+`require()` directo del paquete:
+
+| | Carga del módulo | Tamaño en disco |
+|---|---|---|
+| `googleapis` 154.1.0 | 3394 ms | 180 MB |
+| `@googleapis/admin` 32.1.0 | 223 ms | 2.3 MB |
+
+Son ~3.2 s menos de arranque por instancia nueva de App Runner. El número
+local puede estar amplificado (Windows, antivirus sobre `node_modules`), pero
+la proporción y el ahorro de imagen en ECR no dependen de eso.
+
 ## Cómo leer estas cifras
 
 - **Sentencias SQL** es la métrica que vale para comparar fases. Es el número real
@@ -58,3 +104,10 @@ PRISMA_QUERY_LOG=off pnpm dev
 # porque el stream SSE y el sondeo de notificaciones inflan los contadores)
 pnpm perf:baseline -- --runs 4
 ```
+
+**Si todas las columnas de SQL salen a 0, la instrumentación está rota, no es
+un resultado.** Ocurre cuando el HMR de Vite recarga `src/lib/db.ts` —por
+ejemplo al añadir un módulo nuevo— pero `globalThis.prisma` conserva el cliente
+anterior: su listener `$on('query')` escribe en la instancia previa del módulo
+`src/lib/perf.ts`, mientras que el middleware lee los contadores de la nueva.
+Se arregla reiniciando el servidor de desarrollo.
