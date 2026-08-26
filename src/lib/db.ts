@@ -15,8 +15,12 @@ const globalForPrisma = globalThis as unknown as {
 
 function createPrismaClient(): PrismaClientType {
   if (process.env.NODE_ENV === 'production') {
+    // En producción no se registra `query`: con ~20 sentencias por render, cada
+    // página serializaba y escribía 20 líneas a stdout (CPU en una instancia de
+    // 1 vCPU y coste de CloudWatch), además de volcar datos personales
+    // —correos, matrículas, nombres— a los registros.
     return new PrismaClient({
-      log: ['query', 'info', 'warn', 'error'],
+      log: ['warn', 'error'],
     });
   }
 

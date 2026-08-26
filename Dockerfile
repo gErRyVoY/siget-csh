@@ -54,6 +54,10 @@ COPY --from=builder /app/dist ./dist
 ENV HOST=0.0.0.0
 ENV PORT=4321
 
+# Sin esto, src/lib/db.ts no puede distinguir producción y seguiría registrando
+# cada sentencia SQL en CloudWatch.
+ENV NODE_ENV=production
+
 # Exponer el puerto que Astro usa por defecto en producción.
 EXPOSE 4321
 
