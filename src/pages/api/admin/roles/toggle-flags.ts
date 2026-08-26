@@ -1,5 +1,6 @@
 import type { APIRoute } from "astro";
 import { prisma } from "@/lib/db";
+import { invalidateAllSessionUsers } from "@/lib/session-cache";
 import { getSession } from "auth-astro/server";
 
 // PATCH /api/admin/roles/toggle-flags
@@ -40,6 +41,9 @@ export const PATCH: APIRoute = async ({ request }) => {
         },
       });
     });
+
+    // Los flags del rol viajan en la sesión (atiende_csh, administrador, ...).
+    invalidateAllSessionUsers();
 
     return new Response(JSON.stringify({ message: "Flag actualizado" }), { status: 200 });
   } catch (error: any) {

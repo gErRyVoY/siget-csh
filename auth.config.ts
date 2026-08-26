@@ -2,6 +2,7 @@ import { defineConfig } from "auth-astro";
 import Google from "@auth/core/providers/google";
 import { google } from "googleapis";
 import { prisma } from "./src/lib/db";
+import { getSessionUser, invalidateSessionUser } from "./src/lib/session-cache";
 import type { Rol, Empresa, Permiso } from "@prisma/client";
 import type { DefaultSession } from "@auth/core/types";
 
@@ -244,6 +245,10 @@ export default defineConfig({
           });
         }
 
+        // El signIn acaba de crear o actualizar la fila del usuario; cualquier
+        // entrada previa del caché quedó obsoleta.
+        invalidateSessionUser(profile.email);
+
         return true;
 
       } catch (error) {
@@ -258,30 +263,14 @@ export default defineConfig({
       }
 
       if (token.email) {
-        // Query único con joins para mantener en tiempo real todos los datos, permisos y secciones.
-        // Esto permite que los cambios desde /admin/secciones se reflejen solo con actualizar el navegador (F5),
-        // sin necesidad de borrar cookies.
-        const fullUser = await prisma.usuario.findUnique({
-          where: { mail: token.email },
-          include: {
-            empresa: true,
-            rol: {
-              include: {
-                permisos: true,
-                permisos_seccion: {
-                  include: {
-                    seccion: true
-                  }
-                }
-              },
-            },
-            permisos_seccion: {
-              include: {
-                seccion: true
-              }
-            }
-          },
-        });
+        // Datos, permisos y secciones del usuario, con micro-caché de 15 s por correo
+        // (src/lib/session-cache.ts). Sin él esta consulta cuesta 6-8 sentencias en
+        // cada petición, porque Prisma resuelve cada relación del `include` aparte.
+        //
+        // Los cambios desde /admin/secciones y /admin/roles siguen viéndose con un F5:
+        // esos endpoints invalidan la entrada del caché. `session_version` no se cachea
+        // nunca, así que la revocación de sesiones sigue siendo inmediata.
+        const fullUser = await getSessionUser(token.email);
 
         if (fullUser) {
           // --- Validación de versión de sesión ---

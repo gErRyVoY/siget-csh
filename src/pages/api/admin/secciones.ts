@@ -1,5 +1,6 @@
 import type { APIRoute } from "astro";
 import { prisma } from "@/lib/db";
+import { invalidateAllSessionUsers } from "@/lib/session-cache";
 import { getSession } from "auth-astro/server";
 
 export const PATCH: APIRoute = async ({ request }) => {
@@ -34,6 +35,10 @@ export const PATCH: APIRoute = async ({ request }) => {
         usuarioId: Number(session.user.id),
       }
     });
+
+    // Habilitar o inhabilitar una sección global cambia las secciones efectivas de
+    // todos los usuarios: se descarta el caché de sesión para que se vea con un F5.
+    invalidateAllSessionUsers();
 
     return new Response(JSON.stringify({ message: "Sección actualizada", seccion: updatedSeccion }), { status: 200 });
 

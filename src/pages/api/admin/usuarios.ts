@@ -1,5 +1,6 @@
 import type { APIRoute } from 'astro';
 import { prisma } from '@/lib/db';
+import { invalidateAllSessionUsers } from '@/lib/session-cache';
 import type { Prisma, Usuario } from '@prisma/client';
 import { getSession } from 'auth-astro/server';
 
@@ -282,6 +283,9 @@ export const PATCH: APIRoute = async ({ request }) => {
       return userAfterUpdate;
     });
 
+    // Rol, empresa, flags y estado del usuario viajan en la sesión.
+    invalidateAllSessionUsers();
+
     return new Response(JSON.stringify(updatedUser), { status: 200 });
 
   } catch (error) {
@@ -334,6 +338,8 @@ export const DELETE: APIRoute = async ({ request }) => {
         },
       });
     });
+
+    invalidateAllSessionUsers();
 
     return new Response(JSON.stringify({ message: 'Usuario eliminado correctamente' }), { status: 200 });
 

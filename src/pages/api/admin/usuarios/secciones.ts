@@ -1,5 +1,6 @@
 import type { APIRoute } from 'astro';
 import { prisma } from '@/lib/db';
+import { invalidateAllSessionUsers } from '@/lib/session-cache';
 import { getSession } from 'auth-astro/server';
 
 export const PATCH: APIRoute = async ({ request }) => {
@@ -39,6 +40,9 @@ export const PATCH: APIRoute = async ({ request }) => {
         usuarioId: adminUserId,
       },
     });
+
+    // El override de secciones de este usuario forma parte de su sesión.
+    invalidateAllSessionUsers();
 
     return new Response(JSON.stringify(permiso), { status: 200 });
   } catch (error) {
