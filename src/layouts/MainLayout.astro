@@ -8,7 +8,7 @@ import ThemeToggle from "@/components/ui/ThemeToggle.astro";
 import "@/styles/global.css";
 import "@/styles/toast.css";
 import ClientRouter from "astro/components/ClientRouter.astro";
-import { prisma } from "@/lib/db";
+import { isDarkModeEnabled } from "@/lib/feature-flags";
 
 // La sesión ahora se obtiene desde Astro.locals, inyectada por el middleware.
 const session = Astro.locals.session;
@@ -28,17 +28,10 @@ interface Props {
 }
 const { title } = Astro.props;
 
-// Configuración global dinámica
-let ENABLE_DARK_MODE = false;
-try {
-    const darkModeFeature = await prisma.seccion.findUnique({
-        where: { identificador: "feature_dark_mode" },
-        select: { activo: true }
-    });
-    ENABLE_DARK_MODE = darkModeFeature?.activo ?? false;
-} catch (e) {
-    console.error("No se pudo cargar la configuración de modo oscuro", e);
-}
+// Configuración global dinámica. Cacheada 60 s en src/lib/feature-flags.ts e
+// invalidada por PATCH /api/admin/secciones: este layout lo renderiza cada
+// página, así que sin caché era una consulta fija por petición.
+const ENABLE_DARK_MODE = await isDarkModeEnabled();
 
 
 const NOTIFICATION_EMPTY_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-bell">

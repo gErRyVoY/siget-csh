@@ -1,6 +1,7 @@
 import type { APIRoute } from "astro";
 import { prisma } from "@/lib/db";
 import { invalidateAllSessionUsers } from "@/lib/session-cache";
+import { invalidateFeatureFlags } from "@/lib/feature-flags";
 
 export const PATCH: APIRoute = async ({ request, locals }) => {
   const session = locals.session;
@@ -38,6 +39,10 @@ export const PATCH: APIRoute = async ({ request, locals }) => {
     // Habilitar o inhabilitar una sección global cambia las secciones efectivas de
     // todos los usuarios: se descarta el caché de sesión para que se vea con un F5.
     invalidateAllSessionUsers();
+
+    // `seccion.activo` es también el respaldo de los feature flags
+    // (feature_dark_mode), que se cachean aparte.
+    invalidateFeatureFlags();
 
     return new Response(JSON.stringify({ message: "Sección actualizada", seccion: updatedSeccion }), { status: 200 });
 
