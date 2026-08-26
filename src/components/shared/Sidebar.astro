@@ -43,13 +43,17 @@ const userIdNum = session?.user?.id ? parseInt(String(session.user.id), 10) : nu
 let hasMarketingTickets = false;
 if (userIdNum) {
     try {
-        const count = await prisma.ticket.count({
+        // `findFirst` en lugar de `count`: solo interesa si existe al menos uno,
+        // y Postgres puede parar en la primera fila que encaja en vez de contar
+        // todas las del usuario.
+        const primero = await prisma.ticket.findFirst({
             where: {
                 solicitanteId: userIdNum,
                 categoriaId: 12, // Categoría Marketing
             },
+            select: { id: true },
         });
-        hasMarketingTickets = count > 0;
+        hasMarketingTickets = primero !== null;
     } catch (e) {
         console.error("Error al verificar tickets de marketing del usuario:", e);
     }
