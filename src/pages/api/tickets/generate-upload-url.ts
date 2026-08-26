@@ -1,5 +1,4 @@
 import type { APIRoute } from 'astro';
-import { getSession } from 'auth-astro/server';
 import { prisma } from '@/lib/db';
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
@@ -19,8 +18,8 @@ const s3Client = new S3Client({
     },
 });
 
-export const POST: APIRoute = async ({ request }) => {
-    const session = await getSession(request);
+export const POST: APIRoute = async ({ request, locals }) => {
+    const session = locals.session;
     if (!session || !session.user) {
         return new Response(JSON.stringify({ message: 'No autorizado' }), { status: 401 });
     }

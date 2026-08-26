@@ -1,16 +1,17 @@
 import type { APIRoute } from "astro";
 import { prisma } from "@/lib/db";
-import { getSession } from "auth-astro/server";
 
-// Helper to check authentication
-async function checkAuth(request: Request) {
-    const session = await getSession(request);
+// Helper to check authentication.
+// La sesión la resolvió ya el middleware y vive en `locals.session`; leerla de
+// ahí evita volver a ejecutar el handler completo de Auth.js en cada llamada.
+function checkAuth(locals: App.Locals) {
+    const session = locals.session;
     return session && session.user;
 }
 
 // POST: Crear nueva categoría
-export const POST: APIRoute = async ({ request }) => {
-    if (!await checkAuth(request)) {
+export const POST: APIRoute = async ({ request, locals }) => {
+    if (!checkAuth(locals)) {
         return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
     }
 
@@ -41,8 +42,8 @@ export const POST: APIRoute = async ({ request }) => {
 };
 
 // PATCH: Editar nombre o alternar estado activo
-export const PATCH: APIRoute = async ({ request }) => {
-    if (!await checkAuth(request)) {
+export const PATCH: APIRoute = async ({ request, locals }) => {
+    if (!checkAuth(locals)) {
         return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
     }
 
@@ -100,8 +101,8 @@ export const PATCH: APIRoute = async ({ request }) => {
 };
 
 // DELETE: Eliminar categoría (solo si no tiene tickets asociados)
-export const DELETE: APIRoute = async ({ request }) => {
-    if (!await checkAuth(request)) {
+export const DELETE: APIRoute = async ({ request, locals }) => {
+    if (!checkAuth(locals)) {
         return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
     }
 

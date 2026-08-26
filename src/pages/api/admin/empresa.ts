@@ -1,10 +1,9 @@
 import type { APIRoute } from 'astro';
 import { prisma } from '@/lib/db';
-import { getSession } from 'auth-astro/server';
 
 // GET: Obtener información de una empresa mediante slug
-export const GET: APIRoute = async ({ request }) => {
-  const session = await getSession(request);
+export const GET: APIRoute = async ({ request, locals }) => {
+  const session = locals.session;
   if (!session || !session.user || !session.user.id) {
     return new Response(JSON.stringify({ message: 'No autorizado' }), { status: 401 });
   }
@@ -33,8 +32,8 @@ export const GET: APIRoute = async ({ request }) => {
 };
 
 // PATCH: Actualizar información de una empresa mediante slug
-export const PATCH: APIRoute = async ({ request }) => {
-  const session = await getSession(request);
+export const PATCH: APIRoute = async ({ request, locals }) => {
+  const session = locals.session;
   if (!session || !session.user || !session.user.id) {
     return new Response(JSON.stringify({ message: 'No autorizado' }), { status: 401 });
   }
@@ -109,8 +108,8 @@ export const PATCH: APIRoute = async ({ request }) => {
 };
 
 // POST: Crear una nueva empresa
-export const POST: APIRoute = async ({ request }) => {
-  const session = await getSession(request);
+export const POST: APIRoute = async ({ request, locals }) => {
+  const session = locals.session;
   if (!session || !session.user || !session.user.id) {
     return new Response(JSON.stringify({ message: 'No autorizado' }), { status: 401 });
   }

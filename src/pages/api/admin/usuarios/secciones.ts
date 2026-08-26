@@ -1,10 +1,9 @@
 import type { APIRoute } from 'astro';
 import { prisma } from '@/lib/db';
 import { invalidateAllSessionUsers } from '@/lib/session-cache';
-import { getSession } from 'auth-astro/server';
 
-export const PATCH: APIRoute = async ({ request }) => {
-  const session = await getSession(request);
+export const PATCH: APIRoute = async ({ request, locals }) => {
+  const session = locals.session;
   if (!session || !session.user || !session.user.id) {
     return new Response(JSON.stringify({ message: 'No autorizado' }), { status: 401 });
   }

@@ -1,5 +1,4 @@
 import type { APIRoute } from "astro";
-import { getSession } from "auth-astro/server";
 import { prisma } from "@/lib/db";
 import { sendEmail, getHtmlWrapper } from "@/services/emailService";
 
@@ -300,8 +299,8 @@ function getWeeksText(dates: Date[]): string {
 // ─────────────────────────────────────────────
 // Handler
 // ─────────────────────────────────────────────
-export const POST: APIRoute = async ({ request }) => {
-  const session = await getSession(request);
+export const POST: APIRoute = async ({ request, locals }) => {
+  const session = locals.session;
   if (!session || !session.user) {
     return new Response(JSON.stringify({ message: "No autorizado" }), {
       status: 401,

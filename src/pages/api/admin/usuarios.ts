@@ -2,10 +2,9 @@ import type { APIRoute } from 'astro';
 import { prisma } from '@/lib/db';
 import { invalidateAllSessionUsers } from '@/lib/session-cache';
 import type { Prisma, Usuario } from '@prisma/client';
-import { getSession } from 'auth-astro/server';
 
 // GET handler: Handles fetching lists of users with robust filtering.
-export const GET: APIRoute = async ({ request }) => {
+export const GET: APIRoute = async ({ request, locals }) => {
   const url = new URL(request.url);
   const params = url.searchParams;
   const userId = params.get('id');
@@ -34,11 +33,10 @@ export const GET: APIRoute = async ({ request }) => {
   }
 
   try {
-    // ⚡ Resolve empresa + session in parallel (were sequential before)
-    const [empresa, session] = await Promise.all([
-      prisma.empresa.findUnique({ where: { slug: campusSlug } }),
-      getSession(request),
-    ]);
+    // La sesión ya la resolvió el middleware, así que el Promise.all que la
+    // paralelizaba con la consulta de empresa se queda en una sola consulta.
+    const session = locals.session;
+    const empresa = await prisma.empresa.findUnique({ where: { slug: campusSlug } });
 
     if (!empresa) {
       return new Response(JSON.stringify({ message: 'Empresa no encontrada' }), { status: 404 });
@@ -101,8 +99,8 @@ export const GET: APIRoute = async ({ request }) => {
 };
 
 // PATCH handler: Handles updating a single user securely and logging the changes.
-export const PATCH: APIRoute = async ({ request }) => {
-  const session = await getSession(request);
+export const PATCH: APIRoute = async ({ request, locals }) => {
+  const session = locals.session;
   if (!session || !session.user || !session.user.id) {
     return new Response(JSON.stringify({ message: 'No autorizado' }), { status: 401 });
   }
@@ -295,8 +293,8 @@ export const PATCH: APIRoute = async ({ request }) => {
 };
 
 // DELETE handler: Handles deleting a user
-export const DELETE: APIRoute = async ({ request }) => {
-  const session = await getSession(request);
+export const DELETE: APIRoute = async ({ request, locals }) => {
+  const session = locals.session;
   if (!session || !session.user || !session.user.id) {
     return new Response(JSON.stringify({ message: 'No autorizado' }), { status: 401 });
   }

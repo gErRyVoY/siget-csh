@@ -2,11 +2,10 @@
 import MainLayout from "@/layouts/MainLayout.astro";
 import { prisma } from "@/lib/db";
 import type { Usuario, Empresa, Rol } from "@prisma/client";
-import { getSession } from "auth-astro/server";
 import UserSubcategoryItem from "./UserSubcategoryItem.astro";
 
 const { id } = Astro.params;
-const session = await getSession(Astro.request);
+const session = Astro.locals.session;
 
 const user = await prisma.usuario.findUnique({
   where: { id: parseInt(id as string, 10) },

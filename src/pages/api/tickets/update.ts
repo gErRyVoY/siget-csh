@@ -1,5 +1,4 @@
 import type { APIRoute } from 'astro';
-import { getSession } from 'auth-astro/server';
 import { prisma } from '@/lib/db';
 import type { Prisma, Prioridad } from '@prisma/client';
 import { sendNotification } from '../notifications/sse';
@@ -9,7 +8,7 @@ import { canAgentBeAssignedManually } from '@/services/ticketAssignmentService';
 const PRIVILEGED_ROLES = [2, 3]; // admin y superadmin
 
 export const PATCH: APIRoute = async ({ request, locals }) => {
-    const session = await getSession(request);
+    const session = locals.session;
     if (!session || !session.user) {
         return new Response(JSON.stringify({ message: 'No autorizado' }), { status: 401 });
     }

@@ -1,9 +1,8 @@
 ---
 import MainLayout from "@/layouts/MainLayout.astro";
 import { prisma } from "@/lib/db";
-import { getSession } from "auth-astro/server";
 
-const session = await getSession(Astro.request);
+const session = Astro.locals.session;
 
 const secciones = await prisma.seccion.findMany({
   where: {

@@ -1,13 +1,12 @@
 import type { APIRoute } from 'astro';
-import { getSession } from 'auth-astro/server';
 import { prisma } from '../../../lib/db';
 import { sendNotification } from '../notifications/sse';
 import { findBestAgentHybrid } from '../../../services/ticketAssignmentService';
 import { ensureActiveCycle } from '../../../services/cycleService';
 import { sendTicketNotification } from '../../../services/emailService';
 
-export const POST: APIRoute = async ({ request }) => {
-  const session = await getSession(request);
+export const POST: APIRoute = async ({ request, locals }) => {
+  const session = locals.session;
 
   if (!session || !session.user || !session.user.id) {
     return new Response(JSON.stringify({ message: 'No autorizado' }), { status: 401 });
