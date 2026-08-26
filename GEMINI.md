@@ -5,12 +5,19 @@
 >
 > **⚠️ REGLA CRÍTICA PARA EL ASISTENTE:** El asistente **NO debe ejecutar `git push`** en ninguna circunstancia a menos que el usuario lo solicite **de forma explícita**. Se permiten `git add` y `git commit` para preparar los cambios, pero el push queda **reservado exclusivamente para cuando el usuario lo indique**.
 
-**Tarea Actual:** Completada — Replicación de Google Drive y Popover "Consulta lo que puedes añadir" en todas las vistas de tickets (2026-08-25) ✅
+**Tarea Actual:** Completada — Estandarización de filtros de fecha a formato `dd/mm/aaaa` en todas las vistas de tickets (`/tickets/soporte`, `/tickets/soporte/usuario`, `/tickets/marketing`, `/tickets/marketing/usuario`) (2026-08-26) ✅
 
 **Pasos Siguientes:**
 1. Pruebas funcionales en navegador por parte del usuario.
 
 **Pasos Completados:**
+- ✅ **Filtros de Fecha con Formato `dd/mm/aaaa` en Todas las Vistas de Tickets (2026-08-26):** Aplicado formato visual `dd/mm/aaaa`, placeholder `dd/mm/aaaa`, máscara de escritura con dígitos, retroceso fluido con Backspace, botón de calendario interactivo para apertura emergente, sincronización de picker y soporte de parsing `DD/MM/YYYY` y `YYYY-MM-DD` en SSR en:
+  1. `/tickets/soporte/usuario` ([src/pages/tickets/soporte/usuario/index.astro](file:///d:/Documentos/Proyectos_2025/00Humanitas/siget-csh/src/pages/tickets/soporte/usuario/index.astro))
+  2. `/tickets/soporte` ([src/pages/tickets/soporte/index.astro](file:///d:/Documentos/Proyectos_2025/00Humanitas/siget-csh/src/pages/tickets/soporte/index.astro))
+  3. `/tickets/marketing/usuario` ([src/pages/tickets/marketing/usuario/index.astro](file:///d:/Documentos/Proyectos_2025/00Humanitas/siget-csh/src/pages/tickets/marketing/usuario/index.astro))
+  4. `/tickets/marketing` ([src/pages/tickets/marketing/index.astro](file:///d:/Documentos/Proyectos_2025/00Humanitas/siget-csh/src/pages/tickets/marketing/index.astro))
+  `npx astro check` 0 errores en 157 archivos.
+- ✅ **Despliegue a Repositorio (2026-08-25):** `git push` completado exitosamente a la rama `siget-apprunner-new` (commit `1cfa063`). AWS App Runner iniciando compilación y despliegue automático.
 - ✅ **Replicación de Google Drive y Popover "Consulta lo que puedes añadir" (2026-08-25):** Estandarizada la integración de Google Drive (token de sesión directo, carpetas hasta 5, videos hasta 5, permisos automáticos por área de ticket) y agregado el popover informativo interactivo "Consulta lo que puedes añadir" en `nuevo-ticket-csh.astro`, `nuevo-ticket-marketing.astro` y `view/[id].astro` (comentarios). Normalizada la inicialización de Google Drive en `traslado.astro` (`gapi.load('picker')`). `npx astro check` 0 errores en 157 archivos.
 - ✅ **Autoguardado de Borrador y Modal de Recuperación en `/user/perfil/incidencias` (2026-08-25):** Sistema `localStorage` con clave `siget_incidencias_draft_{userId}_{mes}_{anio}`. Guarda toggles, selects de tipo de inasistencia y textareas en tiempo real. Al entrar a la vista, si existe borrador, se muestra modal "Borrador sin guardar encontrado" con el periodo guardado y botones "Sí, recuperar" / "No, descartar". Al recuperar: se consulta el periodo automáticamente y se restauran todos los campos. Al guardar o enviar exitosamente: se limpia el borrador y `clearDirty()`. `window.beforeunload` activa alerta nativa si hay cambios sin guardar. `npx astro check` 0 errores en 157 archivos.
 - ✅ **Permisos Granulares de Edición en Detalle de Traslados, Autocompletado de Alumno por Matrícula y Corrección de Historial Fantasma (2026-08-25):** Atiende deshabilitado para admins no asignados; campus origen dinámico según `tckt_virtual`; alumno, carrera y escolarizada deshabilitados; matrícula reactiva con consulta a la API de alumnos; normalización de bloque y respuesta limpia con `hasNewHistoryEntry`. `npx astro check` 0 errores en 157 archivos.
