@@ -1,6 +1,9 @@
 import { defineConfig } from "auth-astro";
 import Google from "@auth/core/providers/google";
-import { google } from "googleapis";
+// Solo se usa Admin Directory (`users.get`). El metapaquete `googleapis` carga
+// los 314 `require()` de su índice de APIs en el arranque —180 MB en disco—
+// para esta única llamada, lo que encarece el cold start de cada instancia.
+import { admin as adminDirectory, auth as googleAuth } from "@googleapis/admin";
 import { prisma } from "./src/lib/db";
 import { getSessionUser, invalidateSessionUser } from "./src/lib/session-cache";
 import type { Rol, Empresa, Permiso } from "@prisma/client";
@@ -41,23 +44,6 @@ export default defineConfig({
       }
 
       try {
-        const serviceAccountCreds = JSON.parse(
-          process.env.GOOGLE_SERVICE_ACCOUNT_KEY || "{}"
-        );
-
-        const auth = new google.auth.JWT({
-          email: serviceAccountCreds.client_email,
-          key: serviceAccountCreds.private_key,
-          scopes: ["https://www.googleapis.com/auth/admin.directory.user.readonly"],
-          subject: process.env.GOOGLE_ADMIN_EMAIL,
-        });
-
-        const admin = google.admin({ version: "directory_v1", auth });
-
-        const response = await admin.users.get({
-          userKey: profile.email,
-        });
-
         const isTestUser = profile.email.toLowerCase() === 'alumno.prueba1@humanitas.edu.mx';
         let userData: any = {};
         let orgUnitPath = "";
@@ -68,14 +54,14 @@ export default defineConfig({
             process.env.GOOGLE_SERVICE_ACCOUNT_KEY || "{}"
           );
 
-          const auth = new google.auth.JWT({
+          const auth = new googleAuth.JWT({
             email: serviceAccountCreds.client_email,
             key: serviceAccountCreds.private_key,
             scopes: ["https://www.googleapis.com/auth/admin.directory.user.readonly"],
             subject: process.env.GOOGLE_ADMIN_EMAIL,
           });
 
-          const admin = google.admin({ version: "directory_v1", auth });
+          const admin = adminDirectory({ version: "directory_v1", auth });
 
           const response = await admin.users.get({
             userKey: profile.email,
