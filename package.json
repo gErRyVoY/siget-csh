@@ -8,7 +8,8 @@
     "preview": "astro preview",
     "astro": "astro",
     "seed": "tsx prisma/seed.ts",
-    "generate:data": "dotenv -- tsx prisma/generate-categories-json.ts"
+    "generate:data": "dotenv -- tsx prisma/generate-categories-json.ts",
+    "perf:baseline": "dotenv -- tsx scripts/perf-baseline.ts"
   },
   "dependencies": {
     "@astrojs/check": "^0.9.6",

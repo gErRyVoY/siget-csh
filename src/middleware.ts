@@ -1,5 +1,7 @@
 import { defineMiddleware } from "astro:middleware";
 import { getSession } from "auth-astro/server";
+import type { APIContext, MiddlewareNext } from "astro";
+import { perfSnapshot, perfSince } from "./lib/perf";
 
 // Rutas públicas que no requieren autenticación.
 const publicRoutes = [
@@ -7,7 +9,7 @@ const publicRoutes = [
   "/health",
 ];
 
-export const onRequest = defineMiddleware(async (context, next) => {
+async function handleRequest(context: APIContext, next: MiddlewareNext): Promise<Response> {
   const { pathname } = context.url;
 
   // Ignorar archivos estáticos y assets internos de Astro para evitar sobrecargar la BD
@@ -121,4 +123,28 @@ export const onRequest = defineMiddleware(async (context, next) => {
   newResponse.headers.set("X-Content-Type-Options", "nosniff");
 
   return newResponse;
+}
+
+export const onRequest = defineMiddleware(async (context, next) => {
+  if (!import.meta.env.DEV) {
+    return handleRequest(context, next);
+  }
+
+  // Instrumentación de línea base (solo desarrollo): expone en `Server-Timing`
+  // el tiempo total de la petición y el número de sentencias SQL que emitió.
+  // Permite comparar el efecto de cada optimización sin adivinar.
+  const startedAt = performance.now();
+  const perfStart = perfSnapshot();
+
+  const response = await handleRequest(context, next);
+
+  const total = performance.now() - startedAt;
+  const { sql, sqlMs } = perfSince(perfStart);
+
+  const instrumented = new Response(response.body, response);
+  instrumented.headers.set(
+    "Server-Timing",
+    `sql;desc="${sql} queries";dur=${sqlMs.toFixed(1)}, total;dur=${total.toFixed(1)}`
+  );
+  return instrumented;
 });
