@@ -11,11 +11,19 @@ interface Props {
 }
 
 const { href, label, icon: Icon, active = false, reload = false, target } = Astro.props;
+
+// Prefetch al pasar el cursor. Cada prefetch es un render SSR completo con sus
+// consultas, así que se limita a los enlaces internos: los que abren en otra
+// pestaña (Plataforma Humanitas) quedan fuera. Se escribe "hover" en lugar de un
+// booleano porque Astro serializaría `true` como data-astro-prefetch="true", y el
+// runtime sólo reconoce "", "false" o el nombre de una estrategia.
+const prefetch = target ? undefined : "hover";
 ---
 
 <a
     href={href}
     data-astro-reload={reload}
+    data-astro-prefetch={prefetch}
     target={target}
     class:list={[
         "flex items-center gap-3 rounded-md px-4 py-2 text-sm font-medium transition-colors",

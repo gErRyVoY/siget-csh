@@ -16,6 +16,16 @@ export default defineConfig({
 
   output: 'server',
 
+  // `<ClientRouter />` activa el prefetch con `prefetchAll: true` por su cuenta
+  // (ClientRouter.astro llama a `init({ prefetchAll: true })`), así que hasta
+  // ahora *cualquier* enlace que el usuario rozara disparaba un render SSR
+  // completo con todas sus consultas. Se desactiva y se deja opt-in por enlace
+  // con `data-astro-prefetch="hover"`, hoy sólo en los del Sidebar.
+  prefetch: {
+    prefetchAll: false,
+    defaultStrategy: 'hover',
+  },
+
   server: {
     host: '0.0.0.0'
   },
