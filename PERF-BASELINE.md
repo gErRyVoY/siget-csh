@@ -105,6 +105,33 @@ PRISMA_QUERY_LOG=off pnpm dev
 pnpm perf:baseline -- --runs 4
 ```
 
+### `P1001 Can't reach database server` en el primer arranque
+
+Síntoma: al levantar `pnpm dev` justo después de cambiar dependencias, Vite
+imprime `Re-optimizing dependencies because vite config has changed` y las
+primeras peticiones fallan con `P1001` en **~5 000 ms** exactos, con el rastro
+apuntando a `getSessionUser` → callback `jwt`. Tras 20-30 s deja de ocurrir.
+
+No es la base de datos ni el caché de sesión: 5 000 ms es el `connect_timeout`
+por defecto de Prisma. Mientras esbuild reoptimiza dependencias, el proceso
+compite por CPU y el handshake completo contra RDS us-east-1 (TCP + TLS + SCRAM,
+~400 ms con la máquina descargada) no cabe en esos 5 s. Comprobado con un
+handshake crudo: TCP 140 ms, TLS 169 ms, `AuthenticationRequest` 58 ms, y 20/20
+consultas correctas con 58 ms de mediana en cuanto Vite termina.
+
+Mitigación aplicada: `connect_timeout=20` en el `DATABASE_URL` del `.env`. En
+producción conviene el mismo parámetro en la variable de entorno de App Runner:
+el arranque en frío de una instancia de 1 vCPU tiene el mismo perfil y con 5 s
+las primeras peticiones de una instancia nueva pueden responder 500.
+
+Efecto secundario que conviene conocer: si la consulta de usuario lanza, Auth.js
+convierte la excepción en `JWTSessionError`, `getSession()` devuelve `null` y el
+middleware trata la petición como no autenticada — un corte momentáneo de BD
+saca al usuario a `/login` en lugar de mostrar un error. Es el comportamiento
+previo a la Fase 1 (antes lanzaba el `findUnique` en línea de `auth.config.ts`);
+el caché no lo cambia, pero podría amortiguarlo sirviendo la entrada caducada
+cuando la consulta falla, como ya hace `src/lib/feature-flags.ts`.
+
 **Si todas las columnas de SQL salen a 0, la instrumentación está rota, no es
 un resultado.** Ocurre cuando el HMR de Vite recarga `src/lib/db.ts` —por
 ejemplo al añadir un módulo nuevo— pero `globalThis.prisma` conserva el cliente
