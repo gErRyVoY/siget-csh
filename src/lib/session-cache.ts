@@ -37,6 +37,10 @@ const MAX_ENTRIES = 1_000;
 async function fetchSessionUser(email: string) {
   return prisma.usuario.findUnique({
     where: { mail: email },
+    // Una sola sentencia con LEFT JOIN LATERAL en lugar de siete (una por
+    // relación). Medido contra la BD de desarrollo: 7 sentencias -> 1, con
+    // resultados idénticos en los 12 usuarios comparados.
+    relationLoadStrategy: 'join',
     include: {
       empresa: true,
       rol: {

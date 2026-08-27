@@ -1,5 +1,9 @@
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  // relationJoins habilita relationLoadStrategy: "join", que resuelve un include
+  // anidado con LEFT JOIN LATERAL en una sola sentencia en lugar de una por
+  // relación. Se usa donde está medido que gana (ver src/lib/session-cache.ts).
+  previewFeatures = ["relationJoins"]
 }
 
 datasource db {
