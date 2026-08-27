@@ -9,6 +9,7 @@
  *   pnpm perf:baseline                                  # elige un usuario con permisos amplios
  *   pnpm perf:baseline -- --email alguien@humanitas.edu.mx
  *   pnpm perf:baseline -- --base http://localhost:4321 --runs 3
+ *   pnpm perf:baseline -- --ticket 22,25          # tickets concretos de detalle
  *
  * IMPORTANTE: apuntar siempre a una BD de desarrollo, nunca a RDS de producción.
  */
@@ -27,6 +28,10 @@ function parseArgs() {
     email: get('email'),
     base: get('base', 'http://localhost:4321')!,
     runs: Number(get('runs', '3')),
+    // Lista de ids separados por coma. Sin esto se mide el ticket más reciente
+    // del usuario, que puede no ser el mismo entre mediciones: un traslado carga
+    // bastante más que un ticket normal y las cifras no serían comparables.
+    tickets: get('ticket')?.split(',').map((t) => Number(t.trim())).filter((n) => Number.isFinite(n)),
   };
 }
 
@@ -60,18 +65,23 @@ async function pickUser(email?: string) {
 }
 
 async function main() {
-  const { email, base, runs } = parseArgs();
+  const { email, base, runs, tickets } = parseArgs();
   const secret = process.env.AUTH_SECRET;
   if (!secret) throw new Error('Falta AUTH_SECRET en el entorno.');
 
   const user = await pickUser(email);
 
-  // Un ticket real del usuario para medir la ruta de detalle.
-  const ticket = await prisma.ticket.findFirst({
-    where: { OR: [{ solicitanteId: user.id }, { atiendeId: user.id }] },
-    orderBy: { id: 'desc' },
-    select: { id: true },
-  });
+  // Tickets reales para medir la ruta de detalle: los de --ticket si se pasan, y
+  // si no el más reciente del usuario.
+  let ticketIds = tickets ?? [];
+  if (ticketIds.length === 0) {
+    const ticket = await prisma.ticket.findFirst({
+      where: { OR: [{ solicitanteId: user.id }, { atiendeId: user.id }] },
+      orderBy: { id: 'desc' },
+      select: { id: true },
+    });
+    if (ticket) ticketIds = [ticket.id];
+  }
 
   // El salt de @auth/core es el nombre de la cookie; en http (dev) va sin prefijo.
   const cookieName = 'authjs.session-token';
@@ -99,7 +109,7 @@ async function main() {
     // fila no mide nada.
     '/admin/secciones',
     '/admin/categorias',
-    ...(ticket ? [`/tickets/view/${ticket.id}`] : []),
+    ...ticketIds.map((id) => `/tickets/view/${id}`),
   ];
 
   console.log(`Usuario: ${user.mail} (id ${user.id})`);

@@ -63,6 +63,100 @@ Son ~3.2 s menos de arranque por instancia nueva de App Runner. El número
 local puede estar amplificado (Windows, antivirus sobre `node_modules`), pero
 la proporción y el ahorro de imagen en ECR no dependen de eso.
 
+## Fase 2 y 3 — consultas por página, índices, Prisma y assets
+
+Medido igual que las fases anteriores (`--runs 4`, estimador mínimo), añadiendo
+`--ticket` al arnés para fijar qué tickets de detalle se piden: el ticket «más
+reciente del usuario» cambia entre mediciones y un traslado carga bastante más
+que un ticket normal.
+
+| Ruta | Fase 0 | Fase 1 | Fase 2+3 | Δ vs Fase 0 |
+|---|---|---|---|---|
+| `/health` (con cookie) | 7 | 1 | 1 | −86 % |
+| `/health` (sin cookie) | 0 | 0 | 0 | — |
+| `/` | 17 | 10 | 10 | −41 % |
+| `/tickets/soporte` | 20 | 13 | **7** | −65 % |
+| `/tickets/soporte/usuario` | 14 | 7 | **6** | −57 % |
+| `/tickets/marketing` | 19 | 12 | **4** | −79 % |
+| `/api/notifications/count` | 16 | 3 | 3 | −81 % |
+| `/tickets/view/23` (normal) | 29 | 22 | **5** | −83 % |
+
+Rutas que no estaban en la tabla de las fases anteriores, para tenerlas medidas:
+
+| Ruta | Fase 2+3 |
+|---|---|
+| `/tickets/view/25` (normal) | 5 |
+| `/tickets/view/22` (traslado) | 7 |
+| `/admin/secciones` | 2 |
+| `/admin/categorias` | 6 |
+
+De dónde sale cada reducción:
+
+- **Listas de tickets, de 13 a 7 y de 12 a 4** (2.1 – 2.4): los tres desplegables
+  ya no se resuelven con subconsultas correlacionadas sobre `ticket` sino con
+  `groupBy` + los catálogos cacheados de `src/lib/reference-data.ts`, y las seis
+  consultas en serie pasaron a un único `Promise.all`. Marketing baja más porque
+  sus dos desplegables (área y campus) salen enteros del caché.
+- **Detalle de ticket, de 22 a 5** (2.5 y 3.2): campus, carreras, descuentos y
+  auditores sólo se consultan si el ticket es un traslado (por eso `view/22`
+  cuesta 7 y `view/25` cuesta 5); el breadcrumb ya no emite una consulta por
+  nivel de subcategoría; y el `include` de siete relaciones se resuelve con
+  `relationLoadStrategy: 'join'` en una sentencia en vez de catorce.
+- **`/` se queda en 10.** Ninguna de las dos fases toca el panel de inicio: sus
+  consultas son las del dashboard, que no estaban en el alcance del plan. Es el
+  candidato obvio para una fase siguiente.
+
+### Índices (3.1)
+
+En la BD de desarrollo (22 tickets, 9 traslados) `EXPLAIN` no distingue nada:
+Postgres hace seq scan de tablas de 22 filas con y sin índice. Los números se
+midieron sobre tablas de trabajo de 200 000 filas creadas dentro de una
+transacción revertida, comparando siempre contra los índices que **ya existen**:
+
+| Consulta | Hoy | Con el índice nuevo | Factor |
+|---|---|---|---|
+| `traslado` por matrícula (`check-transfer`) | 2.34 ms, seq scan | 0.04 ms, index scan | 60x |
+| `ticket` por estatus + `fechaalta desc` | 0.21 ms | 0.06 ms | 3.3x |
+| `ticket` por solicitante + `fechaact desc` (~40 tickets/usuario) | 0.10 ms | 0.10 ms | 1.0x |
+| ídem con 4 000 tickets por solicitante | 2.43 ms | 0.13 ms | 19x |
+| `incidencia` por usuario + mes | 0.15 ms | 0.04 ms | 3.8x |
+
+El índice `(solicitanteId, fechaact desc)` se añade por el escenario de volumen,
+no por el actual; `fechaact` cambia en cada actualización de ticket, así que ese
+índice se mantiene en cada `UPDATE`. Si algún día hay que quitar uno, es ese.
+
+### `relationLoadStrategy: 'join'` (3.2)
+
+| Consulta | `query` (defecto) | `join` |
+|---|---|---|
+| Sesión: usuario + empresa + rol + permisos + secciones | 7 sentencias, 440 ms | 1 sentencia, 71 ms |
+| Detalle de ticket: 7 relaciones (5 más anidadas en traslado) | 14 sentencias, 875 ms | 1 sentencia, 68 ms |
+
+Los milisegundos son de local: cada ida y vuelta a RDS us-east-1 desde aquí
+cuesta ~65 ms, así que lo que se ve es «una ida y vuelta en vez de 7 o 14». En
+App Runner, misma región, el ahorro es de milisegundos por consulta; lo
+estructural es la cuenta de sentencias. Verificado que ambas estrategias
+devuelven exactamente lo mismo (12 usuarios y los 22 tickets, campo a campo).
+
+### Assets (3.5)
+
+| Archivo | Antes | Después |
+|---|---|---|
+| `leon-querer-es-poder` (fondo del Sidebar, en toda página autenticada) | 1.06 MB PNG | 69 KB WebP |
+| `proceso-traslado` (contenido único de `/traslados`) | 2.02 MB PNG | 571 KB WebP |
+| `leus-missing.png` (sin referencias) | 117 KB | borrado |
+
+Mismas dimensiones en los dos casos: no se reescaló nada, sólo se recodificó.
+
+### Lo que queda sin medir
+
+- **3.3 (compresión HTTP)**: sin implementar, pendiente de decidir entre
+  CloudFront delante de App Runner y gzip en el middleware.
+- **3.4 (Dockerfile)**: los cambios están hechos pero sin validar con
+  `docker build` — el demonio de Docker Desktop no responde en esta máquina.
+- **Producción**: el SQL de índices de 3.1 está aplicado sólo en la BD de
+  desarrollo.
+
 ## Cómo leer estas cifras
 
 - **Sentencias SQL** es la métrica que vale para comparar fases. Es el número real
