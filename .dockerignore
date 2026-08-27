@@ -18,3 +18,26 @@ dist
 .vscode
 GEMINI.md
 README.md
+
+# Documentación, respaldos y utilidades que no forman parte del build.
+# Los patrones van anclados a la raíz para no excluir, por ejemplo, un .txt de
+# public/. astro.config.mjs y tailwind.config.mjs SÍ hacen falta: no excluir *.mjs.
+/*.md
+/*.txt
+/*.pdf
+/*.csv
+/*.sql
+/read_pdf*.js
+/add-clave.mjs
+/test-connection.ts
+/test-gen
+/test-size
+/docker-compose.yml
+/Dockerfile
+/package-lock.json
+.github
+scripts/backups
+
+# Credenciales de cliente OAuth que están en la raíz del repo: nunca deben acabar
+# dentro de la imagen.
+/client_secret_*.json
