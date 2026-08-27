@@ -1,6 +1,8 @@
 ---
 import MainLayout from "@/layouts/MainLayout.astro";
 import { prisma } from "@/lib/db";
+import { getEmpresas, getEstatus, getSubcategoriasNivel1 } from "@/lib/reference-data";
+import { ticketListSelect } from "@/lib/ticket-select";
 import { format, differenceInDays } from "date-fns";
 import { es } from "date-fns/locale";
 import StatusBadge from "@/components/ui/StatusBadge.astro";
@@ -128,9 +130,9 @@ if (dateFromFilter && dateToFilter) {
 }
 
 // Obtener datos para los selectores
-const statuses = await prisma.estatus.findMany({
-    orderBy: { nombre: "asc" },
-});
+// Los catálogos de los selectores salen del caché de catálogos
+// (src/lib/reference-data.ts) en vez de consultarse en cada render, y lo que sí
+// toca la BD va en un solo `Promise.all`: antes eran cinco viajes en serie.
 const allowedStatuses = [
     "Nuevo",
     "En progreso",
@@ -140,58 +142,49 @@ const allowedStatuses = [
     "Duplicado",
     "Sin asignar",
 ];
-const filteredStatuses = statuses.filter((status) =>
+
+const [
+    allStatuses,
+    marketingSubcategories,
+    companies,
+    agents,
+    totalTickets,
+    tickets,
+] = await Promise.all([
+    getEstatus(),
+    // Subcategorías de Nivel 2 (Diseño, Redes, Video): sin padre y activas.
+    getSubcategoriasNivel1(MARKETING_CATEGORY_ID),
+    // Empresas (Todas)
+    getEmpresas(),
+    // Agentes (Mkt Team)
+    prisma.usuario.findMany({
+        where: {
+            rol: {
+                nivel_soporte: "Marketing",
+            },
+            activo: true,
+        },
+        select: { id: true, nombres: true, apellidos: true },
+        orderBy: { nombres: "asc" },
+    }),
+    prisma.ticket.count({ where: finalWhere }),
+    prisma.ticket.findMany({
+        where: finalWhere,
+        select: ticketListSelect,
+        orderBy: {
+            fechaalta: "desc",
+        },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+    }),
+]);
+
+const filteredStatuses = allStatuses.filter((status) =>
     allowedStatuses.includes(status.nombre),
 );
 
-// SubcategorÃ­as (Nivel 2: DiseÃ±o, Redes, Video)
-const marketingSubcategories = await prisma.subcategoria.findMany({
-    where: {
-        subcategoria_categorias: {
-            some: { categoriaId: MARKETING_CATEGORY_ID },
-        },
-        parent_subcategoriaId: null, // Solo Nivel 2 (DiseÃ±o, Redes, Video)
-        activo: true,
-    },
-    orderBy: { nombre: "asc" },
-});
-
-// Empresas (Todas)
-const companies = await prisma.empresa.findMany({
-    orderBy: { nombre: "asc" },
-});
-
-// Agentes (Mkt Team)
-const agents = await prisma.usuario.findMany({
-    where: {
-        rol: {
-            nivel_soporte: "Marketing",
-        },
-        activo: true,
-    },
-    orderBy: { nombres: "asc" },
-});
-
-// PaginaciÃ³n
-const totalTickets = await prisma.ticket.count({ where: finalWhere });
+// Paginación
 const totalPages = Math.ceil(totalTickets / pageSize);
-
-const tickets = await prisma.ticket.findMany({
-    where: finalWhere,
-    include: {
-        estatus: true,
-        categoria: true,
-        subcategoria: true,
-        solicitante: true,
-        atiende: true,
-        empresa: true,
-    },
-    orderBy: {
-        fechaalta: "desc",
-    },
-    skip: (page - 1) * pageSize,
-    take: pageSize,
-});
 
 const getTicketDateColor = (date: Date, status: string) => {
     const activeStatuses = ["Sin asignar", "Nuevo", "En progreso", "En espera"];

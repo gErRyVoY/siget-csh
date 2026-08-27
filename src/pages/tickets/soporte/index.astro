@@ -1,6 +1,8 @@
 ---
 import MainLayout from "@/layouts/MainLayout.astro";
 import { prisma } from "@/lib/db";
+import { getCategorias, getEmpresas, getEstatus } from "@/lib/reference-data";
+import { ticketListSelect } from "@/lib/ticket-select";
 import { format, differenceInDays } from "date-fns";
 import { es } from "date-fns/locale";
 import StatusBadge from "@/components/ui/StatusBadge.astro";
@@ -144,10 +146,6 @@ const dropdownScope = {
     NOT: { categoriaId: MARKETING_CATEGORY_ID },
 };
 
-const statuses = await prisma.estatus.findMany({
-    orderBy: { nombre: "asc" },
-});
-
 // Filtrar estatus permitidos
 const allowedStatuses = [
     "Nuevo",
@@ -158,63 +156,74 @@ const allowedStatuses = [
     "Duplicado",
     "Sin asignar",
 ];
-const filteredStatuses = statuses.filter((status) =>
+
+// Los desplegables ya no se resuelven con `tickets: { some: dropdownScope } }`
+// —una subconsulta correlacionada sobre `ticket` por cada catálogo—, sino con un
+// `groupBy` que devuelve los ids realmente presentes en el scope; los nombres
+// salen del caché de catálogos (src/lib/reference-data.ts).
+//
+// Y todo lo que no depende de un resultado anterior va en un solo `Promise.all`:
+// antes eran seis viajes a la BD en serie.
+const [
+    allStatuses,
+    allCategories,
+    allCompanies,
+    gruposCategoria,
+    gruposEmpresa,
+    gruposAtiende,
+    totalTickets,
+    tickets,
+] = await Promise.all([
+    getEstatus(),
+    getCategorias(),
+    getEmpresas(),
+    prisma.ticket.groupBy({ by: ["categoriaId"], where: dropdownScope }),
+    prisma.ticket.groupBy({ by: ["empresaId"], where: dropdownScope }),
+    prisma.ticket.groupBy({ by: ["atiendeId"], where: dropdownScope }),
+    prisma.ticket.count({ where }),
+    prisma.ticket.findMany({
+        where,
+        select: ticketListSelect,
+        orderBy: {
+            fechaalta: "desc",
+        },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+    }),
+]);
+
+const filteredStatuses = allStatuses.filter((status) =>
     allowedStatuses.includes(status.nombre),
 );
 
 // Categorías disponibles (basadas en tickets visibles por estatus)
-const categories = await prisma.categoria.findMany({
-    where: {
-        activo: true,
-        id: { not: MARKETING_CATEGORY_ID },
-        tickets: {
-            some: dropdownScope,
-        },
-    },
-    orderBy: { nombre: "asc" },
-});
+const categoriaIdsPresentes = new Set(gruposCategoria.map((g) => g.categoriaId));
+const categories = allCategories.filter(
+    (c) =>
+        c.activo &&
+        c.id !== MARKETING_CATEGORY_ID &&
+        categoriaIdsPresentes.has(c.id),
+);
 
-// Obtener empresas que tienen tickets (basadas en estatus)
-const companies = await prisma.empresa.findMany({
-    where: {
-        tickets: {
-            some: dropdownScope,
-        },
-    },
-    orderBy: { nombre: "asc" },
-});
+// Empresas que tienen tickets (basadas en estatus)
+const empresaIdsPresentes = new Set(gruposEmpresa.map((g) => g.empresaId));
+const companies = allCompanies.filter((e) => empresaIdsPresentes.has(e.id));
 
-// Obtener usuarios que tienen tickets asignados (agentes) en este scope
-const agents = await prisma.usuario.findMany({
-    where: {
-        tickets_atendidos: {
-            some: dropdownScope,
-        },
-    },
-    orderBy: { nombres: "asc" },
-});
+// Agentes con tickets asignados en este scope. Es la única consulta que depende
+// de un resultado anterior, y es un `IN` por clave primaria.
+const agentIds = gruposAtiende
+    .map((g) => g.atiendeId)
+    .filter((id): id is number => id !== null);
+const agents =
+    agentIds.length > 0
+        ? await prisma.usuario.findMany({
+              where: { id: { in: agentIds } },
+              select: { id: true, nombres: true, apellidos: true },
+              orderBy: { nombres: "asc" },
+          })
+        : [];
 
-// Obtener total de tickets para paginación
-const totalTickets = await prisma.ticket.count({ where });
 const totalPages = Math.ceil(totalTickets / pageSize);
-
-// Obtener tickets paginados
-const tickets = await prisma.ticket.findMany({
-    where,
-    include: {
-        estatus: true,
-        categoria: true,
-        subcategoria: true,
-        solicitante: true,
-        atiende: true,
-        empresa: true,
-    },
-    orderBy: {
-        fechaalta: "desc",
-    },
-    skip: (page - 1) * pageSize,
-    take: pageSize,
-});
 
 const getTicketDateColor = (date: Date, status: string) => {
     const activeStatuses = ["Sin asignar", "Nuevo", "En progreso", "En espera"];
