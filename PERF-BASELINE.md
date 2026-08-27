@@ -72,7 +72,7 @@ que un ticket normal.
 
 | Ruta | Fase 0 | Fase 1 | Fase 2+3 | Δ vs Fase 0 |
 |---|---|---|---|---|
-| `/health` (con cookie) | 7 | 1 | 1 | −86 % |
+| `/health` (con cookie) | 7 | 1 | **0** | −100 % |
 | `/health` (sin cookie) | 0 | 0 | 0 | — |
 | `/` | 17 | 10 | 10 | −41 % |
 | `/tickets/soporte` | 20 | 13 | **7** | −65 % |
@@ -105,6 +105,11 @@ De dónde sale cada reducción:
 - **`/` se queda en 10.** Ninguna de las dos fases toca el panel de inicio: sus
   consultas son las del dashboard, que no estaban en el alcance del plan. Es el
   candidato obvio para una fase siguiente.
+- **`/health` baja de 1 a 0 sentencias** (1.4): el punto se había quedado sin
+  aplicar en la Fase 1. Ahora se corta antes de `getSession()`, así que el health
+  check de App Runner —cada 5 s, ~17 000 peticiones al día— no descifra el JWE ni
+  toca la BD. Contrapartida asumida: con cookie de sesión ya no redirige a `/`,
+  responde el JSON del health check.
 
 ### Índices (3.1)
 
@@ -138,6 +143,82 @@ App Runner, misma región, el ahorro es de milisegundos por consulta; lo
 estructural es la cuenta de sentencias. Verificado que ambas estrategias
 devuelven exactamente lo mismo (12 usuarios y los 22 tickets, campo a campo).
 
+### Compresión HTTP (3.3)
+
+Implementada en `src/middleware.ts` con `CompressionStream('gzip')`. Bytes del
+cuerpo de la respuesta, misma petición con `Accept-Encoding: identity` y con
+`Accept-Encoding: gzip`:
+
+| Ruta | Sin comprimir | gzip | Factor |
+|---|---|---|---|
+| `/` | 136 429 B | 21 871 B | 6.2x |
+| `/tickets/soporte` | 136 335 B | 21 912 B | 6.2x |
+| `/tickets/view/22` (traslado) | 163 066 B | 27 416 B | 5.9x |
+| `/tickets/view/23` (normal) | 146 865 B | 24 642 B | 6.0x |
+| `/login` | 97 160 B | 14 918 B | 6.5x |
+
+Es decir, ~115 KB menos por navegación. Qué **no** se comprime, y por qué:
+
+- **`text/event-stream`.** El SSE de notificaciones necesita que cada evento
+  salga en cuanto se escribe; el compresor lo retendría en su búfer. Verificado:
+  `/api/notifications/sse` responde 200 sin `Content-Encoding` y el evento
+  `connected` llega de inmediato.
+- **Respuestas por debajo de 1 KB.** Comprimirlas las *engorda*: el JSON de
+  `/health` son 74 B y comprimido 91 B, y `/api/notifications/count` son 11 B.
+  Como las respuestas de SSR no traen `Content-Length`, el umbral se decide
+  leyendo el principio del cuerpo: se acumula hasta 1 KB y, si el flujo termina
+  ahí, se devuelve intacto; por encima se sigue enviando en streaming.
+- **Imágenes, fuentes y lo que ya trae `Content-Encoding`.**
+
+Límite de alcance importante: en producción los assets de `/_astro/*` y
+`public/*` los sirve el manejador de estáticos de `@astrojs/node` **antes** de
+que corra el middleware, así que el CSS (65 KB) y el JS (36 KB) siguen saliendo
+sin comprimir. Eso sólo se arregla con un CDN delante.
+
+#### Guía de CloudFront (pendiente, sustituiría al gzip del middleware)
+
+Si se pone CloudFront delante de App Runner, comprime gzip/brotli en el borde
+—incluidos los assets— y cachea `/_astro/*` y `public/*`, que hoy sirve Node en
+cada petición. Puntos que hay que respetar en la distribución:
+
+1. **Origen**: el dominio de App Runner, sólo HTTPS (`origin protocol policy:
+   https-only`).
+2. **Comportamiento por defecto** (`/*`, la app SSR):
+   - Política de caché: `CachingDisabled`. Todo el HTML es dinámico y por usuario.
+   - Política de origin request: reenviar **todos** los encabezados, cookies y
+     query strings (`AllViewerExceptHostHeader` o equivalente). Sin reenviar
+     `Cookie` y dejar pasar `Set-Cookie`, Auth.js pierde la sesión: es el fallo
+     más habitual de este montaje.
+   - Métodos permitidos: `GET, HEAD, OPTIONS, PUT, POST, PATCH, DELETE`.
+   - Compresión automática: activada.
+3. **Comportamiento para `/api/notifications/sse`**: caché desactivada,
+   compresión **desactivada** y sin buffering. CloudFront transmite
+   `text/event-stream` sin acumular, pero con la compresión activada sí lo
+   retiene: hay que excluir esta ruta o el SSE deja de entregar en tiempo real.
+4. **Comportamientos para `/_astro/*` y los archivos de `public/`**:
+   `CachingOptimized`, sin reenviar cookies. `/_astro/*` ya sale con
+   `Cache-Control: immutable` desde el adaptador, así que se cachea en el borde
+   sin riesgo de servir un bundle viejo (los nombres llevan hash).
+5. **Después**: apuntar el dominio a CloudFront y restringir el acceso directo al
+   origen si se quiere (WAF o cabecera secreta verificada en el middleware).
+
+Con CloudFront en su sitio, el gzip del middleware se puede quitar en un commit
+—devuelve la CPU a la única vCPU— borrando `comprimir()` y sus dos llamadas en
+`onRequest`. Mientras no exista, es lo que da compresión.
+
+### Prefetch (3.6)
+
+Lo medido aquí corrige el supuesto del plan. `<ClientRouter />` llama a
+`init({ prefetchAll: true })` y, como no había opción `prefetch` en
+`astro.config.mjs`, ese valor ganaba: **cualquier** enlace que el usuario rozara
+con el cursor disparaba un render SSR completo, incluidos los de cada fila de las
+listas de tickets. No era una mejora por añadir, era carga por quitar.
+
+Ahora `astro.config.mjs` declara `prefetch: { prefetchAll: false,
+defaultStrategy: 'hover' }` y el prefetch es opt-in por enlace con
+`data-astro-prefetch="hover"`. En `/tickets/soporte`, de 21 enlaces de la página
+prefetchan 14 (los del Sidebar) en lugar de los 21.
+
 ### Assets (3.5)
 
 | Archivo | Antes | Después |
@@ -150,12 +231,16 @@ Mismas dimensiones en los dos casos: no se reescaló nada, sólo se recodificó.
 
 ### Lo que queda sin medir
 
-- **3.3 (compresión HTTP)**: sin implementar, pendiente de decidir entre
-  CloudFront delante de App Runner y gzip en el middleware.
+- **3.3 (compresión HTTP)**: el gzip del middleware está implementado y medido;
+  lo que falta es CloudFront, y con él la compresión y el caché de los assets
+  estáticos, que hoy siguen saliendo sin comprimir.
 - **3.4 (Dockerfile)**: los cambios están hechos pero sin validar con
   `docker build` — el demonio de Docker Desktop no responde en esta máquina.
 - **Producción**: el SQL de índices de 3.1 está aplicado sólo en la BD de
   desarrollo.
+- **Coste en CPU del gzip**: no se ha medido en la instancia de App Runner (1
+  vCPU). En local no se nota, pero el número que importa es el de allí, bajo
+  carga real.
 
 ## Cómo leer estas cifras
 
