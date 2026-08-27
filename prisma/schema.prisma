@@ -261,7 +261,12 @@ model Ticket {
   traslados             Traslado?
 
   @@index([solicitanteId])
+  // Notificaciones filtra por solicitante y ordena por fechaact desc: sin el
+  // compuesto Postgres ordena en memoria tras el index scan.
+  @@index([solicitanteId, fechaact(sort: Desc)])
   @@index([estatusId])
+  // Las cuatro listas filtran por estatus y paginan por fechaalta desc.
+  @@index([estatusId, fechaalta(sort: Desc)])
   @@index([atiendeId])
   @@index([categoriaId])
   @@index([empresaId])
@@ -319,6 +324,9 @@ model Traslado {
   planpago           PlanPago? @relation(fields: [planpagoId], references: [id])
   ticket             Ticket    @relation(fields: [ticketId], references: [id])
 
+  // /api/tickets/check-transfer busca traslados por matrícula en cada alta de
+  // ticket de traslado; sin índice era un seq scan de la tabla entera.
+  @@index([matricula])
   @@map("traslado")
 }
 
@@ -517,6 +525,9 @@ model Incidencia {
   omitida              Boolean  @default(false)
   usuario              Usuario  @relation(fields: [usuarioId], references: [id])
 
-  @@index([usuarioId])
+  // /api/user/incidencias filtra por usuario y (casi siempre) mes. El compuesto
+  // cubre además las consultas que sólo filtran por usuario, así que sustituye al
+  // índice simple en vez de sumarse a él.
+  @@index([usuarioId, mes])
   @@map("incidencia")
 }
