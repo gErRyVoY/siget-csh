@@ -9,6 +9,113 @@ const publicRoutes = [
   "/health",
 ];
 
+// Tipos que vale la pena comprimir. Se excluye a propósito `text/event-stream`:
+// el SSE de notificaciones necesita que cada evento salga al cliente en cuanto se
+// escribe, y un flujo gzip lo retendría en el búfer del compresor.
+const COMPRESIBLES =
+  /^(text\/html|text\/plain|text\/css|text\/javascript|application\/json|application\/javascript|application\/xml|image\/svg\+xml)/;
+
+// Por debajo de ~1 KB el encabezado gzip y el coste de CPU no se pagan solos.
+const MINIMO_COMPRIMIBLE = 1024;
+
+/**
+ * Comprime la respuesta con gzip cuando el cliente lo acepta.
+ *
+ * Nota de alcance: en producción (`@astrojs/node` standalone) los assets de
+ * `/_astro/*` y `public/*` los sirve el manejador de estáticos **antes** de que
+ * corra este middleware, así que aquí sólo se comprime el HTML de SSR y el JSON
+ * de la API — que es la mayor parte de los bytes de una navegación. Comprimir
+ * también los assets requiere un CDN delante (ver PERF-BASELINE.md, 3.3).
+ */
+async function comprimir(request: Request, response: Response): Promise<Response> {
+  if (!response.body) return response;
+  if (response.status === 204 || response.status === 304) return response;
+  if (response.headers.has("Content-Encoding")) return response;
+
+  const tipo = response.headers.get("Content-Type") ?? "";
+  if (!COMPRESIBLES.test(tipo)) return response;
+
+  if (!/\bgzip\b/i.test(request.headers.get("Accept-Encoding") ?? "")) return response;
+
+  const declarado = Number(response.headers.get("Content-Length"));
+  if (Number.isFinite(declarado) && declarado > 0 && declarado < MINIMO_COMPRIMIBLE) return response;
+
+  // Las respuestas de SSR no traen Content-Length, así que el umbral se decide
+  // leyendo el principio del cuerpo: se acumula hasta 1 KB y, si el flujo termina
+  // ahí, se devuelve tal cual. Sin esto, gzip *engorda* las respuestas pequeñas
+  // (el JSON de /health son 74 bytes y comprimido 91) y quema CPU de la única
+  // vCPU en cada carga de página. El resto se sigue enviando en streaming.
+  const lector = response.body.getReader();
+  // El cast acota `ArrayBufferLike` a `ArrayBuffer`: en Node los trozos nunca
+  // vienen respaldados por un SharedArrayBuffer, que es el otro caso del tipo.
+  const trozos: Uint8Array<ArrayBuffer>[] = [];
+  let acumulado = 0;
+  let terminado = false;
+  while (acumulado < MINIMO_COMPRIMIBLE) {
+    const { value, done } = await lector.read();
+    if (done) {
+      terminado = true;
+      break;
+    }
+    if (value) {
+      trozos.push(value as Uint8Array<ArrayBuffer>);
+      acumulado += value.byteLength;
+    }
+  }
+
+  if (terminado && acumulado < MINIMO_COMPRIMIBLE) {
+    lector.releaseLock();
+    return new Response(concatenar(trozos, acumulado), {
+      status: response.status,
+      statusText: response.statusText,
+      headers: response.headers,
+    });
+  }
+
+  const cuerpo = new ReadableStream<BufferSource>({
+    start(controller) {
+      for (const trozo of trozos) controller.enqueue(trozo);
+      if (terminado) controller.close();
+    },
+    async pull(controller) {
+      const { value, done } = await lector.read();
+      if (done) {
+        controller.close();
+        return;
+      }
+      if (value) controller.enqueue(value);
+    },
+    cancel(reason) {
+      return lector.cancel(reason);
+    },
+  });
+
+  const headers = new Headers(response.headers);
+  headers.set("Content-Encoding", "gzip");
+  // El tamaño cambia y deja de conocerse de antemano: Node responde en chunked.
+  headers.delete("Content-Length");
+  const vary = headers.get("Vary") ?? "";
+  if (!/accept-encoding/i.test(vary)) {
+    headers.set("Vary", vary ? `${vary}, Accept-Encoding` : "Accept-Encoding");
+  }
+
+  return new Response(cuerpo.pipeThrough(new CompressionStream("gzip")), {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
+}
+
+function concatenar(trozos: Uint8Array<ArrayBuffer>[], total: number): ArrayBuffer {
+  const salida = new Uint8Array(new ArrayBuffer(total));
+  let offset = 0;
+  for (const trozo of trozos) {
+    salida.set(trozo, offset);
+    offset += trozo.byteLength;
+  }
+  return salida.buffer;
+}
+
 async function handleRequest(context: APIContext, next: MiddlewareNext): Promise<Response> {
   const { pathname } = context.url;
 
@@ -134,7 +241,7 @@ async function handleRequest(context: APIContext, next: MiddlewareNext): Promise
 
 export const onRequest = defineMiddleware(async (context, next) => {
   if (!import.meta.env.DEV) {
-    return handleRequest(context, next);
+    return comprimir(context.request, await handleRequest(context, next));
   }
 
   // Instrumentación de línea base (solo desarrollo): expone en `Server-Timing`
@@ -153,5 +260,5 @@ export const onRequest = defineMiddleware(async (context, next) => {
     "Server-Timing",
     `sql;desc="${sql} queries";dur=${sqlMs.toFixed(1)}, total;dur=${total.toFixed(1)}`
   );
-  return instrumented;
+  return comprimir(context.request, instrumented);
 });
