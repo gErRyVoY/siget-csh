@@ -1,5 +1,6 @@
 import type { APIRoute } from 'astro';
 import { prisma } from '@/lib/db';
+import { invalidateReferenceData } from '@/lib/reference-data';
 
 // GET: Obtener información de una empresa mediante slug
 export const GET: APIRoute = async ({ request, locals }) => {
@@ -100,6 +101,9 @@ export const PATCH: APIRoute = async ({ request, locals }) => {
       return empresaAfterUpdate;
     });
 
+    // El catálogo cacheado (src/lib/reference-data.ts) queda obsoleto.
+    invalidateReferenceData();
+
     return new Response(JSON.stringify(updatedEmpresa), { status: 200 });
   } catch (error) {
     console.error('Error al actualizar la empresa:', error);
@@ -180,6 +184,8 @@ export const POST: APIRoute = async ({ request, locals }) => {
         usuarioId: adminUserId,
       },
     });
+
+    invalidateReferenceData();
 
     return new Response(JSON.stringify(newEmpresa), { status: 201 });
   } catch (error: any) {

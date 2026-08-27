@@ -1,5 +1,6 @@
 import type { APIRoute } from "astro";
 import { prisma } from "@/lib/db";
+import { invalidateReferenceData } from "@/lib/reference-data";
 
 // Helper to check authentication.
 // La sesión la resolvió ya el middleware y vive en `locals.session`; leerla de
@@ -33,6 +34,9 @@ export const POST: APIRoute = async ({ request, locals }) => {
                 activo: true
             }
         });
+
+        // El catálogo cacheado (src/lib/reference-data.ts) queda obsoleto.
+        invalidateReferenceData();
 
         return new Response(JSON.stringify(newCat), { status: 201 });
     } catch (error: any) {
@@ -92,6 +96,8 @@ export const PATCH: APIRoute = async ({ request, locals }) => {
             where: { id: catId },
             data: updateData
         });
+
+        invalidateReferenceData();
 
         return new Response(JSON.stringify(updatedCat), { status: 200 });
     } catch (error: any) {
@@ -228,6 +234,8 @@ export const DELETE: APIRoute = async ({ request, locals }) => {
                 where: { id: catId }
             });
         });
+
+        invalidateReferenceData();
 
         return new Response(JSON.stringify({ success: true }), { status: 200 });
     } catch (error: any) {

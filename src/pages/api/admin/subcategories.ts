@@ -1,5 +1,6 @@
 import type { APIRoute } from "astro";
 import { prisma } from "@/lib/db";
+import { invalidateReferenceData } from "@/lib/reference-data";
 
 // Helper to check authentication.
 // La sesión la resolvió ya el middleware y vive en `locals.session`; leerla de
@@ -66,6 +67,9 @@ export const POST: APIRoute = async ({ request, locals }) => {
             return sub;
         });
 
+        // El catálogo cacheado (src/lib/reference-data.ts) queda obsoleto.
+        invalidateReferenceData();
+
         return new Response(JSON.stringify(newSub), { status: 201 });
     } catch (error: any) {
         console.error("Error creating subcategory:", error);
@@ -124,6 +128,8 @@ export const PATCH: APIRoute = async ({ request, locals }) => {
             where: { id: subId },
             data: updateData
         });
+
+        invalidateReferenceData();
 
         return new Response(JSON.stringify(updatedSub), { status: 200 });
     } catch (error: any) {
@@ -228,6 +234,8 @@ export const DELETE: APIRoute = async ({ request, locals }) => {
                 levelIds = levelIds.filter(id => parentIdSet.has(id));
             }
         });
+
+        invalidateReferenceData();
 
         return new Response(JSON.stringify({ success: true }), { status: 200 });
     } catch (error: any) {
