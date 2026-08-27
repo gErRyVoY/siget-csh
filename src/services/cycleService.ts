@@ -12,13 +12,23 @@ import { prisma } from '@/lib/db';
 export async function ensureActiveCycle() {
     const now = new Date();
 
-    // 1. Find the correct cycle for today
-    const correctCycle = await prisma.ciclo.findFirst({
-        where: {
-            fecha_inicio: { lte: now },
-            fecha_fin: { gte: now }
-        }
-    });
+    // Se corre en cada creación de ticket y en cada traslado, y en el estado normal
+    // —el ciclo correcto ya es el único activo— no hay nada que corregir. Por eso las
+    // dos lecturas van en paralelo (un solo viaje a la BD) y las escrituras quedan
+    // condicionadas a que realmente haya algo que cambiar: antes se emitía un UPDATE
+    // de desactivación en toda llamada, con su bloqueo de fila, aunque no tocara nada.
+    const [correctCycle, activos] = await Promise.all([
+        prisma.ciclo.findFirst({
+            where: {
+                fecha_inicio: { lte: now },
+                fecha_fin: { gte: now }
+            }
+        }),
+        prisma.ciclo.findMany({
+            where: { activo: true },
+            select: { id: true }
+        }),
+    ]);
 
     if (correctCycle) {
         // If the correct cycle is not active, activate it
@@ -31,24 +41,24 @@ export async function ensureActiveCycle() {
         }
 
         // Deactivate others
-        await prisma.ciclo.updateMany({
-            where: {
-                activo: true,
-                id: { not: correctCycle.id }
-            },
-            data: { activo: false }
-        });
+        const sobrantes = activos.map(c => c.id).filter(id => id !== correctCycle.id);
+        if (sobrantes.length > 0) {
+            await prisma.ciclo.updateMany({
+                where: { id: { in: sobrantes } },
+                data: { activo: false }
+            });
+        }
 
         return correctCycle;
     } else {
         // No cycle matches today (Gap period or Out of range)
         // Ensure everything is inactive
-        const deleted = await prisma.ciclo.updateMany({
-            where: { activo: true },
-            data: { activo: false }
-        });
-        if (deleted.count > 0) {
-            console.log(`[CycleService] No active cycle for today. Deactivated ${deleted.count} cycles.`);
+        if (activos.length > 0) {
+            const { count } = await prisma.ciclo.updateMany({
+                where: { id: { in: activos.map(c => c.id) } },
+                data: { activo: false }
+            });
+            console.log(`[CycleService] No active cycle for today. Deactivated ${count} cycles.`);
         }
         return null;
     }

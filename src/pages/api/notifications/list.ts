@@ -1,5 +1,6 @@
 import type { APIRoute } from 'astro';
 import { prisma } from '@/lib/db';
+import { idsTicketsConMovimientoAjeno } from '@/lib/notifications';
 
 const PRIVILEGED_ROLES = [2, 3]; // admin y superadmin
 
@@ -58,22 +59,26 @@ export const GET: APIRoute = async ({ request, locals }) => {
             ]);
 
         } else {
-            // Regular Users: Tickets requested by me with updates NOT by me
-            const userTickets = await prisma.ticket.findMany({
-                where: { solicitanteId: userId },
-                orderBy: { fechaact: 'desc' },
-                take: 100,
-                include: ticketInclude,
-            });
+            // Usuarios normales: tickets propios cuyo último movimiento no es suyo.
+            // Primero los ids con una sola sentencia (src/lib/notifications.ts) y sólo
+            // después se hidrata la página visible. Antes se traían 100 tickets con
+            // siete relaciones cada uno para acabar mostrando 5.
+            const ids = await idsTicketsConMovimientoAjeno(userId);
+            totalCount = ids.length;
 
-            // Filter: Last history not by user
-            const filteredTickets = userTickets.filter(ticket => {
-                const lastHistory = ticket.historial_solicitudes[0];
-                return lastHistory && lastHistory.usuarioId !== userId;
-            });
+            const idsPagina = ids.slice(skip, skip + limit);
 
-            totalCount = filteredTickets.length;
-            tickets = filteredTickets.slice(skip, skip + limit);
+            if (idsPagina.length > 0) {
+                const pagina = await prisma.ticket.findMany({
+                    where: { id: { in: idsPagina } },
+                    include: ticketInclude,
+                });
+
+                // `findMany` con `in` no respeta el orden de la lista: se reordena según
+                // los ids, que ya vienen por `fechaact desc`.
+                const porId = new Map(pagina.map(t => [t.id, t]));
+                tickets = idsPagina.map(id => porId.get(id)).filter(Boolean) as any[];
+            }
         }
 
         return new Response(JSON.stringify({

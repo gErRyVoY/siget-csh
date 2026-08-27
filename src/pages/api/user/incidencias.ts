@@ -82,18 +82,23 @@ export const GET: APIRoute = async ({ request, locals }) => {
   try {
     let whereClause: any = { usuarioId: userId };
     if (mes > 0) whereClause.mes = mes;
-    // Assuming we want to filter by year, we can filter by fecha >= startOfYear and fecha <= endOfYear,
-    // or just fetch all for the user and month, then filter. Let's just fetch for the month.
-    
+    // El año se filtra en SQL como rango sobre `fecha`. Antes se traían todas las
+    // incidencias del usuario y se descartaban en JavaScript con `.filter()`.
+    // Los límites se construyen en la zona horaria del proceso, igual que hacía
+    // `fecha.getFullYear()`, para no alterar qué filas entran en el rango.
+    if (anio > 0) {
+      whereClause.fecha = {
+        gte: new Date(anio, 0, 1, 0, 0, 0, 0),
+        lt: new Date(anio + 1, 0, 1, 0, 0, 0, 0),
+      };
+    }
+
     const incidencias = await prisma.incidencia.findMany({
       where: whereClause,
       orderBy: { fecha: 'desc' }
     });
 
-    // filter by anio if provided
-    const filtered = anio > 0 ? incidencias.filter(i => i.fecha && i.fecha.getFullYear() === anio) : incidencias;
-
-    return new Response(JSON.stringify({ status: "ok", data: filtered }), {
+    return new Response(JSON.stringify({ status: "ok", data: incidencias }), {
       status: 200,
       headers: { "Content-Type": "application/json" },
     });

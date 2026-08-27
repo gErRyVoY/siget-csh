@@ -1,5 +1,6 @@
 import type { APIRoute } from 'astro';
 import { prisma } from '@/lib/db';
+import { contarTicketsConMovimientoAjeno } from '@/lib/notifications';
 
 const PRIVILEGED_ROLES = [2, 3]; // admin y superadmin
 
@@ -25,61 +26,30 @@ export const GET: APIRoute = async ({ request, locals }) => {
             // 1. Assigned to me AND Status = Nuevo (2)
             // 2. Status = Sin asignar (1) (All unassigned tickets? Or just those they can see? Usually all for resolvers)
 
-            const assignedNewCount = await prisma.ticket.count({
-                where: {
-                    atiendeId: userId,
-                    estatusId: 2, // Nuevo
-                },
-            });
-
-            const unassignedCount = await prisma.ticket.count({
-                where: {
-                    estatusId: 1, // Sin asignar
-                },
-            });
+            // Los dos conteos son independientes: van en paralelo, no en serie.
+            const [assignedNewCount, unassignedCount] = await Promise.all([
+                prisma.ticket.count({
+                    where: {
+                        atiendeId: userId,
+                        estatusId: 2, // Nuevo
+                    },
+                }),
+                prisma.ticket.count({
+                    where: {
+                        estatusId: 1, // Sin asignar
+                    },
+                }),
+            ]);
 
             count = assignedNewCount + unassignedCount;
 
         } else {
-            // Regular Users: Count UPDATED tickets (modified)
-            // Logic: Tickets created by me (solicitanteId = userId) that have recent updates?
-            // "tickets que se han modificado".
-            // How to track "modified" status for the user?
-            // Usually this implies unread notifications or tickets with recent activity not seen.
-            // Since we don't have a "read" status table yet, we might approximate this or just count tickets with status changes/comments that aren't by the user.
-            // For now, let's count tickets that are NOT "Nuevo" (meaning they've been touched) OR have a specific flag.
-            // BUT, the prompt implies a notification count.
-            // A simple approach for "modified" without a read-receipt system is hard.
-            // Alternative: Count tickets in "En progreso" (updated) or "Solucionado" (completed) that haven't been "archived" or "closed" by the user?
-            // Let's look at the request again: "mostrar un total de notificaciones de los tickets que se han modificado".
-            // Without a "Notification" table in DB, we can't persist "unread" state.
-            // However, we can count tickets where the LAST interaction was NOT by the user.
-            // Let's try: Tickets requested by user where updated_at > created_at AND last_modifier != user.
-            // We don't have last_modifier on Ticket easily, but we have HistorialSolicitud.
-
-            // Let's fetch tickets requested by user
-            const userTickets = await prisma.ticket.findMany({
-                where: {
-                    solicitanteId: userId,
-                },
-                orderBy: { fechaact: 'desc' },
-                take: 100, // Optimize: count only among the 100 most recently updated tickets
-                include: {
-                    historial_solicitudes: {
-                        orderBy: { fecha_cambio: 'desc' },
-                        take: 1,
-                    }
-                }
-            });
-
-            // Count tickets where the last history entry is NOT by the user
-            count = userTickets.reduce((acc, ticket) => {
-                const lastHistory = ticket.historial_solicitudes[0];
-                if (lastHistory && lastHistory.usuarioId !== userId) {
-                    return acc + 1;
-                }
-                return acc;
-            }, 0);
+            // Usuarios normales: tickets propios cuyo último movimiento no es suyo.
+            // Sin tabla de acuses de lectura, «modificado» se define como «la última
+            // entrada de historial la escribió otra persona». Ver src/lib/notifications.ts:
+            // se resuelve en una sentencia con JOIN LATERAL en lugar de traer 100
+            // tickets con siete relaciones y filtrarlos en memoria.
+            count = await contarTicketsConMovimientoAjeno(userId);
         }
 
         return new Response(JSON.stringify({ count }), {
