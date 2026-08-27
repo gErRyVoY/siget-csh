@@ -3,41 +3,23 @@ import MainLayout from "@/layouts/MainLayout.astro";
 import { prisma } from "@/lib/db";
 import {
     type Ticket,
+    type Empresa,
     type Estatus,
-    type Usuario,
     Prioridad,
     type HistorialSolicitud,
-    type Subcategoria,
 } from "@prisma/client";
+import {
+    getCampusesActivos,
+    getCarrerasActivas,
+    getDescuentosActivos,
+    getEstatus,
+    getRutaSubcategoria,
+} from "@/lib/reference-data";
 import {
     campusOptions,
     carreraOptions,
     bloqueOptions,
 } from "@/config/form-options";
-
-// Fetch options for autocomplete with IDs
-const allCampuses = await prisma.empresa.findMany({
-    where: { activa: true },
-    select: { id: true, nombre: true, tckt_virtual: true }
-});
-const allCarreras = await prisma.carrera.findMany({
-    where: { activo: true },
-    include: { oferta: true }
-});
-const mappedCarreras = allCarreras.map(c => {
-     let label = c.descripcion;
-     if (c.oferta.descripcion.includes("Licenciatura")) label = `Licenciatura en ${label}`;
-     else if (c.oferta.descripcion.includes("Maestría")) label = `Maestría en ${label}`;
-     else if (c.oferta.descripcion.includes("Doctorado")) label = `Doctorado en ${label}`;
-     return { id: c.id, label };
-});
-const allDescuentos = await prisma.descuento.findMany({
-    where: { activo: true },
-    select: { id: true, descripcion: true }
-});
-
-const mappedCampuses = allCampuses.map(c => ({ id: c.id, label: c.nombre }));
-const mappedDescuentos = allDescuentos.map(d => ({ id: d.id, label: d.descripcion }));
 
 const { id } = Astro.params;
 if (!id) {
@@ -74,63 +56,47 @@ const statusColors: { [key: string]: string } = {
     Duplicado: "#171717",
 };
 
-// Consultas secuenciales para evitar el agotamiento del connection pool
-const ticket = await prisma.ticket.findUnique({
-    where: { id: ticketId },
-    include: {
-        estatus: true,
-        categoria: true,
-        subcategoria: true,
-        solicitante: { include: { empresa: true } },
-        atiende: true,
-        empresa: true,
-        traslados: {
-            include: {
-                origen: true,
-                destino: true,
-                carrera: {
-                    include: {
-                        oferta: true,
-                    }
-                },
-                descuento: true,
-                bloque: true,
-            }
-        },
-    },
-});
-
 const MARKETING_CATEGORY_ID = 12;
 
-// Emails de agentes para permisos de Drive
-const isMktTicket = ticket ? ticket.categoriaId === MARKETING_CATEGORY_ID : false;
-const targetAgents = await prisma.usuario.findMany({
-    where: {
-        activo: true,
-        mail: { not: '' },
-        ...(isMktTicket ? { atiende_mkt: true } : { atiende_csh: true }),
-    },
-    select: { mail: true },
-});
-const targetAgentEmails = targetAgents
-    .map((u) => u.mail)
-    .filter(Boolean) as string[];
-
-const ticketHistory = await prisma.historialSolicitud.findMany({
-    where: { ticketId: ticketId },
-    include: {
-        usuario: { select: { nombres: true, apellidos: true } },
-        estatus: { select: { nombre: true } },
-    },
-    orderBy: { fecha_cambio: "desc" },
-});
-// cshSupportUsers eliminado; ahora se usa agents unificadamente.
-const cshAuditorDocs = await prisma.usuario.findMany({
-    where: { empresaId: 15, activo: true, auditor_docs: true },
-});
-const cshAuditorReq = await prisma.usuario.findMany({
-    where: { empresaId: 15, activo: true, auditor_req: true },
-});
+// El ticket, su historial y el catálogo de estatus no dependen entre sí, así que
+// van en paralelo. El comentario que había aquí («consultas secuenciales para
+// evitar el agotamiento del connection pool») dejó de aplicar cuando el
+// DATABASE_URL pasó a connection_limit=30.
+const [ticket, ticketHistory, todosLosEstatus] = await Promise.all([
+    prisma.ticket.findUnique({
+        where: { id: ticketId },
+        include: {
+            estatus: true,
+            categoria: true,
+            subcategoria: true,
+            solicitante: { include: { empresa: true } },
+            atiende: true,
+            empresa: true,
+            traslados: {
+                include: {
+                    origen: true,
+                    destino: true,
+                    carrera: {
+                        include: {
+                            oferta: true,
+                        }
+                    },
+                    descuento: true,
+                    bloque: true,
+                }
+            },
+        },
+    }),
+    prisma.historialSolicitud.findMany({
+        where: { ticketId: ticketId },
+        include: {
+            usuario: { select: { nombres: true, apellidos: true } },
+            estatus: { select: { nombre: true } },
+        },
+        orderBy: { fecha_cambio: "desc" },
+    }),
+    getEstatus(),
+]);
 
 if (!ticket) {
     return Astro.redirect("/404");
@@ -179,88 +145,148 @@ if (!isOwner && !canViewAsCsh && !canViewAsMkt) {
 
 const isReadOnly = false; // Reverted: Allow editing for all statuses
 
+const isTraslado = ticket.traslados != null;
+const traslado = ticket.traslados ?? null;
+const isMktTicket = ticket.categoriaId === MARKETING_CATEGORY_ID;
 
+type OpcionAutocompletado = { id: number; label: string };
+type PersonaOpcion = { id: number; nombres: string; apellidos: string };
 
-const breadcrumbPath = [ticket.categoria.nombre];
-if (ticket.subcategoria) {
-    let currentSub: Subcategoria | null = ticket.subcategoria;
-    const subPath = [];
-    while (currentSub) {
-        subPath.unshift(currentSub.nombre);
-        if (currentSub.parent_subcategoriaId) {
-            currentSub = await prisma.subcategoria.findUnique({
-                where: { id: currentSub.parent_subcategoriaId },
-            });
-        } else {
-            currentSub = null;
-        }
-    }
-    breadcrumbPath.push(...subPath);
+/**
+ * Agentes del desplegable «Atiende». Sólo los ven los usuarios privilegiados; el
+ * resto ve únicamente al agente actual, sin consultar nada. Las dos ramas que
+ * había (Marketing y CSH) eran idénticas salvo el flag `atiende_*`.
+ */
+function cargarAgentesAsignables(): Promise<PersonaOpcion[]> {
+    if (!isPrivileged) return Promise.resolve([]);
+
+    // Se copian fuera del `where` porque TypeScript no arrastra el estrechamiento
+    // de `ticket` (no nulo desde el redirect a /404) al interior de la función.
+    const categoriaId = ticket!.categoriaId;
+    const subcategoriaId = ticket!.subcategoriaId;
+
+    return prisma.usuario.findMany({
+        where: {
+            activo: true,
+            OR: [
+                isMktTicket ? { atiende_mkt: true } : { atiende_csh: true },
+                {
+                    asignaciones_categorias: {
+                        some: {
+                            categoriaId,
+                            OR: [
+                                { subcategoriaId },
+                                { subcategoriaId: null }
+                            ],
+                            activo: true
+                        }
+                    }
+                }
+            ]
+        },
+        select: { id: true, nombres: true, apellidos: true },
+        orderBy: { nombres: "asc" }
+    });
 }
 
-let statuses: Estatus[] = [];
-let agents: Usuario[] = [];
+/**
+ * Catálogos y auditores que sólo usa la vista de traslados. Antes se cargaban al
+ * principio de la página —campus, carreras y descuentos— en toda petición, incluso
+ * para tickets normales, junto con los dos catálogos de auditores. Ahora sólo se
+ * piden si el ticket es un traslado, y los tres catálogos salen del caché de
+ * catálogos (src/lib/reference-data.ts).
+ */
+async function cargarDatosDeTraslado() {
+    if (!isTraslado) {
+        return {
+            campuses: [] as Empresa[],
+            mappedCampuses: [] as OpcionAutocompletado[],
+            mappedCarreras: [] as OpcionAutocompletado[],
+            mappedDescuentos: [] as OpcionAutocompletado[],
+            auditoresDocs: [] as PersonaOpcion[],
+            auditoresReq: [] as PersonaOpcion[],
+        };
+    }
+
+    const [campuses, carreras, descuentos, auditoresDocs, auditoresReq] =
+        await Promise.all([
+            getCampusesActivos(),
+            getCarrerasActivas(),
+            getDescuentosActivos(),
+            prisma.usuario.findMany({
+                where: { empresaId: 15, activo: true, auditor_docs: true },
+                select: { id: true, nombres: true, apellidos: true },
+            }),
+            prisma.usuario.findMany({
+                where: { empresaId: 15, activo: true, auditor_req: true },
+                select: { id: true, nombres: true, apellidos: true },
+            }),
+        ]);
+
+    return {
+        campuses,
+        mappedCampuses: campuses.map((c) => ({ id: c.id, label: c.nombre })),
+        mappedCarreras: carreras.map((c) => {
+            let label = c.descripcion;
+            if (c.oferta.descripcion.includes("Licenciatura")) label = `Licenciatura en ${label}`;
+            else if (c.oferta.descripcion.includes("Maestría")) label = `Maestría en ${label}`;
+            else if (c.oferta.descripcion.includes("Doctorado")) label = `Doctorado en ${label}`;
+            return { id: c.id, label };
+        }),
+        mappedDescuentos: descuentos.map((d) => ({ id: d.id, label: d.descripcion })),
+        auditoresDocs,
+        auditoresReq,
+    };
+}
+
+// Ninguna de las tres cosas depende de las otras: un solo viaje en paralelo en
+// lugar de tres bloques en serie. Y van después del control de acceso, así que una
+// petición no autorizada ya no paga estas consultas.
+const [targetAgents, agentesAsignables, datosTraslado] = await Promise.all([
+    // Emails de agentes para permisos de Drive
+    prisma.usuario.findMany({
+        where: {
+            activo: true,
+            mail: { not: '' },
+            ...(isMktTicket ? { atiende_mkt: true } : { atiende_csh: true }),
+        },
+        select: { mail: true },
+    }),
+    cargarAgentesAsignables(),
+    cargarDatosDeTraslado(),
+]);
+
+const targetAgentEmails = targetAgents
+    .map((u) => u.mail)
+    .filter(Boolean) as string[];
+
+const allCampuses = datosTraslado.campuses;
+const mappedCampuses = datosTraslado.mappedCampuses;
+const mappedCarreras = datosTraslado.mappedCarreras;
+const mappedDescuentos = datosTraslado.mappedDescuentos;
+const cshAuditorDocs = datosTraslado.auditoresDocs;
+const cshAuditorReq = datosTraslado.auditoresReq;
+
+// La ruta de la subcategoría se recorre en memoria sobre el caché de catálogos.
+// Antes este bloque emitía una consulta por cada nivel de la jerarquía (N+1).
+const breadcrumbPath = [ticket.categoria.nombre];
+if (ticket.subcategoria) {
+    breadcrumbPath.push(...(await getRutaSubcategoria(ticket.subcategoria.id)));
+}
+
 const priorities = Object.values(Prioridad);
 
-// Fetch statuses for everyone
-statuses = await prisma.estatus.findMany({
-    where: { nombre: { in: ALLOWED_STATUSES } },
-});
+// Los estatus salen del caché de catálogos. Se ordenan por id para conservar el
+// orden que devolvía la consulta sin ORDER BY (1 Sin asignar … 7 Duplicado).
+let statuses: Estatus[] = todosLosEstatus
+    .filter((s) => ALLOWED_STATUSES.includes(s.nombre))
+    .sort((a, b) => a.id - b.id);
 
-// MARKETING_CATEGORY_ID ya está definido arriba en el bloque de access control
+let agents: PersonaOpcion[] = agentesAsignables;
 
-if (isPrivileged) {
-    // Privileged users see all agents
-    if (ticket.categoriaId === MARKETING_CATEGORY_ID) {
-        agents = await prisma.usuario.findMany({
-            where: {
-                activo: true,
-                OR: [
-                    { atiende_mkt: true },
-                    {
-                        asignaciones_categorias: {
-                            some: {
-                                categoriaId: ticket.categoriaId,
-                                OR: [
-                                    { subcategoriaId: ticket.subcategoriaId },
-                                    { subcategoriaId: null }
-                                ],
-                                activo: true
-                            }
-                        }
-                    }
-                ]
-            },
-            orderBy: { nombres: "asc" }
-        });
-    } else {
-        agents = await prisma.usuario.findMany({
-            where: {
-                activo: true,
-                OR: [
-                    { atiende_csh: true },
-                    {
-                        asignaciones_categorias: {
-                            some: {
-                                categoriaId: ticket.categoriaId,
-                                OR: [
-                                    { subcategoriaId: ticket.subcategoriaId },
-                                    { subcategoriaId: null }
-                                ],
-                                activo: true
-                            }
-                        }
-                    }
-                ]
-            },
-            orderBy: { nombres: "asc" }
-        });
-    }
-} else {
+if (!isPrivileged) {
     // Regular users only see the current agent (if any)
-    if (ticket.atiende) {
-        agents = [ticket.atiende];
-    }
+    agents = ticket.atiende ? [ticket.atiende] : [];
 
     // Regular users can only see 'Duplicado', 'Nuevo', or 'Sin asignar' if it's currently the ticket's status
     statuses = statuses.filter(
@@ -325,9 +351,6 @@ const fieldMap: Record<string, string> = {
     auditor_docs: "Auditor Documentos",
     auditor_req: "Auditor Requisitos/Adeudos",
 };
-
-const isTraslado = ticket.traslados != null;
-const traslado = ticket.traslados ?? null;
 
 const currentUserId = userId; // Alias: userId ya declarado en el bloque de access control
 
