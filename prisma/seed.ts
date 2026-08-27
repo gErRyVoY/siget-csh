@@ -146,9 +146,11 @@ async function main() {
       { id: 16, nombre: 'Categorías', identificador: 'admin_siget_categorias', grupo: 'Administrador', subgrupo: 'SiGeT' },
       { id: 17, nombre: 'Ciclos', identificador: 'admin_siget_ciclos', grupo: 'Administrador', subgrupo: 'SiGeT' },
       { id: 18, nombre: 'Secciones', identificador: 'admin_siget_secciones', grupo: 'Administrador', subgrupo: 'SiGeT' },
-      { id: 19, nombre: 'Tickets', identificador: 'admin_siget_tickets', grupo: 'Administrador', subgrupo: 'SiGeT' },
+      // Los ids 19 (admin_siget_tickets) y 21 (admin_siget_roles) quedaron libres
+      // al eliminar las vistas /admin/tickets y /admin/roles. No se reutilizan
+      // para no colisionar con las filas que siguen existiendo en las BD ya
+      // sembradas.
       { id: 20, nombre: 'Usuarios', identificador: 'admin_siget_usuarios', grupo: 'Administrador', subgrupo: 'SiGeT' },
-      { id: 21, nombre: 'Roles', identificador: 'admin_siget_roles', grupo: 'Administrador', subgrupo: 'SiGeT' },
       { id: 22, nombre: 'Modo Oscuro', identificador: 'feature_dark_mode', grupo: 'Generales', descripcion: 'Habilita el botón de Modo Oscuro globalmente en la plataforma.' },
       { id: 23, nombre: 'Empresas', identificador: 'admin_siget_empresas', grupo: 'Administrador', subgrupo: 'SiGeT' },
     ],
@@ -159,7 +161,7 @@ async function main() {
   const allTicketsSoporte = [4, 5, 6];
   const allTicketsMarketing = [7, 8, 9];
   const allOtros = [10, 11, 12, 13, 22];
-  const allAdminSiget = [14, 15, 16, 17, 18, 19, 20, 21, 23];
+  const allAdminSiget = [14, 15, 16, 17, 18, 20, 23];
 
   const rolesSecciones = [
     { rolId: 1, seccionIds: [1, 2, 3, 4, 7, ...allOtros] },

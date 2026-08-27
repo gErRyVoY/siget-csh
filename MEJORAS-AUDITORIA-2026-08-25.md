@@ -24,9 +24,9 @@ El middleware (`src/middleware.ts:46-62`) garantiza **autenticación** para todo
 |---|---|---|
 | `src/pages/api/admin/ciclos/toggle.ts:4` | Sin ninguna comprobación de sesión ni sección | Cualquier usuario logueado puede activar/desactivar el ciclo escolar activo, lo que afecta traslados, dashboards y validaciones de todo el sistema |
 | `src/pages/api/admin/usuarios/import-csv.ts:6` | Sin ninguna comprobación | Cualquier usuario logueado puede dar de alta usuarios masivamente vía CSV |
-| `src/pages/api/admin/roles/create.ts:6-11` | Solo valida que exista sesión | Cualquier usuario logueado puede crear roles clonando permisos de un rol privilegiado |
-| `src/pages/api/admin/roles/categorias.ts:6-11` | Solo sesión | Modificar permisos de categoría por rol |
-| `src/pages/api/admin/roles/secciones.ts:6-11` | Solo sesión | Modificar qué secciones ve cada rol |
+| ~~`src/pages/api/admin/roles/create.ts:6-11`~~ | **Resuelto (2026-08-26):** endpoint eliminado junto con la vista `/admin/roles` | — |
+| ~~`src/pages/api/admin/roles/categorias.ts:6-11`~~ | **Resuelto (2026-08-26):** endpoint eliminado | — |
+| ~~`src/pages/api/admin/roles/secciones.ts:6-11`~~ | **Resuelto (2026-08-26):** endpoint eliminado | — |
 | `src/pages/api/admin/usuarios/secciones.ts:6-8` | Solo sesión | Modificar overrides de secciones por usuario (escalada de privilegios) |
 | `src/pages/api/admin/empresa.ts:7-9` | Solo sesión | Alta/edición de campus |
 | `src/pages/api/admin/categorias/index.ts:7-14` | `isAuthenticated()` solo comprueba sesión | Alta/edición/baja de categorías |
@@ -34,7 +34,7 @@ El middleware (`src/middleware.ts:46-62`) garantiza **autenticación** para todo
 | `src/pages/api/dashboard/stats.ts:4` | Sin comprobación | Fuga de métricas globales (bajo impacto, pero inconsistente) |
 | `src/pages/api/tickets/check-transfer.ts:4` | Sin comprobación | Enumeración de matrículas → devuelve nombre de alumno y estatus del traslado |
 
-- **Nota:** sí lo hacen bien `roles/revoke-user.ts:7`, `roles/toggle-active.ts:7`, `roles/toggle-flags.ts:9` y `admin/secciones.ts:13` (validan `secciones.includes("admin_siget_...")`). Ese es el patrón correcto a replicar.
+- **Nota:** sí lo hacía bien `admin/secciones.ts:13` (valida `secciones.includes("admin_siget_...")`). Ese es el patrón correcto a replicar, hoy extraído a `src/lib/auth-guards.ts` (`requireSection`). Los tres endpoints de `roles/` que también lo aplicaban (`revoke-user`, `toggle-active`, `toggle-flags`) se eliminaron el 2026-08-26 con la vista `/admin/roles`.
 - **Corrección propuesta:** crear un helper único, p. ej. `src/lib/auth-guards.ts`:
 
   ```ts

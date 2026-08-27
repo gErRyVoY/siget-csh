@@ -209,9 +209,7 @@ async function suite4_middleware() {
     "crear_ticket_marketing",
     "proceso_traslados",
     "admin_siget_usuarios",
-    "admin_siget_roles",
     "admin_siget_categorias",
-    "admin_siget_tickets",
     "admin_siget_ciclos",
     "admin_siget_secciones",
     "admin_correos_crear",
@@ -250,7 +248,7 @@ async function suite4_middleware() {
     include: { seccion: true },
   });
   const rol3Nombres = rol3Secciones.map((rs) => rs.seccion.identificador);
-  const adminSecs = ["admin_siget_usuarios", "admin_siget_roles", "admin_siget_categorias"];
+  const adminSecs = ["admin_siget_usuarios", "admin_siget_categorias", "admin_siget_secciones"];
   const adminOK = adminSecs.every((s) => rol3Nombres.includes(s));
   log("Middleware", "Rol 3 (admin) tiene todas las secciones de administracion",
     adminOK,

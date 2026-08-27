@@ -96,7 +96,7 @@ async function main() {
     '/api/notifications/count',
     // Solo las páginas admin que el usuario de la medición puede abrir. Si no
     // tiene la sección, el middleware responde 302 antes de renderizar y la
-    // fila no mide nada (`/admin/roles` y `/admin/tickets` son el caso típico).
+    // fila no mide nada.
     '/admin/secciones',
     '/admin/categorias',
     ...(ticket ? [`/tickets/view/${ticket.id}`] : []),

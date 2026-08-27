@@ -80,10 +80,8 @@ async function handleRequest(context: APIContext, next: MiddlewareNext): Promise
     "/admin/categorias": "admin_siget_categorias",
     "/admin/ciclos": "admin_siget_ciclos",
     "/admin/secciones": "admin_siget_secciones",
-    "/admin/tickets": "admin_siget_tickets",
     "/admin/usuarios": "admin_siget_usuarios",
     "/admin/empresas": "admin_siget_empresas",
-    "/admin/roles": "admin_siget_roles",
     "/base-de-conocimientos": "base_conocimientos",
     "/horario-de-atencion": "horario_atencion",
   };
