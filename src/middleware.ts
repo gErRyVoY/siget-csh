@@ -21,6 +21,15 @@ async function handleRequest(context: APIContext, next: MiddlewareNext): Promise
     return next();
   }
 
+  // El health check de App Runner corre cada 5 s (≈17 000 peticiones al día) y no
+  // necesita sesión: atravesar el handler completo de Auth.js para responder un
+  // JSON fijo es trabajo tirado. Va antes de `getSession()` a propósito.
+  // Efecto colateral conocido: con una cookie de sesión válida `/health` ya no
+  // redirige a `/`, responde el health check igual que para un anónimo.
+  if (pathname === "/health") {
+    return next();
+  }
+
   // El endpoint de la API de autenticación siempre debe ser accesible.
   if (pathname.startsWith("/api/auth")) {
     return next();
