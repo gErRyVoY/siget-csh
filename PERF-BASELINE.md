@@ -147,17 +147,21 @@ devuelven exactamente lo mismo (12 usuarios y los 22 tickets, campo a campo).
 
 Implementada en `src/middleware.ts` con `CompressionStream('gzip')`. Bytes del
 cuerpo de la respuesta, misma petición con `Accept-Encoding: identity` y con
-`Accept-Encoding: gzip`:
+`Accept-Encoding: gzip`, medidos **contra el build de producción**
+(`NODE_ENV=production node ./dist/server/entry.mjs`) y no contra `astro dev`: el
+servidor de desarrollo infla el HTML con las inyecciones de Vite y los scripts
+sin minificar, y daba cifras optimistas (~136 KB por página en lugar de ~45 KB).
 
 | Ruta | Sin comprimir | gzip | Factor |
 |---|---|---|---|
-| `/` | 136 429 B | 21 871 B | 6.2x |
-| `/tickets/soporte` | 136 335 B | 21 912 B | 6.2x |
-| `/tickets/view/22` (traslado) | 163 066 B | 27 416 B | 5.9x |
-| `/tickets/view/23` (normal) | 146 865 B | 24 642 B | 6.0x |
-| `/login` | 97 160 B | 14 918 B | 6.5x |
+| `/` | 45 494 B | 9 925 B | 4.6x |
+| `/tickets/soporte` | 43 429 B | 9 408 B | 4.6x |
+| `/tickets/view/22` (traslado) | 69 888 B | 14 954 B | 4.7x |
+| `/tickets/view/23` (normal) | 53 687 B | 12 074 B | 4.4x |
 
-Es decir, ~115 KB menos por navegación. Qué **no** se comprime, y por qué:
+Es decir, entre 34 y 55 KB menos por navegación. Comprobado en el mismo arranque
+que la rama de producción del middleware (`import.meta.env.DEV === false`) hace
+lo mismo que la de desarrollo. Qué **no** se comprime, y por qué:
 
 - **`text/event-stream`.** El SSE de notificaciones necesita que cada evento
   salga en cuanto se escribe; el compresor lo retendría en su búfer. Verificado:
@@ -170,10 +174,13 @@ Es decir, ~115 KB menos por navegación. Qué **no** se comprime, y por qué:
   ahí, se devuelve intacto; por encima se sigue enviando en streaming.
 - **Imágenes, fuentes y lo que ya trae `Content-Encoding`.**
 
-Límite de alcance importante: en producción los assets de `/_astro/*` y
-`public/*` los sirve el manejador de estáticos de `@astrojs/node` **antes** de
-que corra el middleware, así que el CSS (65 KB) y el JS (36 KB) siguen saliendo
-sin comprimir. Eso sólo se arregla con un CDN delante.
+Límite de alcance importante, y verificado contra el build de producción: los
+assets de `/_astro/*` y `public/*` los sirve el manejador de estáticos de
+`@astrojs/node` **antes** de que corra el middleware, así que siguen saliendo sin
+comprimir. `curl -H 'Accept-Encoding: gzip' /_astro/index.BGVYfLFz.css` devuelve
+68 908 B sin `Content-Encoding` (sí con `Cache-Control: immutable`). Ese CSS pesa
+más que el HTML comprimido de cualquier página, así que es el mayor byte-saving
+que queda sobre la mesa — y sólo se arregla con un CDN delante.
 
 #### Guía de CloudFront (pendiente, sustituiría al gzip del middleware)
 
