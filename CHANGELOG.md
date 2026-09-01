@@ -8,6 +8,27 @@ Todos los cambios notables en este proyecto serán documentados en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Versionado Semántico](https://semver.org/lang/es/).
 
+## 2026-09-01 (Días Invisibles en el Reporte de Incidencias: Nueva Categoría "Salida Anticipada" y Aviso de Días Omitidos)
+
+### Fix: Días con Salida Anticipada que Desaparecían del Reporte (`/user/perfil/incidencias`)
+*   **Causa Raíz Identificada**: La vista evaluaba la salida real contra el horario **solo cuando era posterior** a la hora de fin (`diffSalida > 5` → "Tiempo adicional"). Si el colaborador salía **antes** de su hora, ninguna rama activaba `showRow = true`, por lo que el día no generaba fila, no se guardaba y no aparecía en el correo: el tiempo pendiente quedaba invisible tanto para el colaborador como para el Director del CSH. Caso reportado por Rogelio Elizalde López en el reporte de Agosto 2026 (viernes 28, salida `17:02` contra fin `18:00`), donde además quedaban ocultos los días 11, 12, 18 y 27.
+*   **Nueva Categoría "Salida anticipada" con Motivo Obligatorio**: Simétrica al retardo de entrada y con la misma tolerancia de 5 minutos. Si la salida real es más de 5 min anterior al fin del turno, el día se renderiza en rojo (`#ca1c1c`) con los minutos faltantes, exige justificación (`requiresObs = true`, validación existente de mínimo 5 caracteres) y registra `tiempo_turno` negativo.
+*   **Caso Combinado Retardo + Salida Anticipada**: Los minutos de ambos conceptos se acumulan en un único faltante (`tiempoTurno = -(minsRetardo + minsSalidaAntes)`) y la columna de estatus muestra las dos etiquetas apiladas.
+*   **Compensación por Entrada Anticipada**: Si el colaborador entró antes de su hora y aun así salió temprano, los minutos a favor se descuentan del faltante y se muestran como reposición parcial.
+*   **Colores Consistentes en las Tres Superficies**: Salida en rojo en la tabla de resultados, en la celda `SL` del calendario de la vista previa del correo y en el modal "Ver tabla".
+
+### Fix: Aviso de Días Omitidos por Horario No Configurado
+*   **Comportamiento Anterior**: Los días cuyo día de la semana no existe en `horario_disponibilidad` se descartaban **en silencio** (`return` sin rastro). Un colaborador con sábados sin configurar perdía todos sus sábados del reporte —incluidas las inasistencias— sin ninguna señal en pantalla.
+*   **Recuadro de Advertencia**: Se acumulan los días descartados (excluyendo domingos) y se renderiza un aviso ámbar encima de los resultados listando día y nombre del día, con enlace directo a `/user/perfil` para corregir el horario. Se muestra en ambas ramas: con resultados y sin incidencias encontradas.
+
+### Fix: Paridad entre la Vista Previa y el Correo Real (`/api/user/incidencias/send-report`)
+*   **Celda del Calendario**: La celda `SL` de un día con salida anticipada pasa a rojo con fondo de "Justificar" y marca `dayHasProblem = true`, de modo que el día ya no se cuenta como "A tiempo" en la leyenda del correo.
+*   **Lista Textual por Día**: Nueva línea `Salida anticipada N minutos.` en rojo, con orden fijo **Justificar → Salida anticipada → Tiempo adicional → Motivo**, y el día deja de caer en la rama `Sin incidencias.`.
+*   **Verificación**: `npx astro check` 0 errores / 0 warnings en 157 archivos y `pnpm build` completo.
+
+### Auditoría: Horarios Inválidos en Cuentas Admin/Superadmin
+*   Revisión de los 10 usuarios con acceso a la vista. Tres requieren corrección de datos desde el perfil (no es un defecto de código): **Haide Herrera** (sin `clave` de RH y horario nulo, no puede generar reporte), **Jair Flores Téllez** (los seis días con `inicio`/`fin` en `null`, bloqueado por la validación del formulario) y **Victor Barrera** (sin sábado configurado, sus sábados nunca aparecían). El aviso de días omitidos hace visible el tercer caso.
+
 ## 2026-08-25 (Permisos Granulares en Traslados, Autoguardado de Incidencias y Replicación Global de Google Drive)
 
 ### UX & Security: Permisos Granulares de Edición en Detalle de Traslados (`/tickets/view/[id]`)

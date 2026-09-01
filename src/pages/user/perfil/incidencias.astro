@@ -706,6 +706,9 @@ const GOOGLE_APP_ID = import.meta.env.GOOGLE_APP_ID || process.env.GOOGLE_APP_ID
       let html = "";
 
       incidenciasToSave = [];
+      // Días que la vista descarta por no tener ese día de la semana en el horario.
+      // Se acumulan para avisarlo: antes desaparecían del reporte sin dejar rastro.
+      const diasOmitidos: string[] = [];
       const todayStr = new Date().toISOString().split("T")[0];
       let rendered16Plus = false;
       let rendered1To15 = false;
@@ -722,6 +725,9 @@ const GOOGLE_APP_ID = import.meta.env.GOOGLE_APP_ID || process.env.GOOGLE_APP_ID
           horarioDia.inicio === "No disponible" ||
           horarioDia.fin === "No disponible"
         ) {
+          if (dayNameNormalized !== "domingo") {
+            diasOmitidos.push(`${dayNum} (${dayName})`);
+          }
           return;
         }
 
@@ -748,6 +754,7 @@ const GOOGLE_APP_ID = import.meta.env.GOOGLE_APP_ID || process.env.GOOGLE_APP_ID
         let statusText = "";
         let extraText = "";
         let reposicionExtraText = ""; // Minutos de reposición cuando hay retardo + salida tardía
+        let salidaAntesText = ""; // Minutos que faltaron cuando la salida fue antes de la hora
         let requiresObs = false;
         let requiresObsComida = false;
         let showRow = false;
@@ -809,6 +816,11 @@ const GOOGLE_APP_ID = import.meta.env.GOOGLE_APP_ID || process.env.GOOGLE_APP_ID
               diffSalida = timeDiffMins(rSalida, hFin); // > 0 means late exit
             }
 
+            // Minutos que faltaron por salir antes de la hora (tolerancia de 5 min,
+            // igual que el retardo de entrada). Sin esto el día no generaba fila y
+            // desaparecía del reporte aunque hubiera tiempo pendiente.
+            const minsSalidaAntes = diffSalida < -5 ? -diffSalida : 0;
+
             // Reposición completa: entrada anticipada Y salida tardía
             const isReposicionCompleta = diffEntrada < -5 && diffSalida > 5;
 
@@ -836,6 +848,24 @@ const GOOGLE_APP_ID = import.meta.env.GOOGLE_APP_ID || process.env.GOOGLE_APP_ID
               // Salida tardía adicional al retardo
               if (diffSalida > 5) {
                 reposicionExtraText = `${diffSalida} minutos`;
+              }
+              // Retardo y además salida antes de la hora: los minutos se suman al faltante
+              if (minsSalidaAntes > 0) {
+                tiempoTurno = -(minsRetardo + minsSalidaAntes);
+                salidaAntesText = `${minsSalidaAntes} minutos`;
+              }
+            } else if (minsSalidaAntes > 0) {
+              // Sin retardo pero salió antes de su hora: es tiempo pendiente y debe justificarse
+              const earlyMins = diffEntrada < -5 ? (-diffEntrada) : 0;
+              statusText = "Salida anticipada";
+              statusClass = "text-[#ca1c1c] font-bold";
+              tiempoTurno = earlyMins - minsSalidaAntes;
+              extraText = `${minsSalidaAntes} minutos`;
+              requiresObs = true;
+              showRow = true;
+              // Si además entró antes, se reconoce ese tiempo a favor
+              if (earlyMins > 0) {
+                reposicionExtraText = `${earlyMins} minutos`;
               }
             } else {
               // Sin retardo – verificar solo salida tardía o entrada anticipada
@@ -960,6 +990,8 @@ const GOOGLE_APP_ID = import.meta.env.GOOGLE_APP_ID || process.env.GOOGLE_APP_ID
             const diffSal = timeDiffMins(rSalida, hFin);
             if (diffSal > 5) {
               salidaClass = "text-[#16a34a] font-bold";
+            } else if (diffSal < -5) {
+              salidaClass = "text-[#ca1c1c] font-bold";
             }
           }
 
@@ -1005,6 +1037,7 @@ const GOOGLE_APP_ID = import.meta.env.GOOGLE_APP_ID || process.env.GOOGLE_APP_ID
                           ${statusText !== 'Horario excedido' ? `<span>${statusText}</span>` : ''}
                           ${statusText !== 'Horario excedido' && extraText ? `<span class="mt-1">${extraText}</span>` : ''}
                           ${reposicionExtraText ? `<span class="mt-2 text-green-600 font-bold">Tiempo adicional</span><span class="text-green-600 font-bold">${reposicionExtraText}</span>` : ''}
+                          ${salidaAntesText && statusText !== 'Salida anticipada' ? `<span class="mt-2 text-[#ca1c1c] font-bold">Salida anticipada</span><span class="text-[#ca1c1c] font-bold">${salidaAntesText}</span>` : ''}
                         `}
                     </div>
                     <div class="p-4 border-b sm:border-b-0 sm:border-r space-y-2 sm:w-[250px] flex-shrink-0 text-sm">
@@ -1086,11 +1119,29 @@ const GOOGLE_APP_ID = import.meta.env.GOOGLE_APP_ID || process.env.GOOGLE_APP_ID
       if (filtersTop) filtersTop.innerHTML = "";
       if (filtersBottom) filtersBottom.innerHTML = "";
 
+      // Aviso de los días que no se evaluaron por no estar ese día en el horario
+      const avisoHtml = diasOmitidos.length
+        ? `<div class="border border-amber-500/50 bg-amber-500/10 text-foreground rounded-md p-4 mb-4 text-sm">
+             <p class="font-bold text-amber-600 dark:text-amber-400 mb-1">
+               ${diasOmitidos.length} ${diasOmitidos.length === 1 ? "día no se revisó" : "días no se revisaron"}
+             </p>
+             <p class="text-muted-foreground">
+               Hay registros de asistencia en ${diasOmitidos.length === 1 ? "el día" : "los días"}
+               <strong class="text-foreground">${diasOmitidos.join(", ")}</strong>,
+               pero ${diasOmitidos.length === 1 ? "ese día de la semana no está" : "esos días de la semana no están"}
+               configurado${diasOmitidos.length === 1 ? "" : "s"} en tu horario de disponibilidad, así que no se
+               evaluaron ni se incluyen en el reporte. Si deberían contar, actualiza tu horario en
+               <a href="/user/perfil" class="text-primary underline font-medium">tu perfil</a> y vuelve a consultar.
+             </p>
+           </div>`
+        : "";
+
       if (html === "") {
         resultadosContainer.innerHTML =
+          avisoHtml +
           "<p class='text-center text-muted-foreground'>No se encontraron incidencias en este periodo (horario cumplido).</p>";
       } else {
-        resultadosContainer.innerHTML = html;
+        resultadosContainer.innerHTML = avisoHtml + html;
         if (guardarContainer) guardarContainer.classList.remove("hidden");
         if (guardarContainerTop) guardarContainerTop.classList.remove("hidden");
 
@@ -1592,6 +1643,10 @@ const GOOGLE_APP_ID = import.meta.env.GOOGLE_APP_ID || process.env.GOOGLE_APP_ID
             if (rSal && hFin) {
               const diffSal = timeDiffMins(rSal, hFin);
               if (diffSal > 5) slColor = "#16a34a";
+              else if (diffSal < -5) {
+                slColor = "#dc2626";
+                bgColor = colorMap.tarde;
+              }
             }
             statusLines.push(`<span style="color:${slColor};font-weight:700;font-size:10px;">SL ${formatT(inc.salida_turno)}</span>`);
           } else {
@@ -1717,6 +1772,7 @@ const GOOGLE_APP_ID = import.meta.env.GOOGLE_APP_ID || process.env.GOOGLE_APP_ID
 
           let justificarMins = 0;
           let tiempoAdicionalMins = 0;
+          let salidaAntesMins = 0;
           let isJustificar = false; // true si >15 min (rojo), false si 6-15 min (naranja)
 
           if (rEnt && hIni) {
@@ -1730,21 +1786,25 @@ const GOOGLE_APP_ID = import.meta.env.GOOGLE_APP_ID || process.env.GOOGLE_APP_ID
           if (rSal && hFin) {
             const diffSal = timeDiffMins(rSal, hFin);
             if (diffSal > 5) tiempoAdicionalMins = diffSal;
+            else if (diffSal < -5) salidaAntesMins = -diffSal;
           }
 
           const hasObs = activeInc && activeInc.observaciones &&
             !(["Homeoffice","Vacaciones","Evento","Asueto"].includes(activeInc.observaciones));
           const hasObsComida = activeInc && activeInc.observaciones_comida;
 
-          if (justificarMins === 0 && tiempoAdicionalMins === 0 && !hasObs) {
+          if (justificarMins === 0 && tiempoAdicionalMins === 0 && salidaAntesMins === 0 && !hasObs) {
             // Sin incidencia relevante
             lineText = `${dayLabel} <span style="color:#16a34a;">Sin incidencias.</span>`;
           } else {
-            // Armar línea: Justificar → Tiempo adicional → Motivo
+            // Armar línea: Justificar → Salida anticipada → Tiempo adicional → Motivo
             const parts: string[] = [dayLabel];
             if (justificarMins > 0) {
               const jColor = isJustificar ? "#dc2626" : "#ea580c";
               parts.push(`<strong style="color:${jColor};">Justificar ${justificarMins} minutos.</strong>`);
+            }
+            if (salidaAntesMins > 0) {
+              parts.push(`<strong style="color:#dc2626;">Salida anticipada ${salidaAntesMins} minutos.</strong>`);
             }
             if (tiempoAdicionalMins > 0) {
               parts.push(`<strong style="color:#16a34a;">Tiempo adicional ${tiempoAdicionalMins} minutos.</strong>`);
@@ -1935,6 +1995,8 @@ const GOOGLE_APP_ID = import.meta.env.GOOGLE_APP_ID || process.env.GOOGLE_APP_ID
                 const diffSal = timeDiffMins(rSalida, hFin);
                 if (diffSal > 5) {
                   slClass = "text-[#16a34a] font-bold";
+                } else if (diffSal < -5) {
+                  slClass = "text-[#ca1c1c] font-bold";
                 } else {
                   slClass = "text-foreground font-bold";
                 }
