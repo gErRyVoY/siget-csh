@@ -44,6 +44,13 @@ CREATE INDEX IF NOT EXISTS "ticket_estatusId_fechaalta_idx" ON "ticket"("estatus
 --   página y el volumen por usuario sólo crece. Contrapartida: fechaact cambia
 --   en cada actualización de ticket, así que este índice se mantiene en cada
 --   UPDATE. Si alguna vez pesa más de lo que aporta, es el primero a quitar.
+--
+--   Nota añadida el 2026-09-02: cuando se midió esto, `fechaact` no tenía
+--   `@updatedAt` y ningún endpoint la escribía, así que en la práctica el índice
+--   era estático y la contrapartida de arriba era teórica. Al añadirle
+--   `@updatedAt` (para que las notificaciones ordenen por el último movimiento
+--   real y no por la fecha de alta), el coste de mantenimiento por UPDATE pasa a
+--   ser real. Sigue valiendo la pena, pero es el dato que faltaba.
 -- ------------------------------------------------------------
 CREATE INDEX IF NOT EXISTS "ticket_solicitanteId_fechaact_idx" ON "ticket"("solicitanteId", "fechaact" DESC);
 
