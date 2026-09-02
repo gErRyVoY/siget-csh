@@ -31,9 +31,33 @@ app. La validación real es `docker build` + `docker run`.
 
 ## Orden recomendado
 
-`A` Docker (20 min) → `B` QA funcional (45–60 min) → `C` push de la rama y
+`A` Docker (20 min) ✅ → `B` QA funcional (45–60 min) → `C` push de la rama y
 revisión → `D` índices en producción → `E` merge/deploy + `connect_timeout` →
 `F` script de limpieza y verificación post-deploy → `G` CloudFront (otro día)
+
+### Actualización del 2026-09-02
+
+La rama ya incorpora `siget-apprunner-new` (merge `5592c6b`, sin conflictos
+reales): los commits de incidencias, del check de múltiple identificador con
+campus por slug y del fix de estatus en la creación con adjuntos. Se fusionó
+**antes** del QA a propósito: esos tres commits tocan `create.ts`, `update.ts` y
+`send-report.ts`, así que hacer el QA sin ellos obligaría a repetirlo.
+
+Tras el merge hay que correr `pnpm install`: la rama cambia `googleapis` por
+`@googleapis/admin` y, viniendo de la otra rama, `astro check` falla con
+`Cannot find module '@googleapis/admin'` hasta que se instala. Después:
+**0 errores / 0 warnings / 77 hints en 158 archivos**, `pnpm build` completo y
+`scripts/validate-flows.ts` con **23 de 23**.
+
+La sección `C` ya está hecha: `nuevos-cambios-claude` está en `origin`.
+
+Al QA de la sección B hay que añadirle dos puntos que no existían cuando se
+escribió esto:
+
+| # | Qué hacer | Qué debe pasar |
+|---|---|---|
+| 16 | Crear un ticket **con al menos un adjunto**, como admin o superadmin | Queda en **"Nuevo"**, no en "En progreso" (prueba de `origen: 'creacion'`) |
+| 17 | Abrir ese ticket como resolutor y guardar un comentario | Ahí **sí** pasa a "En progreso", y su `fechaact` se actualiza |
 
 ---
 
@@ -86,6 +110,37 @@ Diagnóstico rápido: si falla el paso 2 con un error de OpenSSL o del motor de
 Prisma, es el cambio de `node:20-slim` a `node:22-slim`. Si falla el 5
 (`unhealthy`) pero el `curl` del paso 7 responde, el problema es el `HEALTHCHECK`
 con `fetch` de Node, no la app.
+
+### Resultado: validado el 2026-09-02 ✅
+
+Ejecutado con Docker 29.7.2, sobre la rama ya fusionada con `siget-apprunner-new`
+(commit `0c531be`). Todo en verde:
+
+- `docker build` termina con exit 0. `pnpm exec prisma generate` corre **dentro**
+  de la imagen sin descargar nada de la red, que era el punto del cambio.
+- Tamaño de la imagen: **1.63 GB**. No hay comparación contra el estado anterior:
+  habría que reconstruir el Dockerfile viejo para tenerla.
+- `docker ps` → `Up 36 seconds (healthy)`: el `HEALTHCHECK` responde.
+- `docker exec siget-test id` → `uid=1000(node)`, no root.
+- **Cero** líneas `prisma:query` en el log, y cero líneas con `error` o `warn` en
+  todo el log del contenedor: `ENV NODE_ENV=production` sí llegó y 1.1 está
+  activo en la imagen.
+- `/health` responde `{"status":"ok",...}`.
+- `/login` sale con `content-encoding: gzip` (3 838 B → 2 003 B; es una página
+  pequeña, las de detrás del login comprimen mucho mejor).
+- Arnés: **las 11 rutas en 200**, incluidas las autenticadas, las de admin y
+  `/tickets/view/22` y `/23`. Las columnas `sql` salen vacías por diseño, la
+  instrumentación `Server-Timing` es sólo de desarrollo.
+- `.dockerignore` no dejó fuera nada necesario: la app arranca y sirve las 11
+  rutas.
+
+Un detalle que apareció y se descartó: la etapa `runner` avisa
+`Ignored build scripts: ... sharp`, porque `pnpm-workspace.yaml` (que lleva
+`onlyBuiltDependencies`) no se copia a esa etapa. No importa, porque en runtime
+no se usa sharp: las imágenes de `login.astro` y `horario-de-atencion.astro` se
+resuelven a archivos de `public/` (`/logotipo-desde-vino.webp`), no al endpoint
+`/_image`. Si algún día se pasa una imagen a `src/assets/` con `<Image />`, esto
+hay que revisarlo.
 
 ---
 
