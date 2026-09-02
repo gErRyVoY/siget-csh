@@ -16,7 +16,11 @@ export const POST: APIRoute = async ({ request, locals }) => {
     await ensureActiveCycle();
     
     const data = await request.json();
-    const { categoriaId, subcategoriaId, descripcion, afectado_clave, afectado_nombre, afectado_campus } = data;
+    const { categoriaId, subcategoriaId, descripcion, afectado_clave, afectado_nombre, afectado_campus, afectado_campus_slug, multiple_clave } = data;
+    // Check "Múltiple ..." del formulario: el ticket cubre a varios afectados, así que
+    // no hay un identificador ni un nombre únicos que exigir. Los datos de cada uno
+    // viajan en los adjuntos o en la descripción.
+    const isMultipleClave = multiple_clave === true;
     const parsedCategoriaId = parseInt(categoriaId, 10);
     const parsedSubcategoriaId = subcategoriaId ? parseInt(subcategoriaId, 10) : null;
 
@@ -46,62 +50,74 @@ export const POST: APIRoute = async ({ request, locals }) => {
       }
 
       const campusTrimmed = afectado_campus.trim();
-      // Solo letras (sin signos diacríticos), números y espacios
-      if (!/^[a-zA-Z0-9\s]+$/.test(campusTrimmed)) {
+
+      // El campus se resuelve contra la BD, no con un filtro de caracteres: el
+      // formulario manda el slug de la empresa (único, estable y sin acentos) y se
+      // cae al nombre solo por compatibilidad con clientes que aún no lo envíen.
+      // Un campus que no corresponde a una empresa activa se rechaza, en lugar de
+      // caer en silencio a la empresa de la sesión.
+      const campusSlug = typeof afectado_campus_slug === 'string' ? afectado_campus_slug.trim() : '';
+      const matchedEmpresa = campusSlug
+        ? await prisma.empresa.findFirst({
+            where: { slug: campusSlug, activa: true },
+            select: { id: true },
+          })
+        : await prisma.empresa.findFirst({
+            where: {
+              nombre: { equals: campusTrimmed, mode: 'insensitive' },
+              activa: true,
+            },
+            select: { id: true },
+          });
+
+      if (!matchedEmpresa) {
         return new Response(
-          JSON.stringify({ message: 'El campo Campus contiene caracteres inválidos. Solo se permiten letras y números.' }),
+          JSON.stringify({ message: 'El Campus seleccionado no corresponde a un campus activo.' }),
           { status: 400 }
         );
       }
+      targetEmpresaId = matchedEmpresa.id;
 
-      // Buscar si la empresa existe para asociar su empresaId
-      const matchedEmpresa = await prisma.empresa.findFirst({
-        where: {
-          nombre: { equals: campusTrimmed, mode: 'insensitive' },
-          activa: true,
-        },
-        select: { id: true }
-      });
-      if (matchedEmpresa) {
-        targetEmpresaId = matchedEmpresa.id;
-      }
-
-      // 2. Nombre completo: requerido
-      if (!afectado_nombre || typeof afectado_nombre !== 'string' || !afectado_nombre.trim()) {
-        return new Response(
-          JSON.stringify({ message: 'El campo Nombre completo es requerido.' }),
-          { status: 400 }
-        );
-      }
-
-      // 3. Identificador según categoría
-      if (!afectado_clave || typeof afectado_clave !== 'string' || !afectado_clave.trim()) {
-        const fieldName = parsedCategoriaId === 1 ? 'Matrícula' : parsedCategoriaId === 2 ? 'Folio' : parsedCategoriaId === 3 ? 'Email' : 'Clave';
-        return new Response(
-          JSON.stringify({ message: `El campo ${fieldName} es requerido.` }),
-          { status: 400 }
-        );
-      }
-
-      const claveTrimmed = afectado_clave.trim();
-
-      if (parsedCategoriaId === 1) {
-        // Alumno: Matrícula solo letras y números (sin diacríticos)
-        if (!/^[a-zA-Z0-9]+$/.test(claveTrimmed)) {
+      // Con "Múltiple ..." el Nombre completo y el identificador quedan fuera de juego:
+      // se omite su validación y el ticket se guarda sin esos datos.
+      if (!isMultipleClave) {
+        // 2. Nombre completo: requerido
+        if (!afectado_nombre || typeof afectado_nombre !== 'string' || !afectado_nombre.trim()) {
           return new Response(
-            JSON.stringify({ message: 'La Matrícula solo debe contener letras y números sin signos diacríticos.' }),
+            JSON.stringify({ message: 'El campo Nombre completo es requerido.' }),
             { status: 400 }
           );
         }
-      } else if (parsedCategoriaId === 3) {
-        // Colaborador: Email institucional
-        const emailParts = claveTrimmed.split('@');
-        const localPart = emailParts[0];
-        if (!/^[a-zA-Z0-9.-]+$/.test(localPart)) {
+
+        // 3. Identificador según categoría
+        if (!afectado_clave || typeof afectado_clave !== 'string' || !afectado_clave.trim()) {
+          const fieldName = parsedCategoriaId === 1 ? 'Matrícula' : parsedCategoriaId === 2 ? 'Folio' : parsedCategoriaId === 3 ? 'Email' : 'Clave';
           return new Response(
-            JSON.stringify({ message: 'El correo del colaborador contiene caracteres no permitidos. Solo se permiten letras, números, punto y guión medio.' }),
+            JSON.stringify({ message: `El campo ${fieldName} es requerido.` }),
             { status: 400 }
           );
+        }
+
+        const claveTrimmed = afectado_clave.trim();
+
+        if (parsedCategoriaId === 1) {
+          // Alumno: Matrícula solo letras y números (sin diacríticos)
+          if (!/^[a-zA-Z0-9]+$/.test(claveTrimmed)) {
+            return new Response(
+              JSON.stringify({ message: 'La Matrícula solo debe contener letras y números sin signos diacríticos.' }),
+              { status: 400 }
+            );
+          }
+        } else if (parsedCategoriaId === 3) {
+          // Colaborador: Email institucional
+          const emailParts = claveTrimmed.split('@');
+          const localPart = emailParts[0];
+          if (!/^[a-zA-Z0-9.-]+$/.test(localPart)) {
+            return new Response(
+              JSON.stringify({ message: 'El correo del colaborador contiene caracteres no permitidos. Solo se permiten letras, números, punto y guión medio.' }),
+              { status: 400 }
+            );
+          }
         }
       }
     }
@@ -144,6 +160,10 @@ export const POST: APIRoute = async ({ request, locals }) => {
 
     let nuevoTicket;
 
+    // Con "Múltiple ..." no se persiste identificador ni nombre, aunque el cliente los mande
+    const afectadoClaveFinal = !isMultipleClave && afectado_clave ? String(afectado_clave).trim() : null;
+    const afectadoNombreFinal = !isMultipleClave && afectado_nombre ? String(afectado_nombre).trim() : null;
+
     if (atiendeId) {
       // Agente encontrado
       [nuevoTicket] = await prisma.$transaction([
@@ -158,8 +178,8 @@ export const POST: APIRoute = async ({ request, locals }) => {
             categoriaId: parsedCategoriaId,
             subcategoriaId: parsedSubcategoriaId,
             descripcion: descripcion,
-            afectado_clave: afectado_clave ? String(afectado_clave).trim() : null,
-            afectado_nombre: afectado_nombre ? String(afectado_nombre).trim() : null,
+            afectado_clave: afectadoClaveFinal,
+            afectado_nombre: afectadoNombreFinal,
           },
         }),
         prisma.usuario.update({
@@ -182,8 +202,8 @@ export const POST: APIRoute = async ({ request, locals }) => {
           categoriaId: parsedCategoriaId,
           subcategoriaId: parsedSubcategoriaId,
           descripcion: descripcion,
-          afectado_clave: afectado_clave ? String(afectado_clave).trim() : null,
-          afectado_nombre: afectado_nombre ? String(afectado_nombre).trim() : null,
+          afectado_clave: afectadoClaveFinal,
+          afectado_nombre: afectadoNombreFinal,
         },
       });
 

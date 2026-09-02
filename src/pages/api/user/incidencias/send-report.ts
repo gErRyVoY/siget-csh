@@ -211,6 +211,13 @@ function buildCalendarTable(sortedTodos: any[], schedule: any, activeMap: Map<st
               if (rSal && hFin) {
                 const diffSal = timeDiffMins(rSal, hFin);
                 if (diffSal > 5) slColor = "#16a34a";
+                else if (diffSal < -5) {
+                  // Salió antes de su hora: es tiempo pendiente, no un día en orden
+                  slColor = "#dc2626";
+                  bgColor = colorMap.tarde;
+                  hasJustificar = true;
+                  dayHasProblem = true;
+                }
               }
               statusLines.push(`<span style="color:${slColor};font-weight:700;font-size:10px;">SL ${formatTime(inc.salida_turno)}</span>`);
             } else {
@@ -461,9 +468,11 @@ export const POST: APIRoute = async ({ request, locals }) => {
       }
 
       let tiempoAdicionalMins = 0;
+      let salidaAntesMins = 0;
       if (rSal && hFin) {
         const diffSal = timeDiffMins(rSal, hFin);
         if (diffSal > 5) tiempoAdicionalMins = diffSal;
+        else if (diffSal < -5) salidaAntesMins = -diffSal;
       }
       if (rEnt && hIni) {
         const diffEnt = timeDiffMins(rEnt, hIni);
@@ -475,7 +484,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
       const hasObs = saved && saved.observaciones &&
         !["Homeoffice", "Vacaciones", "Evento", "Asueto"].includes(saved.observaciones);
 
-      if (justificarMins === 0 && tiempoAdicionalMins === 0 && !hasObs && !saved?.observaciones_comida) {
+      if (justificarMins === 0 && tiempoAdicionalMins === 0 && salidaAntesMins === 0 && !hasObs && !saved?.observaciones_comida) {
         return `${dayLabel} <span style="color:#16a34a;font-weight:normal;">Sin incidencias.</span>`;
       }
 
@@ -484,6 +493,10 @@ export const POST: APIRoute = async ({ request, locals }) => {
       if (justificarMins > 0) {
         const jColor = justificarMins > 15 ? "#dc2626" : "#ea580c";
         parts.push(`<strong style="color:${jColor};">Justificar ${justificarMins} minutos.</strong>`);
+      }
+
+      if (salidaAntesMins > 0) {
+        parts.push(`<strong style="color:#dc2626;">Salida anticipada ${salidaAntesMins} minutos.</strong>`);
       }
 
       if (tiempoAdicionalMins > 0) {

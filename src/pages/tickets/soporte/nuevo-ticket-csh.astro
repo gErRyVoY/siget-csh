@@ -21,7 +21,13 @@ const [dbCategories, dbSubcategories, dbSubcatRelations, dbEmpresas] =
         prisma.empresa.findMany({
             where: { activa: true },
             orderBy: { nombre: "asc" },
-            select: { id: true, nombre: true, tipo: true, tckt_virtual: true },
+            select: {
+                id: true,
+                nombre: true,
+                slug: true,
+                tipo: true,
+                tckt_virtual: true,
+            },
         }),
     ]);
 
@@ -30,6 +36,7 @@ const userId = session?.user?.id ? parseInt(String(session.user.id), 10) : null;
 let userEmpresa: {
     id: number;
     nombre: string;
+    slug: string;
     tipo: string;
     tckt_virtual: boolean;
 } | null = null;
@@ -41,6 +48,7 @@ if (userId) {
                 select: {
                     id: true,
                     nombre: true,
+                    slug: true,
                     tipo: true,
                     tckt_virtual: true,
                 },
@@ -56,30 +64,49 @@ const isMagnoEjecutivo = userEmpresa
     : false;
 const allowVirtual = userEmpresa?.tckt_virtual ?? false;
 
-let availableCampuses: string[] = [];
+// El nombre es lo que ve el usuario y lo que espera la API de RH; el slug es el
+// identificador estable con el que el backend resuelve la empresa del ticket.
+type CampusOption = { nombre: string; slug: string };
+
+let availableCampuses: CampusOption[] = [];
 let isCampusReadOnly = false;
 let defaultCampus = "";
+let defaultCampusSlug = "";
 
 if (isMagnoEjecutivo) {
+    availableCampuses = [
+        { nombre: userEmpresa!.nombre, slug: userEmpresa!.slug },
+    ];
+    defaultCampus = userEmpresa!.nombre;
+    defaultCampusSlug = userEmpresa!.slug;
+
     if (allowVirtual) {
         // Puede elegir entre su campus y Campus Virtual
-        availableCampuses = [userEmpresa!.nombre];
         if (userEmpresa!.nombre.toLowerCase() !== "virtual") {
-            availableCampuses.push("Virtual");
+            const virtual = dbEmpresas.find(
+                (e) => e.nombre.toLowerCase() === "virtual",
+            );
+            if (virtual) {
+                availableCampuses.push({
+                    nombre: virtual.nombre,
+                    slug: virtual.slug,
+                });
+            }
         }
         isCampusReadOnly = false;
-        defaultCampus = userEmpresa!.nombre;
     } else {
         // Solo su campus bloqueado
-        availableCampuses = [userEmpresa!.nombre];
         isCampusReadOnly = true;
-        defaultCampus = userEmpresa!.nombre;
     }
 } else {
     // Para Oficina / Social (Corporativo, CSH, etc.) puede buscar entre todas las empresas activas
-    availableCampuses = dbEmpresas.map((e) => e.nombre);
+    availableCampuses = dbEmpresas.map((e) => ({
+        nombre: e.nombre,
+        slug: e.slug,
+    }));
     isCampusReadOnly = false;
     defaultCampus = "";
+    defaultCampusSlug = "";
 }
 
 // Build subcategory tree nodes recursively (only active ones)
@@ -241,6 +268,12 @@ const agentCshEmails = agentsCsh
                                         name="afectado_campus"
                                         value={defaultCampus}
                                     />
+                                    <input
+                                        type="hidden"
+                                        id="afectado_campus_slug"
+                                        name="afectado_campus_slug"
+                                        value={defaultCampusSlug}
+                                    />
                                 </div>
                             ) : (
                                 <select
@@ -257,10 +290,11 @@ const agentCshEmails = agentsCsh
                                     </option>
                                     {availableCampuses.map((c) => (
                                         <option
-                                            value={c}
-                                            selected={c === defaultCampus}
+                                            value={c.nombre}
+                                            data-slug={c.slug}
+                                            selected={c.nombre === defaultCampus}
                                         >
-                                            {c}
+                                            {c.nombre}
                                         </option>
                                     ))}
                                 </select>
@@ -379,6 +413,37 @@ const agentCshEmails = agentsCsh
                             class="w-full rounded-md border border-border bg-input p-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-secondary focus:border-secondary"
                             placeholder="Nombre del afectado..."
                         />
+                    </div>
+                </div>
+
+                <!-- Múltiple identificador: el ticket cubre a varios afectados -->
+                <div id="multiple-clave-container" class="hidden mb-4">
+                    <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
+                        <label
+                            for="multiple_clave"
+                            class="flex items-center gap-2 cursor-pointer select-none shrink-0"
+                        >
+                            <input
+                                type="checkbox"
+                                id="multiple_clave"
+                                name="multiple_clave"
+                                class="h-4 w-4 rounded border-input text-primary focus:ring-primary"
+                            />
+                            <span
+                                id="lbl-multiple-clave"
+                                class="text-sm font-medium text-foreground"
+                            >
+                                Múltiple matrícula
+                            </span>
+                        </label>
+                        <p
+                            id="multiple-clave-hint"
+                            class="hidden text-xs text-secondary"
+                        >
+                            No olvides adjuntar un archivo con todas las
+                            matrículas y los datos necesarios, o bien copiar y
+                            pegar en el campo de abajo.
+                        </p>
                     </div>
                 </div>
 

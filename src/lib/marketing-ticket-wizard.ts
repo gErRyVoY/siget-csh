@@ -918,6 +918,8 @@ export function initMarketingTicketWizard(marketingCategory: CategoriaNode) {
                             ticketId: ticketId,
                             newFiles: keys,
                             newComment: "Archivos adjuntos provistos en la creación del ticket.",
+                            // Cierra el alta: no debe mover el estatus del ticket recién creado
+                            origen: "creacion",
                         }),
                     });
                 }

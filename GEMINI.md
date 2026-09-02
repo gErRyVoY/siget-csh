@@ -5,12 +5,21 @@
 >
 > **⚠️ REGLA CRÍTICA PARA EL ASISTENTE:** El asistente **NO debe ejecutar `git push`** en ninguna circunstancia a menos que el usuario lo solicite **de forma explícita**. Se permiten `git add` y `git commit` para preparar los cambios, pero el push queda **reservado exclusivamente para cuando el usuario lo indique**.
 
-**Tarea Actual:** Completada — Estandarización de filtros de fecha a formato `dd/mm/aaaa` en todas las vistas de tickets (`/tickets/soporte`, `/tickets/soporte/usuario`, `/tickets/marketing`, `/tickets/marketing/usuario`) (2026-08-26) ✅
+**Tarea Actual:** En curso — Punto 3.1 del plan de rendimiento: sincronizar `prisma/schema.prisma` con los cuatro índices que ya existen en la BD de desarrollo y dejar el SQL listo para producción (rama `nuevos-cambios-claude`).
 
 **Pasos Siguientes:**
-1. Pruebas funcionales en navegador por parte del usuario.
+1. Pruebas funcionales en navegador por parte del usuario:
+   - Crear ticket **con adjunto** siendo admin/superadmin y confirmar que queda en "Nuevo" (el ticket 31 quedó en "En progreso" y puede corregirse a mano).
+   - Abrir ese ticket como resolutor, guardar un comentario y confirmar que **sí** pasa a "En progreso".
+   - Check "Múltiple ..." en las cuatro categorías del wizard y creación de ticket con **Presa Madín** (campus acentuado) más el autocompletado por matrícula.
+2. Aplicar en RDS de **producción** el SQL de los cuatro índices del punto 3.1 (el asistente no tiene ni debe tener acceso a esa BD).
+3. Confirmar con Rogelio Elizalde López su horario de viernes en `/user/perfil` (se presume `10:00–18:00`) para cerrar el diagnóstico del día 28 de agosto al 100%.
+4. Corregir en el perfil los tres horarios inválidos detectados: Haide Herrera (sin `clave` y horario nulo), Jair Flores Téllez (seis días con `inicio`/`fin` en `null`) y Victor Barrera (sin sábado configurado).
+5. El commit `25cd93b` (incidencias) sigue **sin subir** al repositorio.
 
 **Pasos Completados:**
+- ✅ **Check de Múltiple Identificador, Campus por Slug, Estatus Automático Indebido y `fechaact` (2026-09-02):** Nuevo check "Múltiple matrícula / folio / email / clave" con label dinámico por categoría en `/tickets/soporte/nuevo-ticket-csh`, que deshabilita y omite Identificador y Nombre completo en cliente y servidor. Se eliminó el regex ASCII que rechazaba campus acentuados (Cancún, Mérida, Presa Madín, Querétaro) y el campus se resuelve ahora contra la BD por `Empresa.slug` (con fallback al nombre), devolviendo 400 explícito en lugar de caer en silencio a la empresa de la sesión. Se corrigió que crear un ticket **con adjuntos** siendo admin/superadmin lo pasara solo a "En progreso": el PATCH de cierre de alta de los dos wizards se marca con `origen: "creacion"` y `update.ts` lo excluye de la transición automática (diagnóstico sobre el ticket 31 y su entrada de `historial_solicitud` id 70). Además `Ticket.fechaact` recibió `@updatedAt`, ya que nunca se actualizaba y las notificaciones ordenan por ese campo. `npx astro check` 0 errores en 157 archivos y `pnpm build` completo.
+- ✅ **Salida Anticipada y Aviso de Días Omitidos en `/user/perfil/incidencias` (2026-09-01):** Se corrigió la causa por la que algunos días desaparecían del reporte. La vista solo evaluaba la salida cuando era **posterior** al fin del turno, así que salir antes de la hora no activaba ninguna rama y el día no generaba fila, no se guardaba y no llegaba al correo. Se agregó la categoría **"Salida anticipada"** (simétrica al retardo, tolerancia de 5 min, en rojo, con motivo obligatorio de mínimo 5 caracteres y `tiempo_turno` negativo), el caso combinado retardo + salida anticipada con minutos acumulados, y la compensación por entrada anticipada. Además, los días cuyo día de la semana no está en `horario_disponibilidad` ya no se descartan en silencio: se listan en un **recuadro ámbar de advertencia** con enlace a `/user/perfil`. Los mismos criterios se replicaron en el correo real (`src/pages/api/user/incidencias/send-report.ts`): celda `SL` en rojo con fondo de "Justificar", `dayHasProblem = true` para que el día no cuente como "A tiempo", y línea `Salida anticipada N minutos.` en el orden Justificar → Salida anticipada → Tiempo adicional → Motivo. `npx astro check` 0 errores en 157 archivos y `pnpm build` completo.
 - ✅ **Filtros de Fecha con Formato `dd/mm/aaaa` en Todas las Vistas de Tickets (2026-08-26):** Aplicado formato visual `dd/mm/aaaa`, placeholder `dd/mm/aaaa`, máscara de escritura con dígitos, retroceso fluido con Backspace, botón de calendario interactivo para apertura emergente, sincronización de picker y soporte de parsing `DD/MM/YYYY` y `YYYY-MM-DD` en SSR en:
   1. `/tickets/soporte/usuario` ([src/pages/tickets/soporte/usuario/index.astro](file:///d:/Documentos/Proyectos_2025/00Humanitas/siget-csh/src/pages/tickets/soporte/usuario/index.astro))
   2. `/tickets/soporte` ([src/pages/tickets/soporte/index.astro](file:///d:/Documentos/Proyectos_2025/00Humanitas/siget-csh/src/pages/tickets/soporte/index.astro))
@@ -208,6 +217,16 @@ A continuación se listan los proyectos prioritarios. Tu tarea es ayudar a refin
     * **Infraestructura y Despliegue (CI/CD):** Implementado. El flujo con GitHub Actions, Docker, AWS ECR, Secrets Manager y App Runner está operativo.
 
 # Historial de Cambios (Log)
+## 2026-09-01 (Salida Anticipada y Días Omitidos en el Reporte de Incidencias)
+*   **Reporte de Incidencias (`src/pages/user/perfil/incidencias.astro`):**
+    *   **Nueva Categoría "Salida anticipada":** Si la salida real es más de 5 minutos anterior al fin del turno del `horario_disponibilidad`, el día se marca en rojo con los minutos faltantes, exige motivo obligatorio y guarda `tiempo_turno` negativo. Antes ninguna rama activaba `showRow`, por lo que el día desaparecía del reporte y del correo sin dejar rastro.
+    *   **Retardo + Salida Anticipada:** Los minutos de ambos conceptos se suman en un único faltante y el estatus muestra las dos etiquetas.
+    *   **Aviso de Días Omitidos:** Los días cuyo día de la semana no está configurado en el horario se acumulan y se listan en un recuadro ámbar con enlace a `/user/perfil`, en lugar de descartarse en silencio.
+*   **Correo del Reporte (`src/pages/api/user/incidencias/send-report.ts`):**
+    *   **Celda del Calendario:** `SL` en rojo con fondo de "Justificar" y `dayHasProblem = true` para que el día no se acredite como "A tiempo" en la leyenda.
+    *   **Lista por Día:** Nueva línea `Salida anticipada N minutos.` en el orden Justificar → Salida anticipada → Tiempo adicional → Motivo.
+*   **Auditoría de Horarios Admin/Superadmin:** Detectados tres horarios inválidos que impiden o mutilan el reporte (Haide Herrera, Jair Flores Téllez, Victor Barrera). Son datos a corregir desde el perfil, no defectos de código.
+
 ## 2026-07-15 (Lógica Avanzada de Asignación de Tickets v2)
 *   **Servicio de Asignación (`src/services/ticketAssignmentService.ts`):**
     *   **Horario Obligatorio:** Un agente **sin `horario_disponibilidad`** definido ya no se considera disponible. Aplica para tickets **CSH y Marketing** por igual (antes Marketing no validaba horario).

@@ -15,7 +15,11 @@ export const PATCH: APIRoute = async ({ request, locals }) => {
 
     try {
         const data = await request.json();
-        const { ticketId, newComment, newFiles, afectado_clave, afectado_nombre, descripcion, ...updateDataInput } = data;
+        const { ticketId, newComment, newFiles, afectado_clave, afectado_nombre, descripcion, origen, ...updateDataInput } = data;
+        // Los wizards de creación cierran el alta con un PATCH para adjuntar los archivos
+        // subidos a S3. Ese PATCH no es "un resolutor trabajando el ticket", así que se
+        // marca con origen: 'creacion' para que no dispare la transición automática.
+        const esPatchDeCreacion = origen === 'creacion';
         const currentUserId = parseInt(session.user.id as string, 10);
         const userRoleId = session.user.rol?.id ?? -1;
 
@@ -204,7 +208,7 @@ export const PATCH: APIRoute = async ({ request, locals }) => {
             }
         } else {
             // Auto-set status to 'En progreso' (3) if Resolver updates a 'Nuevo' ticket and didn't change status
-            if (isPrivileged && ticketBeforeUpdate.estatusId === 2 && !updateDataInput.estatusId) {
+            if (isPrivileged && !esPatchDeCreacion && ticketBeforeUpdate.estatusId === 2 && !updateDataInput.estatusId) {
                 if (!updateData.estatus) {
                     updateData.estatus = { connect: { id: 3 } };
                 }

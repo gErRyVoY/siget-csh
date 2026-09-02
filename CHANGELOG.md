@@ -8,6 +8,51 @@ Todos los cambios notables en este proyecto serán documentados en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Versionado Semántico](https://semver.org/lang/es/).
 
+## 2026-09-02 (Check de Múltiple Identificador, Resolución de Campus por Slug y Estatus Automático Indebido al Crear Ticket)
+
+### Feature: Check "Múltiple matrícula / folio / email / clave" (`/tickets/soporte/nuevo-ticket-csh`)
+*   **Un Ticket para Varios Afectados**: Nuevo checkbox entre la fila de Campus/Identificador/Nombre completo y el textarea de detalles. Al activarlo se deshabilitan y limpian **Matrícula/Folio/Email/Clave** y **Nombre completo**, dejan de ser requeridos para el envío y no se persisten en la BD (`afectado_clave` y `afectado_nombre` quedan en `null` aunque el cliente los mande).
+*   **Label Dinámico por Categoría**: El texto cambia según la categoría seleccionada — 1 Alumno → "Múltiple matrícula", 2 Aspirante → "Múltiple folio", 3 Colaborador → "Múltiple email", 4 Docente → "Múltiple clave".
+*   **Aviso Contextual**: Mensaje en color `secondary` a la derecha del check recordando adjuntar un archivo con todos los identificadores o pegarlos en la descripción.
+*   **Interacción con Campos de Solo Lectura**: `applyMultipleClaveState()` es idempotente y calcula el estilo *muted* como `active || afectadoNombre.readOnly`, de modo que activar y desactivar el check no destruye el estilo de un campo que ya era de solo lectura.
+
+### Fix: Error 400 "El campo Campus contiene caracteres inválidos" con Campus Acentuados
+*   **Causa Raíz**: `src/pages/api/tickets/create.ts` validaba el campus con `/^[a-zA-Z0-9\s]+$/`, que rechaza los nombres reales de la BD: **Cancún**, **Mérida**, **Presa Madín** y **Querétaro**. El defecto era previo a los cambios de esta fecha.
+*   **Solución — Validar contra la BD, no contra un regex**: El formulario ahora envía `afectado_campus_slug` (el `slug` único de `Empresa`, sin acentos) en un `data-slug` de cada `<option>` más un hidden para el caso de campus fijo, y el endpoint resuelve la empresa con `findFirst({ where: { slug, activa: true } })`, con fallback al nombre (`mode: 'insensitive'`) por compatibilidad con clientes que aún no envíen el slug. Se eliminó el filtro de caracteres.
+*   **Fallback Silencioso Convertido en Error Explícito**: Un campus que no corresponde a una empresa activa ahora devuelve 400 en lugar de caer sin aviso a la empresa de la sesión.
+*   **Nota de Diseño**: El `value` del `<select>` sigue siendo el **nombre** del campus porque es lo que espera la API de RH de alumnos y aspirantes (`consultar-detalle?campus=...`); el slug viaja aparte.
+
+### Fix: Estatus "En progreso" Asignado Automáticamente al Crear un Ticket con Adjuntos
+*   **Registros Analizados** (ticket 31, BD de desarrollo): creado `18:38:05.110` con `estatusId: 2` ("Nuevo"), y una única entrada de `historial_solicitud` (id 70) a las `18:38:13.384` — 8.3 s después — con `usuarioId: 1` (superadmin), comentario `"Archivos adjuntos en creación."` y `cambios: { fieldChanges: [{ field: "estatusId", oldValue: "Nuevo", newValue: "En progreso" }] }`.
+*   **Causa Raíz**: Los wizards cierran el alta con un `PATCH /api/tickets/update` para adjuntar los archivos ya subidos a S3. Ese PATCH viaja con la sesión del creador y no incluye `estatusId`, así que disparaba la regla de `update.ts` que promueve un ticket "Nuevo" a "En progreso" cuando lo toca un usuario privilegiado. Solo se reproducía si el creador era admin/superadmin **y** el ticket llevaba al menos un adjunto (sin archivos no hay PATCH).
+*   **Solución**: Los dos wizards (`src/lib/ticket-wizard.ts` y `src/lib/marketing-ticket-wizard.ts`) marcan ese PATCH con `origen: "creacion"`, y `update.ts` lo desestructura fuera de `updateDataInput` y añade `!esPatchDeCreacion` a la condición de la transición automática. Los PATCH reales de resolutores desde `view/[id].astro` y `traslado.astro` no envían `origen`, por lo que conservan el comportamiento anterior.
+
+### Fix: `Ticket.fechaact` Nunca se Actualizaba
+*   **Causa Raíz**: `fechaact` estaba declarada como `@default(now())` **sin** `@updatedAt` y ningún endpoint la escribía, de modo que en el ticket 31 seguía siendo idéntica a `fechaalta` tras la actualización. Las notificaciones (`api/notifications/count.ts` y `list.ts`) ordenan por `fechaact desc`, así que reflejaban la fecha de alta en lugar del último movimiento.
+*   **Solución**: `@updatedAt` en `prisma/schema.prisma`. Es un atributo a nivel de Prisma Client: `prisma migrate diff` confirma que **no genera cambios de DDL**, por lo que no requiere migración, solo `prisma generate`. Los tickets existentes conservan su `fechaact` hasta su próxima actualización.
+*   **Verificación**: `npx astro check` 0 errores / 0 warnings en 157 archivos y `pnpm build` completo.
+
+## 2026-09-01 (Días Invisibles en el Reporte de Incidencias: Nueva Categoría "Salida Anticipada" y Aviso de Días Omitidos)
+
+### Fix: Días con Salida Anticipada que Desaparecían del Reporte (`/user/perfil/incidencias`)
+*   **Causa Raíz Identificada**: La vista evaluaba la salida real contra el horario **solo cuando era posterior** a la hora de fin (`diffSalida > 5` → "Tiempo adicional"). Si el colaborador salía **antes** de su hora, ninguna rama activaba `showRow = true`, por lo que el día no generaba fila, no se guardaba y no aparecía en el correo: el tiempo pendiente quedaba invisible tanto para el colaborador como para el Director del CSH. Caso reportado por Rogelio Elizalde López en el reporte de Agosto 2026 (viernes 28, salida `17:02` contra fin `18:00`), donde además quedaban ocultos los días 11, 12, 18 y 27.
+*   **Nueva Categoría "Salida anticipada" con Motivo Obligatorio**: Simétrica al retardo de entrada y con la misma tolerancia de 5 minutos. Si la salida real es más de 5 min anterior al fin del turno, el día se renderiza en rojo (`#ca1c1c`) con los minutos faltantes, exige justificación (`requiresObs = true`, validación existente de mínimo 5 caracteres) y registra `tiempo_turno` negativo.
+*   **Caso Combinado Retardo + Salida Anticipada**: Los minutos de ambos conceptos se acumulan en un único faltante (`tiempoTurno = -(minsRetardo + minsSalidaAntes)`) y la columna de estatus muestra las dos etiquetas apiladas.
+*   **Compensación por Entrada Anticipada**: Si el colaborador entró antes de su hora y aun así salió temprano, los minutos a favor se descuentan del faltante y se muestran como reposición parcial.
+*   **Colores Consistentes en las Tres Superficies**: Salida en rojo en la tabla de resultados, en la celda `SL` del calendario de la vista previa del correo y en el modal "Ver tabla".
+
+### Fix: Aviso de Días Omitidos por Horario No Configurado
+*   **Comportamiento Anterior**: Los días cuyo día de la semana no existe en `horario_disponibilidad` se descartaban **en silencio** (`return` sin rastro). Un colaborador con sábados sin configurar perdía todos sus sábados del reporte —incluidas las inasistencias— sin ninguna señal en pantalla.
+*   **Recuadro de Advertencia**: Se acumulan los días descartados (excluyendo domingos) y se renderiza un aviso ámbar encima de los resultados listando día y nombre del día, con enlace directo a `/user/perfil` para corregir el horario. Se muestra en ambas ramas: con resultados y sin incidencias encontradas.
+
+### Fix: Paridad entre la Vista Previa y el Correo Real (`/api/user/incidencias/send-report`)
+*   **Celda del Calendario**: La celda `SL` de un día con salida anticipada pasa a rojo con fondo de "Justificar" y marca `dayHasProblem = true`, de modo que el día ya no se cuenta como "A tiempo" en la leyenda del correo.
+*   **Lista Textual por Día**: Nueva línea `Salida anticipada N minutos.` en rojo, con orden fijo **Justificar → Salida anticipada → Tiempo adicional → Motivo**, y el día deja de caer en la rama `Sin incidencias.`.
+*   **Verificación**: `npx astro check` 0 errores / 0 warnings en 157 archivos y `pnpm build` completo.
+
+### Auditoría: Horarios Inválidos en Cuentas Admin/Superadmin
+*   Revisión de los 10 usuarios con acceso a la vista. Tres requieren corrección de datos desde el perfil (no es un defecto de código): **Haide Herrera** (sin `clave` de RH y horario nulo, no puede generar reporte), **Jair Flores Téllez** (los seis días con `inicio`/`fin` en `null`, bloqueado por la validación del formulario) y **Victor Barrera** (sin sábado configurado, sus sábados nunca aparecían). El aviso de días omitidos hace visible el tercer caso.
+
 ## 2026-08-25 (Permisos Granulares en Traslados, Autoguardado de Incidencias y Replicación Global de Google Drive)
 
 ### UX & Security: Permisos Granulares de Edición en Detalle de Traslados (`/tickets/view/[id]`)
