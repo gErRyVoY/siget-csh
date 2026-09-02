@@ -86,6 +86,8 @@ export function initTicketWizard(treeData: CategoriesTreeData) {
     // Afectado fields
     const afectadoFields = document.getElementById('afectado-fields');
     const afectadoCampus = document.getElementById('afectado_campus') as HTMLSelectElement | HTMLInputElement | null;
+    // Solo existe cuando el campus está bloqueado; con <select> el slug vive en data-slug
+    const afectadoCampusSlug = document.getElementById('afectado_campus_slug') as HTMLInputElement | null;
     const containerAfectadoClave = document.getElementById('container-afectado-clave');
     const containerAfectadoEmail = document.getElementById('container-afectado-email');
     const afectadoClave = document.getElementById('afectado_clave') as HTMLInputElement;
@@ -94,6 +96,12 @@ export function initTicketWizard(treeData: CategoriesTreeData) {
     const lblClave = document.getElementById('lbl-clave');
     const claveSearchSpinner = document.getElementById('clave-search-spinner');
     const emailSearchSpinner = document.getElementById('email-search-spinner');
+
+    // Check "Múltiple ..." (matrícula/folio/email/clave según la categoría)
+    const multipleClaveContainer = document.getElementById('multiple-clave-container');
+    const multipleClaveCheckbox = document.getElementById('multiple_clave') as HTMLInputElement | null;
+    const multipleClaveLabel = document.getElementById('lbl-multiple-clave');
+    const multipleClaveHint = document.getElementById('multiple-clave-hint');
 
     const submitButton = document.getElementById('submit-ticket') as HTMLButtonElement;
     const ticketForm = document.getElementById('ticket-form') as HTMLElement | null;
@@ -306,6 +314,82 @@ export function initTicketWizard(treeData: CategoriesTreeData) {
         }
 
         return parts.join('\n\n');
+    }
+
+    // Texto del check y del aviso según la categoría del afectado
+    // 1: Alumno (matrícula), 2: Aspirante (folio), 3: Colaborador (email), 4: Docente (clave)
+    const MULTIPLE_CLAVE_COPY: Record<number, { label: string; items: string }> = {
+        1: { label: 'Múltiple matrícula', items: 'todas las matrículas' },
+        2: { label: 'Múltiple folio', items: 'todos los folios' },
+        3: { label: 'Múltiple email', items: 'todos los emails' },
+        4: { label: 'Múltiple clave', items: 'todas las claves' },
+    };
+
+    /**
+     * Slug de la empresa del campus elegido. El nombre sigue siendo lo que viaja a la
+     * API de RH (que lo espera así), pero nuestro backend resuelve la empresa con este
+     * identificador: es único, estable y sin acentos.
+     */
+    function getCampusSlug(): string | null {
+        if (afectadoCampusSlug) return afectadoCampusSlug.value.trim() || null;
+        const select = afectadoCampus as HTMLSelectElement | null;
+        const selectedOption = select?.selectedOptions?.[0];
+        return selectedOption?.dataset.slug?.trim() || null;
+    }
+
+    function isMultipleClaveActive(): boolean {
+        if (!multipleClaveCheckbox || !multipleClaveContainer) return false;
+        return multipleClaveCheckbox.checked && !multipleClaveContainer.classList.contains('hidden');
+    }
+
+    /**
+     * Con "Múltiple ..." activo el identificador y el nombre del afectado dejan de
+     * aplicar: se deshabilitan, se vacían y no se exigen para enviar. Los datos de
+     * cada afectado viajan en el adjunto o en la descripción.
+     * Es idempotente, así que puede llamarse en cualquier orden respecto al resto
+     * del render de los campos del afectado.
+     */
+    function applyMultipleClaveState() {
+        const active = isMultipleClaveActive();
+
+        // Identificador (matrícula / folio / clave)
+        if (afectadoClave) {
+            afectadoClave.disabled = active;
+            if (active) afectadoClave.value = '';
+            afectadoClave.classList.toggle('bg-muted', active);
+            afectadoClave.classList.toggle('cursor-not-allowed', active);
+            afectadoClave.classList.toggle('opacity-80', active);
+        }
+
+        // Email del colaborador: el estilo va en el contenedor, el input es transparente
+        if (afectadoEmailUser) {
+            afectadoEmailUser.disabled = active;
+            if (active) afectadoEmailUser.value = '';
+            const emailWrapper = afectadoEmailUser.parentElement;
+            emailWrapper?.classList.toggle('bg-muted', active);
+            emailWrapper?.classList.toggle('cursor-not-allowed', active);
+            emailWrapper?.classList.toggle('opacity-80', active);
+        }
+
+        // Nombre completo: puede estar ya en solo lectura por una consulta previa
+        if (afectadoNombre) {
+            afectadoNombre.disabled = active;
+            if (active) {
+                afectadoNombre.value = '';
+                afectadoNombre.readOnly = false;
+            }
+            const muted = active || afectadoNombre.readOnly;
+            afectadoNombre.classList.toggle('bg-muted', muted);
+            afectadoNombre.classList.toggle('cursor-not-allowed', muted);
+            afectadoNombre.classList.toggle('opacity-80', muted);
+        }
+
+        if (active) {
+            claveSearchSpinner?.classList.add('hidden');
+            emailSearchSpinner?.classList.add('hidden');
+        }
+
+        multipleClaveHint?.classList.toggle('hidden', !active);
     }
 
     function hasUnsavedData(): boolean {
@@ -529,6 +613,9 @@ export function initTicketWizard(treeData: CategoriesTreeData) {
         }
         if (claveSearchSpinner) claveSearchSpinner.classList.add('hidden');
         if (emailSearchSpinner) emailSearchSpinner.classList.add('hidden');
+        if (multipleClaveCheckbox) multipleClaveCheckbox.checked = false;
+        multipleClaveContainer?.classList.add('hidden');
+        applyMultipleClaveState();
 
         // Limpiar recursos de Google Drive
         stagedDriveFolders = [];
@@ -607,9 +694,23 @@ export function initTicketWizard(treeData: CategoriesTreeData) {
                     afectadoNombre.readOnly = false;
                     afectadoNombre.classList.remove('bg-muted', 'cursor-not-allowed', 'opacity-80');
                 }
+
+                // Check "Múltiple ..." con el texto propio de la categoría
+                const multipleCopy = MULTIPLE_CLAVE_COPY[catId];
+                if (multipleCopy) {
+                    if (multipleClaveLabel) multipleClaveLabel.textContent = multipleCopy.label;
+                    if (multipleClaveHint) {
+                        multipleClaveHint.textContent = `No olvides adjuntar un archivo con ${multipleCopy.items} y los datos necesarios, o bien copiar y pegar en el campo de abajo.`;
+                    }
+                }
+                multipleClaveContainer?.classList.remove('hidden');
+                applyMultipleClaveState();
             } else {
                 afectadoFields!.classList.add('hidden');
                 afectadoFields!.classList.remove('grid');
+                if (multipleClaveCheckbox) multipleClaveCheckbox.checked = false;
+                multipleClaveContainer?.classList.add('hidden');
+                applyMultipleClaveState();
                 afectadoClave.value = '';
                 if (afectadoEmailUser) afectadoEmailUser.value = '';
                 afectadoNombre.value = '';
@@ -872,7 +973,11 @@ export function initTicketWizard(treeData: CategoriesTreeData) {
             const hasCampus = afectadoCampus ? afectadoCampus.value.trim().length > 0 : true;
             const hasNombre = afectadoNombre.value.trim().length > 0;
 
-            if (catId === 3) {
+            if (isMultipleClaveActive()) {
+                // El identificador y el nombre no aplican: los datos van en el adjunto
+                // o en la descripción, así que solo se exige el campus
+                areAfectadoFieldsValid = hasCampus;
+            } else if (catId === 3) {
                 // Colaborador
                 const hasEmail = afectadoEmailUser ? afectadoEmailUser.value.trim().length > 0 : false;
                 areAfectadoFieldsValid = hasCampus && hasEmail && hasNombre;
@@ -1178,15 +1283,21 @@ export function initTicketWizard(treeData: CategoriesTreeData) {
         const lastSelectedNode = selection.nodes[selection.nodes.length - 1];
 
         const isAfectadoVisible = !afectadoFields!.classList.contains('hidden');
+        const isMultipleClave = isMultipleClaveActive();
         let claveValue: string | null = null;
         let campusValue: string | null = null;
+        let campusSlugValue: string | null = null;
 
         if (isAfectadoVisible && selection.categoria) {
             campusValue = afectadoCampus?.value.trim() || null;
-            if (selection.categoria.id === 3) {
-                claveValue = afectadoEmailUser?.value.trim() ? `${afectadoEmailUser.value.trim()}@humanitas.edu.mx` : null;
-            } else {
-                claveValue = afectadoClave.value.trim() || null;
+            campusSlugValue = getCampusSlug();
+            // Con "Múltiple ..." no hay un único identificador que enviar
+            if (!isMultipleClave) {
+                if (selection.categoria.id === 3) {
+                    claveValue = afectadoEmailUser?.value.trim() ? `${afectadoEmailUser.value.trim()}@humanitas.edu.mx` : null;
+                } else {
+                    claveValue = afectadoClave.value.trim() || null;
+                }
             }
         }
 
@@ -1206,8 +1317,10 @@ export function initTicketWizard(treeData: CategoriesTreeData) {
                     subcategoriaId: lastSelectedNode?.id || null,
                     descripcion: finalDescription,
                     afectado_campus: campusValue,
+                    afectado_campus_slug: campusSlugValue,
                     afectado_clave: claveValue,
-                    afectado_nombre: isAfectadoVisible ? afectadoNombre.value.trim() : null,
+                    afectado_nombre: isAfectadoVisible && !isMultipleClave ? afectadoNombre.value.trim() : null,
+                    multiple_clave: isMultipleClave,
                 }),
             });
 
@@ -1263,6 +1376,8 @@ export function initTicketWizard(treeData: CategoriesTreeData) {
                             ticketId: ticketId,
                             newFiles: keys,
                             newComment: "Archivos adjuntos en creación.",
+                            // Cierra el alta: no debe mover el estatus del ticket recién creado
+                            origen: "creacion",
                         }),
                     });
                 }
@@ -1307,6 +1422,12 @@ export function initTicketWizard(treeData: CategoriesTreeData) {
         evaluateUnsavedDataState();
     });
     afectadoNombre.addEventListener('input', () => {
+        validateForm();
+        evaluateUnsavedDataState();
+    });
+
+    multipleClaveCheckbox?.addEventListener('change', () => {
+        applyMultipleClaveState();
         validateForm();
         evaluateUnsavedDataState();
     });
