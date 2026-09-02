@@ -4,6 +4,7 @@ import type { Prisma, Prioridad } from '@prisma/client';
 import { sendNotification } from '../notifications/sse';
 import { sendTicketNotification } from '@/services/emailService';
 import { canAgentBeAssignedManually } from '@/services/ticketAssignmentService';
+import { MAX_AFECTADO_CLAVE, MAX_AFECTADO_NOMBRE } from '@/lib/ticket-limits';
 
 const PRIVILEGED_ROLES = [2, 3]; // admin y superadmin
 
@@ -86,8 +87,27 @@ export const PATCH: APIRoute = async ({ request, locals }) => {
         if (updateDataInput.prioridad && isPrivileged) updateData.prioridad = updateDataInput.prioridad as Prioridad;
         if (typeof updateDataInput.archivado === 'boolean' && isPrivileged) updateData.archivado = updateDataInput.archivado;
 
-        if (typeof afectado_clave === 'string') updateData.afectado_clave = afectado_clave;
-        if (typeof afectado_nombre === 'string') updateData.afectado_nombre = afectado_nombre;
+        // El formulario de la vista de ticket permite editar estos dos campos, así que
+        // aquí valen los mismos límites que en el alta: sin la guarda, un valor largo
+        // sale de Prisma como P2000 y el PATCH responde 500 en lugar de decir qué pasó.
+        if (typeof afectado_clave === 'string') {
+            if (afectado_clave.length > MAX_AFECTADO_CLAVE) {
+                return new Response(
+                    JSON.stringify({ message: `El identificador del afectado no puede exceder ${MAX_AFECTADO_CLAVE} caracteres.` }),
+                    { status: 400 }
+                );
+            }
+            updateData.afectado_clave = afectado_clave;
+        }
+        if (typeof afectado_nombre === 'string') {
+            if (afectado_nombre.length > MAX_AFECTADO_NOMBRE) {
+                return new Response(
+                    JSON.stringify({ message: `El nombre del afectado no puede exceder ${MAX_AFECTADO_NOMBRE} caracteres.` }),
+                    { status: 400 }
+                );
+            }
+            updateData.afectado_nombre = afectado_nombre;
+        }
         if (typeof descripcion === 'string') updateData.descripcion = descripcion;
 
         // --- Traslado Logic ---

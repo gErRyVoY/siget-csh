@@ -1,0 +1,36 @@
+-- =============================================================
+-- Migración: widen_afectado_clave
+-- Fecha: 2026-09-02
+-- Descripción: ticket.afectado_clave pasa de VarChar(20) a VarChar(255).
+--
+--   Motivo: el campo guarda el identificador del afectado, y su forma depende de
+--   la categoría del ticket — matrícula (Alumno), folio (Aspirante), **email
+--   institucional** (Colaborador) o clave (Docente). Los tres primeros caben en
+--   20 caracteres; un correo no. Cualquier alta de ticket de categoría
+--   Colaborador con un correo de más de 20 caracteres fallaba con
+--   `P2000 The provided value for the column is too long`, devolvía 500 y el
+--   ticket no se creaba (la transacción hacía ROLLBACK).
+--
+--   Caso real que lo destapó: `jair.flores@humanitas.edu.mx`, 28 caracteres.
+--
+--   255 y no 254: deja margen y es el tope habitual; RFC 5321 limita la
+--   dirección completa a 254. En Postgres, `varchar(n)` se almacena como varlena,
+--   así que declarar 255 en lugar de 20 no ocupa un byte más por fila.
+--
+--   Coste de aplicarla: **ninguno**. Desde PostgreSQL 9.2, ampliar el límite de
+--   un `varchar` es un cambio sólo de catálogo: no reescribe la tabla ni
+--   revalida las filas existentes. Toma un ACCESS EXCLUSIVE lock durante unos
+--   milisegundos. No hace falta CONCURRENTLY (no aplica a ALTER COLUMN) ni
+--   ventana de mantenimiento.
+--
+--   Se escribe a mano, no con `prisma migrate dev`, porque el historial de
+--   migraciones de este repo está desalineado con la BD y `migrate dev` exige
+--   resetear el esquema. Tras aplicarla, marcarla con
+--   `prisma migrate resolve --applied 20260902215500_widen_afectado_clave`.
+--
+--   Nota: el valor más largo que existe hoy en la BD de desarrollo mide 6
+--   caracteres, así que no hay ningún dato en riesgo de truncarse. Ampliar nunca
+--   trunca; el sentido contrario (volver a 20) sí lo haría.
+-- =============================================================
+
+ALTER TABLE "ticket" ALTER COLUMN "afectado_clave" TYPE VARCHAR(255);

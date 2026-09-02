@@ -4,6 +4,7 @@ import { sendNotification } from '../notifications/sse';
 import { findBestAgentHybrid } from '../../../services/ticketAssignmentService';
 import { ensureActiveCycle } from '../../../services/cycleService';
 import { sendTicketNotification } from '../../../services/emailService';
+import { MAX_AFECTADO_CLAVE, MAX_AFECTADO_NOMBRE } from '../../../lib/ticket-limits';
 
 export const POST: APIRoute = async ({ request, locals }) => {
   const session = locals.session;
@@ -99,6 +100,23 @@ export const POST: APIRoute = async ({ request, locals }) => {
         }
 
         const claveTrimmed = afectado_clave.trim();
+
+        // Longitud: sin esto, un valor más largo que la columna sale de Prisma como
+        // P2000 y el endpoint responde 500 con «Error interno del servidor», que no
+        // le dice nada a quien está llenando el formulario.
+        const fieldName = parsedCategoriaId === 1 ? 'Matrícula' : parsedCategoriaId === 2 ? 'Folio' : parsedCategoriaId === 3 ? 'Email' : 'Clave';
+        if (claveTrimmed.length > MAX_AFECTADO_CLAVE) {
+          return new Response(
+            JSON.stringify({ message: `El campo ${fieldName} no puede exceder ${MAX_AFECTADO_CLAVE} caracteres.` }),
+            { status: 400 }
+          );
+        }
+        if (afectado_nombre.trim().length > MAX_AFECTADO_NOMBRE) {
+          return new Response(
+            JSON.stringify({ message: `El campo Nombre completo no puede exceder ${MAX_AFECTADO_NOMBRE} caracteres.` }),
+            { status: 400 }
+          );
+        }
 
         if (parsedCategoriaId === 1) {
           // Alumno: Matrícula solo letras y números (sin diacríticos)

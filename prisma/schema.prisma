@@ -250,7 +250,11 @@ model Ticket {
   empresaId             Int
   archivado             Boolean                @default(false)
   archivos              Json?
-  afectado_clave        String?                @db.VarChar(20)
+  // El identificador del afectado cambia de forma según la categoría: matrícula
+  // (alumno), folio (aspirante), email institucional (colaborador) o clave
+  // (docente). VarChar(20) alcanzaba para los tres primeros casos pero no para un
+  // correo, que llega a 254 caracteres por RFC 5321.
+  afectado_clave        String?                @db.VarChar(255)
   afectado_nombre       String?                @db.VarChar(150)
   cicloId               Int?
   historial_solicitudes HistorialSolicitud[]
