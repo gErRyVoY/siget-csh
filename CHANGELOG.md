@@ -8,6 +8,30 @@ Todos los cambios notables en este proyecto serán documentados en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Versionado Semántico](https://semver.org/lang/es/).
 
+## 2026-09-02 (Check de Múltiple Identificador, Resolución de Campus por Slug y Estatus Automático Indebido al Crear Ticket)
+
+### Feature: Check "Múltiple matrícula / folio / email / clave" (`/tickets/soporte/nuevo-ticket-csh`)
+*   **Un Ticket para Varios Afectados**: Nuevo checkbox entre la fila de Campus/Identificador/Nombre completo y el textarea de detalles. Al activarlo se deshabilitan y limpian **Matrícula/Folio/Email/Clave** y **Nombre completo**, dejan de ser requeridos para el envío y no se persisten en la BD (`afectado_clave` y `afectado_nombre` quedan en `null` aunque el cliente los mande).
+*   **Label Dinámico por Categoría**: El texto cambia según la categoría seleccionada — 1 Alumno → "Múltiple matrícula", 2 Aspirante → "Múltiple folio", 3 Colaborador → "Múltiple email", 4 Docente → "Múltiple clave".
+*   **Aviso Contextual**: Mensaje en color `secondary` a la derecha del check recordando adjuntar un archivo con todos los identificadores o pegarlos en la descripción.
+*   **Interacción con Campos de Solo Lectura**: `applyMultipleClaveState()` es idempotente y calcula el estilo *muted* como `active || afectadoNombre.readOnly`, de modo que activar y desactivar el check no destruye el estilo de un campo que ya era de solo lectura.
+
+### Fix: Error 400 "El campo Campus contiene caracteres inválidos" con Campus Acentuados
+*   **Causa Raíz**: `src/pages/api/tickets/create.ts` validaba el campus con `/^[a-zA-Z0-9\s]+$/`, que rechaza los nombres reales de la BD: **Cancún**, **Mérida**, **Presa Madín** y **Querétaro**. El defecto era previo a los cambios de esta fecha.
+*   **Solución — Validar contra la BD, no contra un regex**: El formulario ahora envía `afectado_campus_slug` (el `slug` único de `Empresa`, sin acentos) en un `data-slug` de cada `<option>` más un hidden para el caso de campus fijo, y el endpoint resuelve la empresa con `findFirst({ where: { slug, activa: true } })`, con fallback al nombre (`mode: 'insensitive'`) por compatibilidad con clientes que aún no envíen el slug. Se eliminó el filtro de caracteres.
+*   **Fallback Silencioso Convertido en Error Explícito**: Un campus que no corresponde a una empresa activa ahora devuelve 400 en lugar de caer sin aviso a la empresa de la sesión.
+*   **Nota de Diseño**: El `value` del `<select>` sigue siendo el **nombre** del campus porque es lo que espera la API de RH de alumnos y aspirantes (`consultar-detalle?campus=...`); el slug viaja aparte.
+
+### Fix: Estatus "En progreso" Asignado Automáticamente al Crear un Ticket con Adjuntos
+*   **Registros Analizados** (ticket 31, BD de desarrollo): creado `18:38:05.110` con `estatusId: 2` ("Nuevo"), y una única entrada de `historial_solicitud` (id 70) a las `18:38:13.384` — 8.3 s después — con `usuarioId: 1` (superadmin), comentario `"Archivos adjuntos en creación."` y `cambios: { fieldChanges: [{ field: "estatusId", oldValue: "Nuevo", newValue: "En progreso" }] }`.
+*   **Causa Raíz**: Los wizards cierran el alta con un `PATCH /api/tickets/update` para adjuntar los archivos ya subidos a S3. Ese PATCH viaja con la sesión del creador y no incluye `estatusId`, así que disparaba la regla de `update.ts` que promueve un ticket "Nuevo" a "En progreso" cuando lo toca un usuario privilegiado. Solo se reproducía si el creador era admin/superadmin **y** el ticket llevaba al menos un adjunto (sin archivos no hay PATCH).
+*   **Solución**: Los dos wizards (`src/lib/ticket-wizard.ts` y `src/lib/marketing-ticket-wizard.ts`) marcan ese PATCH con `origen: "creacion"`, y `update.ts` lo desestructura fuera de `updateDataInput` y añade `!esPatchDeCreacion` a la condición de la transición automática. Los PATCH reales de resolutores desde `view/[id].astro` y `traslado.astro` no envían `origen`, por lo que conservan el comportamiento anterior.
+
+### Fix: `Ticket.fechaact` Nunca se Actualizaba
+*   **Causa Raíz**: `fechaact` estaba declarada como `@default(now())` **sin** `@updatedAt` y ningún endpoint la escribía, de modo que en el ticket 31 seguía siendo idéntica a `fechaalta` tras la actualización. Las notificaciones (`api/notifications/count.ts` y `list.ts`) ordenan por `fechaact desc`, así que reflejaban la fecha de alta en lugar del último movimiento.
+*   **Solución**: `@updatedAt` en `prisma/schema.prisma`. Es un atributo a nivel de Prisma Client: `prisma migrate diff` confirma que **no genera cambios de DDL**, por lo que no requiere migración, solo `prisma generate`. Los tickets existentes conservan su `fechaact` hasta su próxima actualización.
+*   **Verificación**: `npx astro check` 0 errores / 0 warnings en 157 archivos y `pnpm build` completo.
+
 ## 2026-09-01 (Días Invisibles en el Reporte de Incidencias: Nueva Categoría "Salida Anticipada" y Aviso de Días Omitidos)
 
 ### Fix: Días con Salida Anticipada que Desaparecían del Reporte (`/user/perfil/incidencias`)

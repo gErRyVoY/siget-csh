@@ -235,7 +235,7 @@ model AsignacionesCategorias {
 model Ticket {
   id                    Int                    @id @default(autoincrement())
   fechaalta             DateTime               @default(now()) @db.Timestamp(6)
-  fechaact              DateTime               @default(now()) @db.Timestamp(6)
+  fechaact              DateTime               @default(now()) @updatedAt @db.Timestamp(6)
   estatusId             Int
   categoriaId           Int
   subcategoriaId        Int?
