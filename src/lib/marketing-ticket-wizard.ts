@@ -109,6 +109,10 @@ export function initMarketingTicketWizard(marketingCategory: CategoriaNode) {
         'video/3gpp2',
         'video/x-matroska',
         'application/vnd.google-apps.video',
+        // Sin este tipo el Picker no lista ni una sola carpeta: `setMimeTypes` filtra
+        // por esa lista exacta y las carpetas quedan fuera aunque
+        // `setIncludeFolders(true)` esté puesto.
+        'application/vnd.google-apps.folder',
     ].join(',');
 
     let stagedFiles: Array<{ file: File; id: number; isValid: boolean; reason: string | null }> = [];
@@ -599,7 +603,7 @@ export function initMarketingTicketWizard(marketingCategory: CategoriaNode) {
     };
 
     const handleAuthClick = () => {
-        if (!GOOGLE_CLIENT_ID || !GOOGLE_APP_ID) {
+        if (!GOOGLE_API_KEY || !GOOGLE_CLIENT_ID || !GOOGLE_APP_ID) {
             toast.error("Faltan credenciales de Google Drive.");
             return;
         }
@@ -646,7 +650,7 @@ export function initMarketingTicketWizard(marketingCategory: CategoriaNode) {
         const height = Math.max(300, Math.min(Math.floor(window.innerHeight * 0.85), 650));
         const origin = window.location.protocol + "//" + window.location.host;
 
-        const picker = new (window as any).google.picker.PickerBuilder()
+        const builder = new (window as any).google.picker.PickerBuilder()
             .enableFeature((window as any).google.picker.Feature.NAV_HIDDEN)
             .enableFeature((window as any).google.picker.Feature.MULTISELECT_ENABLED)
             .setAppId(GOOGLE_APP_ID)
@@ -655,8 +659,14 @@ export function initMarketingTicketWizard(marketingCategory: CategoriaNode) {
             .addView(view)
             .addView(new (window as any).google.picker.DocsUploadView())
             .setSize(width, height)
-            .setCallback(pickerCallback)
-            .build();
+            .setCallback(pickerCallback);
+
+        // Sin developer key el diálogo del Picker abre vacío. Ver la nota extensa en
+        // ticket-wizard.ts: el 400 "invalid key" de 75473d1 era la Google Picker API
+        // sin habilitar en el proyecto de Cloud, no la llave.
+        if (GOOGLE_API_KEY) builder.setDeveloperKey(GOOGLE_API_KEY);
+
+        const picker = builder.build();
         picker.setVisible(true);
     };
 

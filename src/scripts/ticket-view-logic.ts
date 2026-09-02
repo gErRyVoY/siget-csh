@@ -33,6 +33,10 @@ const DRIVE_ALLOWED_MIME_TYPES = [
     'video/3gpp2',
     'video/x-matroska',
     'application/vnd.google-apps.video',
+    // Sin este tipo el Picker no lista ni una sola carpeta: `setMimeTypes` filtra por
+    // esa lista exacta y las carpetas quedan fuera aunque `setIncludeFolders(true)`
+    // esté puesto.
+    'application/vnd.google-apps.folder',
 ].join(',');
 
 let stagedFiles: { file: File; id: number; isValid: boolean; reason: string | null; }[] = [];
@@ -834,7 +838,7 @@ function createPicker() {
     const width = Math.max(320, Math.min(Math.floor(window.innerWidth * 0.9), 1050));
     const height = Math.max(300, Math.min(Math.floor(window.innerHeight * 0.85), 650));
 
-    const picker = new google.picker.PickerBuilder()
+    const builder = new google.picker.PickerBuilder()
         .enableFeature(google.picker.Feature.NAV_HIDDEN)
         .enableFeature(google.picker.Feature.MULTISELECT_ENABLED)
         .setAppId(GOOGLE_APP_ID!)
@@ -843,8 +847,14 @@ function createPicker() {
         .addView(new google.picker.DocsUploadView())
         .setOrigin(origin)
         .setSize(width, height)
-        .setCallback(pickerCallback)
-        .build();
+        .setCallback(pickerCallback);
+
+    // Sin developer key el diálogo del Picker abre vacío. Ver la nota extensa en
+    // ticket-wizard.ts: el 400 "invalid key" de 75473d1 era la Google Picker API sin
+    // habilitar en el proyecto de Cloud, no la llave.
+    if (GOOGLE_API_KEY) builder.setDeveloperKey(GOOGLE_API_KEY);
+
+    const picker = builder.build();
     picker.setVisible(true);
 }
 

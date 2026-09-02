@@ -1050,6 +1050,10 @@ const agentCshTraslEmail = agentsCshTraslado
             'video/3gpp2',
             'video/x-matroska',
             'application/vnd.google-apps.video',
+            // Sin este tipo el Picker no lista ni una sola carpeta: `setMimeTypes`
+            // filtra por esa lista exacta y las carpetas quedan fuera aunque
+            // `setIncludeFolders(true)` esté puesto.
+            'application/vnd.google-apps.folder',
         ].join(',');
 
         interface DriveResource {
@@ -1260,7 +1264,7 @@ const agentCshTraslEmail = agentsCshTraslado
         };
 
         const handleAuthClick = () => {
-            if (!GOOGLE_CLIENT_ID || !GOOGLE_APP_ID) {
+            if (!GOOGLE_API_KEY || !GOOGLE_CLIENT_ID || !GOOGLE_APP_ID) {
                 toast.error("Faltan credenciales de Google Drive.");
                 return;
             }
@@ -1307,7 +1311,7 @@ const agentCshTraslEmail = agentsCshTraslado
             const height = Math.max(300, Math.min(Math.floor(window.innerHeight * 0.85), 650));
             const origin = window.location.protocol + "//" + window.location.host;
 
-            const picker = new window.google.picker.PickerBuilder()
+            const builder = new window.google.picker.PickerBuilder()
                 .enableFeature(window.google.picker.Feature.NAV_HIDDEN)
                 .enableFeature(window.google.picker.Feature.MULTISELECT_ENABLED)
                 .setAppId(GOOGLE_APP_ID!)
@@ -1316,8 +1320,14 @@ const agentCshTraslEmail = agentsCshTraslado
                 .addView(view)
                 .addView(new window.google.picker.DocsUploadView())
                 .setSize(width, height)
-                .setCallback(pickerCallback)
-                .build();
+                .setCallback(pickerCallback);
+
+            // Sin developer key el diálogo del Picker abre vacío. Ver la nota extensa
+            // en ticket-wizard.ts: el 400 "invalid key" de 75473d1 era la Google
+            // Picker API sin habilitar en el proyecto de Cloud, no la llave.
+            if (GOOGLE_API_KEY) builder.setDeveloperKey(GOOGLE_API_KEY);
+
+            const picker = builder.build();
             picker.setVisible(true);
         };
 
