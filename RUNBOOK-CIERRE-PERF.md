@@ -193,9 +193,30 @@ mediciones en el mensaje.
 
 ---
 
-## D. Índices en producción (3.1)
+## D. Migraciones manuales en producción (3.1 y `afectado_clave`)
 
-**Primero decide si hace falta `CONCURRENTLY`.** Contra la BD de producción:
+Son **dos** migraciones pendientes, no una. Esta sección se escribió cuando sólo
+existía la de índices; la segunda apareció después, al arreglar el 500 al crear
+tickets de categoría Colaborador:
+
+| Migración | Qué hace | Riesgo |
+| --- | --- | --- |
+| `20260827193943_add_perf_indexes_fase3` | Los cuatro índices del punto 3.1 | Bloquea escrituras mientras construye, salvo con `CONCURRENTLY` |
+| `20260902215500_widen_afectado_clave` | `ticket.afectado_clave` de `VarChar(20)` a `VarChar(255)` | Ninguno: desde PostgreSQL 9.2 ampliar un `varchar` es sólo catálogo, no reescribe la tabla. `ACCESS EXCLUSIVE` de milisegundos |
+
+Las dos son compatibles hacia atrás, así que se pueden aplicar **antes** del
+deploy de la sección E: el código actual funciona igual con ellas puestas.
+
+La de `afectado_clave` no necesita ninguna decisión previa:
+
+```bash
+DATABASE_URL="<prod>" npx prisma db execute \
+  --file prisma/migrations/20260902215500_widen_afectado_clave/migration.sql \
+  --schema prisma/schema.prisma
+```
+
+Para la de índices, **primero decide si hace falta `CONCURRENTLY`.** Contra la BD
+de producción:
 
 ```sql
 SELECT relname, n_live_tup, pg_size_pretty(pg_total_relation_size(relid)) AS tamano
@@ -240,7 +261,12 @@ con esto:
 ```bash
 DATABASE_URL="<prod>" npx prisma migrate status
 DATABASE_URL="<prod>" npx prisma migrate resolve --applied 20260827193943_add_perf_indexes_fase3
+DATABASE_URL="<prod>" npx prisma migrate resolve --applied 20260902215500_widen_afectado_clave
 ```
+
+`migrate status` debe acabar diciendo que no hay migraciones pendientes. Si
+enumera más de esas dos, **pararse ahí**: significa que producción está más atrás
+de lo que se creía y hay que revisar cada una antes de marcar nada.
 
 Dos avisos:
 
@@ -268,6 +294,16 @@ git push origin siget-apprunner-new          # esto SÍ despliega a App Runner
 En la consola de App Runner, servicio de SiGeT → **Configuration** → **Edit** →
 variables de entorno → `DATABASE_URL`: copiar el valor actual y añadirle
 `&connect_timeout=20` al final, conservando `connection_limit=30&pool_timeout=30`.
+La cadena de parámetros queda así, y es exactamente la que ya usa el `.env` de
+desarrollo:
+
+```
+?connection_limit=30&pool_timeout=30&connect_timeout=20
+```
+
+Los tres valores van en segundos salvo `connection_limit`, que es un número de
+conexiones. El `connect_timeout` por defecto de Prisma son 5 s.
+
 Guardar lanza un despliegue rolling de unos 5 minutos, sin caída. Si la variable
 vive en Secrets Manager o SSM, editarla allí.
 
@@ -294,10 +330,45 @@ Runner el síntoma sería un 500 esporádico al arrancar una instancia nueva.
    `Borrados -> permiso_rol_seccion: N | permiso_usuario_seccion: M | seccion: 2`
    y `quedan 0 filas`. Es idempotente: la segunda vez dice que no hay nada que
    borrar.
-3. **Confirmar que `NODE_ENV=production` surtió efecto**: en CloudWatch, los logs
-   del servicio **no** deben tener líneas `prisma:query`. Si siguen apareciendo,
-   el `ENV NODE_ENV=production` del Dockerfile no llegó y 1.1 no está activo
-   (además de ser una fuga de datos personales al log).
+3. **Confirmar que `NODE_ENV=production` surtió efecto**: los logs **no** deben
+   tener líneas `prisma:query`. Si siguen apareciendo, el `ENV NODE_ENV=production`
+   del Dockerfile no llegó y 1.1 no está activo (además de ser una fuga de datos
+   personales al log).
+
+   App Runner escribe en **dos** grupos de log distintos, y esto sólo está en el
+   segundo:
+
+   - `/aws/apprunner/<servicio>/<id>/service` → arranque y despliegues.
+   - `/aws/apprunner/<servicio>/<id>/application` → el stdout del contenedor, que
+     es donde saldría `prisma:query`.
+
+   **Orden correcto**: primero navegar unas cuantas páginas de la aplicación (si
+   no hay tráfico no hay logs, y "0 resultados" no significaría nada), y después,
+   en CloudWatch → **Logs Insights**, con el grupo `.../application` seleccionado
+   y el rango de tiempo puesto desde el despliegue:
+
+   ```
+   fields @timestamp, @message
+   | filter @message like /prisma:query/
+   | sort @timestamp desc
+   | limit 20
+   ```
+
+   Se esperan **0 registros**. Para descartar que el 0 venga de un grupo vacío,
+   repetir la consulta sin la línea `filter`: ahí sí deben aparecer líneas.
+
+   Desde la CLI, con un perfil que tenga permisos de `logs` (el perfil por
+   defecto de la máquina de desarrollo es sólo de S3 y no sirve):
+
+   ```bash
+   aws logs filter-log-events \
+     --log-group-name "/aws/apprunner/<servicio>/<id>/application" \
+     --filter-pattern "prisma:query" \
+     --start-time $(( ($(date +%s) - 3600) * 1000 )) \
+     --max-items 5 --region us-east-1
+   ```
+
+   `events: []` es el resultado bueno. Ojo: `--start-time` va en milisegundos.
 4. **Repasar en producción** los puntos 1, 5, 8 y 10 de la tabla de QA: los de
    más riesgo y los que dependen de datos reales.
 5. Si algo va mal: `git revert` del commit concreto —cada punto del plan es un
