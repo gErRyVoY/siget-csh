@@ -187,7 +187,12 @@ async function handleRequest(context: APIContext, next: MiddlewareNext): Promise
     "/tickets/soporte/traslado": "proceso_traslados",
     "/tickets/marketing/nuevo-ticket-marketing": "crear_ticket_marketing",
     "/tickets/soporte/usuario": "soporte_mis_tickets",
-    "/tickets/soporte": "soporte_dashboard",
+    // "Todos" de soporte. Antes pedía soporte_dashboard, que es la sección del Dashboard
+    // (el enlace del Sidebar a "/"), no la de esta vista: un usuario con soporte_dashboard
+    // y sin soporte_todos no veía el enlace "Todos" pero entraba escribiendo la URL. El
+    // equivalente de marketing (/tickets/marketing → marketing_todos) siempre estuvo bien.
+    // "/" no puede protegerse aquí porque es el destino del redirect al denegar acceso.
+    "/tickets/soporte": "soporte_todos",
     "/tickets/marketing/usuario": "marketing_mis_tickets",
     "/tickets/marketing/dashboard": "marketing_dashboard",
     "/tickets/marketing": "marketing_todos",
