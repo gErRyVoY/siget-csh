@@ -1401,7 +1401,11 @@ export function initTicketWizard(treeData: CategoriesTreeData) {
 
             setTimeout(() => {
                 const redirectUrl = ticketForm!.dataset.redirectUrl || '/tickets/soporte';
-                window.location.href = redirectUrl;
+                // Se marca el ticket recién creado para que el listado lo resalte al cargar.
+                const separator = redirectUrl.includes('?') ? '&' : '?';
+                window.location.href = ticketId
+                    ? `${redirectUrl}${separator}new_ticket=${ticketId}`
+                    : redirectUrl;
             }, 1500);
 
         } catch (error) {

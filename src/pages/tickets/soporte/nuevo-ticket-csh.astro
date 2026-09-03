@@ -179,6 +179,16 @@ const agentsCsh = await prisma.usuario.findMany({
 const agentCshEmails = agentsCsh
     .map((u) => u.mail)
     .filter(Boolean) as string[];
+
+// A dónde se va el usuario después de crear el ticket. La vista "Todos"
+// (/tickets/soporte) pertenece a la sección soporte_todos, no a soporte_dashboard, que es
+// la del enlace al Dashboard ("/"). Con la sección equivocada, quien tuviera
+// soporte_dashboard sin soporte_todos acababa rebotado a "/" por el middleware justo
+// después de crear su ticket. El rol `user` no tiene soporte_todos, así que siempre cae en
+// "Mis tickets", que es lo esperado.
+const redirectUrlTrasCrear = session?.user?.secciones?.includes("soporte_todos")
+    ? "/tickets/soporte"
+    : "/tickets/soporte/usuario";
 ---
 
 <MainLayout title="Nuevo ticket para CSH">
@@ -233,11 +243,7 @@ const agentCshEmails = agentsCsh
                 data-google-app-id={GOOGLE_APP_ID}
                 data-access-token={session?.accessToken || ""}
                 data-agent-emails={agentCshEmails.join(',')}
-                data-redirect-url={session?.user?.secciones?.includes(
-                    "soporte_dashboard",
-                )
-                    ? "/tickets/soporte"
-                    : "/tickets/soporte/usuario"}
+                data-redirect-url={redirectUrlTrasCrear}
             >
                 <!-- Campos dinámicos para datos del afectado -->
                 <div

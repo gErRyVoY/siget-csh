@@ -59,6 +59,15 @@ export const PATCH: APIRoute = async ({ request, locals }) => {
             }
             updateData.estatus = { connect: { id: newEstatusId } };
         }
+
+        // El formulario de la vista de ticket envía SIEMPRE el valor del <select> de estatus,
+        // aunque el resolutor no lo haya tocado. Por eso "no cambió el estatus" no se puede
+        // detectar con `!updateDataInput.estatusId`: hay que comparar el valor enviado con el
+        // actual. Con la comprobación anterior las dos transiciones automáticas de más abajo
+        // (a 'Nuevo' al reasignar y a 'En progreso' al trabajar un ticket nuevo) nunca se
+        // disparaban desde la interfaz.
+        const estatusIdEnviado = updateDataInput.estatusId ? Number(updateDataInput.estatusId) : null;
+        const estatusSinCambioExplicito = estatusIdEnviado === null || estatusIdEnviado === ticketBeforeUpdate.estatusId;
         if (updateDataInput.solicitanteId && isPrivileged) updateData.solicitante = { connect: { id: Number(updateDataInput.solicitanteId) } };
         
         const isSuperAdmin = userRoleId === 3;
@@ -223,15 +232,13 @@ export const PATCH: APIRoute = async ({ request, locals }) => {
 
         // Auto-set status to 'Nuevo' (2) if assignee changes and status is not explicitly provided
         if (updateDataInput.atiendeId && Number(updateDataInput.atiendeId) !== ticketBeforeUpdate.atiendeId) {
-            if (!updateDataInput.estatusId) {
+            if (estatusSinCambioExplicito) {
                 updateData.estatus = { connect: { id: 2 } };
             }
         } else {
             // Auto-set status to 'En progreso' (3) if Resolver updates a 'Nuevo' ticket and didn't change status
-            if (isPrivileged && !esPatchDeCreacion && ticketBeforeUpdate.estatusId === 2 && !updateDataInput.estatusId) {
-                if (!updateData.estatus) {
-                    updateData.estatus = { connect: { id: 3 } };
-                }
+            if (isPrivileged && !esPatchDeCreacion && ticketBeforeUpdate.estatusId === 2 && estatusSinCambioExplicito) {
+                updateData.estatus = { connect: { id: 3 } };
             }
         }
 
