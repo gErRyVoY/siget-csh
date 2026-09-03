@@ -1,7 +1,8 @@
 # Línea base de rendimiento — rama `nuevos-cambios-claude`
 
-Medido con `pnpm perf:baseline` contra `astro dev` y la BD de desarrollo
-(`siget-db-dev-restored-v2`, RDS us-east-1). Usuario `gerardo.omana@humanitas.edu.mx`
+Medido con `pnpm perf:baseline` contra `astro dev` y la BD de producción
+(`siget-db-dev-restored-v2`, RDS us-east-1 — es la única que existe, pese al «dev»
+del nombre). Usuario `gerardo.omana@humanitas.edu.mx`
 (id 1, superadmin), 4 pasadas por ruta más una de calentamiento, estimador **mínimo**.
 
 ## Fase 0 — antes de cualquier optimización
@@ -113,7 +114,7 @@ De dónde sale cada reducción:
 
 ### Índices (3.1)
 
-En la BD de desarrollo (22 tickets, 9 traslados) `EXPLAIN` no distingue nada:
+Con el volumen real de la base (22 tickets, 9 traslados) `EXPLAIN` no distingue nada:
 Postgres hace seq scan de tablas de 22 filas con y sin índice. Los números se
 midieron sobre tablas de trabajo de 200 000 filas creadas dentro de una
 transacción revertida, comparando siempre contra los índices que **ya existen**:

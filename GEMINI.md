@@ -5,19 +5,52 @@
 >
 > **⚠️ REGLA CRÍTICA PARA EL ASISTENTE:** El asistente **NO debe ejecutar `git push`** en ninguna circunstancia a menos que el usuario lo solicite **de forma explícita**. Se permiten `git add` y `git commit` para preparar los cambios, pero el push queda **reservado exclusivamente para cuando el usuario lo indique**.
 
-**Tarea Actual:** En curso — Punto 3.1 del plan de rendimiento: sincronizar `prisma/schema.prisma` con los cuatro índices que ya existen en la BD de desarrollo y dejar el SQL listo para producción (rama `nuevos-cambios-claude`).
+> [!CAUTION]
+> **NO HAY BASE DE DATOS DE DESARROLLO.** Hay **una sola** base, la de producción:
+> `siget-db-dev-restored-v2…rds.amazonaws.com/siget`. El `DATABASE_URL` del `.env`
+> local y el secreto de App Runner apuntan **al mismo sitio** — el nombre de la
+> instancia lleva «dev» por el snapshot del que se restauró en julio de 2026, no
+> porque sea un entorno aparte.
+>
+> Consecuencias que no son negociables:
+> - **Nunca `prisma migrate dev`, `prisma migrate reset` ni `prisma db push`**, ni
+>   «en local»: resetean el esquema y **borrarían producción**. Las migraciones se
+>   aplican con `prisma db execute` del `.sql` y se registran con
+>   `prisma migrate resolve --applied`.
+> - Cualquier script de `scripts/` o script temporal escribe **en producción**.
+>   Lecturas sin problema; para escribir, confirmar antes con el usuario.
+> - El QA local **usa datos reales de personas**. Lo que se cree o modifique
+>   probando queda en la base y puede disparar correos y notificaciones a usuarios
+>   reales.
+> - Cuando se imprima o pegue un `DATABASE_URL`, enmascarar credenciales:
+>   `sed 's#//[^@]*@#//***:***@#'`.
+>
+> El plan a futuro es **crear una base nueva** al arrancar el proyecto,
+> conservando en respaldos solo los catálogos (`empresa`, `rol`, `oferta`,
+> `carrera`, `usuario`, `descuento`, `estatus`, `categoria`, `subcategoria`,
+> `subcategoria_categorias`, `asignaciones_categorias`, `plan_pago`,
+> `plantilla_correo`, `permiso`, `permiso_categoria`, `seccion`,
+> `permiso_rol_seccion`, `permiso_usuario_seccion`, `incidencia` y **`ciclo`**,
+> que faltaba en la lista: sin un ciclo vigente no se puede crear ningún
+> traslado). `_prisma_migrations` y `_PermisoToRol` las recrea
+> `prisma migrate deploy`; `logs` y `bloque` arrancan vacías.
+
+**Tarea Actual:** Plan de rendimiento **desplegado en producción** (2026-09-03, commit `8f27747` en `siget-apprunner-new`). Queda el QA funcional sobre el entorno ya desplegado.
 
 **Pasos Siguientes:**
-1. Pruebas funcionales en navegador por parte del usuario:
-   - Crear ticket **con adjunto** siendo admin/superadmin y confirmar que queda en "Nuevo" (el ticket 31 quedó en "En progreso" y puede corregirse a mano).
-   - Abrir ese ticket como resolutor, guardar un comentario y confirmar que **sí** pasa a "En progreso".
-   - Check "Múltiple ..." en las cuatro categorías del wizard y creación de ticket con **Presa Madín** (campus acentuado) más el autocompletado por matrícula.
-2. Aplicar en RDS de **producción** el SQL de los cuatro índices del punto 3.1 (el asistente no tiene ni debe tener acceso a esa BD).
+1. QA en producción de los cuatro puntos de más riesgo del plan (tabla completa en `RUNBOOK-CIERRE-PERF.md`, sección B):
+   - **1** — filtros de `/tickets/soporte`: los desplegables deben traer las mismas opciones que antes (pasaron a `groupBy` + catálogos cacheados).
+   - **5** — abrir un ticket de **traslado**: campus, carrera, descuento y los dos auditores llenos. Es el cambio con más probabilidad de romper algo.
+   - **8** — quitar y devolver una sección a un rol en `/admin/secciones`: el cambio debe verse de inmediato, a lo sumo en 15 s.
+   - **10** — crear un ticket con dos navegadores: la campanita del agente se actualiza sin recargar y llega el correo.
+2. Verificar las **dimensiones del diálogo de Google Picker** con la página desplazada (paso de adjuntos del asistente de alta). Requiere OAuth contra el Drive del usuario, el asistente no puede probarlo.
 3. Confirmar con Rogelio Elizalde López su horario de viernes en `/user/perfil` (se presume `10:00–18:00`) para cerrar el diagnóstico del día 28 de agosto al 100%.
 4. Corregir en el perfil los tres horarios inválidos detectados: Haide Herrera (sin `clave` y horario nulo), Jair Flores Téllez (seis días con `inicio`/`fin` en `null`) y Victor Barrera (sin sábado configurado).
-5. El commit `25cd93b` (incidencias) sigue **sin subir** al repositorio.
+5. Rotar las dos API keys de Google que se pegaron en una conversación con el asistente.
+6. Deduplicar las filas repetidas de `asignaciones_categorias` (2 055 filas hoy); el código las tolera desde `f9437f4`, pero conviene hacerlo al crear la base nueva.
 
 **Pasos Completados:**
+- ✅ **Plan de Rendimiento Desplegado en Producción (2026-09-03):** Merge de `nuevos-cambios-claude` a `siget-apprunner-new` (avance directo hasta `8f27747`, 42 commits) y **un solo push**. Despliegue `3b9c1e41…` completado a las 15:40 CST. Incluye las tres fases del plan (micro-caché de sesión con invalidación explícita, `reference-data` con TTL, `select` explícitos en los listados, breadcrumb en memoria, notificaciones con `$queryRaw`, gzip en el middleware, `googleapis` → `@googleapis/admin`), el `Dockerfile` con `node:22-slim` + `USER node` + `HEALTHCHECK` + `ENV NODE_ENV=production`, las imágenes en WebP (3.3 MB de PNG eliminados), el borrado de `/admin/roles` y `/admin/tickets`, el resalte del ticket recién creado en los cuatro listados y el arreglo de dimensiones del Picker de Drive. **Verificado en CloudWatch:** el grupo `.../application` no tiene **ninguna** línea `prisma:query` tras el despliegue, con tráfico real de por medio — `NODE_ENV=production` surtió efecto y se cerró la fuga de datos personales al log (hallazgo A3 de la auditoría). Las dos migraciones pendientes (`20260827193943_add_perf_indexes_fase3` y `20260902215500_widen_afectado_clave`) ya estaban aplicadas y registradas en `_prisma_migrations`. `DATABASE_URL` de App Runner con `?connection_limit=30&pool_timeout=30&connect_timeout=20`. `.gitignore` endurecido a `.env*` + `prisma/backups/`, y el respaldo con datos personales `backup-2026-07-21…json` fuera del repositorio. `astro check` 0 errores / 0 advertencias en 160 archivos y `pnpm build` completo.
 - ✅ **Check de Múltiple Identificador, Campus por Slug, Estatus Automático Indebido y `fechaact` (2026-09-02):** Nuevo check "Múltiple matrícula / folio / email / clave" con label dinámico por categoría en `/tickets/soporte/nuevo-ticket-csh`, que deshabilita y omite Identificador y Nombre completo en cliente y servidor. Se eliminó el regex ASCII que rechazaba campus acentuados (Cancún, Mérida, Presa Madín, Querétaro) y el campus se resuelve ahora contra la BD por `Empresa.slug` (con fallback al nombre), devolviendo 400 explícito en lugar de caer en silencio a la empresa de la sesión. Se corrigió que crear un ticket **con adjuntos** siendo admin/superadmin lo pasara solo a "En progreso": el PATCH de cierre de alta de los dos wizards se marca con `origen: "creacion"` y `update.ts` lo excluye de la transición automática (diagnóstico sobre el ticket 31 y su entrada de `historial_solicitud` id 70). Además `Ticket.fechaact` recibió `@updatedAt`, ya que nunca se actualizaba y las notificaciones ordenan por ese campo. `npx astro check` 0 errores en 157 archivos y `pnpm build` completo.
 - ✅ **Salida Anticipada y Aviso de Días Omitidos en `/user/perfil/incidencias` (2026-09-01):** Se corrigió la causa por la que algunos días desaparecían del reporte. La vista solo evaluaba la salida cuando era **posterior** al fin del turno, así que salir antes de la hora no activaba ninguna rama y el día no generaba fila, no se guardaba y no llegaba al correo. Se agregó la categoría **"Salida anticipada"** (simétrica al retardo, tolerancia de 5 min, en rojo, con motivo obligatorio de mínimo 5 caracteres y `tiempo_turno` negativo), el caso combinado retardo + salida anticipada con minutos acumulados, y la compensación por entrada anticipada. Además, los días cuyo día de la semana no está en `horario_disponibilidad` ya no se descartan en silencio: se listan en un **recuadro ámbar de advertencia** con enlace a `/user/perfil`. Los mismos criterios se replicaron en el correo real (`src/pages/api/user/incidencias/send-report.ts`): celda `SL` en rojo con fondo de "Justificar", `dayHasProblem = true` para que el día no cuente como "A tiempo", y línea `Salida anticipada N minutos.` en el orden Justificar → Salida anticipada → Tiempo adicional → Motivo. `npx astro check` 0 errores en 157 archivos y `pnpm build` completo.
 - ✅ **Filtros de Fecha con Formato `dd/mm/aaaa` en Todas las Vistas de Tickets (2026-08-26):** Aplicado formato visual `dd/mm/aaaa`, placeholder `dd/mm/aaaa`, máscara de escritura con dígitos, retroceso fluido con Backspace, botón de calendario interactivo para apertura emergente, sincronización de picker y soporte de parsing `DD/MM/YYYY` y `YYYY-MM-DD` en SSR en:

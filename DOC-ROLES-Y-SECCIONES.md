@@ -2,8 +2,8 @@
 
 Documento de referencia derivado del código (`auth.config.ts`, `src/middleware.ts`,
 `src/components/shared/Sidebar.astro`, `src/pages/admin/usuarios/editar/[id].astro`,
-`src/pages/api/admin/usuarios/secciones.ts`) y del estado real de la BD de desarrollo a
-fecha 2026-09-03.
+`src/pages/api/admin/usuarios/secciones.ts`) y del estado real de la base de datos
+—que es la de producción, la única que hay— a fecha 2026-09-03.
 
 ---
 
@@ -97,7 +97,7 @@ concesión propia del usuario en color primario.
 
 ---
 
-## 3. Estado actual de las secciones (BD de desarrollo, 2026-09-03)
+## 3. Estado actual de las secciones (BD de producción, 2026-09-03)
 
 | id | identificador | global | qué controla |
 |---:|---|:---:|---|

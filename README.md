@@ -34,17 +34,31 @@ Sistema integral para la gestión de solicitudes de soporte, mantenimiento y ser
     ```
 
 3.  **Variables de Entorno:**
-    Copiar `.env.example` a `.env` y configurar las credenciales (Base de datos, Google Auth, AWS S3).
+    Copiar `.env.template` a `.env` y configurar las credenciales (Base de datos, Google Auth, AWS S3).
 
 4.  **Base de Datos:**
+
+    > [!CAUTION]
+    > **Hoy existe una sola base de datos y es la de producción.** El
+    > `DATABASE_URL` que circula en el equipo apunta a ella, aunque la instancia se
+    > llame `siget-db-dev-restored-v2` (el nombre viene del snapshot del que se
+    > restauró en julio de 2026, no de un entorno aparte).
+    >
+    > Por eso los comandos de abajo son para una base **vacía y propia**. Si tu
+    > `.env` apunta a la base compartida, **no ejecutes `migrate dev` ni `seed`**:
+    > `migrate dev` exige resetear el esquema y borraría todo.
+
     ```bash
     # Generar cliente de Prisma
     pnpm dlx prisma generate
 
-    # Ejecutar migraciones
-    pnpm dlx prisma migrate dev
+    # Aplicar migraciones. `deploy` sólo aplica lo pendiente y nunca resetea:
+    # es el comando correcto tanto en una base nueva como en una que ya tiene datos.
+    pnpm dlx prisma migrate deploy
 
-    # Cargar datos semilla (Roles, Categorías, Usuarios Admin)
+    # Cargar datos semilla (Roles, Categorías, Usuarios Admin).
+    # Sólo sobre una base vacía: los `deleteMany()` del seed exigen FORCE_CLEAN=true
+    # desde el incidente del 20-jul-2026, pero aun así no es idempotente del todo.
     pnpm run seed
     ```
 

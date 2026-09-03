@@ -9,6 +9,27 @@ Las mediciones y el detalle de cada optimización están en `PERF-BASELINE.md`.
 El plan original está en
 `C:\Users\Gerardo\.claude\plans\actualmente-est-s-conectado-a-fluffy-ullman.md`.
 
+> **Corrección del 2026-09-03, y hay que leerla antes que nada.** Este runbook se
+> escribió dando por hecho que había una BD de desarrollo separada de la de
+> producción. **No la hay: existe una sola base**, y el `DATABASE_URL` del `.env`
+> local apunta a ella. El nombre de la instancia
+> (`siget-db-dev-restored-v2`) dice «dev» por el snapshot del que se restauró en
+> julio de 2026, no porque sea un entorno aparte.
+>
+> Así que donde este documento decía «la BD de desarrollo, nunca RDS de
+> producción», la instrucción real es: **siempre es producción**. En concreto:
+>
+> - **Nunca `prisma migrate dev`, `migrate reset` ni `db push`.** Piden resetear el
+>   esquema y eso **borra producción**. Las migraciones van con `prisma db execute`
+>   del `.sql` y luego `prisma migrate resolve --applied`, que es justo lo que hace
+>   la sección D.
+> - Todo el QA de la sección B se hizo **contra datos reales de personas**, y lo
+>   que se creó probando quedó en la base.
+> - Los scripts de `scripts/` y cualquier script temporal escriben en producción.
+>
+> El plan a futuro es crear una base nueva al arrancar el proyecto y restaurar solo
+> los catálogos; la lista está en `GEMINI.md`.
+
 ## Estado: qué ya está verificado
 
 - Fases 1, 2 y 3 implementadas, un commit por punto del plan.
@@ -31,9 +52,10 @@ app. La validación real es `docker build` + `docker run`.
 
 ## Orden recomendado
 
-`A` Docker (20 min) ✅ → `B` QA funcional (45–60 min) → `C` push de la rama y
-revisión → `D` índices en producción → `E` merge/deploy + `connect_timeout` →
-`F` script de limpieza y verificación post-deploy → `G` CloudFront (otro día)
+`A` Docker ✅ → `B` QA funcional (parcial, queda el repaso en producción) →
+`C` push de la rama ✅ → `D` índices en producción ✅ → `E` merge/deploy +
+`connect_timeout` ✅ → `F` limpieza y verificación post-deploy (F.2 y F.3 ✅,
+queda F.1 y F.4) → `G` CloudFront (otro día)
 
 ### Actualización del 2026-09-02
 
@@ -78,7 +100,9 @@ docker build -t siget:perf-test .
 # 3. Tamaño de la imagen (referencia: era node:20-slim + googleapis)
 docker images siget --format '{{.Repository}}:{{.Tag}}  {{.Size}}'
 
-# 4. Arrancar. .env apunta a la BD de desarrollo, que es lo que queremos
+# 4. Arrancar. Ojo: --env-file .env apunta el contenedor a la BD de PRODUCCIÓN,
+#    que es la única que hay. Sirve para validar la imagen, pero cualquier cosa
+#    que se cree navegando queda en la base real.
 docker run -d --name siget-test --env-file .env -p 4444:4321 siget:perf-test
 
 # 5. Esperar ~30 s y mirar el healthcheck
@@ -144,7 +168,7 @@ hay que revisarlo.
 
 ---
 
-## B. QA funcional en local (BD de desarrollo, nunca RDS de producción)
+## B. QA funcional en local (contra la BD de producción: es la única)
 
 Empieza por lo barato, que no necesita servidor:
 
@@ -154,6 +178,11 @@ npx tsx scripts/validate-flows.ts
 
 Valida catálogos, roles, lógica de asignación y RBAC. Si pasa, arranca `pnpm dev`
 y ve por la tabla. La columna «qué cambió» es dónde mirar si algo se ve raro.
+
+Dos avisos, porque esto corre contra la base real: los tickets y traslados que se
+creen probando **quedan en producción** y hay que borrarlos o cerrarlos después, y
+los puntos que disparan notificaciones (10) o correos mandan avisos **a usuarios
+reales**. Conviene usar cuentas de prueba (`alumno.prueba1@`) donde se pueda.
 
 | # | Qué hacer | Qué debe pasar | Qué cambió (dónde miraría si falla) |
 |---|---|---|---|
@@ -270,14 +299,27 @@ de lo que se creía y hay que revisar cada una antes de marcar nada.
 
 Dos avisos:
 
-- **Nunca `prisma migrate dev` contra producción.** El historial de este repo
-  está desalineado (hay columnas aplicadas a mano) y `migrate dev` exige
-  resetear el esquema, o sea borrar todo. Ya lo intentó en desarrollo.
+- **Nunca `prisma migrate dev`, y no hay «en local» que valga.** El historial de
+  este repo está desalineado (hay columnas aplicadas a mano) y `migrate dev` exige
+  resetear el esquema, o sea borrar todo. Y como el `.env` local apunta a la única
+  base que existe, que es la de producción, ejecutarlo «para probar» **borraría
+  producción**. Lo mismo vale para `migrate reset` y `db push`.
 - El workflow de despliegue **no ejecuta ninguna migración**: nada de esto se
   aplica solo, es manual por diseño.
 
 Al imprimir o pegar un `DATABASE_URL`, enmascara las credenciales:
 `sed 's#//[^@]*@#//***:***@#'`.
+
+### Resultado: nada que hacer, comprobado el 2026-09-02 ✅
+
+Las dos migraciones **ya estaban aplicadas** en la base. Verificado en solo
+lectura: las dos figuran en `_prisma_migrations` (2026-08-27 y 2026-09-02), los
+cuatro índices existen, `incidencia_usuarioId_idx` ya no está, `afectado_clave` es
+`varchar(255)` y `pg_index` no reporta ningún índice inválido. El
+`migrate resolve --applied` no hizo falta.
+
+`CONCURRENTLY` nunca fue necesario: las tablas son diminutas — `ticket` 31 filas /
+224 kB, `incidencia` 366 / 144 kB, `traslado` 9 / 80 kB.
 
 ---
 
@@ -294,8 +336,8 @@ git push origin siget-apprunner-new          # esto SÍ despliega a App Runner
 En la consola de App Runner, servicio de SiGeT → **Configuration** → **Edit** →
 variables de entorno → `DATABASE_URL`: copiar el valor actual y añadirle
 `&connect_timeout=20` al final, conservando `connection_limit=30&pool_timeout=30`.
-La cadena de parámetros queda así, y es exactamente la que ya usa el `.env` de
-desarrollo:
+La cadena de parámetros queda así, y es exactamente la que ya usa el `.env` local
+(que apunta a la misma base):
 
 ```
 ?connection_limit=30&pool_timeout=30&connect_timeout=20
@@ -311,17 +353,41 @@ Para qué sirve: el `P1001 Can't reach database server` aparece cuando Prisma se
 rinde con el timeout de conexión por defecto y RDS tarda en aceptar. En App
 Runner el síntoma sería un 500 esporádico al arrancar una instancia nueva.
 
+### Resultado: desplegado el 2026-09-03 ✅
+
+El merge resultó ser un **avance directo**: `siget-apprunner-new` estaba contenido
+por completo en `nuevos-cambios-claude` desde el merge `5592c6b`, así que no hubo
+divergencia ni merge commit. 42 commits, hasta `8f27747`, con `astro check` en
+0 errores / 0 advertencias (160 archivos) y `pnpm build` completo justo antes.
+
+**Un solo push**, como manda `GEMINI.md`. Despliegue
+`3b9c1e416ecb44ae87b6e19395ee1e84`: iniciado 15:36:16, health check en verde
+15:38:03, tráfico enrutado 15:40:01, completado 15:40:02 CST. Sin caída.
+
+El `connect_timeout=20` se aplicó **antes**, editando el secreto de AWS Secrets
+Manager en lugar de la variable de entorno del servicio.
+
 ---
 
 ## F. Post-deploy en producción
 
-1. **Respaldo antes de borrar nada.** `npx dotenv -- tsx scripts/backup-db.ts`
-   con el `DATABASE_URL` de producción escribe
+1. **Respaldo.** `npx dotenv -- tsx scripts/backup-db.ts` escribe
    `prisma/backups/backup-<fecha>.json`. Ese archivo lleva datos personales de
-   usuarios y tickets: no dejarlo en el repo, borrarlo al confirmar que todo
-   está bien.
-2. **Script de limpieza** (después del deploy, no antes: borra secciones que el
-   código nuevo ya no usa):
+   usuarios y tickets: no dejarlo en el repo (ya está ignorado desde `3a285a5`) y
+   borrarlo del disco al confirmar que todo está bien.
+
+   Este paso se escribió como «respaldo antes de borrar nada», pensando en el
+   script del punto 2. Como ese script ya corrió, hoy lo que aporta es otra cosa:
+   es el **respaldo de producción** con el que se poblará la base nueva cuando se
+   restablezca el proyecto. Pendiente.
+2. **Script de limpieza** — ✅ **ya ejecutado**, el 2026-08-26. `admin_siget_roles`
+   y `admin_siget_tickets` no existen (quedan 21 secciones), así que volver a
+   correrlo solo dirá que no hay nada que borrar. Se ejecutó creyendo que se
+   trataba de un entorno de desarrollo; el efecto fue el correcto de todos modos,
+   porque el código que usaba esas secciones ya se eliminó.
+
+   Se conserva el comando por si hace falta en la base nueva (después del deploy,
+   no antes: borra secciones que el código nuevo ya no usa):
    ```bash
    DATABASE_URL="<prod>" npx tsx scripts/remove-secciones-roles-tickets.ts
    ```
@@ -369,8 +435,22 @@ Runner el síntoma sería un 500 esporádico al arrancar una instancia nueva.
    ```
 
    `events: []` es el resultado bueno. Ojo: `--start-time` va en milisegundos.
+
+   **Resultado: comprobado el 2026-09-03 ✅.** Desde el arranque del contenedor
+   nuevo (15:37:13) hasta las 15:56, el grupo `.../application` contiene
+   **únicamente** el `Server listening` de `@astrojs/node` y los eventos
+   `[SSE] Client connected/disconnected`. **Ninguna línea `prisma:query`**, y con
+   tráfico real de dos usuarios navegando durante 19 minutos, así que el cero no
+   viene de un grupo vacío. `ENV NODE_ENV=production` llegó a la imagen, el punto
+   1.1 está activo y se cerró la fuga de datos personales al log (A3 de la
+   auditoría). El contraste es fuerte: antes del despliegue el mismo grupo era casi
+   todo `prisma:query`, con ~8 sentencias por cada reconexión de SSE.
 4. **Repasar en producción** los puntos 1, 5, 8 y 10 de la tabla de QA: los de
-   más riesgo y los que dependen de datos reales.
+   más riesgo y los que dependen de datos reales. Pendiente.
+
+   Del 10 ya hay evidencia parcial: en los logs posteriores al despliegue el SSE
+   conecta y reconecta con normalidad, así que el gzip no lo rompió. Falta
+   confirmar que el evento **llega** al otro navegador.
 5. Si algo va mal: `git revert` del commit concreto —cada punto del plan es un
    commit independiente— y push. Los índices se pueden dejar puestos, no
    dependen del código.
@@ -398,8 +478,15 @@ la CPU a la única vCPU.
 ## Restricciones que siguen en vigor
 
 - **`git push` sólo cuando se pida de forma explícita** (`GEMINI.md`). `git add` y
-  `git commit` sí.
-- La validación local va **contra la BD de desarrollo**, nunca contra RDS de
-  producción.
-- No dejar copias de `.env` en el árbol: `.gitignore` cubre la ruta exacta
-  `.env`, así que un `.env.bak-*` sí es committeable.
+  `git commit` sí. Y nunca dos push seguidos: hay que esperar a que termine el
+  despliegue en curso.
+- **La validación local va contra la BD de producción**, porque es la única que
+  existe (ver la corrección del encabezado). Nada de `migrate dev`.
+- No dejar copias de `.env` en el árbol. Desde el commit `3a285a5` el `.gitignore`
+  usa `.env*` con excepción de `.env.template`, así que un `.env.bak-*` o un
+  `.env.prod` ya **no** son committeables; aun así, borrarlos al terminar.
+- Los respaldos `prisma/backups/backup-*.json` llevan datos personales. Están
+  ignorados desde `3a285a5`, pero hay que borrarlos del disco al confirmar que
+  todo está bien.
+- Al imprimir o pegar un `DATABASE_URL`, enmascarar credenciales:
+  `sed 's#//[^@]*@#//***:***@#'`.
