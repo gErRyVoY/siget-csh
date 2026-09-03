@@ -94,6 +94,14 @@ const agentsMkt = await prisma.usuario.findMany({
 const agentMktEmails = agentsMkt
     .map((u) => u.mail)
     .filter(Boolean) as string[];
+
+// A dónde se va el usuario después de crear el ticket. /tickets/marketing es la vista
+// "Todos" y pertenece a la sección marketing_todos; marketing_dashboard es la de
+// /tickets/marketing/dashboard. Con la sección equivocada, quien tuviera dashboard sin
+// "Todos" acababa rebotado a "/" por el middleware justo después de crear su ticket.
+const redirectUrlTrasCrear = session?.user?.secciones?.includes("marketing_todos")
+    ? "/tickets/marketing"
+    : "/tickets/marketing/usuario";
 ---
 
 <MainLayout title="Nuevo ticket para Marketing">
@@ -149,11 +157,7 @@ const agentMktEmails = agentsMkt
                 data-google-app-id={GOOGLE_APP_ID}
                 data-access-token={session?.accessToken || ""}
                 data-agent-emails={agentMktEmails.join(',')}
-                data-redirect-url={session?.user?.secciones?.includes(
-                    "marketing_dashboard",
-                )
-                    ? "/tickets/marketing"
-                    : "/tickets/marketing/usuario"}
+                data-redirect-url={redirectUrlTrasCrear}
             >
                 <!-- Campos dinámicos para datos del afectado (si aplica) -->
                 <div

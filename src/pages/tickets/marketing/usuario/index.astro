@@ -28,6 +28,11 @@ const dateToFilter = url.searchParams.get("dateTo") || "";
 const page = parseInt(url.searchParams.get("page") || "1");
 const pageSize = 10;
 
+// Ticket recién creado: el asistente de alta redirige aquí con ?new_ticket=<id> para que la
+// fila correspondiente se resalte. Al ordenarse por fechaalta descendente cae en la primera
+// posición, así que no hace falta buscarla ni desplazar la vista.
+const nuevoTicketId = Number(url.searchParams.get("new_ticket")) || null;
+
 // Definir estatus activos para la vista por defecto
 const activeStatusNames = ["Sin asignar", "Nuevo", "En progreso", "En espera"];
 
@@ -429,7 +434,12 @@ const getTicketDateColor = (date: Date, status: string) => {
                         href={`/tickets/view/${ticket.id}?source=marketing_usuario`}
                         class="block"
                     >
-                        <div class="bg-card border border-border rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow">
+                        <div
+                            class:list={[
+                                "bg-card border border-border rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow",
+                                { "ticket-recien-creado-card": ticket.id === nuevoTicketId },
+                            ]}
+                        >
                             <div class="flex justify-between items-start mb-2">
                                 <span class="font-bold text-lg text-foreground">
                                     #{ticket.id}
@@ -501,7 +511,10 @@ const getTicketDateColor = (date: Date, status: string) => {
                         {
                             tickets.map((ticket) => (
                                 <tr
-                                    class="hover:bg-[#797979]/40 transition-colors cursor-pointer"
+                                    class:list={[
+                                        "hover:bg-[#797979]/40 transition-colors cursor-pointer",
+                                        { "ticket-recien-creado": ticket.id === nuevoTicketId },
+                                    ]}
                                     data-href={`/tickets/view/${ticket.id}?source=marketing_usuario`}
                                 >
                                     <td class="p-2 font-medium text-foreground">
@@ -602,6 +615,16 @@ const getTicketDateColor = (date: Date, status: string) => {
     import { navigate } from 'astro:transitions/client';
 
     function setupMarketingUserTicketHandlers() {
+        // El resalte del ticket recién creado ya se aplicó al renderizar, así que se limpia
+        // el parámetro de la URL: si no, los filtros y la paginación lo arrastran y la fila
+        // se volvería a resaltar en cada navegación.
+        const urlActual = new URL(window.location.href);
+        if (urlActual.searchParams.has('new_ticket')) {
+            urlActual.searchParams.delete('new_ticket');
+            const query = urlActual.searchParams.toString();
+            window.history.replaceState(null, '', `${urlActual.pathname}${query ? `?${query}` : ''}`);
+        }
+
         // Filas de tabla clickeables → usa navigate() de Astro para disparar el overlay de carga
         document.querySelectorAll('tr[data-href]').forEach((row) => {
             row.addEventListener('click', (e) => {

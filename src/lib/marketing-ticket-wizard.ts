@@ -939,7 +939,11 @@ export function initMarketingTicketWizard(marketingCategory: CategoriaNode) {
 
             setTimeout(() => {
                 const redirectUrl = (ticketForm as HTMLFormElement).dataset.redirectUrl || '/tickets/marketing/usuario';
-                window.location.href = redirectUrl;
+                // Se marca el ticket recién creado para que el listado lo resalte al cargar.
+                const separator = redirectUrl.includes('?') ? '&' : '?';
+                window.location.href = ticketId
+                    ? `${redirectUrl}${separator}new_ticket=${ticketId}`
+                    : redirectUrl;
             }, 1500);
 
         } catch (error) {

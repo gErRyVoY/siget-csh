@@ -241,3 +241,39 @@
 .dark #page-loading-overlay {
   background: rgba(10, 10, 10, 0.4);
 }
+/* --- Resalte del ticket recién creado ---------------------------------------
+   Los asistentes de alta redirigen al listado que corresponda al rol ("Mis tickets"
+   o "Todos", en soporte y en marketing) con ?new_ticket=<id>, y la fila
+   correspondiente recibe una de estas clases. El fondo se deriva de
+   --secondary con opacidad, en lugar de un color sólido, para no tener que
+   cambiar el color del texto: el foreground de siempre sigue siendo legible
+   sobre la mezcla.
+   Hacen falta dos animaciones porque la fila de la tabla no tiene fondo propio
+   y debe terminar en transparent, mientras que la tarjeta móvil sí lo tiene
+   (bg-card) y debe terminar en var(--card) para no quedarse destapada mientras
+   corre la animación. */
+@keyframes resaltar-ticket-fila {
+  0%, 60% { background-color: color-mix(in srgb, var(--secondary) 30%, transparent); }
+  100% { background-color: transparent; }
+}
+
+@keyframes resaltar-ticket-tarjeta {
+  0%, 60% { background-color: color-mix(in srgb, var(--secondary) 30%, var(--card)); }
+  100% { background-color: var(--card); }
+}
+
+.ticket-recien-creado {
+  animation: resaltar-ticket-fila 3.5s ease-out;
+}
+
+.ticket-recien-creado-card {
+  animation: resaltar-ticket-tarjeta 3.5s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ticket-recien-creado,
+  .ticket-recien-creado-card {
+    animation: none;
+    background-color: color-mix(in srgb, var(--secondary) 30%, transparent);
+  }
+}
