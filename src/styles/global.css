@@ -277,3 +277,27 @@
     background-color: color-mix(in srgb, var(--secondary) 30%, transparent);
   }
 }
+
+/* --- Diálogo de Google Picker -----------------------------------------------
+   El Picker se inserta al final del <body> con `position: absolute` y unas
+   coordenadas que calcula en el momento de abrirlo. Si la página está desplazada
+   —y en el asistente de alta lo está, porque el botón de Drive cae en el paso de
+   adjuntos— el diálogo aparece descolocado y con parte del contenido fuera de la
+   ventana. Fijándolo al viewport y centrándolo se ve siempre completo.
+   El ancho y el alto los sigue poniendo setSize() en línea; el cálculo está en
+   src/lib/google-picker-size.ts. Aquí sólo se limita para que, pase lo que pase,
+   el diálogo no se salga de la pantalla. */
+.picker-dialog-bg {
+  position: fixed !important;
+  inset: 0 !important;
+}
+
+.picker-dialog {
+  position: fixed !important;
+  top: 50% !important;
+  left: 50% !important;
+  transform: translate(-50%, -50%) !important;
+  margin: 0 !important;
+  max-width: 100vw !important;
+  max-height: 100vh !important;
+}

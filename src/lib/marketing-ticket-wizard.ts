@@ -1,4 +1,5 @@
 import { toast } from './toast';
+import { calcularTamanoPicker } from './google-picker-size';
 
 // --- Type Definitions ---
 interface SubcategoriaNode {
@@ -642,8 +643,7 @@ export function initMarketingTicketWizard(marketingCategory: CategoriaNode) {
         view.setSelectFolderEnabled(true);
         view.setParent("root");
 
-        const width = Math.max(320, Math.min(Math.floor(window.innerWidth * 0.9), 1050));
-        const height = Math.max(300, Math.min(Math.floor(window.innerHeight * 0.85), 650));
+        const { width, height } = calcularTamanoPicker();
         const origin = window.location.protocol + "//" + window.location.host;
 
         const picker = new (window as any).google.picker.PickerBuilder()

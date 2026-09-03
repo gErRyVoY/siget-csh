@@ -1,4 +1,5 @@
 import { toast } from '@/lib/toast';
+import { calcularTamanoPicker } from '@/lib/google-picker-size';
 
 declare global {
     interface Window {
@@ -831,8 +832,7 @@ function createPicker() {
     view.setParent('root'); // Start at root to show "My Drive" structure
 
     const origin = window.location.protocol + '//' + window.location.host;
-    const width = Math.max(320, Math.min(Math.floor(window.innerWidth * 0.9), 1050));
-    const height = Math.max(300, Math.min(Math.floor(window.innerHeight * 0.85), 650));
+    const { width, height } = calcularTamanoPicker();
 
     const picker = new google.picker.PickerBuilder()
         .enableFeature(google.picker.Feature.NAV_HIDDEN)
