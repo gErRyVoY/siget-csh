@@ -49,30 +49,36 @@ export default defineConfig({
         let orgUnitPath = "";
         let orgUnit = "";
 
-        try {
-          const serviceAccountCreds = JSON.parse(
-            process.env.GOOGLE_SERVICE_ACCOUNT_KEY || "{}"
-          );
+        // El usuario de prueba existe solo para poder entrar con rol de usuario, así que no
+        // se consulta el Directory: su OU no se valida más abajo y el resultado no se usa
+        // para nada más. Antes sí se llamaba y solo se ignoraba el error, gastando una
+        // llamada a la API de Google y unos cientos de ms en cada login de prueba.
+        // Contrapartida: la fila del usuario de prueba debe existir ya en BD, porque el alta
+        // automática de más abajo deriva el campus de la OU y sin ella daría error=ErrorOU.
+        if (!isTestUser) {
+          try {
+            const serviceAccountCreds = JSON.parse(
+              process.env.GOOGLE_SERVICE_ACCOUNT_KEY || "{}"
+            );
 
-          const auth = new googleAuth.JWT({
-            email: serviceAccountCreds.client_email,
-            key: serviceAccountCreds.private_key,
-            scopes: ["https://www.googleapis.com/auth/admin.directory.user.readonly"],
-            subject: process.env.GOOGLE_ADMIN_EMAIL,
-          });
+            const auth = new googleAuth.JWT({
+              email: serviceAccountCreds.client_email,
+              key: serviceAccountCreds.private_key,
+              scopes: ["https://www.googleapis.com/auth/admin.directory.user.readonly"],
+              subject: process.env.GOOGLE_ADMIN_EMAIL,
+            });
 
-          const admin = adminDirectory({ version: "directory_v1", auth });
+            const admin = adminDirectory({ version: "directory_v1", auth });
 
-          const response = await admin.users.get({
-            userKey: profile.email,
-          });
+            const response = await admin.users.get({
+              userKey: profile.email,
+            });
 
-          userData = response.data || {};
-          orgUnitPath = userData.orgUnitPath || "";
-          orgUnit = orgUnitPath.toLowerCase();
-        } catch (adminErr) {
-          console.error("Error al consultar Google Admin Directory API:", adminErr);
-          if (!isTestUser) {
+            userData = response.data || {};
+            orgUnitPath = userData.orgUnitPath || "";
+            orgUnit = orgUnitPath.toLowerCase();
+          } catch (adminErr) {
+            console.error("Error al consultar Google Admin Directory API:", adminErr);
             throw adminErr;
           }
         }

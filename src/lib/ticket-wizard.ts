@@ -1101,9 +1101,10 @@ export function initTicketWizard(treeData: CategoriesTreeData) {
 
         // El Picker necesita la developer key para poder listar el contenido del Drive;
         // sin ella el diálogo abre pero llega vacío. Se había quitado en 75473d1 para
-        // esquivar un 400 "invalid key", pero ese 400 no venía de la llave: venía de que
-        // la Google Picker API no estaba habilitada en el proyecto de Google Cloud.
-        // Si vuelve a aparecer el 400, es eso lo que hay que revisar, no esta línea.
+        // esquivar un 400 "invalid key". La causa de ese 400 no está confirmada: la Google
+        // Picker API sí está habilitada en el proyecto 656956846562 (verificado por el
+        // usuario) y la llave no tiene restricciones de referrer ni de API. Si el 400 vuelve
+        // a aparecer, revisar primero el App ID / número de proyecto, no borrar esta línea.
         if (GOOGLE_API_KEY) builder.setDeveloperKey(GOOGLE_API_KEY);
 
         const picker = builder.build();

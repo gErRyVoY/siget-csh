@@ -107,23 +107,8 @@ async function findAllCandidates(
     subId: number | null | undefined,
     isMarketing: boolean
 ): Promise<AgentWithRelations[]> {
-    // Candidatos por asignación específica (activos, sin filtrar horario/acepta_tickets)
-    const specificAssignments = await prisma.asignacionesCategorias.findMany({
-        where: {
-            categoriaId: catId,
-            activo: true,
-            ...(subId ? { OR: [{ subcategoriaId: subId }, { subcategoriaId: null }] } : { subcategoriaId: null })
-        },
-        include: {
-            atiende: {
-                include: { rol: true }
-            }
-        }
-    });
-
-    const specificUsers = specificAssignments
-        .map(a => a.atiende)
-        .filter(u => u && u.activo && hasCorrectUserFlag(u as AgentWithRelations, isMarketing)) as AgentWithRelations[];
+    // Candidatos por asignación específica (sin filtrar horario/acepta_tickets)
+    const specificUsers = await resolveSpecificAgents(catId, subId, isMarketing);
 
     if (specificUsers.length > 0) {
         return specificUsers;
@@ -166,10 +151,34 @@ async function findAgentsBySpecificAssignment(
     subId: number | null | undefined,
     isMarketing: boolean
 ): Promise<AgentWithRelations[]> {
+    const agents = await resolveSpecificAgents(catId, subId, isMarketing);
+    return agents.filter(u => u.acepta_tickets);
+}
+
+/**
+ * Devuelve, SIN DUPLICADOS, los agentes con asignación específica activa a la
+ * categoría/subcategoría indicada.
+ *
+ * Un mismo agente puede tener varias filas en `asignaciones_categorias` para la misma
+ * categoría: una a nivel categoría (`subcategoriaId = null`), otra por subcategoría y —en
+ * datos heredados— incluso filas repetidas de la misma pareja. Antes se devolvía una entrada
+ * por fila, así que un único ingeniero contaba como varios candidatos: el PASO 2 (asignación
+ * forzada al único candidato) no se disparaba y el ticket caía al filtro de horario, quedando
+ * sin asignar. Es exactamente lo que le pasó al ticket 35, con cuatro filas activas
+ * apuntando todas al mismo ingeniero.
+ *
+ * Precedencia: la fila de la subcategoría concreta manda sobre la de la categoría, de modo
+ * que una revocación puntual no queda tapada por el permiso general. Por eso el `activo` se
+ * resuelve aquí y no en el `where`.
+ */
+async function resolveSpecificAgents(
+    catId: number,
+    subId: number | null | undefined,
+    isMarketing: boolean
+): Promise<AgentWithRelations[]> {
     const assignments = await prisma.asignacionesCategorias.findMany({
         where: {
             categoriaId: catId,
-            activo: true,
             ...(subId ? { OR: [{ subcategoriaId: subId }, { subcategoriaId: null }] } : { subcategoriaId: null })
         },
         include: {
@@ -179,14 +188,29 @@ async function findAgentsBySpecificAssignment(
         }
     });
 
-    return assignments
-        .map(a => a.atiende)
-        .filter(u =>
-            u &&
-            u.activo &&
-            u.acepta_tickets &&
-            hasCorrectUserFlag(u as AgentWithRelations, isMarketing)
-        ) as AgentWithRelations[];
+    // Por agente: qué dice la fila de categoría y qué dice la de subcategoría.
+    const porAgente = new Map<number, { agent: AgentWithRelations; nivelCategoria?: boolean; nivelSubcategoria?: boolean }>();
+
+    for (const a of assignments) {
+        const agent = a.atiende as AgentWithRelations | null;
+        if (!agent) continue;
+
+        const entry = porAgente.get(agent.id) ?? { agent };
+        if (a.subcategoriaId === null) {
+            // Con filas repetidas al mismo nivel, basta una activa para conceder.
+            entry.nivelCategoria = entry.nivelCategoria || a.activo;
+        } else {
+            entry.nivelSubcategoria = entry.nivelSubcategoria || a.activo;
+        }
+        porAgente.set(agent.id, entry);
+    }
+
+    return Array.from(porAgente.values())
+        .filter(({ nivelCategoria, nivelSubcategoria }) =>
+            nivelSubcategoria !== undefined ? nivelSubcategoria : nivelCategoria === true
+        )
+        .map(({ agent }) => agent)
+        .filter(agent => agent.activo && hasCorrectUserFlag(agent, isMarketing));
 }
 
 /**
