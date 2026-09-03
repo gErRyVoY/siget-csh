@@ -14,8 +14,16 @@ yarn-error.log*
 pnpm-debug.log*
 
 # environment variables
-.env
-.env.production
+# Los patrones sueltos `.env` y `.env.production` sólo cubren esas dos rutas
+# exactas: una copia como `.env.bak-2026-09-01` o un `.env.prod` temporal para
+# ejecutar una migración contra RDS eran committeables. `.env*` cubre todo y se
+# reexpone la plantilla, que sí debe versionarse.
+.env*
+!.env.template
+
+# Respaldos de la base de datos. Llevan datos personales de usuarios y tickets:
+# se generan con scripts/backup-db.ts, se usan y se borran.
+prisma/backups/
 
 # macOS-specific files
 .DS_Store
