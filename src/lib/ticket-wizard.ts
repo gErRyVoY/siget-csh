@@ -142,11 +142,6 @@ export function initTicketWizard(treeData: CategoriesTreeData) {
         'video/3gpp2',
         'video/x-matroska',
         'application/vnd.google-apps.video',
-        // Sin este tipo el Picker no lista ni una sola carpeta: cuando se le pasa
-        // `setMimeTypes`, filtra por esa lista exacta, y las carpetas quedan fuera
-        // aunque `setIncludeFolders(true)` esté puesto. Como la vista arranca en
-        // "root", que sólo contiene carpetas, el resultado era un diálogo vacío.
-        'application/vnd.google-apps.folder',
     ].join(',');
 
     let stagedFiles: Array<{ file: File; id: number; isValid: boolean; reason: string | null }> = [];
@@ -1041,7 +1036,7 @@ export function initTicketWizard(treeData: CategoriesTreeData) {
     };
 
     const handleAuthClick = () => {
-        if (!GOOGLE_API_KEY || !GOOGLE_CLIENT_ID || !GOOGLE_APP_ID) {
+        if (!GOOGLE_CLIENT_ID || !GOOGLE_APP_ID) {
             toast.error("Faltan credenciales de Google Drive.");
             return;
         }
@@ -1088,7 +1083,7 @@ export function initTicketWizard(treeData: CategoriesTreeData) {
         const height = Math.max(300, Math.min(Math.floor(window.innerHeight * 0.85), 650));
         const origin = window.location.protocol + "//" + window.location.host;
 
-        const builder = new (window as any).google.picker.PickerBuilder()
+        const picker = new (window as any).google.picker.PickerBuilder()
             .enableFeature((window as any).google.picker.Feature.NAV_HIDDEN)
             .enableFeature((window as any).google.picker.Feature.MULTISELECT_ENABLED)
             .setAppId(GOOGLE_APP_ID)
@@ -1097,17 +1092,8 @@ export function initTicketWizard(treeData: CategoriesTreeData) {
             .addView(view)
             .addView(new (window as any).google.picker.DocsUploadView())
             .setSize(width, height)
-            .setCallback(pickerCallback);
-
-        // El Picker necesita la developer key para poder listar el contenido del Drive;
-        // sin ella el diálogo abre pero llega vacío. Se había quitado en 75473d1 para
-        // esquivar un 400 "invalid key". La causa de ese 400 no está confirmada: la Google
-        // Picker API sí está habilitada en el proyecto 656956846562 (verificado por el
-        // usuario) y la llave no tiene restricciones de referrer ni de API. Si el 400 vuelve
-        // a aparecer, revisar primero el App ID / número de proyecto, no borrar esta línea.
-        if (GOOGLE_API_KEY) builder.setDeveloperKey(GOOGLE_API_KEY);
-
-        const picker = builder.build();
+            .setCallback(pickerCallback)
+            .build();
         picker.setVisible(true);
     };
 
