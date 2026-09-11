@@ -24,6 +24,7 @@ import AddTicket from "@/components/icons/AddTicket.astro";
 import DashboardIcon from "../icons/DashboardIcon.astro";
 
 import { prisma } from "@/lib/db";
+import { MARKETING_CATEGORY_ID } from "@/config/ticket-categories";
 
 interface Props {
     session: Session | null;
@@ -40,24 +41,6 @@ const userTcktCsh = (session?.user as any)?.tckt_csh ?? true;
 const userTcktMkt = (session?.user as any)?.tckt_mkt ?? false;
 
 const userIdNum = session?.user?.id ? parseInt(String(session.user.id), 10) : null;
-let hasMarketingTickets = false;
-if (userIdNum) {
-    try {
-        // `findFirst` en lugar de `count`: solo interesa si existe al menos uno,
-        // y Postgres puede parar en la primera fila que encaja en vez de contar
-        // todas las del usuario.
-        const primero = await prisma.ticket.findFirst({
-            where: {
-                solicitanteId: userIdNum,
-                categoriaId: 12, // Categoría Marketing
-            },
-            select: { id: true },
-        });
-        hasMarketingTickets = primero !== null;
-    } catch (e) {
-        console.error("Error al verificar tickets de marketing del usuario:", e);
-    }
-}
 
 const canViewAllTickets = permisos.includes("ver_todos_tickets");
 
@@ -76,6 +59,70 @@ const canSeeMarketingAdmin = ["marketing_mis_tickets", "marketing_dashboard", "m
 const canSeeAdminCorreos = isSuperAdmin && ["admin_correos_crear", "admin_correos_actualizar"].some(id => secciones.includes(id));
 const canSeeAdminSiget = isSuperAdmin && ["admin_siget_categorias", "admin_siget_ciclos", "admin_siget_secciones", "admin_siget_usuarios", "admin_siget_empresas"].some(id => secciones.includes(id));
 const canSeeAdminMarketing = false;
+const canSeeMarketingDashboard = secciones.includes("marketing_dashboard");
+
+// Una asignación de `asignaciones_categorias` cuenta como de Marketing por su
+// categoría o, cuando la fila no fija categoría, por la categoría de la que
+// cuelga su subcategoría.
+const asignacionDeMarketing = {
+    OR: [
+        { categoriaId: MARKETING_CATEGORY_ID },
+        {
+            categoriaId: null,
+            subcategoria: {
+                subcategoria_categorias: { some: { categoriaId: MARKETING_CATEGORY_ID } },
+            },
+        },
+    ],
+};
+
+let hasMarketingTickets = false;
+let atiendeSoloMarketing = false;
+if (userIdNum) {
+    try {
+        // Las tres consultas son independientes, así que van en paralelo: el Sidebar
+        // se renderiza en cada página y encadenarlas sumaría viajes a RDS.
+        const [primerTicketMkt, asignacionMkt, asignacionNoMkt] = await Promise.all([
+            // `findFirst` en lugar de `count`: solo interesa si existe al menos uno,
+            // y Postgres puede parar en la primera fila que encaja en vez de contar
+            // todas las del usuario.
+            prisma.ticket.findFirst({
+                where: {
+                    solicitanteId: userIdNum,
+                    categoriaId: MARKETING_CATEGORY_ID,
+                },
+                select: { id: true },
+            }),
+            // Estas dos solo se necesitan para decidir el destino del logo, que
+            // únicamente puede ser el dashboard de marketing si el usuario tiene la
+            // sección: para el resto se ahorran las dos consultas.
+            canSeeMarketingDashboard
+                ? prisma.asignacionesCategorias.findFirst({
+                      where: { atiendeId: userIdNum, activo: true, ...asignacionDeMarketing },
+                      select: { id: true },
+                  })
+                : null,
+            canSeeMarketingDashboard
+                ? prisma.asignacionesCategorias.findFirst({
+                      where: { atiendeId: userIdNum, activo: true, NOT: asignacionDeMarketing },
+                      select: { id: true },
+                  })
+                : null,
+        ]);
+        hasMarketingTickets = primerTicketMkt !== null;
+        atiendeSoloMarketing = asignacionMkt !== null && asignacionNoMkt === null;
+    } catch (e) {
+        console.error("Error al verificar tickets de marketing del usuario:", e);
+    }
+}
+
+// Quien solo tiene asignada la categoría de Marketing (o subcategorías suyas) no
+// atiende tickets de soporte, así que "/" no es su inicio: el logo lo lleva al
+// dashboard de marketing. `atiendeSoloMarketing` ya implica tener la sección
+// `marketing_dashboard` —sin ella las consultas de arriba no corren—, y eso importa
+// porque el middleware protege esa ruta y devolvería al usuario a "/" con el aviso
+// de acceso denegado.
+const logoHref = atiendeSoloMarketing ? "/tickets/marketing/dashboard" : "/";
 
 const cshHref = "/tickets/soporte/nuevo-ticket-csh";
 const isCshActive = pathname === cshHref;
@@ -221,7 +268,7 @@ const adminSections = [
             group-data-[sidebar-collapsed=true]:-translate-x-full"
 >
     <a
-        href="/"
+        href={logoHref}
         class="h-(--header-height) border-b border-border flex items-center px-6 shrink-0"
     >
         <div class="flex items-center gap-2">
