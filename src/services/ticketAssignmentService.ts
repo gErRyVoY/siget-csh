@@ -20,6 +20,7 @@ interface AssignmentResult {
  * Estrategia Híbrida de Asignación de Tickets (v2)
  *
  * Flujo de decisión:
+ * 0. Si la categoría es Marketing → SIN ASIGNAR (el equipo hace el triaje a mano).
  * 1. Contar TODOS los candidatos para la categoría/subcategoría (sin filtrar disponibilidad).
  * 2. Si hay exactamente 1 candidato → ASIGNACIÓN FORZADA (asigna aunque esté fuera de horario o con asignación desactivada).
  * 3. Si hay 2+ candidatos → buscar disponibles:
@@ -41,6 +42,21 @@ export async function findBestAgentHybrid(
     const isMarketing = categoriaId === MARKETING_CATEGORY_ID;
 
     console.log(`[Assignment] Buscando agente para categoría ${categoriaId} (${isMarketing ? 'Marketing' : 'CSH'}), subcategoría ${subcategoriaId}`);
+
+    // PASO 0: Marketing no se reparte solo. El equipo decide quién toma cada
+    // pieza, así que el alta nunca asigna y el ticket entra «Sin asignar»; a
+    // partir de ahí un admin de Marketing se lo asigna o lo asigna a alguien
+    // (ver `canAssignMarketingTickets`). Sin este corte el PASO 2 asignaba a la
+    // fuerza en cuanto quedaba un único candidato, ignorando horario y
+    // `acepta_tickets`.
+    if (isMarketing) {
+        console.log('[Assignment] Categoría de Marketing: se deja sin asignar para triaje manual');
+        return {
+            agentId: null,
+            assignmentType: 'none',
+            reason: 'Los tickets de Marketing se asignan manualmente'
+        };
+    }
 
     // PASO 1: Contar todos los candidatos posibles (sin filtro de disponibilidad)
     const allCandidates = await findAllCandidates(categoriaId, subcategoriaId, isMarketing);
@@ -352,6 +368,56 @@ function hasCorrectUserFlag(agent: AgentWithRelations, isMarketing: boolean): bo
         return agent.atiende_mkt === true || agent.rol?.atiende_mkt === true;
     }
     return agent.atiende_csh === true || agent.rol?.atiende_csh === true;
+}
+
+/**
+ * ¿Es esta persona del equipo que hace el triaje de Marketing?
+ *
+ * Como los tickets de Marketing entran siempre «Sin asignar» (ver PASO 0 de
+ * `findBestAgentHybrid`), alguien tiene que poder darles salida. Ese alguien es
+ * quien cumple las dos condiciones que se administran en
+ * `/admin/usuarios/editar/<id>`:
+ *
+ * 1. Tiene la categoría de Marketing asignada y activa en `asignaciones_categorias`
+ *    —por la categoría entera o por alguna de sus subcategorías—.
+ * 2. Tiene «Atiende Mkt» (`atiende_mkt`), propio o heredado del rol, igual que
+ *    exige `hasCorrectUserFlag` para cualquier asignación de Marketing.
+ *
+ * Quien no cumple (2) no puede ser destino de una asignación de Marketing, así
+ * que tampoco tiene sentido que reparta los tickets de los demás.
+ *
+ * El rol se comprueba en la vista y en el endpoint, no aquí: esta función
+ * responde «¿es del equipo de Marketing?», no «¿es admin?».
+ */
+export async function canAssignMarketingTickets(usuarioId: number): Promise<boolean> {
+    if (!Number.isInteger(usuarioId) || usuarioId <= 0) return false;
+
+    const usuario = await prisma.usuario.findFirst({
+        where: {
+            id: usuarioId,
+            activo: true,
+            OR: [{ atiende_mkt: true }, { rol: { atiende_mkt: true } }],
+            asignaciones_categorias: {
+                some: {
+                    activo: true,
+                    OR: [
+                        { categoriaId: MARKETING_CATEGORY_ID },
+                        // Filas que sólo fijan subcategoría: cuentan por la
+                        // categoría de la que cuelga esa subcategoría.
+                        {
+                            categoriaId: null,
+                            subcategoria: {
+                                subcategoria_categorias: { some: { categoriaId: MARKETING_CATEGORY_ID } }
+                            }
+                        }
+                    ]
+                }
+            }
+        },
+        select: { id: true }
+    });
+
+    return usuario !== null;
 }
 
 /**

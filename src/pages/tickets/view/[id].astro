@@ -21,6 +21,7 @@ import {
     bloqueOptions,
 } from "@/config/form-options";
 import { MARKETING_CATEGORY_ID } from "@/config/ticket-categories";
+import { canAssignMarketingTickets } from "@/services/ticketAssignmentService";
 
 const { id } = Astro.params;
 if (!id) {
@@ -121,18 +122,32 @@ const isAdmin = userRoleId === 2;
 // 2. Tiene rol privilegiado CSH y el ticket NO es de Marketing
 // 3. Tiene rol de Marketing y el ticket SÍ es de Marketing
 const isOwner = ticket.solicitanteId === userId;
+const isMktTicket = ticket.categoriaId === MARKETING_CATEGORY_ID;
+
+// Los tickets de Marketing no se asignan solos: entran «Sin asignar» y el equipo
+// hace el triaje (ver PASO 0 de `findBestAgentHybrid`). Con la regla de admin de
+// abajo —«sólo si el ticket ya está asignado a mí»— nadie del equipo podía dar el
+// primer paso, porque un ticket sin dueño nunca la cumple: sólo un superadmin
+// podía repartirlos. Así que mientras siga sin asignar, cualquier admin del
+// equipo de Marketing puede asignárselo o asignarlo a otra persona del equipo.
+// Se incluye al solicitante a propósito: excluirlo devolvería al mismo bloqueo
+// cuando quien levanta el ticket es del propio equipo.
+const puedeTriarMarketing =
+    isPrivileged && isMktTicket && ticket.atiendeId === null
+        ? await canAssignMarketingTickets(userId)
+        : false;
 
 // Lógica de edición del campo Atiende:
 // - Superadmin: siempre puede reasignar
 // - Admin: solo si el ticket está asignado a él mismo (y no es el creador)
+// - Equipo de Marketing: si el ticket de Marketing está sin asignar
 // - Resto: no puede cambiar Atiende
-const canEditAtiende: boolean = isSuperAdmin
-    ? true
-    : isAdmin && !isOwner && ticket.atiendeId === userId
-    ? true
-    : false;
-const canViewAsCsh = isPrivileged && ticket.categoriaId !== MARKETING_CATEGORY_ID;
-const canViewAsMkt = isMktAgent && ticket.categoriaId === MARKETING_CATEGORY_ID;
+const canEditAtiende: boolean =
+    isSuperAdmin ||
+    (isAdmin && !isOwner && ticket.atiendeId === userId) ||
+    puedeTriarMarketing;
+const canViewAsCsh = isPrivileged && !isMktTicket;
+const canViewAsMkt = isMktAgent && isMktTicket;
 
 if (!isOwner && !canViewAsCsh && !canViewAsMkt) {
     Astro.cookies.set('siget_flash_unauthorized', '1', {
@@ -149,7 +164,6 @@ const isReadOnly = false; // Reverted: Allow editing for all statuses
 
 const isTraslado = ticket.traslados != null;
 const traslado = ticket.traslados ?? null;
-const isMktTicket = ticket.categoriaId === MARKETING_CATEGORY_ID;
 
 type OpcionAutocompletado = { id: number; label: string };
 type PersonaOpcion = { id: number; nombres: string; apellidos: string };

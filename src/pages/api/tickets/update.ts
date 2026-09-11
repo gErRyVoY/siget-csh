@@ -3,8 +3,9 @@ import { prisma } from '@/lib/db';
 import type { Prisma, Prioridad } from '@prisma/client';
 import { sendNotification } from '../notifications/sse';
 import { sendTicketNotification } from '@/services/emailService';
-import { canAgentBeAssignedManually } from '@/services/ticketAssignmentService';
+import { canAgentBeAssignedManually, canAssignMarketingTickets } from '@/services/ticketAssignmentService';
 import { MAX_AFECTADO_CLAVE, MAX_AFECTADO_NOMBRE } from '@/lib/ticket-limits';
+import { MARKETING_CATEGORY_ID } from '@/config/ticket-categories';
 
 const PRIVILEGED_ROLES = [2, 3]; // admin y superadmin
 
@@ -72,10 +73,21 @@ export const PATCH: APIRoute = async ({ request, locals }) => {
         
         const isSuperAdmin = userRoleId === 3;
         const isAdmin = userRoleId === 2;
+        // Misma regla que la vista del ticket (src/pages/tickets/view/[id].astro):
+        // los tickets de Marketing entran «Sin asignar» y el equipo los reparte a
+        // mano, así que mientras no tengan dueño cualquier admin del equipo de
+        // Marketing puede asignarlos. Las dos condiciones baratas van antes del
+        // `await` para no consultar la BD en cada PATCH que no es de Marketing.
+        const puedeTriarMarketing =
+            isPrivileged
+            && ticketBeforeUpdate.categoriaId === MARKETING_CATEGORY_ID
+            && ticketBeforeUpdate.atiendeId === null
+            && await canAssignMarketingTickets(currentUserId);
         // Superadmin puede reasignar siempre
         // Admin solo puede reasignar si el ticket está asignado a él mismo y no es el creador
         const canEditAtiende = isSuperAdmin
-            || (isAdmin && !isOwner && ticketBeforeUpdate.atiendeId === currentUserId);
+            || (isAdmin && !isOwner && ticketBeforeUpdate.atiendeId === currentUserId)
+            || puedeTriarMarketing;
 
         if ('atiendeId' in updateDataInput && canEditAtiende) {
             const parsedAtiendeId = Number(updateDataInput.atiendeId);
@@ -231,7 +243,12 @@ export const PATCH: APIRoute = async ({ request, locals }) => {
 
 
         // Auto-set status to 'Nuevo' (2) if assignee changes and status is not explicitly provided
-        if (updateDataInput.atiendeId && Number(updateDataInput.atiendeId) !== ticketBeforeUpdate.atiendeId) {
+        // El `canEditAtiende` importa: sin él, un PATCH que trae `atiendeId` de alguien
+        // que no puede reasignar movía el ticket a «Nuevo» sin haber asignado a nadie,
+        // dejándolo como el ticket #23 (estatus «Nuevo» y `atiendeId` nulo). Ahora que
+        // los tickets de Marketing entran siempre «Sin asignar», ese desajuste sería
+        // fácil de provocar.
+        if (canEditAtiende && updateDataInput.atiendeId && Number(updateDataInput.atiendeId) !== ticketBeforeUpdate.atiendeId) {
             if (estatusSinCambioExplicito) {
                 updateData.estatus = { connect: { id: 2 } };
             }
