@@ -5,6 +5,11 @@ import { findBestAgentHybrid } from '../../../services/ticketAssignmentService';
 import { ensureActiveCycle } from '../../../services/cycleService';
 import { sendTicketNotification } from '../../../services/emailService';
 import { MAX_AFECTADO_CLAVE, MAX_AFECTADO_NOMBRE } from '../../../lib/ticket-limits';
+import {
+  CSH_CREATE_SECTION,
+  MARKETING_CREATE_SECTION,
+  isMarketingCategory,
+} from '@/config/ticket-categories';
 
 export const POST: APIRoute = async ({ request, locals }) => {
   const session = locals.session;
@@ -29,6 +34,31 @@ export const POST: APIRoute = async ({ request, locals }) => {
       return new Response(
         JSON.stringify({ message: 'Faltan campos requeridos o son inválidos.' }),
         { status: 400 }
+      );
+    }
+
+    // Marketing y soporte son dos circuitos con vistas de alta distintas
+    // (/tickets/marketing/nuevo-ticket-marketing y /tickets/soporte/nuevo-ticket-csh)
+    // pero un solo endpoint, así que la categoría por sí sola no dice de dónde viene la
+    // petición: hay que autorizarla. Se aplica aquí la misma regla que el Sidebar usa
+    // para mostrar cada enlace (`src/components/shared/Sidebar.astro:64` y `:66`), de
+    // forma que un `categoriaId` puesto a mano en el cuerpo no salte la restricción.
+    // El callback `jwt` recarga flags y secciones en cada petición, así que el valor de
+    // la sesión no puede quedarse obsoleto respecto a la BD.
+    const isMarketingTicket = isMarketingCategory(parsedCategoriaId);
+    const secciones = session.user.secciones ?? [];
+    const puedeAbrirTicket = isMarketingTicket
+      ? session.user.tckt_mkt === true && secciones.includes(MARKETING_CREATE_SECTION)
+      : session.user.tckt_csh === true && secciones.includes(CSH_CREATE_SECTION);
+
+    if (!puedeAbrirTicket) {
+      return new Response(
+        JSON.stringify({
+          message: isMarketingTicket
+            ? 'No tienes permiso para abrir tickets de Marketing.'
+            : 'No tienes permiso para abrir tickets de soporte.',
+        }),
+        { status: 403 }
       );
     }
 

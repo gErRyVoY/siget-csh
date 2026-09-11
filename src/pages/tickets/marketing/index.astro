@@ -6,6 +6,7 @@ import { ticketListSelect } from "@/lib/ticket-select";
 import { format, differenceInDays } from "date-fns";
 import { es } from "date-fns/locale";
 import StatusBadge from "@/components/ui/StatusBadge.astro";
+import { MARKETING_CATEGORY_ID } from "@/config/ticket-categories";
 
 // Reutilizar sesión resuelta por middleware.ts (evita N+1 a la BD por navegación)
 const session = Astro.locals.session;
@@ -14,8 +15,6 @@ const user = session?.user;
 if (!user) {
     return Astro.redirect("/login");
 }
-
-const MARKETING_CATEGORY_ID = 12;
 
 // Obtener parÃ¡metros de filtro de la URL
 const url = new URL(Astro.request.url);

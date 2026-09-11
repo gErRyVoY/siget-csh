@@ -1,10 +1,8 @@
 import { prisma } from '../lib/db';
 import type { Usuario, Rol } from '@prisma/client';
+import { MARKETING_CATEGORY_ID } from '@/config/ticket-categories';
 
 type AgentWithRelations = Usuario & { rol: Rol };
-
-/** ID de la categoría Marketing en BD */
-const MARKETING_CATEGORY_ID = 12;
 
 interface AssignmentOptions {
     solicitanteId: number;

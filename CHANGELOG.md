@@ -8,6 +8,40 @@ Todos los cambios notables en este proyecto serán documentados en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Versionado Semántico](https://semver.org/lang/es/).
 
+## 2026-09-11 (Separación de los Circuitos de Marketing y Soporte, y Auditoría de Tablas y Columnas sin Uso)
+
+### UX: Marketing Deja de Aparecer en el Alta de Soporte (`/tickets/soporte/nuevo-ticket-csh`)
+*   **Motivo**: Marketing tiene su propia vista de alta (`/tickets/marketing/nuevo-ticket-marketing`), con sus subcategorías, sus agentes y su dashboard. Ofrecerla también en el asistente de CSH permitía crear un ticket de marketing por la puerta equivocada.
+*   **Filtrado en la Consulta, no en el Cliente**: `where: { activo: true, id: { not: MARKETING_CATEGORY_ID } }`. El árbol de categorías se serializa completo dentro del HTML (`<script id="categories-data">`), así que ocultarlo con CSS o en JS habría dejado las subcategorías de Marketing viajando en cada carga. El selector pasa de 12 a 11 categorías.
+*   **Sin Efectos Colaterales**: `src/scripts/init-nuevo-ticket-wizard.ts` consume ese JSON de forma genérica, sin ningún id ni nombre de categoría cableado.
+
+### Security: Autorización de Alta por Categoría en `/api/tickets/create`
+*   **Hueco Cerrado**: El endpoint solo comprobaba que existiera sesión, de modo que cualquier usuario autenticado podía crear un ticket en cualquier categoría sin tener la sección ni el flag correspondientes.
+*   **Un Endpoint, Dos Circuitos**: Los dos asistentes hacen POST al mismo `/api/tickets/create` (`src/lib/ticket-wizard.ts:1312` y `src/lib/marketing-ticket-wizard.ts:857`), así que rechazar `categoriaId: 12` a secas habría roto el alta de marketing. La categoría por sí sola no dice de dónde viene la petición, y el `Referer` sería tan falsificable como el propio `categoriaId`: la restricción tiene que ser de autorización.
+*   **Regla Aplicada**: la misma que el Sidebar usa para mostrar cada enlace (`Sidebar.astro:64` y `:66`) — Marketing exige `tckt_mkt` + sección `crear_ticket_marketing`; el resto, `tckt_csh` + `crear_ticket_csh`. Si no se cumple, **403**. El callback `jwt` recarga flags y secciones en cada petición (`auth.config.ts:265`, caché de 15 s), así que una cookie antigua no puede colarse con valores obsoletos.
+*   **Verificado Contra Datos Reales**: los 3 tickets de marketing existentes los creó gente con `tckt_mkt = true`, y ningún ticket no-marketing viene de un usuario con `tckt_csh = false` (los 100 usuarios lo tienen en `true`). Ningún alta histórica habría sido rechazada.
+
+### Security: La Vista de Alta de Marketing Exige el Flag, no Solo la Sección (`src/middleware.ts`)
+*   **Comportamiento Anterior**: El middleware protegía las rutas **solo por sección**, y las tres roles tienen `crear_ticket_marketing`, así que los **90 usuarios con `tckt_mkt = false`** podían abrir `/tickets/marketing/nuevo-ticket-marketing` escribiendo la URL. El Sidebar no les mostraba el enlace, pero el alta se completaba.
+*   **Nuevo `flagRouteMap`**: Segunda pasada tras el mapa de secciones que exige la casilla "puede abrir tickets" de la ficha del usuario para las dos vistas de alta (`tckt_csh` y `tckt_mkt`). La denegación usa la misma cookie de flash y el mismo redirect a `/` que la denegación por sección, así que el usuario ve el aviso habitual de "no autorizado". Se extrajo `denegarAcceso()` para no duplicar ese bloque.
+*   **Orden de Evaluación Resultante**: sección global → override de usuario → rol → flag.
+*   **Botón que Quedaba Colgando**: La tarjeta "Levantar ticket / Marketing" de `/tickets/marketing/dashboard` era una segunda entrada, visible para todo admin. Ahora se pinta con la misma condición. Afectaba a un usuario real: **Haide Herrera** (id 2, rol admin, `tckt_mkt = false`), para quien esa tarjeta era la única entrada visible al alta de marketing; en lugar de fallar al pulsarla, desaparece.
+*   **`tckt_csh` Incluido por Simetría**: hoy es `true` en los 100 usuarios, así que no cambia nada para nadie, pero deja las dos vistas bajo la misma regla en vez de tratar Marketing como caso especial. Los cinco enlaces al alta de CSH se dejaron sin condicionar por el mismo motivo.
+
+### Refactor: `MARKETING_CATEGORY_ID` Centralizado en `src/config/ticket-categories.ts`
+*   **Problema**: El literal `12` estaba repetido en **once** archivos (servicio de asignación, las cuatro listas, los dos dashboards, el detalle de ticket y las dos vistas de alta, esta última con su propio `const catId = 12`). Un cambio de id habría dejado media aplicación mirando a la categoría equivocada. Corresponde al hallazgo de la línea 117 de `MEJORAS-AUDITORIA-2026-08-25.md`.
+*   **Módulo Nuevo**: exporta `MARKETING_CATEGORY_ID`, los identificadores de sección `MARKETING_CREATE_SECTION` / `CSH_CREATE_SECTION` y el helper `isMarketingCategory()`. Queda **una declaración y once importadores**.
+*   **Verificación**: `pnpm astro check` 0 errores / 0 warnings en 161 archivos y `pnpm build` completo.
+
+### Auditoría: Tablas y Columnas sin Uso Tras la Actualización de Roles
+Barrido con conteo de filas y de valores distintos por columna vía `information_schema`, más búsqueda de lectores y escritores en `src/`, `auth.config.ts`, `scripts/` y `prisma/seed.ts`. **No se aplicó ningún cambio de esquema**; queda como inventario para decidir.
+
+*   **Tablas muertas**: `bloque` (0 filas, sin un solo `prisma.bloque`; el formulario usa opciones fijas de `form-options.ts:28` y guarda texto en `bloque_nombre`; `traslado.bloqueId` es NULL en las 9 filas y `transfer.ts:183` lo escribe así explícitamente; es también el único consumidor del enum `Grado`). `permiso` + `_PermisoToRol` (4 filas de catálogo, 0 vínculos, se cargan en cada resolución de sesión y su único consumidor es el `canViewAllTickets` de `Sidebar.astro:62`, que se calcula y no se usa). `logs` (634 filas, escritas por 4 endpoints, nunca leídas). `notificaciones_correo` (write-only; `estatus` siempre `Enviado` y `mensaje_error` siempre NULL, o sea que la rama de fallo no escribe).
+*   **Columnas sin lector**: `rol.ticket_csh`, `rol.ticket_mkt`, `rol.traslados`, `rol.generales` — residuo directo de la actualización de roles, solo las escribe el seed; el acceso se resuelve por `seccion` + `permiso_rol_seccion` + `permiso_usuario_seccion`. **Ojo**: los homónimos del usuario (`usuario.tckt_csh` / `tckt_mkt`) **sí están vivos** y son la base de las restricciones de esta misma fecha. También `usuario.trl_coord`, `usuario.trl_mail`, `traslado.actualizacion`, `incidencia.imagen_reporte` y los dos `nivel_soporte_requerido` (viajan al navegador y nadie los evalúa).
+*   **Cableado pero inerte**: `permiso_categoria` tiene 92 filas con `activo = false` en todas, contra tres consultas `activo: true` en `ticketAssignmentService.ts`. El nivel de asignación **por rol** nunca entra: un agente solo puede recibir una categoría que tenga explícitamente en `asignaciones_categorias`. Parece intencionado (`scripts/enforce-victor-exclusive-cats.ts` desactiva esas filas y las 92 comparten `updatedAt`), pero conviene confirmarlo.
+*   **Inconsistencia de secciones**: `seccion` id 10 `plataforma_humanitas` está **activa y no gobierna nada** — sin referencias en `src/`, y `<PlataformaHumanitas />` se renderiza sin condición en `Sidebar.astro:327`. Apagar esa sección no tiene ningún efecto visible.
+*   **Páginas sobrantes**: `src/pages/lifecycle.astro` (8 líneas) y `src/pages/test-sonner.astro` (232) no están enlazadas desde ningún sitio, pero cualquier usuario con sesión puede abrirlas por URL.
+
 ## 2026-09-02 (Check de Múltiple Identificador, Resolución de Campus por Slug y Estatus Automático Indebido al Crear Ticket)
 
 ### Feature: Check "Múltiple matrícula / folio / email / clave" (`/tickets/soporte/nuevo-ticket-csh`)

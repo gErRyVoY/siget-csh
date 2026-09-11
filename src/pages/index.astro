@@ -2,6 +2,7 @@
 import MainLayout from "@/layouts/MainLayout.astro";
 import { prisma } from "@/lib/db";
 import StatCard from "@/components/dashboard/StatCard.astro";
+import { MARKETING_CATEGORY_ID } from "@/config/ticket-categories";
 
 // Reutilizar sesión resuelta por middleware.ts (evita N+1 a la BD por navegación)
 const session = Astro.locals.session;
@@ -36,8 +37,6 @@ const getStatusColor = (nombre: string) => {
         default: return "#6b7280";
     }
 };
-
-const MARKETING_CATEGORY_ID = 12;
 
 // ── Stats Generales ──────────────────────────────────────────────
 const [ticketCounts, activeCycle, statuses, alumnosCategory, sinAsignarCount] = await Promise.all([

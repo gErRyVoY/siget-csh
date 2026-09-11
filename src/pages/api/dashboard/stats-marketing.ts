@@ -1,5 +1,6 @@
 import type { APIRoute } from "astro";
 import { prisma } from "@/lib/db";
+import { MARKETING_CATEGORY_ID } from "@/config/ticket-categories";
 
 export const GET: APIRoute = async ({ request, locals }) => {
     const session = locals.session;
@@ -8,8 +9,6 @@ export const GET: APIRoute = async ({ request, locals }) => {
             status: 401,
         });
     }
-
-    const MARKETING_CATEGORY_ID = 12;
 
     try {
         const ticketCounts = await prisma.ticket.groupBy({

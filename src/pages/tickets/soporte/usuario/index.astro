@@ -7,6 +7,7 @@ import { format, differenceInDays } from "date-fns";
 import { es } from "date-fns/locale";
 import StatusBadge from "@/components/ui/StatusBadge.astro";
 import SkeletonTable from "@/components/ui/SkeletonTable.astro";
+import { MARKETING_CATEGORY_ID } from "@/config/ticket-categories";
 
 // Reutilizar sesión resuelta por middleware.ts (evita N+1 a la BD por navegación)
 const session = Astro.locals.session;
@@ -37,8 +38,6 @@ const nuevoTicketId = Number(url.searchParams.get("new_ticket")) || null;
 
 // Definir estatus activos para la vista por defecto
 const activeStatusNames = ["Sin asignar", "Nuevo", "En progreso", "En espera"];
-
-const MARKETING_CATEGORY_ID = 12;
 
 // Scope base: Tickets propios o asignados (excluyendo Marketing)
 const baseWhere: any = {

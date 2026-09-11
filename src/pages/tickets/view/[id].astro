@@ -20,6 +20,7 @@ import {
     carreraOptions,
     bloqueOptions,
 } from "@/config/form-options";
+import { MARKETING_CATEGORY_ID } from "@/config/ticket-categories";
 
 const { id } = Astro.params;
 if (!id) {
@@ -55,8 +56,6 @@ const statusColors: { [key: string]: string } = {
     Cancelado: "#dc2626",
     Duplicado: "#171717",
 };
-
-const MARKETING_CATEGORY_ID = 12;
 
 // El ticket, su historial y el catálogo de estatus no dependen entre sí, así que
 // van en paralelo. El comentario que había aquí («consultas secuenciales para

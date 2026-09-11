@@ -181,7 +181,20 @@ async function handleRequest(context: APIContext, next: MiddlewareNext): Promise
 
   // --- Lógica de Control de Acceso por Secciones (RBAC Híbrido) ---
   const userSecciones = session.user?.secciones || [];
-  
+
+  // Denegación uniforme: cookie de flash (sobrevive el redirect del ClientRouter) y
+  // vuelta al inicio. "/" no puede protegerse, así que siempre es un destino válido.
+  const denegarAcceso = () => {
+    context.cookies.set('siget_flash_unauthorized', '1', {
+      path: '/',
+      maxAge: 30,
+      sameSite: 'lax',
+      httpOnly: false,
+      secure: false,
+    });
+    return context.redirect("/");
+  };
+
   const sectionRouteMap: Record<string, string> = {
     "/tickets/soporte/nuevo-ticket-csh": "crear_ticket_csh",
     "/tickets/soporte/traslado": "proceso_traslados",
@@ -216,17 +229,31 @@ async function handleRequest(context: APIContext, next: MiddlewareNext): Promise
         
         // Si el usuario no posee la sección requerida en su sesión, denegar el acceso.
         if (!userSecciones.includes(requiredSection)) {
-            // Cookie de flash: sobrevive el redirect del ClientRouter
-            context.cookies.set('siget_flash_unauthorized', '1', {
-                path: '/',
-                maxAge: 30,
-                sameSite: 'lax',
-                httpOnly: false,
-                secure: false,
-            });
-            return context.redirect("/");
+            return denegarAcceso();
         }
         break; // Coincidencia de más alta especificidad lograda
+    }
+  }
+
+  // --- Flags de alta de tickets, además de la sección ---
+  // Las dos vistas de alta exigen también la casilla "puede abrir tickets" de la ficha
+  // del usuario (/admin/usuarios/editar/<id>), no solo la sección. Es la misma regla que
+  // el Sidebar usa para mostrar cada enlace (`src/components/shared/Sidebar.astro:64`
+  // y `:66`) y que `/api/tickets/create` exige al recibir el POST. Sin esto la sección
+  // bastaba para entrar escribiendo la URL, y el formulario terminaba en un 403 al
+  // enviarlo: las tres roles tienen `crear_ticket_marketing`, así que la restricción
+  // real de marketing es el flag.
+  const flagRouteMap: Record<string, "tckt_csh" | "tckt_mkt"> = {
+    "/tickets/soporte/nuevo-ticket-csh": "tckt_csh",
+    "/tickets/marketing/nuevo-ticket-marketing": "tckt_mkt",
+  };
+
+  for (const route of Object.keys(flagRouteMap)) {
+    if (pathname === route || pathname.startsWith(route + "/")) {
+      if (session.user?.[flagRouteMap[route]] !== true) {
+        return denegarAcceso();
+      }
+      break;
     }
   }
 

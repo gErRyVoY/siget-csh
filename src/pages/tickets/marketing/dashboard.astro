@@ -2,6 +2,10 @@
 import MainLayout from "@/layouts/MainLayout.astro";
 import { prisma } from "@/lib/db";
 import StatCard from "@/components/dashboard/StatCard.astro";
+import {
+    MARKETING_CATEGORY_ID,
+    MARKETING_CREATE_SECTION,
+} from "@/config/ticket-categories";
 
 // Reutilizar sesión resuelta por middleware.ts (evita N+1 a la BD por navegación)
 const session = Astro.locals.session;
@@ -9,10 +13,17 @@ if (!session || !session.user) {
     return Astro.redirect("/login");
 }
 
-const MARKETING_CATEGORY_ID = 12;
 const rolId = session.user.rol?.id ?? 1;
 const isAdminOrSuper = rolId === 2 || rolId === 3;
 const currentUserId = parseInt(session.user.id as string, 10);
+
+// Esta vista la ven admin y superadmin por la sección `marketing_dashboard`, pero abrir
+// tickets de marketing depende además del flag del usuario. Sin esta condición la tarjeta
+// de "Levantar ticket" llevaría a una vista que el middleware deniega. Es la misma regla
+// del Sidebar (`src/components/shared/Sidebar.astro:66`).
+const canCreateTicketMarketing =
+    session.user.tckt_mkt === true &&
+    (session.user.secciones ?? []).includes(MARKETING_CREATE_SECTION);
 
 const statusColors: Record<string, string> = {
     "Total de Tickets": "#6b7280",
@@ -363,17 +374,19 @@ if (rolId === 1 && !isNaN(currentUserId)) {
                     )}
 
                     <!-- CTA dorada para levantar ticket Marketing -->
-                    <a href="/tickets/marketing/nuevo-ticket-marketing" class="block transition-transform hover:scale-105">
-                        <div class="relative flex flex-col items-center justify-center gap-3 p-6 rounded-xl border-2 border-primary bg-primary/10 hover:bg-primary/20 transition-colors shadow-sm min-h-[120px] group">
-                            <div class="flex items-center justify-center w-10 h-10 rounded-full bg-primary/20 group-hover:bg-primary/30 transition-colors">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-primary"><path d="M9 12h6"/><path d="M12 9v6"/><path d="M3 12a9 9 0 1 0 18 0 9 9 0 0 0-18 0"/></svg>
+                    {canCreateTicketMarketing && (
+                        <a href="/tickets/marketing/nuevo-ticket-marketing" class="block transition-transform hover:scale-105">
+                            <div class="relative flex flex-col items-center justify-center gap-3 p-6 rounded-xl border-2 border-primary bg-primary/10 hover:bg-primary/20 transition-colors shadow-sm min-h-[120px] group">
+                                <div class="flex items-center justify-center w-10 h-10 rounded-full bg-primary/20 group-hover:bg-primary/30 transition-colors">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-primary"><path d="M9 12h6"/><path d="M12 9v6"/><path d="M3 12a9 9 0 1 0 18 0 9 9 0 0 0-18 0"/></svg>
+                                </div>
+                                <div class="text-center">
+                                    <p class="text-sm font-bold text-primary">Levantar ticket</p>
+                                    <p class="text-xs text-primary/70 mt-0.5">Marketing</p>
+                                </div>
                             </div>
-                            <div class="text-center">
-                                <p class="text-sm font-bold text-primary">Levantar ticket</p>
-                                <p class="text-xs text-primary/70 mt-0.5">Marketing</p>
-                            </div>
-                        </div>
-                    </a>
+                        </a>
+                    )}
                 </div>
 
                 <!-- Tickets activos recientes -->

@@ -1,14 +1,17 @@
 ---
 import MainLayout from "@/layouts/MainLayout.astro";
 import { prisma } from "@/lib/db";
+import { MARKETING_CATEGORY_ID } from "@/config/ticket-categories";
 
 // Reutilizar sesión resuelta por middleware.ts (evita N+1 a la BD por navegación)
 const session = Astro.locals.session;
 
+// Marketing tiene su propia vista de alta (/tickets/marketing/nuevo-ticket-marketing),
+// así que se excluye aquí: se filtra en la consulta para que no viaje en el JSON de la página.
 const [dbCategories, dbSubcategories, dbSubcatRelations, dbEmpresas] =
     await Promise.all([
         prisma.categoria.findMany({
-            where: { activo: true },
+            where: { activo: true, id: { not: MARKETING_CATEGORY_ID } },
             orderBy: { nombre: "asc" },
         }),
         prisma.subcategoria.findMany({

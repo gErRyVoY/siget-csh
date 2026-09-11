@@ -1,6 +1,7 @@
 ---
 import MainLayout from "@/layouts/MainLayout.astro";
 import { prisma } from "@/lib/db";
+import { MARKETING_CATEGORY_ID } from "@/config/ticket-categories";
 
 // Reutilizar sesión resuelta por middleware.ts (evita N+1 a la BD por navegación)
 const session = Astro.locals.session;
@@ -10,8 +11,8 @@ if (!user) {
     return Astro.redirect("/login");
 }
 
-// Fetch the Marketing category (ID 12) and its active subcategories
-const catId = 12;
+// Fetch the Marketing category and its active subcategories
+const catId = MARKETING_CATEGORY_ID;
 const [dbCategory, dbSubcategories, dbSubcatRelations] = await Promise.all([
     prisma.categoria.findUnique({
         where: { id: catId, activo: true },
