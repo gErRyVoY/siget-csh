@@ -57,7 +57,7 @@ const isSuperAdmin = userRolId === 3 || (session?.user as any)?.rol === "superad
 const canSeeSoporteAdmin = ["soporte_mis_tickets", "soporte_dashboard", "soporte_todos"].some(id => secciones.includes(id));
 const canSeeMarketingAdmin = ["marketing_mis_tickets", "marketing_dashboard", "marketing_todos"].some(id => secciones.includes(id));
 const canSeeAdminCorreos = isSuperAdmin && ["admin_correos_crear", "admin_correos_actualizar"].some(id => secciones.includes(id));
-const canSeeAdminSiget = isSuperAdmin && ["admin_siget_categorias", "admin_siget_ciclos", "admin_siget_secciones", "admin_siget_usuarios", "admin_siget_empresas"].some(id => secciones.includes(id));
+const canSeeAdminSiget = isSuperAdmin && ["admin_siget_categorias", "admin_siget_ciclos", "admin_siget_secciones", "admin_siget_traslados", "admin_siget_usuarios", "admin_siget_empresas"].some(id => secciones.includes(id));
 const canSeeAdminMarketing = false;
 const canSeeMarketingDashboard = secciones.includes("marketing_dashboard");
 
@@ -221,6 +221,11 @@ const adminSections = [
             ...(secciones.includes("admin_siget_secciones") ? [{
                 href: "/admin/secciones",
                 label: "Secciones",
+                icon: ManageTicketsIcon,
+            }] : []),
+            ...(secciones.includes("admin_siget_traslados") ? [{
+                href: "/admin/traslados",
+                label: "Traslados",
                 icon: ManageTicketsIcon,
             }] : []),
             ...(secciones.includes("admin_siget_usuarios") ? [

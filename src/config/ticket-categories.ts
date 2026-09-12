@@ -13,6 +13,13 @@
 /** Categoría `Marketing` (fila 12 de `categoria`). */
 export const MARKETING_CATEGORY_ID = 12;
 
+/**
+ * Subcategoría `Traslado` (fila 58 de `subcategoria`), la que identifica un
+ * ticket de traslado en los dashboards y en `/admin/traslados`. El id estaba
+ * escrito a mano en `src/pages/index.astro`.
+ */
+export const TRASLADO_SUBCATEGORIA_ID = 58;
+
 /** Sección que habilita el alta de tickets de marketing. */
 export const MARKETING_CREATE_SECTION = "crear_ticket_marketing";
 

@@ -1,0 +1,340 @@
+---
+import MainLayout from "@/layouts/MainLayout.astro";
+import { prisma } from "@/lib/db";
+import { formatDate } from "date-fns";
+import { es } from "date-fns/locale";
+import { fechaISOCDMX, getEstadoTraslados } from "@/lib/traslados-config";
+import { TRASLADO_SUBCATEGORIA_ID } from "@/config/ticket-categories";
+
+const estado = await getEstadoTraslados();
+
+const [ciclos, actualizadoPor, trasladosEnCiclo] = await Promise.all([
+    prisma.ciclo.findMany({
+        orderBy: { fecha_inicio: "asc" },
+        select: { id: true, ciclo: true, fecha_inicio: true, fecha_fin: true },
+    }),
+    estado.actualizadoPorId
+        ? prisma.usuario.findUnique({
+              where: { id: estado.actualizadoPorId },
+              select: { nombres: true, apellidos: true },
+          })
+        : null,
+    estado.cicloDestino
+        ? prisma.ticket.count({
+              where: {
+                  subcategoriaId: TRASLADO_SUBCATEGORIA_ID,
+                  cicloId: estado.cicloDestino.id,
+              },
+          })
+        : 0,
+]);
+
+// Valores para los <input type="date">, en día civil de CDMX.
+const valorInicio = estado.fechaInicio ? fechaISOCDMX(estado.fechaInicio) : "";
+const valorFin = estado.fechaFin ? fechaISOCDMX(estado.fechaFin) : "";
+const valorFinVirtual = estado.fechaFinVirtual ? fechaISOCDMX(estado.fechaFinVirtual) : "";
+
+const hayPeriodo = Boolean(estado.fechaInicio && estado.fechaFin);
+const yaTermino = hayPeriodo && !estado.periodoAbierto && estado.fechaFin! < new Date();
+
+const fmt = (fecha: Date) => formatDate(fecha, "dd MMM yyyy", { locale: es });
+
+// El ciclo sugerido puede no existir todavía en /admin/ciclos.
+const sugeridoExiste = ciclos.some((c) => c.ciclo === estado.etiquetaCicloSugerido);
+---
+
+<MainLayout title="Programación de traslados">
+    <div class="space-y-6">
+        <!-- ESTADO ACTUAL -->
+        <div class="rounded-md border bg-background p-4">
+            <div class="flex flex-wrap items-center justify-between gap-4">
+                <div class="space-y-1">
+                    <h2 class="text-base font-semibold">Estado de la sección de traslados</h2>
+                    <p class="text-sm text-muted-foreground">
+                        <code class="rounded bg-muted px-1 py-0.5 text-xs">/tickets/soporte/traslado</code>
+                        {
+                            estado.periodoAbierto
+                                ? " está visible para todos los usuarios con permiso."
+                                : " está oculta para todos los usuarios."
+                        }
+                    </p>
+                </div>
+                <span
+                    class={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                        estado.periodoAbierto
+                            ? "bg-secondary text-primary-foreground"
+                            : "bg-muted-foreground text-white"
+                    }`}
+                >
+                    {estado.periodoAbierto ? "Visible" : "Oculta"}
+                </span>
+            </div>
+
+            <dl class="mt-4 grid gap-4 border-t pt-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
+                <div>
+                    <dt class="text-muted-foreground">Periodo configurado</dt>
+                    <dd class="font-medium">
+                        {
+                            hayPeriodo
+                                ? `${fmt(estado.fechaInicio!)} — ${fmt(estado.fechaFin!)}`
+                                : "Sin programar"
+                        }
+                        {yaTermino && <span class="text-muted-foreground"> (finalizado)</span>}
+                    </dd>
+                </div>
+                <div>
+                    <dt class="text-muted-foreground">Campus Virtual como destino</dt>
+                    <dd class="font-medium">
+                        {
+                            !hayPeriodo
+                                ? "—"
+                                : !estado.fechaFinVirtual
+                                  ? "Todo el periodo"
+                                  : estado.virtualPermitido
+                                    ? `Permitido hasta el ${fmt(estado.fechaFinVirtual)}`
+                                    : `Cerrado desde el ${fmt(estado.fechaFinVirtual)}`
+                        }
+                    </dd>
+                </div>
+                <div>
+                    <dt class="text-muted-foreground">Ciclo destino</dt>
+                    <dd class="font-medium">
+                        {estado.cicloDestino ? estado.cicloDestino.ciclo : "Sin resolver"}
+                        <span class="text-muted-foreground">
+                            {estado.cicloFijado ? " (fijado)" : " (automático)"}
+                        </span>
+                    </dd>
+                </div>
+                <div>
+                    <dt class="text-muted-foreground">Traslados en ese ciclo</dt>
+                    <dd class="font-medium">{trasladosEnCiclo}</dd>
+                </div>
+            </dl>
+
+            {
+                estado.updatedAt && (
+                    <p class="mt-4 border-t pt-4 text-xs text-muted-foreground">
+                        Última modificación:{" "}
+                        {formatDate(estado.updatedAt, "dd MMM yyyy HH:mm", { locale: es })}
+                        {actualizadoPor &&
+                            ` por ${actualizadoPor.nombres} ${actualizadoPor.apellidos}`}
+                    </p>
+                )
+            }
+        </div>
+
+        <!-- FORMULARIO -->
+        <form id="config-traslados-form" class="rounded-md border bg-background p-4 space-y-6">
+            <div>
+                <h2 class="text-base font-semibold">Programar el periodo</h2>
+                <p class="mt-1 text-sm text-muted-foreground">
+                    Durante el periodo la sección se activa por sí sola para todos los campus, y al
+                    terminar se oculta sin necesidad de tocar <a
+                        href="/admin/secciones"
+                        class="underline hover:text-primary">/admin/secciones</a
+                    >.
+                </p>
+            </div>
+
+            <div class="grid gap-4 sm:grid-cols-3">
+                <div class="space-y-1.5">
+                    <label for="fecha-inicio" class="text-sm font-medium">
+                        Inicio de traslados
+                    </label>
+                    <input
+                        type="date"
+                        id="fecha-inicio"
+                        value={valorInicio}
+                        class="w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus:outline-primary"
+                    />
+                    <p class="text-xs text-muted-foreground">Todos los campus. Cuenta desde las 00:00.</p>
+                </div>
+                <div class="space-y-1.5">
+                    <label for="fecha-fin-virtual" class="text-sm font-medium">
+                        Fin para Campus Virtual
+                    </label>
+                    <input
+                        type="date"
+                        id="fecha-fin-virtual"
+                        value={valorFinVirtual}
+                        class="w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus:outline-primary"
+                    />
+                    <p class="text-xs text-muted-foreground">
+                        Opcional. Después de esta fecha Virtual deja de ofrecerse como campus destino.
+                    </p>
+                </div>
+                <div class="space-y-1.5">
+                    <label for="fecha-fin" class="text-sm font-medium">Fin de traslados</label>
+                    <input
+                        type="date"
+                        id="fecha-fin"
+                        value={valorFin}
+                        class="w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus:outline-primary"
+                    />
+                    <p class="text-xs text-muted-foreground">Todos los campus. Incluye el día completo.</p>
+                </div>
+            </div>
+
+            <div class="grid gap-4 sm:grid-cols-2">
+                <div class="space-y-1.5">
+                    <label for="ciclo-destino" class="text-sm font-medium">Ciclo de los traslados</label>
+                    <select
+                        id="ciclo-destino"
+                        class="w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus:outline-primary"
+                    >
+                        <option value="" selected={!estado.cicloFijado}>
+                            Automático — el siguiente al ciclo activo
+                        </option>
+                        {
+                            ciclos.map((ciclo) => (
+                                <option
+                                    value={ciclo.id}
+                                    selected={estado.cicloFijado?.id === ciclo.id}
+                                >
+                                    {ciclo.ciclo} ({fmt(ciclo.fecha_inicio)} — {fmt(ciclo.fecha_fin)})
+                                </option>
+                            ))
+                        }
+                    </select>
+                    <p class="text-xs text-muted-foreground">
+                        {
+                            estado.cicloActivo
+                                ? `Ciclo activo: ${estado.cicloActivo.ciclo}. Con la opción automática los traslados se registran en ${estado.etiquetaCicloSugerido ?? "el siguiente ciclo"}.`
+                                : "No hay ningún ciclo vigente para la fecha de hoy: elige el ciclo a mano."
+                        }
+                    </p>
+                </div>
+            </div>
+
+            {
+                estado.etiquetaCicloSugerido && !sugeridoExiste && (
+                    <div class="rounded-md border border-dashed border-primary/50 p-3 text-sm">
+                        El ciclo <strong>{estado.etiquetaCicloSugerido}</strong> todavía no existe en{" "}
+                        <a href="/admin/ciclos" class="underline hover:text-primary">/admin/ciclos</a>.
+                        Créalo antes de abrir el periodo o los traslados quedarán sin ciclo y no se
+                        podrán registrar.
+                    </div>
+                )
+            }
+
+            <div class="flex flex-wrap items-center gap-2 border-t pt-4">
+                <button
+                    type="submit"
+                    id="guardar-btn"
+                    class="h-10 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
+                >
+                    Guardar programación
+                </button>
+                <button
+                    type="button"
+                    id="cerrar-btn"
+                    class="h-10 rounded-md bg-muted px-4 py-2 text-sm font-semibold text-muted-foreground transition-colors hover:bg-muted/80 disabled:opacity-50"
+                >
+                    Cerrar traslados ahora
+                </button>
+            </div>
+        </form>
+
+        <!-- NOTA -->
+        <div class="rounded-md bg-muted-foreground/10 p-4 dark:bg-blue-900/20">
+            <div class="flex">
+                <div class="shrink-0">
+                    <svg class="h-5 w-5 text-primary" viewBox="0 0 20 20" fill="currentColor">
+                        <path
+                            fill-rule="evenodd"
+                            d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
+                            clip-rule="evenodd"></path>
+                    </svg>
+                </div>
+                <div class="ml-3 flex-1 space-y-1 text-sm text-secondary">
+                    <p>
+                        Sin fechas programadas la sección permanece oculta: es el estado por defecto.
+                        Las fechas se interpretan en horario del centro de México.
+                    </p>
+                    <p>
+                        El cambio se refleja en el menú y en el acceso a la ruta en menos de un minuto,
+                        sin que nadie tenga que volver a iniciar sesión. La ficha de «Traslados
+                        activos» de los dashboards sigue el mismo periodo.
+                    </p>
+                    <p>
+                        El interruptor de <a
+                            href="/admin/secciones"
+                            class="underline hover:text-primary">/admin/secciones</a
+                        > sigue funcionando como apagado de emergencia: si la sección «Traslado» está
+                        inhabilitada ahí, no se ve aunque el periodo esté abierto.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</MainLayout>
+
+<script>
+    import { toast } from "@/lib/toast";
+
+    const form = document.getElementById("config-traslados-form") as HTMLFormElement;
+    const inicioInput = document.getElementById("fecha-inicio") as HTMLInputElement;
+    const finInput = document.getElementById("fecha-fin") as HTMLInputElement;
+    const finVirtualInput = document.getElementById("fecha-fin-virtual") as HTMLInputElement;
+    const cicloSelect = document.getElementById("ciclo-destino") as HTMLSelectElement;
+    const guardarBtn = document.getElementById("guardar-btn") as HTMLButtonElement;
+    const cerrarBtn = document.getElementById("cerrar-btn") as HTMLButtonElement;
+
+    async function guardar(payload: Record<string, string | null>) {
+        guardarBtn.disabled = true;
+        cerrarBtn.disabled = true;
+
+        try {
+            const res = await fetch("/api/admin/traslados", {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload),
+            });
+            const data = await res.json().catch(() => ({}));
+
+            if (!res.ok) {
+                toast.error(data.message ?? "No se pudo guardar la programación");
+                guardarBtn.disabled = false;
+                cerrarBtn.disabled = false;
+                return;
+            }
+
+            toast.success(data.message ?? "Programación guardada");
+            window.location.reload();
+        } catch (error) {
+            console.error(error);
+            toast.error("Error de red al guardar la programación");
+            guardarBtn.disabled = false;
+            cerrarBtn.disabled = false;
+        }
+    }
+
+    form?.addEventListener("submit", (e) => {
+        e.preventDefault();
+        guardar({
+            fechaInicio: inicioInput.value || null,
+            fechaFin: finInput.value || null,
+            fechaFinVirtual: finVirtualInput.value || null,
+            cicloId: cicloSelect.value || null,
+        });
+    });
+
+    cerrarBtn?.addEventListener("click", () => {
+        if (
+            !confirm(
+                "Se borrarán las fechas y la sección de traslados quedará oculta para todos los usuarios. ¿Continuar?"
+            )
+        ) {
+            return;
+        }
+        inicioInput.value = "";
+        finInput.value = "";
+        finVirtualInput.value = "";
+        guardar({
+            fechaInicio: null,
+            fechaFin: null,
+            fechaFinVirtual: null,
+            cicloId: cicloSelect.value || null,
+        });
+    });
+</script>

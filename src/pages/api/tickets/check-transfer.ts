@@ -1,5 +1,6 @@
 import type { APIRoute } from 'astro';
 import { prisma } from '@/lib/db';
+import { getEstadoTraslados } from '@/lib/traslados-config';
 
 export const GET: APIRoute = async ({ url }) => {
     try {
@@ -9,14 +10,15 @@ export const GET: APIRoute = async ({ url }) => {
             return new Response(JSON.stringify({ message: 'Matrícula requerida' }), { status: 400 });
         }
 
-        // 1. Get Active Cycle
-        const activeCycle = await prisma.ciclo.findFirst({
-            where: { activo: true }
-        });
+        // 1. Ciclo destino de los traslados (/admin/traslados), el mismo que usa
+        //    /api/tickets/transfer para guardar el ticket. Antes se miraba el ciclo
+        //    activo, así que el aviso de duplicado y el 409 del alta podían
+        //    discrepar en cuanto el periodo apuntaba al ciclo siguiente.
+        const { cicloDestino } = await getEstadoTraslados();
 
-        if (!activeCycle) {
-            // If no cycle is active, we can't really enforce cycle-based uniqueness safely.
-            // Returning false implies no conflict found.
+        if (!cicloDestino) {
+            // Sin ciclo destino no se puede comprobar la unicidad por ciclo. El alta
+            // rechaza el traslado igualmente, así que aquí basta con no avisar.
             return new Response(JSON.stringify({ exists: false }), { status: 200 });
         }
 
@@ -25,7 +27,7 @@ export const GET: APIRoute = async ({ url }) => {
             where: {
                 matricula: matricula,
                 ticket: {
-                    cicloId: activeCycle.id,
+                    cicloId: cicloDestino.id,
                     estatus: {
                         nombre: { not: 'Cancelado' }
                     }
@@ -45,7 +47,8 @@ export const GET: APIRoute = async ({ url }) => {
             return new Response(JSON.stringify({
                 exists: true,
                 ticketId: existingTraslado.ticket.id,
-                estatus: existingTraslado.ticket.estatus.nombre
+                estatus: existingTraslado.ticket.estatus.nombre,
+                ciclo: cicloDestino.ciclo
             }), { status: 200 });
         }
 

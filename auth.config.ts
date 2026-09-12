@@ -6,6 +6,7 @@ import Google from "@auth/core/providers/google";
 import { admin as adminDirectory, auth as googleAuth } from "@googleapis/admin";
 import { prisma } from "./src/lib/db";
 import { getSessionUser, invalidateSessionUser } from "./src/lib/session-cache";
+import { getEstadoTraslados } from "./src/lib/traslados-config";
 import { consultarHorarioRH, horarioParaPrisma, type HorarioDisponibilidad } from "./src/lib/rh-horario";
 import { isTestUserEmail } from "./src/config/test-users";
 import type { Rol, Empresa, Permiso } from "@prisma/client";
@@ -313,6 +314,20 @@ export default defineConfig({
               seccionesAprobadas.delete(ps.seccion.identificador);
             }
           });
+
+          // Los traslados se abren y se cierran por calendario, no a mano: la
+          // sección sólo existe mientras el periodo configurado en
+          // /admin/traslados está abierto, y por defecto (sin fechas) está
+          // oculta. Va después de los overrides individuales a propósito, para
+          // que ni un permiso de usuario pueda saltarse el periodo.
+          //
+          // Como este callback recalcula `token.secciones` en cada petición, el
+          // enlace del sidebar y el guard de ruta de src/middleware.ts se apagan
+          // solos al vencer la fecha, sin cron ni escrituras programadas.
+          const { periodoAbierto } = await getEstadoTraslados();
+          if (!periodoAbierto) {
+            seccionesAprobadas.delete('proceso_traslados');
+          }
 
           token.secciones = Array.from(seccionesAprobadas);
         }

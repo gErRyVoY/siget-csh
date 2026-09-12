@@ -128,15 +128,49 @@ model Logs {
 }
 
 model Ciclo {
-  id           Int      @id @default(autoincrement())
-  ciclo        String   @db.VarChar(10)
-  fecha_inicio DateTime @db.Timestamp(6)
-  fecha_fin    DateTime @db.Timestamp(6)
-  activo       Boolean  @default(false)
-  bloques      Bloque[]
-  tickets      Ticket[]
+  id               Int                      @id @default(autoincrement())
+  ciclo            String                   @db.VarChar(10)
+  fecha_inicio     DateTime                 @db.Timestamp(6)
+  fecha_fin        DateTime                 @db.Timestamp(6)
+  activo           Boolean                  @default(false)
+  bloques          Bloque[]
+  tickets          Ticket[]
+  config_traslados ConfiguracionTraslados[]
 
   @@map("ciclo")
+}
+
+/// Configuración del periodo de traslados. Es una tabla de una sola fila
+/// (`id = 1`), creada por la migración: `/admin/traslados` la actualiza, nunca
+/// inserta ni borra.
+///
+/// La sección `proceso_traslados` (la vista `/tickets/soporte/traslado`) sólo es
+/// visible mientras el instante actual cae dentro de
+/// [fecha_inicio_traslados, fecha_fin_traslados]. Con las fechas en NULL — el
+/// estado por defecto — la sección queda oculta para todos los usuarios.
+model ConfiguracionTraslados {
+  id Int @id @default(autoincrement())
+
+  /// Inicio del periodo de traslados para todos los campus.
+  fecha_inicio_traslados DateTime? @db.Timestamp(6)
+  /// Fin del periodo de traslados para todos los campus.
+  fecha_fin_traslados    DateTime? @db.Timestamp(6)
+  /// Fecha intermedia tras la cual Campus Virtual ya no puede elegirse como
+  /// destino. NULL = Virtual admitido durante todo el periodo.
+  fecha_fin_trl_virtual  DateTime? @db.Timestamp(6)
+
+  /// Ciclo al que pertenecen los traslados del periodo. NULL = automático: el
+  /// ciclo siguiente al activo en `/admin/ciclos`.
+  cicloId Int?
+
+  /// Último usuario que guardó la configuración. Sin FK a propósito: el detalle
+  /// auditable vive en `logs`, esto es sólo para mostrarlo en la vista.
+  actualizado_porId Int?
+  updatedAt         DateTime @updatedAt
+
+  ciclo Ciclo? @relation(fields: [cicloId], references: [id], onDelete: SetNull)
+
+  @@map("configuracion_traslados")
 }
 
 model Bloque {
@@ -517,21 +551,21 @@ enum EstatusCorreo {
 }
 
 model Incidencia {
-  id                   Int      @id @default(autoincrement())
+  id                   Int       @id @default(autoincrement())
   usuarioId            Int
   mes                  Int
   quincena             Int
   fecha                DateTime? @db.Timestamp(6)
-  entrada_turno        String?  @db.VarChar(10)
-  salida_turno         String?  @db.VarChar(10)
+  entrada_turno        String?   @db.VarChar(10)
+  salida_turno         String?   @db.VarChar(10)
   tiempo_turno         Int?
   observaciones        String?
-  entrada_comida       String?  @db.VarChar(10)
-  salida_comida        String?  @db.VarChar(10)
+  entrada_comida       String?   @db.VarChar(10)
+  salida_comida        String?   @db.VarChar(10)
   observaciones_comida String?
   imagen_reporte       String?
-  omitida              Boolean  @default(false)
-  usuario              Usuario  @relation(fields: [usuarioId], references: [id])
+  omitida              Boolean   @default(false)
+  usuario              Usuario   @relation(fields: [usuarioId], references: [id])
 
   // /api/user/incidencias filtra por usuario y (casi siempre) mes. El compuesto
   // cubre además las consultas que sólo filtran por usuario, así que sustituye al

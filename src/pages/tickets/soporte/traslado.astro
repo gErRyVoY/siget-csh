@@ -7,6 +7,20 @@ import {
     carreraOptions,
     bloqueOptions,
 } from "@/config/form-options";
+import { getEstadoTraslados } from "@/lib/traslados-config";
+
+// Periodo programado en /admin/traslados. Llegar aquí ya implica que está
+// abierto (fuera de periodo el callback `jwt` quita la sección del token y
+// src/middleware.ts bloquea la ruta), pero de aquí salen dos cosas para el
+// formulario: el ciclo al que se registrará el traslado y si Campus Virtual
+// sigue admitiéndose como destino.
+const estadoTraslados = await getEstadoTraslados();
+
+// /api/tickets/transfer lo vuelve a validar en el servidor; esto es sólo para no
+// ofrecer una opción que se rechazaría al enviar.
+const campusDestinoOptions = estadoTraslados.virtualPermitido
+    ? campusOptions
+    : campusOptions.filter((campus) => campus !== "Virtual");
 
 const GOOGLE_API_KEY = import.meta.env.GOOGLE_API_KEY || process.env.GOOGLE_API_KEY || '';
 const GOOGLE_CLIENT_ID = import.meta.env.GOOGLE_CLIENT_ID || process.env.GOOGLE_CLIENT_ID || '';
@@ -85,6 +99,19 @@ const agentCshTraslEmail = agentsCshTraslado
                         > y <span class="font-bold text-secondary">campus</span> del
                         alumno para autocomplementar la información.
                     </p>
+                    {
+                        estadoTraslados.cicloDestino && (
+                            <p class="mt-1 text-sm text-muted-foreground">
+                                La solicitud se registrará en el ciclo{" "}
+                                <span class="font-semibold text-secondary">
+                                    {estadoTraslados.cicloDestino.ciclo}
+                                </span>
+                                {!estadoTraslados.virtualPermitido &&
+                                    ". Campus Virtual ya no está disponible como destino"}
+                                .
+                            </p>
+                        )
+                    }
                 </div>
             </div>
 
@@ -93,6 +120,7 @@ const agentCshTraslEmail = agentsCshTraslado
                     id="nuevo-traslado-form"
                     class="space-y-6"
                     data-campus-options={JSON.stringify(campusOptions)}
+                    data-campus-destino-options={JSON.stringify(campusDestinoOptions)}
                     data-carrera-options={JSON.stringify(carreraOptions)}
                     data-descuento-options={JSON.stringify(descuentoOptions)}
                     data-bloque-options={JSON.stringify(bloqueOptions)}
@@ -571,6 +599,11 @@ const agentCshTraslEmail = agentsCshTraslado
         const campusOptions: string[] = JSON.parse(
             form.dataset.campusOptions || "[]",
         );
+        // Igual a campusOptions salvo cuando ya pasó `fecha_fin_trl_virtual`
+        // (/admin/traslados), que quita Virtual de los destinos posibles.
+        const campusDestinoOptions: string[] = JSON.parse(
+            form.dataset.campusDestinoOptions || "[]",
+        );
         const carreraOptions: string[] = JSON.parse(
             form.dataset.carreraOptions || "[]",
         );
@@ -827,10 +860,17 @@ const agentCshTraslEmail = agentsCshTraslado
                     showError("campus-origen", "Campus origen no coincide.");
             } else clearError("campus-origen");
 
-            if (!campusOptions.includes(campusDestino)) {
+            if (!campusDestinoOptions.includes(campusDestino)) {
                 isValid = false;
                 if (shouldShow("campus-destino"))
-                    showError("campus-destino", "Campus destino no coincide.");
+                    showError(
+                        "campus-destino",
+                        // Mensaje específico cuando el campus existe pero ya no se
+                        // admite como destino: sólo puede ser Virtual fuera de plazo.
+                        campusOptions.includes(campusDestino)
+                            ? "Campus Virtual ya no está disponible como destino."
+                            : "Campus destino no coincide.",
+                    );
             } else {
                 if (
                     campusOrigen &&
@@ -1518,7 +1558,7 @@ const agentCshTraslEmail = agentsCshTraslado
         setupAutocomplete(
             "campus-destino",
             "campus-destino-suggestions",
-            campusOptions,
+            campusDestinoOptions,
         );
         setupAutocomplete("carrera", "carrera-suggestions", carreraOptions);
         setupAutocomplete(

@@ -4,6 +4,7 @@ import { findBestAgentHybrid } from '@/services/ticketAssignmentService';
 import { sendNotification } from '../notifications/sse';
 import { ensureActiveCycle } from '@/services/cycleService';
 import { sendTicketNotification } from '@/services/emailService';
+import { getEstadoTraslados } from '@/lib/traslados-config';
 
 export const POST: APIRoute = async ({ request, locals }) => {
     const session = locals.session;
@@ -49,6 +50,22 @@ export const POST: APIRoute = async ({ request, locals }) => {
             return new Response(JSON.stringify({ message: 'El campus destino no puede ser igual al origen.' }), { status: 400 });
         }
 
+        // --- Periodo y ciclo de traslados (/admin/traslados) ---
+        // Fuera del periodo la sección ya no existe para nadie (el callback `jwt`
+        // la quita de `token.secciones` y src/middleware.ts bloquea la ruta), pero
+        // este endpoint no pasa por ese guard: se revalida aquí para que un POST
+        // directo tampoco cuele.
+        const estadoTraslados = await getEstadoTraslados();
+
+        if (!estadoTraslados.periodoAbierto) {
+            return new Response(JSON.stringify({ message: 'El periodo de traslados está cerrado.' }), { status: 403 });
+        }
+
+        const cicloTraslados = estadoTraslados.cicloDestino;
+        if (!cicloTraslados) {
+            return new Response(JSON.stringify({ message: 'No hay un ciclo escolar configurado para los traslados. Revisa la programación en /admin/traslados.' }), { status: 400 });
+        }
+
         // --- Resolve Entities ---
         // 1. Categoria "Alumno" y Subcategoria "Traslado"
         const categoria = await prisma.categoria.findFirst({ where: { nombre: 'Alumno' } });
@@ -65,6 +82,13 @@ export const POST: APIRoute = async ({ request, locals }) => {
 
         if (!empresaOrigen || !empresaDestino) {
             return new Response(JSON.stringify({ message: 'Campus no encontrado en el sistema.' }), { status: 400 });
+        }
+
+        // Campus Virtual deja de admitirse como destino tras `fecha_fin_trl_virtual`.
+        // Se compara por `slug`, que es único, y no por el nombre que llega del
+        // formulario. Como origen sigue siendo válido siempre.
+        if (empresaDestino.slug === 'virtual' && !estadoTraslados.virtualPermitido) {
+            return new Response(JSON.stringify({ message: 'Campus Virtual ya no está disponible como campus destino en este periodo de traslados.' }), { status: 400 });
         }
 
         // 3. Descuento
@@ -110,21 +134,19 @@ export const POST: APIRoute = async ({ request, locals }) => {
 
         // ... (rest of imports)
 
-        // Inside handler ...
-        // --- Active Cycle (Auto-update) ---
-        const activeCycle = await ensureActiveCycle();
-
-        if (!activeCycle) {
-            return new Response(JSON.stringify({ message: 'No hay un ciclo escolar activo en este momento. No se pueden crear traslados.' }), { status: 400 });
-        }
+        // Mantiene `ciclo.activo` al día, igual que el resto de las altas de
+        // ticket. El ciclo del traslado, en cambio, es `cicloTraslados`: el que
+        // programa /admin/traslados, no el vigente hoy.
+        await ensureActiveCycle();
 
         // --- Check for Duplicates (Per Cycle) ---
-        // At this point activeCycle is guaranteed valid
+        // La unicidad se mide contra el ciclo destino de los traslados, que es el
+        // que se va a guardar en el ticket.
         const existingTrasladoInCycle = await prisma.traslado.findFirst({
             where: {
                 matricula,
                 ticket: {
-                    cicloId: activeCycle.id,
+                    cicloId: cicloTraslados.id,
                     estatus: {
                         nombre: { not: 'Cancelado' }
                     }
@@ -132,7 +154,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
             }
         });
         if (existingTrasladoInCycle) {
-            return new Response(JSON.stringify({ message: 'Ya existe una solicitud de traslado para esta matrícula en el ciclo actual.' }), { status: 409 });
+            return new Response(JSON.stringify({ message: `Ya existe una solicitud de traslado para esta matrícula en el ciclo ${cicloTraslados.ciclo}.` }), { status: 409 });
         }
 
         // --- Ticket Creation ---
@@ -166,7 +188,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
                     descripcion: descripcionTicket,
                     afectado_clave: matricula,
                     afectado_nombre: nombreCompleto,
-                    cicloId: activeCycle?.id,
+                    cicloId: cicloTraslados.id,
                 }
             });
 

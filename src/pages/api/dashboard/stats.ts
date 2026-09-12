@@ -1,11 +1,13 @@
 import type { APIRoute } from "astro";
 import { prisma } from "@/lib/db";
+import { TRASLADO_SUBCATEGORIA_ID } from "@/config/ticket-categories";
+import { getEstadoTraslados } from "@/lib/traslados-config";
 
 export const GET: APIRoute = async () => {
     // ⚡ Phase 1: Run all independent queries in parallel
-    const [ticketCounts, activeCycle, statuses, sinAsignarCount] = await Promise.all([
+    const [ticketCounts, estadoTraslados, statuses, sinAsignarCount] = await Promise.all([
         prisma.ticket.groupBy({ by: ["estatusId"], _count: { id: true } }),
-        prisma.ciclo.findFirst({ where: { activo: true } }),
+        getEstadoTraslados(),
         prisma.estatus.findMany(),
         prisma.ticket.count({ where: { atiendeId: null } }),
     ]);
@@ -18,15 +20,15 @@ export const GET: APIRoute = async () => {
         );
     };
 
-    // ⚡ Phase 2: trasladosCount depends on activeCycle result
-    const trasladosCount = activeCycle
+    // ⚡ Phase 2: el conteo depende del ciclo destino que programa
+    // /admin/traslados. Fuera del periodo la ficha no se pinta, así que se
+    // devuelve 0 sin consultar (mismo criterio que src/pages/index.astro).
+    const cicloTraslados = estadoTraslados.periodoAbierto ? estadoTraslados.cicloDestino : null;
+    const trasladosCount = cicloTraslados
         ? await prisma.ticket.count({
             where: {
-                subcategoriaId: 58,
-                fechaalta: {
-                    gte: activeCycle.fecha_inicio,
-                    lte: activeCycle.fecha_fin,
-                },
+                subcategoriaId: TRASLADO_SUBCATEGORIA_ID,
+                cicloId: cicloTraslados.id,
             },
         })
         : 0;

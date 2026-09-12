@@ -8,6 +8,42 @@ Todos los cambios notables en este proyecto serán documentados en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Versionado Semántico](https://semver.org/lang/es/).
 
+## 2026-09-12 (Los Traslados se Abren y se Cierran por Calendario)
+
+### Feat: Nueva Vista `/admin/traslados` (Administrador > SiGeT > Traslados)
+
+*   **Lo Que Sustituye**: hasta ahora `/tickets/soporte/traslado` solo se podía ocultar a mano desde `/admin/secciones`, y había que acordarse de encenderla y apagarla en cada temporada. La nueva vista programa el periodo una vez y el sistema hace el resto.
+*   **Tres Fechas**: `fecha_inicio_traslados` y `fecha_fin_traslados` delimitan el periodo para **todos** los campus; `fecha_fin_trl_virtual`, intermedia y opcional, es la fecha tras la cual **Campus Virtual deja de ofrecerse como campus destino**. El endpoint valida que las dos primeras vayan juntas, que el inicio no sea posterior al fin y que la de Virtual caiga dentro del periodo.
+*   **Oculta por Defecto**: la migración crea la fila de configuración con las tres fechas en `NULL`, y sin fechas la sección no se ve. También hay un botón «Cerrar traslados ahora» que vuelve a ese estado.
+*   **Horario del Centro de México**: el contenedor de producción corre en UTC y México no aplica horario de verano desde 2022, así que las fechas del formulario se guardan como el instante exacto que les corresponde en UTC-6 (inicio a las 00:00, los dos cierres a las 23:59:59.999). Sin eso, un periodo «hasta el 15 de octubre» se habría cerrado a las 17:59 hora local.
+
+### Feat: La Visibilidad se Resuelve en el Token, sin Cron y sin Escrituras Programadas
+
+*   **Dónde se Aplica**: el callback `jwt` de `auth.config.ts` recalcula `token.secciones` en **cada** petición, así que basta con quitar `proceso_traslados` de ese conjunto cuando el periodo está cerrado: se apagan a la vez el enlace del sidebar y el guard de ruta de `src/middleware.ts`. No hace falta ninguna tarea programada que voltee `seccion.activo`, ni que nadie vuelva a iniciar sesión.
+*   **El Orden Importa**: el descarte va **después** de aplicar los overrides individuales de `permiso_usuario_seccion`, para que ni un permiso concedido a una persona concreta se salte el periodo. «Para todos los usuarios» incluye a los superadmin.
+*   **Coste**: nuevo `src/lib/traslados-config.ts` con caché en memoria de 60 s —el mismo patrón que `src/lib/feature-flags.ts`—, así que el callback no paga dos consultas por petición. `PUT /api/admin/traslados` invalida el caché al guardar, de modo que el cambio se ve con un F5.
+*   **Ante un Fallo de BD**: se devuelve el último estado conocido y, si no hay ninguno, el estado cerrado. Un error de lectura oculta los traslados; nunca los abre.
+*   **El Apagado de Emergencia Sigue Existiendo**: si la sección «Traslado» está inhabilitada en `/admin/secciones`, no se ve aunque el periodo esté abierto — `seccion.activo` se comprueba antes, en los dos bucles del callback.
+
+### Feat: El Ciclo del Traslado se Asigna Solo (Activo 2027-1 → Traslados para 2027-2)
+
+*   **La Mecánica**: con el ciclo en «Automático» —el valor por defecto—, el ciclo destino es el **siguiente por calendario** al vigente hoy, no `id + 1`, así que no se rompe si los ciclos se dan de alta desordenados en `/admin/ciclos`. También se puede fijar uno concreto en el desplegable.
+*   **Lo Que Cambia en el Alta**: `/api/tickets/transfer` guardaba `cicloId: activeCycle.id`, el ciclo **vigente**. Ahora guarda el ciclo destino configurado, y la comprobación de duplicados por matrícula se mide contra ese mismo ciclo (antes podían discrepar el aviso previo y el 409 del guardado). `/api/tickets/check-transfer` usa idéntico criterio.
+*   **Doble Validación de Campus Virtual**: el formulario ya no ofrece Virtual como destino pasada la fecha (autocompletado y `validate()`), y `/api/tickets/transfer` lo rechaza igualmente comparando por `empresa.slug`, que es único. Antes el servidor **no** validaba nada de esto. Como campus **origen** Virtual sigue siendo válido siempre.
+*   **Aviso en el Formulario**: la cabecera indica en qué ciclo se registrará la solicitud, y si Virtual ya está cerrado como destino.
+
+### Fix: La Ficha de «Traslados Activos» Contaba por Fechas y no por Ciclo
+
+*   **El Bug**: los tres conteos de traslados de `src/pages/index.astro` filtraban por `fechaalta` dentro de la ventana del ciclo **activo**. En cuanto los traslados pasan a registrarse en el ciclo **siguiente**, esa ventana deja fuera justo los tickets que hay que contar. Ahora se cuenta por `ticket.cicloId` = el ciclo configurado en `/admin/traslados`.
+*   **Visibles Solo en el Periodo**: las fichas «Traslados activos» (general, que se pintaba siempre), «Mis Traslados» (personal) y «Traslados» (rol Usuario) solo aparecen mientras el periodo está abierto, y su descripción nombra el ciclo que están contando.
+*   **De Paso**: el id 58 de la subcategoría «Traslado», que estaba escrito a mano en cuatro sitios del dashboard, pasa a `TRASLADO_SUBCATEGORIA_ID` en `src/config/ticket-categories.ts`.
+
+### Migración de Base de Datos
+
+*   `prisma/migrations/20260912183000_add_configuracion_traslados/migration.sql`: crea `configuracion_traslados` (tabla de una sola fila, FK a `ciclo` con `ON DELETE SET NULL`), inserta la fila vacía, añade la sección `admin_siget_traslados` (**id 24**; los ids 19 y 21 siguen retirados) y su `permiso_rol_seccion` para Superadmin, y realinea la secuencia de `seccion.id`.
+*   Escrita a mano y **con todas las sentencias idempotentes**, porque se aplica sobre producción con `prisma db execute` + `prisma migrate resolve --applied`: si algo falla a mitad, el archivo se puede volver a ejecutar entero sin duplicar filas.
+*   **Orden de despliegue**: primero la migración, después el código. Al revés no rompe nada —la lectura falla, se cae al estado cerrado y los traslados quedan ocultos— pero deja un error en el log cada 60 s.
+
 ## 2026-09-12 (La Asignación Manual Acepta a Cualquier Ingeniero, y el Horario se Repara al Iniciar Sesión)
 
 ### Fix: El Desplegable «Atiende» y el Guardado ya Usan el Mismo Criterio

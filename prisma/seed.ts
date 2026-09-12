@@ -153,7 +153,17 @@ async function main() {
       { id: 20, nombre: 'Usuarios', identificador: 'admin_siget_usuarios', grupo: 'Administrador', subgrupo: 'SiGeT' },
       { id: 22, nombre: 'Modo Oscuro', identificador: 'feature_dark_mode', grupo: 'Generales', descripcion: 'Habilita el botón de Modo Oscuro globalmente en la plataforma.' },
       { id: 23, nombre: 'Empresas', identificador: 'admin_siget_empresas', grupo: 'Administrador', subgrupo: 'SiGeT' },
+      { id: 24, nombre: 'Traslados', identificador: 'admin_siget_traslados', grupo: 'Administrador', subgrupo: 'SiGeT', descripcion: 'Programa el periodo de traslados, la fecha límite de Campus Virtual y el ciclo destino' },
     ],
+    skipDuplicates: true,
+  });
+
+  // Fila única de configuración del periodo de traslados. Con las tres fechas en
+  // NULL la sección `proceso_traslados` queda oculta para todos: es el estado por
+  // defecto y sólo `/admin/traslados` lo cambia.
+  console.log('Seeding configuracion_traslados...');
+  await prisma.configuracionTraslados.createMany({
+    data: [{ id: 1 }],
     skipDuplicates: true,
   });
 
@@ -161,7 +171,7 @@ async function main() {
   const allTicketsSoporte = [4, 5, 6];
   const allTicketsMarketing = [7, 8, 9];
   const allOtros = [10, 11, 12, 13, 22];
-  const allAdminSiget = [14, 15, 16, 17, 18, 20, 23];
+  const allAdminSiget = [14, 15, 16, 17, 18, 20, 23, 24];
 
   const rolesSecciones = [
     { rolId: 1, seccionIds: [1, 2, 3, 4, 7, ...allOtros] },
