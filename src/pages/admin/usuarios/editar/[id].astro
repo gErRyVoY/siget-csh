@@ -209,23 +209,45 @@ const targetRoleId = user.rolId; // 1 = Usuario, 2 = Admin, 3 = Superadmin
 const currentUserId = session?.user?.id ? parseInt(String(session.user.id), 10) : -1;
 const isTargetSelfSuperAdmin = isSuperAdmin && currentUserId === user.id;
 
-// Visibilidad de Secciones Principales
-const showHorarioSection = targetRoleId === 2 && !isTargetSelfSuperAdmin; // Admin sólo de consulta
-const isHorarioReadOnly = targetRoleId === 2; // Solo lectura para Admin
-const showSeccionesSection = (targetRoleId === 1 || targetRoleId === 2) && !isTargetSelfSuperAdmin;
-const showCategoriasSection = (targetRoleId === 2 || targetRoleId === 3); // Oculto para Usuario (1)
+// Qué roles habilitan cada bloque configurable.
+//
+// Antes cada bloque se resolvía sólo aquí, contra el rol GUARDADO: para
+// configurar los permisos de un rol nuevo había que cambiarlo, guardar, esperar
+// la recarga y volver a entrar. Ahora se pinta la UNIÓN de los bloques y cada
+// uno declara sus roles en `data-roles`; el servidor sólo fija el estado
+// inicial en `data-rol-hidden` (para que no haya salto al cargar) y el <select>
+// de Rol lo recalcula al vuelo en el cliente, en `applyRoleVisibility` de
+// src/scripts/user-edit-form-logic.ts.
+//
+// Ojo: los filtros que dependen de QUIÉN edita —`isTargetSelfSuperAdmin`,
+// `areAuditorChecksHidden`, `canEdit`— siguen decidiéndose aquí, porque mover el
+// <select> de Rol no los cambia.
+const ROLES_TODOS = [1, 2, 3];
+const ROLES_HORARIO = [2]; // Admin: sólo de consulta
+const ROLES_SECCIONES = [1, 2];
+const ROLES_CATEGORIAS = [2, 3]; // Oculto para Usuario (1)
+const ROLES_ASIGNAR = [2, 3];
+const ROLES_LEVANTA = [1, 2];
+const ROLES_ATIENDE = [2, 3];
+const ROLES_AUDITOR = [2, 3];
+// Las vistas «Todos» de soporte y marketing no aplican al rol Usuario.
+const ROLES_SECCION_TODOS = [2, 3];
+const SECCIONES_SOLO_PRIVILEGIADAS = ["soporte_todos", "marketing_todos"];
+
+const rolesAttr = (roles: number[]) => roles.join(",");
+const rolOculto = (roles: number[]) => (roles.includes(targetRoleId) ? "false" : "true");
+
+// El horario nunca se edita desde aquí: lo sincroniza la API de RH al iniciar
+// sesión. Sólo se muestra al rol Admin (ver ROLES_HORARIO).
+const isHorarioReadOnly = true;
+
 // Los toggles de Categorías SIEMPRE son editables para Admin/Superadmin (no depende de self-edit)
 const canEditCategorias = canEdit && (currentUserRoleId === 2 || currentUserRoleId === 3);
 
-// Visibilidad de Toggles Superiores
+// Visibilidad independiente del rol objetivo
 const showToggleActivo = !isTargetSelfSuperAdmin;
-const showToggleAsignar = targetRoleId !== 1;
-const showToggleLevantaCSH = targetRoleId !== 3;
-const showToggleLevantaMKT = targetRoleId !== 3;
-const showToggleAtiendeCSH = targetRoleId !== 1;
-const showToggleAtiendeMKT = targetRoleId !== 1;
-const showToggleAuditorDocs = targetRoleId !== 1 && !areAuditorChecksHidden;
-const showToggleAuditorReqs = targetRoleId !== 1 && !areAuditorChecksHidden;
+const showHorarioSection = !isTargetSelfSuperAdmin;
+const showSeccionesSection = !isTargetSelfSuperAdmin;
 
 // Estructura recursiva para subcategorías en árbol (soporta N niveles)
 interface UserSubcatTreeNode {
@@ -453,102 +475,102 @@ sinAccesoCats.sort((a, b) => a.nombre.localeCompare(b.nombre));
             )}
 
             <!-- Toggle: Asignar tickets -->
-            {showToggleAsignar && (
-              <div class="flex items-center justify-between gap-2 border border-border/60 bg-muted/10 px-3 py-2 rounded-md" id="container-acepta_tickets">
-                <label for="acepta_tickets" class="text-sm font-medium select-none truncate">Asignar tickets</label>
-                <label class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full toggle-wrapper group">
-                  <input
-                    type="checkbox"
-                    id="acepta_tickets"
-                    name="acepta_tickets"
-                    class="sr-only peer"
-                    checked={user.acepta_tickets}
-                    disabled={!canEdit}
-                  />
-                  <div class="toggle-bg h-5 w-9 absolute rounded-full transition-all peer-focus:outline-none opacity-50 peer-checked:opacity-100 disabled:opacity-30 peer-disabled:cursor-not-allowed bg-muted-foreground peer-checked:bg-primary" />
-                  <div class="toggle-knob absolute top-[2px] left-[2px] bg-white border border-gray-300 rounded-full h-4 w-4 transition-transform peer-checked:translate-x-[16px] peer-checked:border-white z-10" />
-                </label>
-              </div>
-            )}
+            <div class="flex items-center justify-between gap-2 border border-border/60 bg-muted/10 px-3 py-2 rounded-md" id="container-acepta_tickets" data-roles={rolesAttr(ROLES_ASIGNAR)} data-rol-hidden={rolOculto(ROLES_ASIGNAR)}>
+              <label for="acepta_tickets" class="text-sm font-medium select-none truncate">Asignar tickets</label>
+              <label class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full toggle-wrapper group">
+                <input
+                  type="checkbox"
+                  id="acepta_tickets"
+                  name="acepta_tickets"
+                  class="sr-only peer"
+                  checked={user.acepta_tickets}
+                  disabled={!canEdit}
+                />
+                <div class="toggle-bg h-5 w-9 absolute rounded-full transition-all peer-focus:outline-none opacity-50 peer-checked:opacity-100 disabled:opacity-30 peer-disabled:cursor-not-allowed bg-muted-foreground peer-checked:bg-primary">
+                </div>
+                <div class="toggle-knob absolute top-[2px] left-[2px] bg-white border border-gray-300 rounded-full h-4 w-4 transition-transform peer-checked:translate-x-[16px] peer-checked:border-white z-10">
+                </div>
+              </label>
+            </div>
 
             <!-- Toggle: Levanta CSH -->
-            {showToggleLevantaCSH && (
-              <div class="flex items-center justify-between gap-2 border border-border/60 bg-muted/10 px-3 py-2 rounded-md" id="container-tckt_csh">
-                <label for="tckt_csh" class="text-sm font-medium select-none truncate">Levanta CSH</label>
-                <label class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full toggle-wrapper group">
-                  <input
-                    type="checkbox"
-                    id="tckt_csh"
-                    name="tckt_csh"
-                    class="sr-only peer"
-                    checked={(user as any).tckt_csh}
-                    disabled={!canEdit}
-                  />
-                  <div class="toggle-bg h-5 w-9 absolute rounded-full transition-all peer-focus:outline-none opacity-50 peer-checked:opacity-100 disabled:opacity-30 peer-disabled:cursor-not-allowed bg-muted-foreground peer-checked:bg-primary border border-white" />
-                  <div class="toggle-knob absolute top-[2px] left-[2px] bg-white border border-gray-300 rounded-full h-4 w-4 transition-transform peer-checked:translate-x-[16px] peer-checked:border-white z-10" />
-                </label>
-              </div>
-            )}
+            <div class="flex items-center justify-between gap-2 border border-border/60 bg-muted/10 px-3 py-2 rounded-md" id="container-tckt_csh" data-roles={rolesAttr(ROLES_LEVANTA)} data-rol-hidden={rolOculto(ROLES_LEVANTA)}>
+              <label for="tckt_csh" class="text-sm font-medium select-none truncate">Levanta CSH</label>
+              <label class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full toggle-wrapper group">
+                <input
+                  type="checkbox"
+                  id="tckt_csh"
+                  name="tckt_csh"
+                  class="sr-only peer"
+                  checked={(user as any).tckt_csh}
+                  disabled={!canEdit}
+                />
+                <div class="toggle-bg h-5 w-9 absolute rounded-full transition-all peer-focus:outline-none opacity-50 peer-checked:opacity-100 disabled:opacity-30 peer-disabled:cursor-not-allowed bg-muted-foreground peer-checked:bg-primary border border-white">
+                </div>
+                <div class="toggle-knob absolute top-[2px] left-[2px] bg-white border border-gray-300 rounded-full h-4 w-4 transition-transform peer-checked:translate-x-[16px] peer-checked:border-white z-10">
+                </div>
+              </label>
+            </div>
 
             <!-- Toggle: Levanta Mkt -->
-            {showToggleLevantaMKT && (
-              <div class="flex items-center justify-between gap-2 border border-border/60 bg-muted/10 px-3 py-2 rounded-md" id="container-tckt_mkt">
-                <label for="tckt_mkt" class="text-sm font-medium select-none truncate">Levanta Mkt</label>
-                <label class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full toggle-wrapper group">
-                  <input
-                    type="checkbox"
-                    id="tckt_mkt"
-                    name="tckt_mkt"
-                    class="sr-only peer"
-                    checked={(user as any).tckt_mkt}
-                    disabled={!canEdit}
-                  />
-                  <div class="toggle-bg h-5 w-9 absolute rounded-full transition-all peer-focus:outline-none opacity-50 peer-checked:opacity-100 disabled:opacity-30 peer-disabled:cursor-not-allowed bg-muted-foreground peer-checked:bg-primary border border-white" />
-                  <div class="toggle-knob absolute top-[2px] left-[2px] bg-white border border-gray-300 rounded-full h-4 w-4 transition-transform peer-checked:translate-x-[16px] peer-checked:border-white z-10" />
-                </label>
-              </div>
-            )}
+            <div class="flex items-center justify-between gap-2 border border-border/60 bg-muted/10 px-3 py-2 rounded-md" id="container-tckt_mkt" data-roles={rolesAttr(ROLES_LEVANTA)} data-rol-hidden={rolOculto(ROLES_LEVANTA)}>
+              <label for="tckt_mkt" class="text-sm font-medium select-none truncate">Levanta Mkt</label>
+              <label class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full toggle-wrapper group">
+                <input
+                  type="checkbox"
+                  id="tckt_mkt"
+                  name="tckt_mkt"
+                  class="sr-only peer"
+                  checked={(user as any).tckt_mkt}
+                  disabled={!canEdit}
+                />
+                <div class="toggle-bg h-5 w-9 absolute rounded-full transition-all peer-focus:outline-none opacity-50 peer-checked:opacity-100 disabled:opacity-30 peer-disabled:cursor-not-allowed bg-muted-foreground peer-checked:bg-primary border border-white">
+                </div>
+                <div class="toggle-knob absolute top-[2px] left-[2px] bg-white border border-gray-300 rounded-full h-4 w-4 transition-transform peer-checked:translate-x-[16px] peer-checked:border-white z-10">
+                </div>
+              </label>
+            </div>
 
             <!-- Toggle: Atiende CSH -->
-            {showToggleAtiendeCSH && (
-              <div class="flex items-center justify-between gap-2 border border-border/60 bg-muted/10 px-3 py-2 rounded-md" id="container-atiende_csh">
-                <label for="atiende_csh" class="text-sm font-medium select-none truncate">Atiende CSH</label>
-                <label class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full toggle-wrapper group">
-                  <input
-                    type="checkbox"
-                    id="atiende_csh"
-                    name="atiende_csh"
-                    class="sr-only peer"
-                    checked={(user as any).atiende_csh}
-                    disabled={!canEdit}
-                  />
-                  <div class="toggle-bg h-5 w-9 absolute rounded-full transition-all peer-focus:outline-none opacity-50 peer-checked:opacity-100 disabled:opacity-30 peer-disabled:cursor-not-allowed bg-muted-foreground peer-checked:bg-primary" />
-                  <div class="toggle-knob absolute top-[2px] left-[2px] bg-white border border-gray-300 rounded-full h-4 w-4 transition-transform peer-checked:translate-x-[16px] peer-checked:border-white z-10" />
-                </label>
-              </div>
-            )}
+            <div class="flex items-center justify-between gap-2 border border-border/60 bg-muted/10 px-3 py-2 rounded-md" id="container-atiende_csh" data-roles={rolesAttr(ROLES_ATIENDE)} data-rol-hidden={rolOculto(ROLES_ATIENDE)}>
+              <label for="atiende_csh" class="text-sm font-medium select-none truncate">Atiende CSH</label>
+              <label class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full toggle-wrapper group">
+                <input
+                  type="checkbox"
+                  id="atiende_csh"
+                  name="atiende_csh"
+                  class="sr-only peer"
+                  checked={(user as any).atiende_csh}
+                  disabled={!canEdit}
+                />
+                <div class="toggle-bg h-5 w-9 absolute rounded-full transition-all peer-focus:outline-none opacity-50 peer-checked:opacity-100 disabled:opacity-30 peer-disabled:cursor-not-allowed bg-muted-foreground peer-checked:bg-primary">
+                </div>
+                <div class="toggle-knob absolute top-[2px] left-[2px] bg-white border border-gray-300 rounded-full h-4 w-4 transition-transform peer-checked:translate-x-[16px] peer-checked:border-white z-10">
+                </div>
+              </label>
+            </div>
 
             <!-- Toggle: Atiende Mkt -->
-            {showToggleAtiendeMKT && (
-              <div class="flex items-center justify-between gap-2 border border-border/60 bg-muted/10 px-3 py-2 rounded-md" id="container-atiende_mkt">
-                <label for="atiende_mkt" class="text-sm font-medium select-none truncate">Atiende Mkt</label>
-                <label class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full toggle-wrapper group">
-                  <input
-                    type="checkbox"
-                    id="atiende_mkt"
-                    name="atiende_mkt"
-                    class="sr-only peer"
-                    checked={(user as any).atiende_mkt}
-                    disabled={!canEdit}
-                  />
-                  <div class="toggle-bg h-5 w-9 absolute rounded-full transition-all peer-focus:outline-none opacity-50 peer-checked:opacity-100 disabled:opacity-30 peer-disabled:cursor-not-allowed bg-muted-foreground peer-checked:bg-primary" />
-                  <div class="toggle-knob absolute top-[2px] left-[2px] bg-white border border-gray-300 rounded-full h-4 w-4 transition-transform peer-checked:translate-x-[16px] peer-checked:border-white z-10" />
-                </label>
-              </div>
-            )}
+            <div class="flex items-center justify-between gap-2 border border-border/60 bg-muted/10 px-3 py-2 rounded-md" id="container-atiende_mkt" data-roles={rolesAttr(ROLES_ATIENDE)} data-rol-hidden={rolOculto(ROLES_ATIENDE)}>
+              <label for="atiende_mkt" class="text-sm font-medium select-none truncate">Atiende Mkt</label>
+              <label class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full toggle-wrapper group">
+                <input
+                  type="checkbox"
+                  id="atiende_mkt"
+                  name="atiende_mkt"
+                  class="sr-only peer"
+                  checked={(user as any).atiende_mkt}
+                  disabled={!canEdit}
+                />
+                <div class="toggle-bg h-5 w-9 absolute rounded-full transition-all peer-focus:outline-none opacity-50 peer-checked:opacity-100 disabled:opacity-30 peer-disabled:cursor-not-allowed bg-muted-foreground peer-checked:bg-primary">
+                </div>
+                <div class="toggle-knob absolute top-[2px] left-[2px] bg-white border border-gray-300 rounded-full h-4 w-4 transition-transform peer-checked:translate-x-[16px] peer-checked:border-white z-10">
+                </div>
+              </label>
+            </div>
 
-            {showToggleAuditorDocs && (
-              <div class="flex items-center justify-between gap-2 border border-border/60 bg-muted/10 px-3 py-2 rounded-md" id="container-auditor_docs">
+            {!areAuditorChecksHidden && (
+              <div class="flex items-center justify-between gap-2 border border-border/60 bg-muted/10 px-3 py-2 rounded-md" id="container-auditor_docs" data-roles={rolesAttr(ROLES_AUDITOR)} data-rol-hidden={rolOculto(ROLES_AUDITOR)}>
                 <label for="auditor_docs" class="text-sm font-medium select-none truncate">Auditor Docs</label>
                 <label class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full toggle-wrapper group">
                   <input
@@ -565,8 +587,8 @@ sinAccesoCats.sort((a, b) => a.nombre.localeCompare(b.nombre));
               </div>
             )}
 
-            {showToggleAuditorReqs && (
-              <div class="flex items-center justify-between gap-2 border border-border/60 bg-muted/10 px-3 py-2 rounded-md" id="container-auditor_req">
+            {!areAuditorChecksHidden && (
+              <div class="flex items-center justify-between gap-2 border border-border/60 bg-muted/10 px-3 py-2 rounded-md" id="container-auditor_req" data-roles={rolesAttr(ROLES_AUDITOR)} data-rol-hidden={rolOculto(ROLES_AUDITOR)}>
                 <label for="auditor_req" class="text-sm font-medium select-none truncate">Auditor Reqs</label>
                 <label class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full toggle-wrapper group">
                   <input
@@ -587,7 +609,7 @@ sinAccesoCats.sort((a, b) => a.nombre.localeCompare(b.nombre));
 
         <!-- HORARIOS COLLAPSIBLE -->
         {showHorarioSection && (
-          <details class="group mt-6 main-accordion overflow-hidden rounded-md border border-border bg-card">
+          <details class="group mt-6 main-accordion overflow-hidden rounded-md border border-border bg-card" data-roles={rolesAttr(ROLES_HORARIO)} data-rol-hidden={rolOculto(ROLES_HORARIO)}>
             <summary class="flex items-center justify-between cursor-pointer list-none select-none outline-none h-[50px] px-4 hover:bg-secondary hover:text-white transition-colors group-open:bg-secondary group-open:text-white ui-summary">
               <div class="flex items-center gap-2">
                 <h2 class="text-sm font-medium">Horario de disponibilidad</h2>
@@ -621,7 +643,7 @@ sinAccesoCats.sort((a, b) => a.nombre.localeCompare(b.nombre));
 
         <!-- SECCIONES COLLAPSIBLE -->
         {showSeccionesSection && (
-          <details class="group mt-4 main-accordion overflow-hidden rounded-md border border-border bg-card">
+          <details class="group mt-4 main-accordion overflow-hidden rounded-md border border-border bg-card" data-roles={rolesAttr(ROLES_SECCIONES)} data-rol-hidden={rolOculto(ROLES_SECCIONES)}>
             <summary class="flex items-center justify-between cursor-pointer list-none select-none outline-none h-[50px] px-4 hover:bg-secondary hover:text-white transition-colors group-open:bg-secondary group-open:text-white ui-summary">
               <h2 class="text-sm font-medium">
                 Secciones que puede ver el usuario:
@@ -630,7 +652,13 @@ sinAccesoCats.sort((a, b) => a.nombre.localeCompare(b.nombre));
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-current"><path d="m6 9 6 6 6-6"/></svg>
               </div>
             </summary>
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-4 border-t border-border bg-card">
+            <div class="p-4 border-t border-border bg-card">
+              <p class="rol-pendiente-aviso mb-4 text-xs rounded-md border border-primary/40 bg-primary/5 px-3 py-2 text-foreground/80" data-rol-hidden="true">
+                Estás cambiando el rol: guarda primero. Al guardar un rol distinto
+                se reinician las excepciones de secciones y categorías de este
+                usuario, así que cualquier ajuste que hicieras aquí se perdería.
+              </p>
+              <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {
                 orderGrupos.map((grupo) => {
                   if (!groupedSecciones[grupo]) return null;
@@ -644,28 +672,36 @@ sinAccesoCats.sort((a, b) => a.nombre.localeCompare(b.nombre));
                       </h3>
                       <div class="space-y-6">
                         {Object.entries(subgroups).map(([subgroupName, secs]) => {
-                          // Si es rol Usuario (1), filtrar las opciones "Todos"
-                          const filteredSecs = targetRoleId === 1 
-                            ? secs.filter(s => s.identificador !== "soporte_todos" && s.identificador !== "marketing_todos")
-                            : secs;
+                          if (secs.length === 0) return null;
 
-                          if (filteredSecs.length === 0) return null;
+                          // Las opciones "Todos" no aplican al rol Usuario (1). Antes se
+                          // filtraban aquí; ahora se pintan siempre con su `data-roles`
+                          // para que aparezcan y desaparezcan al mover el <select> de Rol.
+                          // El subgrupo se oculta sólo si TODAS sus secciones son "Todos".
+                          const subgroupRoles = secs.some(
+                            (s) => !SECCIONES_SOLO_PRIVILEGIADAS.includes(s.identificador ?? "")
+                          )
+                            ? ROLES_TODOS
+                            : ROLES_SECCION_TODOS;
 
                           return (
-                            <div class="space-y-3">
+                            <div class="space-y-3" data-roles={rolesAttr(subgroupRoles)} data-rol-hidden={rolOculto(subgroupRoles)}>
                               {subgroupName !== "General" && (
                                 <h4 class="text-[11px] font-bold text-muted-foreground border-b pb-1 uppercase">
                                   {subgroupName}
                                 </h4>
                               )}
                               <div class="space-y-3 pl-1">
-                                {filteredSecs.map((seccion) => {
+                                {secs.map((seccion) => {
                                   const isInherited = userRoleSections.includes(seccion.id);
                                   const explicitState = explicitPermissions[seccion.id];
                                   const isChecked = explicitState !== undefined ? explicitState : isInherited;
+                                  const seccionRoles = SECCIONES_SOLO_PRIVILEGIADAS.includes(seccion.identificador ?? "")
+                                    ? ROLES_SECCION_TODOS
+                                    : ROLES_TODOS;
 
                                   return (
-                                    <div class="flex items-center justify-between gap-4">
+                                    <div class="flex items-center justify-between gap-4" data-roles={rolesAttr(seccionRoles)} data-rol-hidden={rolOculto(seccionRoles)}>
                                       <label
                                         for={`sec-${seccion.id}`}
                                         class="text-sm cursor-pointer select-none truncate pr-2 flex-1"
@@ -702,14 +738,15 @@ sinAccesoCats.sort((a, b) => a.nombre.localeCompare(b.nombre));
                   );
                 })
               }
+              </div>
             </div>
           </details>
         )}
         <!-- END SECCIONES COLLAPSIBLE -->
 
-        <!-- CATEGORIAS COLLAPSIBLE -->
-        {showCategoriasSection && (
-          <details class="group mt-4 mb-4 main-accordion rounded-md border border-border bg-card">
+        <!-- CATEGORIAS COLLAPSIBLE (se pinta siempre; la oculta `data-rol-hidden`) -->
+        {(
+          <details class="group mt-4 mb-4 main-accordion rounded-md border border-border bg-card" data-roles={rolesAttr(ROLES_CATEGORIAS)} data-rol-hidden={rolOculto(ROLES_CATEGORIAS)}>
             <summary class="flex items-center justify-between cursor-pointer list-none select-none outline-none h-[50px] px-4 hover:bg-secondary hover:text-white transition-colors group-open:bg-secondary group-open:text-white ui-summary group-open:rounded-t-md group-open:rounded-b-none rounded-md">
               <h2 class="text-sm font-medium">
                 Categorías y subcategorías que puede atender:
@@ -719,6 +756,11 @@ sinAccesoCats.sort((a, b) => a.nombre.localeCompare(b.nombre));
               </div>
             </summary>
             <div class="p-4 border-t border-border bg-card rounded-b-md space-y-6">
+              <p class="rol-pendiente-aviso text-xs rounded-md border border-primary/40 bg-primary/5 px-3 py-2 text-foreground/80" data-rol-hidden="true">
+                Estás cambiando el rol: guarda primero. Al guardar un rol distinto
+                se reinician las excepciones de secciones y categorías de este
+                usuario, así que cualquier ajuste que hicieras aquí se perdería.
+              </p>
               <!-- SUBSECCIÓN: HABILITADAS -->
               <div>
                 <h3 class="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-2">
@@ -1119,3 +1161,13 @@ sinAccesoCats.sort((a, b) => a.nombre.localeCompare(b.nombre));
     });
   });
 </script>
+
+<style is:global>
+  /* Visibilidad por rol objetivo: la marca el servidor en el primer render y la
+     recalcula `applyRoleVisibility` cuando cambia el <select> de Rol. Lleva
+     !important porque los bloques que oculta traen sus propias utilidades de
+     display (flex, grid) que empatarían en especificidad con una clase. */
+  [data-rol-hidden="true"] {
+    display: none !important;
+  }
+</style>

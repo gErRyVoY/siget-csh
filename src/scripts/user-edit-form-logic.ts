@@ -106,6 +106,53 @@ export function initializeUserEditForm() {
         }
     }
 
+    // --- VISIBILIDAD REACTIVA SEGÚN EL <select> DE ROL ---
+    // La vista pinta la UNIÓN de los bloques configurables y cada uno declara en
+    // `data-roles` los roles que lo habilitan (ver el frontmatter de
+    // /admin/usuarios/editar/[id].astro). Antes la visibilidad se resolvía sólo en
+    // el servidor con el rol guardado, así que para configurar los permisos de un
+    // rol nuevo había que cambiar el rol, guardar y volver a entrar.
+    const originalRolId = parseInt(form.dataset.originalRolId || '0', 10);
+
+    // Los toggles de secciones y categorías guardan al instante contra sus propios
+    // endpoints, pero guardar el formulario con otro rol borra TODAS las
+    // excepciones del usuario (el $transaction de /api/admin/usuarios purga
+    // `permisoUsuarioSeccion` y `asignacionesCategorias` cuando cambia el rolId).
+    // Mientras el <select> no coincida con el rol guardado esos toggles quedan
+    // bloqueados: lo que se configurara ahí se perdería en el guardado.
+    let permisosBloqueadosPorRol = false;
+
+    function isVisibleForRole(el: HTMLElement): boolean {
+        return el.closest('[data-rol-hidden="true"]') === null;
+    }
+
+    function applyRoleVisibility(roleId: number) {
+        form.querySelectorAll<HTMLElement>('[data-roles]').forEach(el => {
+            const roles = (el.dataset.roles || '')
+                .split(',')
+                .map(r => parseInt(r.trim(), 10))
+                .filter(n => !isNaN(n));
+            el.dataset.rolHidden = roles.includes(roleId) ? 'false' : 'true';
+        });
+    }
+
+    function applyPendingRoleLock(roleId: number) {
+        permisosBloqueadosPorRol = roleId !== originalRolId;
+
+        form.querySelectorAll<HTMLInputElement>('.section-toggle, .category-toggle').forEach(input => {
+            // `rolLockBase` conserva el `disabled` que puso el servidor (canEdit /
+            // canEditCategorias) para no habilitar de más al desbloquear.
+            if (input.dataset.rolLockBase === undefined) {
+                input.dataset.rolLockBase = input.disabled ? 'true' : 'false';
+            }
+            input.disabled = input.dataset.rolLockBase === 'true' ? true : permisosBloqueadosPorRol;
+        });
+
+        form.querySelectorAll<HTMLElement>('.rol-pendiente-aviso').forEach(aviso => {
+            aviso.dataset.rolHidden = permisosBloqueadosPorRol ? 'false' : 'true';
+        });
+    }
+
     // --- INTERACCIONES DINÁMICAS ENTRE TOGGLES Y SECCIONES ---
     function initToggleListeners() {
         const rolSelect = document.getElementById('rolId') as HTMLSelectElement | null;
@@ -122,10 +169,23 @@ export function initializeUserEditForm() {
         const SEC_MKT_TODOS = 9;
 
         function setSectionChecked(secId: number, checked: boolean, silent = false) {
+            // Con un cambio de rol pendiente, el PATCH que dispara este cambio
+            // moriría en el purgado de excepciones del guardado.
+            if (permisosBloqueadosPorRol) return;
             const input = document.getElementById(`sec-${secId}`) as HTMLInputElement | null;
             if (input && input.checked !== checked) {
                 input.checked = checked;
                 input.dispatchEvent(new CustomEvent('change', { bubbles: true, detail: { silent } }));
+            }
+        }
+
+        function setCategoryChecked(catId: number, checked: boolean) {
+            // Mismo motivo que en `setSectionChecked`.
+            if (permisosBloqueadosPorRol) return;
+            const input = document.getElementById(`cat-${catId}`) as HTMLInputElement | null;
+            if (input && input.checked !== checked) {
+                input.checked = checked;
+                input.dispatchEvent(new Event('change', { bubbles: true }));
             }
         }
 
@@ -184,11 +244,7 @@ export function initializeUserEditForm() {
                             setSectionChecked(SEC_SOPORTE_TODOS, true, true);
                         }
 
-                        const catMktInput = document.getElementById('cat-12') as HTMLInputElement | null;
-                        if (catMktInput && !catMktInput.checked) {
-                            catMktInput.checked = true;
-                            catMktInput.dispatchEvent(new Event('change', { bubbles: true }));
-                        }
+                        setCategoryChecked(12, true);
                     } else {
                         setSectionChecked(SEC_MKT_TODOS, false, true);
                         if (!effectiveLevantaMkt) {
@@ -196,11 +252,7 @@ export function initializeUserEditForm() {
                             setSectionChecked(SEC_MKT_MIS_TKTS, false, true);
                         }
 
-                        const catMktInput = document.getElementById('cat-12') as HTMLInputElement | null;
-                        if (catMktInput && catMktInput.checked) {
-                            catMktInput.checked = false;
-                            catMktInput.dispatchEvent(new Event('change', { bubbles: true }));
-                        }
+                        setCategoryChecked(12, false);
                     }
                 }
 
@@ -254,8 +306,17 @@ export function initializeUserEditForm() {
             }
         });
 
+        // Estado inicial: el servidor ya pintó la visibilidad del rol guardado, así
+        // que esto sólo asegura que servidor y cliente parten del mismo sitio y deja
+        // registrado el `disabled` base de los toggles de secciones/categorías.
+        applyRoleVisibility(getSelectedRoleId());
+        applyPendingRoleLock(getSelectedRoleId());
+
         if (rolSelect) {
             rolSelect.addEventListener('change', () => {
+                const roleId = getSelectedRoleId();
+                applyRoleVisibility(roleId);
+                applyPendingRoleLock(roleId);
                 syncTogglesAndSections('rolId');
             });
         }
@@ -374,35 +435,53 @@ export function initializeUserEditForm() {
 
     async function performSave(): Promise<boolean> {
         const formData = new FormData(form);
-        const horarioData: Record<string, { inicio: FormDataEntryValue | null, fin: FormDataEntryValue | null }> = {};
 
-        dias.forEach(dia => {
-            const normalizedDia = dia.normalize("NFD").replace(/[̀-ͯ]/g, "");
-            const inicio = formData.get(`${normalizedDia}-inicio`);
-            const fin = formData.get(`${normalizedDia}-fin`);
-            if (inicio !== 'No disponible' && fin !== 'No disponible') {
-                horarioData[normalizedDia] = { inicio, fin };
-            }
-        });
+        // El horario de esta vista es de sólo consulta —lo sincroniza la API de RH
+        // al iniciar sesión— y los <select> deshabilitados no viajan en el FormData:
+        // leerlos devolvía `null` para los seis días y la condición
+        // `inicio !== 'No disponible'` los dejaba pasar, así que CADA guardado
+        // escribía {lunes:{inicio:null,fin:null},…}. Eso dejaba al agente fuera del
+        // filtro de horario de la asignación automática (`filterBySchedule` exige
+        // `inicio`/`fin`), y ya le había pasado a cinco usuarios en la BD.
+        // Ahora sólo se envía si de verdad se puede editar.
+        const horarioContainer = document.getElementById('horarios-container');
+        const horarioEditable = horarioContainer !== null
+            && horarioContainer.dataset.readonly !== 'true'
+            && isVisibleForRole(horarioContainer);
+
+        const horarioData: Record<string, { inicio: string, fin: string }> = {};
+        if (horarioEditable) {
+            dias.forEach(dia => {
+                const normalizedDia = dia.normalize("NFD").replace(/[̀-ͯ]/g, "");
+                const inicio = formData.get(`${normalizedDia}-inicio`);
+                const fin = formData.get(`${normalizedDia}-fin`);
+                if (typeof inicio !== 'string' || typeof fin !== 'string') return;
+                if (inicio !== 'No disponible' && fin !== 'No disponible') {
+                    horarioData[normalizedDia] = { inicio, fin };
+                }
+            });
+        }
 
         const rawEmpresaId = formData.get('empresaId');
         const rawRolId = formData.get('rolId');
 
-        const data: Record<string, any> = {
-            id: userId,
-            horario_disponibilidad: Object.keys(horarioData).length > 0 ? horarioData : null,
-        };
+        const data: Record<string, any> = { id: userId };
+        if (horarioEditable) {
+            data.horario_disponibilidad = Object.keys(horarioData).length > 0 ? horarioData : null;
+        }
 
-        // Solo incluir flags booleanos si el elemento existe en el DOM.
-        // Si el toggle está oculto (ej: Levanta CSH/MKT para Superadmin), no se envía
-        // para evitar sobrescribir la BD con false.
+        // Solo incluir flags booleanos si el toggle está en el DOM Y visible para el
+        // rol seleccionado. Un toggle oculto (ej: Levanta CSH/MKT para Superadmin)
+        // no se envía, para no sobrescribir la BD con false. Con el <select> de Rol
+        // reactivo el elemento existe siempre, así que lo que decide es la
+        // visibilidad, no la presencia.
         const boolFields = [
             'activo', 'acepta_tickets', 'tckt_csh', 'tckt_mkt',
             'atiende_csh', 'atiende_mkt', 'auditor_docs', 'auditor_req'
         ] as const;
         boolFields.forEach(field => {
             const el = form.elements.namedItem(field) as HTMLInputElement | null;
-            if (el !== null) {
+            if (el !== null && isVisibleForRole(el)) {
                 data[field] = el.checked;
             }
         });
@@ -564,6 +643,11 @@ export function initializeUserEditForm() {
     }
 
     initHorarios();
+    // `initHorarios` inserta los <select> del horario, que no existían cuando se
+    // tomó el primer snapshot: sin recalcularlo, el primer cambio en cualquier
+    // campo se comparaba contra un snapshot sin horario y el formulario se marcaba
+    // como sucio de más.
+    initialSnapshot = getFormSnapshot();
     initToggleListeners();
     initFormSubmit();
     initBackButton();
