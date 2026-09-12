@@ -6,6 +6,7 @@ import Google from "@auth/core/providers/google";
 import { admin as adminDirectory, auth as googleAuth } from "@googleapis/admin";
 import { prisma } from "./src/lib/db";
 import { getSessionUser, invalidateSessionUser } from "./src/lib/session-cache";
+import { consultarHorarioRH, horarioParaPrisma, type HorarioDisponibilidad } from "./src/lib/rh-horario";
 import type { Rol, Empresa, Permiso } from "@prisma/client";
 import type { DefaultSession } from "@auth/core/types";
 
@@ -103,7 +104,14 @@ export default defineConfig({
         // --- Consulta a API de Recursos Humanos ---
         let claveTrabajador: string | undefined = undefined;
         let puestoTrabajador: string | undefined = undefined;
-        let horarioDisponibilidad: Record<string, { inicio: string; fin: string }> | undefined = undefined;
+        // Tres estados, no dos:
+        //   `undefined` → no sabemos (usuario de prueba, sin clave o RH no contestó): no se toca la columna.
+        //   `null`      → RH confirma que el trabajador no tiene horario asignado: se limpia la columna.
+        //   objeto      → horario vigente, se escribe.
+        // Antes sólo había «objeto o nada», así que un horario roto en BD no se
+        // corregía nunca y los 5 casos con los seis días a `null` sobrevivían a
+        // cada login (ver src/lib/rh-horario.ts).
+        let horarioDisponibilidad: HorarioDisponibilidad | null | undefined = undefined;
 
         if (!isTestUser) {
           try {
@@ -127,41 +135,30 @@ export default defineConfig({
               return '/login?error=ColaboradorNoActivo';
             }
 
-            claveTrabajador = rhData.data.trabajador;
-            
+            // La API devuelve la clave rellenada a diez caracteres («FTJ1566   »).
+            claveTrabajador = String(rhData.data.trabajador).trim();
+
             // Capturar el puesto del trabajador
             if (rhData.data?.desc_puesto) {
               puestoTrabajador = (rhData.data.desc_puesto as string).trim();
             }
             
             // Consultar horario con la clave obtenida
-            const horarioResponse = await fetch(`${baseUrl}/api/rh/horario-trabajador?trabajador=${claveTrabajador}`, {
-              headers: {
-                'x-api-key': process.env.TOKEN_ESPERADO || 'CHURRUMAIS-1979'
-              }
-            });
+            const resultadoHorario = claveTrabajador
+              ? await consultarHorarioRH(claveTrabajador)
+              : ({ estado: 'indeterminado', motivo: 'sin clave de trabajador' } as const);
 
-            if (horarioResponse.ok) {
-              const horarioResult = await horarioResponse.json();
-              if (horarioResult.status === 'ok' && horarioResult.data && horarioResult.data.dias_laborales) {
-                const apiDias = horarioResult.data.dias_laborales;
-                const newHorario: Record<string, { inicio: string; fin: string }> = {};
-                const diasMap: Record<string, string> = { "1": "lunes", "2": "martes", "3": "miercoles", "4": "jueves", "5": "viernes", "6": "sabado" };
-                
-                for (const num in diasMap) {
-                  if (apiDias[num] && apiDias[num].turno_normal) {
-                    const { entrada, salida } = apiDias[num].turno_normal;
-                    const inicio = entrada.length === 4 ? `${entrada.substring(0, 2)}:${entrada.substring(2)}` : 'No disponible';
-                    const fin = salida.length === 4 ? `${salida.substring(0, 2)}:${salida.substring(2)}` : 'No disponible';
-                    if (inicio !== 'No disponible' && fin !== 'No disponible') {
-                      newHorario[diasMap[num]] = { inicio, fin };
-                    }
-                  }
-                }
-                if (Object.keys(newHorario).length > 0) {
-                  horarioDisponibilidad = newHorario;
-                }
-              }
+            if (resultadoHorario.estado === 'ok') {
+              horarioDisponibilidad = resultadoHorario.horario;
+            } else if (resultadoHorario.estado === 'sin-horario') {
+              // El colaborador no tiene turno en la nómina: se deja la columna en
+              // NULL para que la ficha muestre «No disponible» en lugar de datos
+              // viejos o de un objeto con los días vacíos.
+              horarioDisponibilidad = null;
+              console.log(`RH no tiene horario asignado para ${claveTrabajador} (${profile.email})`);
+            } else {
+              // No se pudo determinar: la columna queda como estaba.
+              console.warn(`No se pudo consultar el horario de ${claveTrabajador}: ${resultadoHorario.motivo}`);
             }
           } catch (error) {
             console.error("Error al consultar API de RH en el login:", error);
@@ -209,7 +206,9 @@ export default defineConfig({
               acepta_tickets: true,
               ...(claveTrabajador && { clave: claveTrabajador }),
               ...(puestoTrabajador && { puesto: puestoTrabajador }),
-              ...(horarioDisponibilidad && { horario_disponibilidad: horarioDisponibilidad }),
+              ...(horarioDisponibilidad !== undefined && {
+                horario_disponibilidad: horarioParaPrisma(horarioDisponibilidad)
+              }),
             }
           });
           console.log(`Usuario ${profile.email} creado exitosamente.`);
@@ -232,7 +231,12 @@ export default defineConfig({
               ultimo_login: new Date(),
               ...(!dbUser.clave && claveTrabajador && { clave: claveTrabajador }),
               ...(needsPuestoUpdate && { puesto: puestoTrabajador }),
-              ...(horarioDisponibilidad && { horario_disponibilidad: horarioDisponibilidad }),
+              // Se escribe también cuando RH dice que no hay horario (`null`), que es
+              // lo que repara las filas con los seis días vacíos. Si RH no contestó,
+              // `horarioDisponibilidad` es `undefined` y la columna no se toca.
+              ...(horarioDisponibilidad !== undefined && {
+                horario_disponibilidad: horarioParaPrisma(horarioDisponibilidad)
+              }),
             }
           });
         }

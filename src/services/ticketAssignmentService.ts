@@ -1,5 +1,5 @@
 import { prisma } from '../lib/db';
-import type { Usuario, Rol } from '@prisma/client';
+import type { Prisma, Usuario, Rol } from '@prisma/client';
 import { MARKETING_CATEGORY_ID } from '@/config/ticket-categories';
 
 type AgentWithRelations = Usuario & { rol: Rol };
@@ -421,14 +421,59 @@ export async function canAssignMarketingTickets(usuarioId: number): Promise<bool
 }
 
 /**
+ * `where` de los agentes que pueden recibir un ticket de esta categoría POR MANO.
+ *
+ * Las asignaciones de categorías (`asignaciones_categorias`) sólo gobiernan el
+ * reparto AUTOMÁTICO: dicen a quién le puede caer un ticket solo. La asignación
+ * manual es más ancha a propósito —cualquier ingeniero de la cola puede tomar un
+ * ticket sin asignar, y un superadmin puede reasignarlo a quien haga falta—, así
+ * que aquí basta con estar activo y atender la cola (`atiende_csh`/`atiende_mkt`).
+ *
+ * Se mantiene la segunda rama del OR para no perder a quien tiene la categoría
+ * asignada pero se quedó sin el flag: si figura como responsable de la categoría,
+ * debe poder recibirla a mano.
+ *
+ * Esta función es la ÚNICA fuente de verdad del desplegable «Atiende»
+ * (src/pages/tickets/view/[id].astro) y de `canAgentBeAssignedManually`. Cuando
+ * eran dos criterios distintos, el desplegable ofrecía 41 de 125 candidatos que
+ * el PATCH luego rechazaba con 400.
+ */
+export function buildManuallyAssignableWhere(
+    categoriaId: number,
+    subcategoriaId: number | null,
+    isMarketing: boolean
+): Prisma.UsuarioWhereInput {
+    return {
+        activo: true,
+        OR: [
+            isMarketing ? { atiende_mkt: true } : { atiende_csh: true },
+            {
+                asignaciones_categorias: {
+                    some: {
+                        categoriaId,
+                        OR: [
+                            { subcategoriaId },
+                            { subcategoriaId: null }
+                        ],
+                        activo: true
+                    }
+                }
+            }
+        ]
+    };
+}
+
+/**
  * Verifica si un agente puede ser asignado MANUALMENTE a un ticket de una categoría/subcategoría dada.
  *
- * Criterios para asignación manual:
+ * Criterios para asignación manual (ver `buildManuallyAssignableWhere`):
  * 1. El agente está activo (`activo === true`).
- * 2. Tiene flag de atender la categoría (`atiende_csh` o `atiende_mkt` según la categoría).
- * 3. Tiene la categoría/subcategoría habilitada (por asignación específica activa o por permiso de rol no revocado).
- * 
- * NOTA: Para asignación manual NO se toma en cuenta `acepta_tickets`, `carga_actual` ni `horario_disponibilidad`.
+ * 2. Atiende la cola: flag `atiende_csh`/`atiende_mkt` según la categoría, o
+ *    tiene esa categoría/subcategoría asignada y activa.
+ *
+ * NO se exige tener la categoría habilitada: eso es requisito del reparto
+ * automático, no del manual. Tampoco se toma en cuenta `acepta_tickets`,
+ * `carga_actual` ni `horario_disponibilidad`.
  */
 export async function canAgentBeAssignedManually(
     agentId: number,
@@ -437,50 +482,29 @@ export async function canAgentBeAssignedManually(
 ): Promise<{ canAssign: boolean; reason?: string }> {
     const isMarketing = categoriaId === MARKETING_CATEGORY_ID;
 
-    const agent = await prisma.usuario.findUnique({
-        where: { id: agentId },
-        include: { rol: true, asignaciones_categorias: true }
+    const agent = await prisma.usuario.findFirst({
+        where: {
+            id: agentId,
+            ...buildManuallyAssignableWhere(categoriaId, subcategoriaId ?? null, isMarketing)
+        },
+        select: { id: true }
     });
 
-    if (!agent || !agent.activo) {
+    if (agent) return { canAssign: true };
+
+    // No pasó el filtro: distinguir «inactivo» de «no atiende esta cola» para que
+    // el 400 diga algo accionable.
+    const exists = await prisma.usuario.findUnique({
+        where: { id: agentId },
+        select: { activo: true }
+    });
+
+    if (!exists || !exists.activo) {
         return { canAssign: false, reason: 'El usuario seleccionado no está activo' };
     }
 
-    if (!hasCorrectUserFlag(agent as AgentWithRelations, isMarketing)) {
-        return { canAssign: false, reason: `El usuario no tiene habilitado atender tickets de ${isMarketing ? 'Marketing' : 'CSH'}` };
-    }
-
-    // Verificar si el agente tiene la categoría/subcategoría habilitada
-    // 1. Asignación específica
-    const specificCat = agent.asignaciones_categorias.find(
-        a => a.categoriaId === categoriaId && (subcategoriaId ? a.subcategoriaId === subcategoriaId : a.subcategoriaId === null)
-    );
-
-    if (specificCat) {
-        if (specificCat.activo) return { canAssign: true };
-        return { canAssign: false, reason: 'El usuario tiene revocada esta categoría/subcategoría' };
-    }
-
-    // 2. Permiso por rol
-    const rolePermission = await prisma.permisoCategoria.findFirst({
-        where: {
-            rolId: agent.rolId,
-            categoriaId: categoriaId,
-            activo: true,
-            ...(subcategoriaId ? { OR: [{ subcategoriaId: subcategoriaId }, { subcategoriaId: null }] } : { subcategoriaId: null })
-        }
-    });
-
-    if (rolePermission) {
-        const explicitRevoked = agent.asignaciones_categorias.find(
-            a => a.categoriaId === categoriaId && a.activo === false &&
-                 (subcategoriaId ? (a.subcategoriaId === subcategoriaId || a.subcategoriaId === null) : a.subcategoriaId === null)
-        );
-        if (explicitRevoked) {
-            return { canAssign: false, reason: 'El usuario tiene revocada esta categoría/subcategoría' };
-        }
-        return { canAssign: true };
-    }
-
-    return { canAssign: false, reason: 'El usuario no tiene habilitada esta categoría/subcategoría' };
+    return {
+        canAssign: false,
+        reason: `El usuario no tiene habilitado atender tickets de ${isMarketing ? 'Marketing' : 'CSH'}`
+    };
 }

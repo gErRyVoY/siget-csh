@@ -1,5 +1,6 @@
 import type { APIRoute } from "astro";
 import { prisma } from "@/lib/db";
+import { horarioParaPrisma } from "@/lib/rh-horario";
 
 export const PATCH: APIRoute = async ({ request, locals }) => {
   const session = locals.session;
@@ -21,9 +22,11 @@ export const PATCH: APIRoute = async ({ request, locals }) => {
       updateData.alias = trimmed.length > 0 ? trimmed : null;
     }
 
-    // Horario
+    // Horario. `/user/perfil` envía `null` cuando los seis días quedan en «No
+    // disponible», y Prisma rechaza un `null` a secas en una columna `Json?`:
+    // hay que pasarle `Prisma.DbNull` (lo hace `horarioParaPrisma`).
     if ("horario_disponibilidad" in body) {
-      updateData.horario_disponibilidad = horario_disponibilidad ?? null;
+      updateData.horario_disponibilidad = horarioParaPrisma(horario_disponibilidad ?? null);
     }
 
     // Toggle acepta_tickets (asignación de tickets)

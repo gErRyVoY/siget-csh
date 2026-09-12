@@ -21,7 +21,7 @@ import {
     bloqueOptions,
 } from "@/config/form-options";
 import { MARKETING_CATEGORY_ID } from "@/config/ticket-categories";
-import { canAssignMarketingTickets } from "@/services/ticketAssignmentService";
+import { buildManuallyAssignableWhere, canAssignMarketingTickets } from "@/services/ticketAssignmentService";
 
 const { id } = Astro.params;
 if (!id) {
@@ -170,8 +170,11 @@ type PersonaOpcion = { id: number; nombres: string; apellidos: string };
 
 /**
  * Agentes del desplegable «Atiende». Sólo los ven los usuarios privilegiados; el
- * resto ve únicamente al agente actual, sin consultar nada. Las dos ramas que
- * había (Marketing y CSH) eran idénticas salvo el flag `atiende_*`.
+ * resto ve únicamente al agente actual, sin consultar nada.
+ *
+ * El criterio vive en `buildManuallyAssignableWhere` para que sea literalmente el
+ * mismo que valida el PATCH (`canAgentBeAssignedManually`): antes eran dos reglas
+ * distintas y el desplegable ofrecía candidatos que el guardado rechazaba con 400.
  */
 function cargarAgentesAsignables(): Promise<PersonaOpcion[]> {
     if (!isPrivileged) return Promise.resolve([]);
@@ -182,24 +185,7 @@ function cargarAgentesAsignables(): Promise<PersonaOpcion[]> {
     const subcategoriaId = ticket!.subcategoriaId;
 
     return prisma.usuario.findMany({
-        where: {
-            activo: true,
-            OR: [
-                isMktTicket ? { atiende_mkt: true } : { atiende_csh: true },
-                {
-                    asignaciones_categorias: {
-                        some: {
-                            categoriaId,
-                            OR: [
-                                { subcategoriaId },
-                                { subcategoriaId: null }
-                            ],
-                            activo: true
-                        }
-                    }
-                }
-            ]
-        },
+        where: buildManuallyAssignableWhere(categoriaId, subcategoriaId, isMktTicket),
         select: { id: true, nombres: true, apellidos: true },
         orderBy: { nombres: "asc" }
     });

@@ -1,6 +1,7 @@
 ---
 import MainLayout from "@/layouts/MainLayout.astro";
 import { prisma } from "@/lib/db";
+import { consultarHorarioRH, horarioParaPrisma, tieneHorarioUtil } from "@/lib/rh-horario";
 import type { Usuario, Empresa, Rol } from "@prisma/client";
 import UserSubcategoryItem from "./UserSubcategoryItem.astro";
 
@@ -30,42 +31,27 @@ if (!user) {
   return Astro.redirect("/404");
 }
 
-if (user.clave && !user.horario_disponibilidad) {
-  try {
-    const response = await fetch(`https://pz3bmmqsty.us-east-1.awsapprunner.com/api/rh/horario-trabajador?trabajador=${user.clave}`, {
-      headers: {
-        'x-api-key': import.meta.env.TOKEN_ESPERADO || 'CHURRUMAIS-1979'
-      }
-    });
-    if (response.ok) {
-      const result = await response.json();
-      if (result.status === 'ok' && result.data && result.data.dias_laborales) {
-        const apiDias = result.data.dias_laborales;
-        const newHorario: Record<string, { inicio: string; fin: string }> = {};
-        const diasMap: Record<string, string> = { "1": "lunes", "2": "martes", "3": "miercoles", "4": "jueves", "5": "viernes", "6": "sabado" };
-        
-        for (const num in diasMap) {
-          if (apiDias[num] && apiDias[num].turno_normal) {
-            const { entrada, salida } = apiDias[num].turno_normal;
-            const inicio = entrada.length === 4 ? `${entrada.substring(0, 2)}:${entrada.substring(2)}` : 'No disponible';
-            const fin = salida.length === 4 ? `${salida.substring(0, 2)}:${salida.substring(2)}` : 'No disponible';
-            if (inicio !== 'No disponible' && fin !== 'No disponible') {
-              newHorario[diasMap[num]] = { inicio, fin };
-            }
-          }
-        }
-        
-        if (Object.keys(newHorario).length > 0) {
-          await prisma.usuario.update({
-            where: { id: user.id },
-            data: { horario_disponibilidad: newHorario }
-          });
-          user.horario_disponibilidad = newHorario as any;
-        }
-      }
+// El horario lo sincroniza el login contra la API de RH, pero quien no haya
+// vuelto a entrar puede tenerlo vacío, así que la ficha también lo refresca al
+// abrirse. La guarda usa `tieneHorarioUtil` y no `!user.horario_disponibilidad`
+// porque un objeto con los seis días a `null` es *truthy*: con la comprobación
+// anterior esas filas nunca se volvían a consultar (ver src/lib/rh-horario.ts).
+if (user.clave && !tieneHorarioUtil(user.horario_disponibilidad)) {
+  const resultado = await consultarHorarioRH(user.clave);
+
+  if (resultado.estado === 'ok' || resultado.estado === 'sin-horario') {
+    const nuevoHorario = resultado.estado === 'ok' ? resultado.horario : null;
+
+    // Si RH no tiene horario y la columna ya está en NULL, no hay nada que escribir.
+    if (nuevoHorario !== null || user.horario_disponibilidad !== null) {
+      await prisma.usuario.update({
+        where: { id: user.id },
+        data: { horario_disponibilidad: horarioParaPrisma(nuevoHorario) },
+      });
+      user.horario_disponibilidad = nuevoHorario as any;
     }
-  } catch (e) {
-    console.error("Error fetching horario:", e);
+  } else {
+    console.warn(`No se pudo consultar el horario de ${user.clave}: ${resultado.motivo}`);
   }
 }
 

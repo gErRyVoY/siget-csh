@@ -1,6 +1,7 @@
 import type { APIRoute } from 'astro';
 import { prisma } from '@/lib/db';
 import { invalidateAllSessionUsers } from '@/lib/session-cache';
+import { horarioParaPrisma } from '@/lib/rh-horario';
 import type { Prisma, Usuario } from '@prisma/client';
 
 // GET handler: Handles fetching lists of users with robust filtering.
@@ -174,8 +175,10 @@ export const PATCH: APIRoute = async ({ request, locals }) => {
       }
     }
 
+    // Prisma rechaza un `null` a secas en una columna `Json?`, y el formulario
+    // manda `null` cuando no queda ningún día utilizable.
     if (updateDataInput.horario_disponibilidad !== undefined) {
-      updateData.horario_disponibilidad = updateDataInput.horario_disponibilidad;
+      updateData.horario_disponibilidad = horarioParaPrisma(updateDataInput.horario_disponibilidad ?? null);
     }
 
     // --- Invalidación de sesión ---
