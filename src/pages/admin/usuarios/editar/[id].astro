@@ -2,6 +2,7 @@
 import MainLayout from "@/layouts/MainLayout.astro";
 import { prisma } from "@/lib/db";
 import { consultarHorarioRH, horarioParaPrisma, tieneHorarioUtil } from "@/lib/rh-horario";
+import { isTestUserEmail } from "@/config/test-users";
 import type { Usuario, Empresa, Rol } from "@prisma/client";
 import UserSubcategoryItem from "./UserSubcategoryItem.astro";
 
@@ -36,7 +37,10 @@ if (!user) {
 // abrirse. La guarda usa `tieneHorarioUtil` y no `!user.horario_disponibilidad`
 // porque un objeto con los seis días a `null` es *truthy*: con la comprobación
 // anterior esas filas nunca se volvían a consultar (ver src/lib/rh-horario.ts).
-if (user.clave && !tieneHorarioUtil(user.horario_disponibilidad)) {
+// Las cuentas de prueba y de servicio se omiten igual que en el login: RH no las
+// conoce, así que su horario se queda en NULL («No disponible») y consultarla
+// solo gastaría una petición en cada carga de la ficha.
+if (user.clave && !isTestUserEmail(user.mail) && !tieneHorarioUtil(user.horario_disponibilidad)) {
   const resultado = await consultarHorarioRH(user.clave);
 
   if (resultado.estado === 'ok' || resultado.estado === 'sin-horario') {

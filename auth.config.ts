@@ -7,6 +7,7 @@ import { admin as adminDirectory, auth as googleAuth } from "@googleapis/admin";
 import { prisma } from "./src/lib/db";
 import { getSessionUser, invalidateSessionUser } from "./src/lib/session-cache";
 import { consultarHorarioRH, horarioParaPrisma, type HorarioDisponibilidad } from "./src/lib/rh-horario";
+import { isTestUserEmail } from "./src/config/test-users";
 import type { Rol, Empresa, Permiso } from "@prisma/client";
 import type { DefaultSession } from "@auth/core/types";
 
@@ -45,17 +46,17 @@ export default defineConfig({
       }
 
       try {
-        const isTestUser = profile.email.toLowerCase() === 'alumno.prueba1@humanitas.edu.mx';
+        const isTestUser = isTestUserEmail(profile.email);
         let userData: any = {};
         let orgUnitPath = "";
         let orgUnit = "";
 
-        // El usuario de prueba existe solo para poder entrar con rol de usuario, así que no
-        // se consulta el Directory: su OU no se valida más abajo y el resultado no se usa
-        // para nada más. Antes sí se llamaba y solo se ignoraba el error, gastando una
-        // llamada a la API de Google y unos cientos de ms en cada login de prueba.
-        // Contrapartida: la fila del usuario de prueba debe existir ya en BD, porque el alta
-        // automática de más abajo deriva el campus de la OU y sin ella daría error=ErrorOU.
+        // Las cuentas de prueba y de servicio (src/config/test-users.ts) no se consultan
+        // en el Directory: su OU no se valida más abajo y el resultado no se usa para nada
+        // más. Antes sí se llamaba y solo se ignoraba el error, gastando una llamada a la
+        // API de Google y unos cientos de ms en cada login de prueba.
+        // Contrapartida: su fila debe existir ya en BD, porque el alta automática de más
+        // abajo deriva el campus de la OU y sin ella daría error=ErrorOU.
         if (!isTestUser) {
           try {
             const serviceAccountCreds = JSON.parse(
